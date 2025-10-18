@@ -1,6 +1,13 @@
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
+import { SignOutButton } from '@/components/sign-out-button';
 
-export default function Home() {
+export default async function Home() {
+	const supabase = await createClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+
 	return (
 		<div className='flex min-h-screen flex-col items-center justify-center p-8'>
 			<div className='max-w-2xl text-center'>
@@ -8,20 +15,43 @@ export default function Home() {
 				<p className='mb-8 text-lg text-muted-foreground'>
 					Tidrapportering och platsrapportering för svenska entreprenörer
 				</p>
-				<div className='flex gap-4 justify-center'>
-					<Link
-						href='/sign-in'
-						className='rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity'
-					>
-						Logga in
-					</Link>
-					<Link
-						href='/sign-up'
-						className='rounded-lg border border-border bg-background px-6 py-3 text-sm font-medium hover:bg-accent transition-colors'
-					>
-						Skapa konto
-					</Link>
-				</div>
+
+				{user ? (
+					<div className='space-y-4'>
+						<div className='p-4 rounded-lg bg-green-50 border border-green-200'>
+							<p className='text-sm font-medium text-green-900'>
+								✅ Inloggad som: {user.email}
+							</p>
+							<p className='text-xs text-green-700 mt-1'>
+								User ID: {user.id}
+							</p>
+						</div>
+						<div className='flex gap-4 justify-center'>
+							<Link
+								href='/dashboard'
+								className='rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity'
+							>
+								Gå till Dashboard
+							</Link>
+							<SignOutButton />
+						</div>
+					</div>
+				) : (
+					<div className='flex gap-4 justify-center'>
+						<Link
+							href='/sign-in'
+							className='rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity'
+						>
+							Logga in
+						</Link>
+						<Link
+							href='/sign-up'
+							className='rounded-lg border border-border bg-background px-6 py-3 text-sm font-medium hover:bg-accent transition-colors'
+						>
+							Skapa konto
+						</Link>
+					</div>
+				)}
 				<div className='mt-12 p-6 rounded-lg bg-muted'>
 					<h2 className='text-xl font-semibold mb-4'>Phase 1 MVP - Progress</h2>
 					<div className='space-y-4 text-left'>
