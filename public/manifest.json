@@ -1,0 +1,42 @@
+{
+	"name": "EP Time Tracker",
+	"short_name": "EP Tracker",
+	"description": "Time tracking and site reporting for Swedish contractors",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#ffffff",
+	"theme_color": "#1976d2",
+	"orientation": "portrait-primary",
+	"icons": [
+		{
+			"src": "/icons/icon-192x192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "any maskable"
+		},
+		{
+			"src": "/icons/icon-512x512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any maskable"
+		}
+	],
+	"screenshots": [
+		{
+			"src": "/screenshots/screenshot-wide.png",
+			"sizes": "1280x720",
+			"type": "image/png",
+			"form_factor": "wide"
+		},
+		{
+			"src": "/screenshots/screenshot-narrow.png",
+			"sizes": "750x1334",
+			"type": "image/png",
+			"form_factor": "narrow"
+		}
+	],
+	"categories": ["business", "productivity"],
+	"lang": "sv",
+	"dir": "ltr"
+}
+

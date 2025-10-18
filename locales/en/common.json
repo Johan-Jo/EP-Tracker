@@ -1,0 +1,57 @@
+{
+	"app": {
+		"name": "EP Time Tracker",
+		"description": "Time tracking and site reporting for Swedish contractors"
+	},
+	"auth": {
+		"signIn": "Sign In",
+		"signUp": "Sign Up",
+		"signOut": "Sign Out",
+		"email": "Email",
+		"password": "Password",
+		"forgotPassword": "Forgot password?",
+		"dontHaveAccount": "Don't have an account?",
+		"alreadyHaveAccount": "Already have an account?",
+		"verifyEmail": "Verify Email",
+		"checkEmail": "Check your email for verification link"
+	},
+	"navigation": {
+		"dashboard": "Dashboard",
+		"projects": "Projects",
+		"time": "Time",
+		"materials": "Materials",
+		"approvals": "Approvals",
+		"settings": "Settings"
+	},
+	"common": {
+		"save": "Save",
+		"cancel": "Cancel",
+		"delete": "Delete",
+		"edit": "Edit",
+		"create": "Create",
+		"search": "Search",
+		"filter": "Filter",
+		"loading": "Loading...",
+		"error": "An error occurred",
+		"success": "Success",
+		"confirm": "Confirm",
+		"back": "Back"
+	},
+	"timer": {
+		"start": "Start",
+		"stop": "Stop",
+		"switch": "Switch task",
+		"running": "Running",
+		"duration": "Duration"
+	},
+	"projects": {
+		"title": "Projects",
+		"createProject": "Create Project",
+		"projectName": "Project Name",
+		"clientName": "Client Name",
+		"location": "Location",
+		"phases": "Phases",
+		"workOrders": "Work Orders"
+	}
+}
+

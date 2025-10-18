@@ -1,0 +1,57 @@
+{
+	"app": {
+		"name": "EP Time Tracker",
+		"description": "Tidrapportering och platsrapportering för svenska entreprenörer"
+	},
+	"auth": {
+		"signIn": "Logga in",
+		"signUp": "Skapa konto",
+		"signOut": "Logga ut",
+		"email": "E-post",
+		"password": "Lösenord",
+		"forgotPassword": "Glömt lösenord?",
+		"dontHaveAccount": "Har du inget konto?",
+		"alreadyHaveAccount": "Har du redan ett konto?",
+		"verifyEmail": "Verifiera e-post",
+		"checkEmail": "Kolla din e-post för verifieringslänk"
+	},
+	"navigation": {
+		"dashboard": "Översikt",
+		"projects": "Projekt",
+		"time": "Tid",
+		"materials": "Material",
+		"approvals": "Godkännanden",
+		"settings": "Inställningar"
+	},
+	"common": {
+		"save": "Spara",
+		"cancel": "Avbryt",
+		"delete": "Radera",
+		"edit": "Redigera",
+		"create": "Skapa",
+		"search": "Sök",
+		"filter": "Filtrera",
+		"loading": "Laddar...",
+		"error": "Ett fel uppstod",
+		"success": "Lyckades",
+		"confirm": "Bekräfta",
+		"back": "Tillbaka"
+	},
+	"timer": {
+		"start": "Starta",
+		"stop": "Stoppa",
+		"switch": "Byt uppgift",
+		"running": "Pågående",
+		"duration": "Varaktighet"
+	},
+	"projects": {
+		"title": "Projekt",
+		"createProject": "Skapa projekt",
+		"projectName": "Projektnamn",
+		"clientName": "Kundnamn",
+		"location": "Plats",
+		"phases": "Faser",
+		"workOrders": "Arbetsorder"
+	}
+}
+
