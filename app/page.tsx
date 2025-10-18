@@ -23,21 +23,33 @@ export default function Home() {
 					</Link>
 				</div>
 				<div className='mt-12 p-6 rounded-lg bg-muted'>
-					<h2 className='text-xl font-semibold mb-4'>Phase 1 MVP - Infrastructure Complete ✅</h2>
-					<ul className='text-left text-sm space-y-2 text-muted-foreground'>
-						<li>✅ Next.js 15 + React 19 + TypeScript</li>
-						<li>✅ Supabase client setup (Auth, Storage, Database)</li>
-						<li>✅ State management (Zustand + React Query)</li>
-						<li>✅ Offline storage (Dexie IndexedDB)</li>
-						<li>✅ PWA configuration</li>
-						<li>✅ i18n (Swedish + English)</li>
-						<li>✅ Tailwind CSS + shadcn/ui</li>
-						<li>✅ ESLint + Prettier</li>
-						<li>✅ Git repository initialized</li>
-					</ul>
-					<p className='mt-4 text-xs'>
-						Next: Set up Supabase project and implement database schema (EPIC 2)
-					</p>
+					<h2 className='text-xl font-semibold mb-4'>Phase 1 MVP - Progress</h2>
+					<div className='space-y-4 text-left'>
+						<div>
+							<h3 className='text-sm font-medium mb-2'>✅ EPIC 1: Infrastructure Complete</h3>
+							<ul className='text-xs space-y-1 text-muted-foreground ml-4'>
+								<li>• Next.js 15 + React 19 + TypeScript</li>
+								<li>• Supabase integration</li>
+								<li>• State management & offline storage</li>
+								<li>• PWA & i18n configured</li>
+							</ul>
+						</div>
+						<div>
+							<h3 className='text-sm font-medium mb-2'>✅ EPIC 2: Database & Auth Complete</h3>
+							<ul className='text-xs space-y-1 text-muted-foreground ml-4'>
+								<li>• Complete database schema (15+ tables)</li>
+								<li>• RLS policies for multi-tenant security</li>
+								<li>• Authentication pages & API routes</li>
+								<li>• Storage buckets configured</li>
+								<li>• Swedish checklist templates</li>
+							</ul>
+						</div>
+						<div className='mt-3 pt-3 border-t border-border'>
+							<p className='text-xs text-muted-foreground'>
+								<strong>Next:</strong> EPIC 3 - Core UI & Projects Management
+							</p>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
