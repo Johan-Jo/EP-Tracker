@@ -2,7 +2,7 @@
 
 **Last Updated:** October 18, 2025  
 **Current Phase:** Phase 1 MVP  
-**Location:** `C:\Users\johan\Cursor Portfolio\ep-tracker`
+**Location:** `C:\Users\johan\Cursor Portfolio\EP-Tracker`
 
 ---
 
@@ -11,7 +11,7 @@
 | EPIC | Status | Progress |
 |------|--------|----------|
 | EPIC 1: Project Setup & Infrastructure | ✅ Complete | 100% |
-| EPIC 2: Database Schema & Authentication | ⏳ Pending | 0% |
+| EPIC 2: Database Schema & Authentication | ✅ Complete | 100% |
 | EPIC 3: Core UI & Projects Management | ⏳ Pending | 0% |
 | EPIC 4: Time Tracking & Crew Management | ⏳ Pending | 0% |
 | EPIC 5: Materials, Expenses & Mileage | ⏳ Pending | 0% |
@@ -20,76 +20,65 @@
 | EPIC 8: Offline-First & PWA Features | ⏳ Pending | 0% |
 | EPIC 9: Polish & Pilot Prep | ⏳ Pending | 0% |
 
-**Overall Progress:** 11% (EPIC 1 of 9 complete)
+**Overall Progress:** 22% (EPIC 1-2 of 9 complete)
 
 ---
 
 ## ✅ EPIC 1: Project Setup & Infrastructure (COMPLETE)
 
-### What's Been Built
+See [EPIC-1-VERIFICATION.md](./EPIC-1-VERIFICATION.md) for full details.
 
-1. **Next.js 15 Application** - TypeScript (strict), App Router, React 19
-2. **Dependencies Installed:**
-   - Supabase (@supabase/supabase-js, @supabase/ssr)
-   - State Management (zustand, @tanstack/react-query)
-   - Forms (react-hook-form, zod, @hookform/resolvers)
-   - Offline (dexie, workbox-window)
-   - PWA (@ducanh2912/next-pwa)
-   - i18n (i18next, react-i18next)
-   - UI (lucide-react, tailwindcss-animate)
-3. **Complete Folder Structure** - All feature directories created
-4. **Supabase Integration** - Client/server setup, auth helpers, middleware
-5. **State Management** - Zustand timer store, React Query provider
-6. **Offline Storage** - Dexie IndexedDB schema defined
-7. **PWA Configuration** - Manifest, service worker config
-8. **Internationalization** - Swedish (primary) + English translations
-9. **Styling** - Tailwind CSS + shadcn/ui with CSS variables
-10. **Code Quality** - ESLint + Prettier configured
-11. **Git Repository** - Initialized with .gitignore
-12. **Documentation** - Implementation plan, setup guide, status tracking
-
-### Key Files Created
-
-```
-ep-tracker/
-├── app/
-│   ├── layout.tsx                 ✅ Root layout with providers
-│   ├── page.tsx                   ✅ Landing page
-│   └── globals.css                ✅ Tailwind + theme variables
-├── lib/
-│   ├── supabase/
-│   │   ├── client.ts             ✅ Browser client
-│   │   ├── server.ts             ✅ Server client
-│   │   └── auth.ts               ✅ Auth helpers
-│   ├── stores/
-│   │   └── timer-store.ts        ✅ Zustand timer state
-│   ├── db/
-│   │   └── offline-store.ts      ✅ Dexie schema
-│   ├── providers/
-│   │   └── query-provider.tsx    ✅ React Query
-│   ├── i18n/
-│   │   └── config.ts             ✅ i18next config
-│   └── utils.ts                   ✅ Utility functions
-├── locales/
-│   ├── sv/common.json             ✅ Swedish translations
-│   └── en/common.json             ✅ English translations
-├── middleware.ts                  ✅ Route protection
-├── next.config.mjs                ✅ Next.js + PWA config
-├── tailwind.config.ts             ✅ Tailwind theme
-├── components.json                ✅ shadcn/ui config
-├── eslint.config.mjs              ✅ ESLint rules
-├── .prettierrc                    ✅ Prettier config
-├── .gitignore                     ✅ Git ignore rules
-├── .env.example                   ✅ Environment template
-└── docs/
-    ├── phase-1-implementation-plan.md  ✅ Full plan
-    ├── SETUP-COMPLETE.md               ✅ EPIC 1 summary
-    └── PROJECT-STATUS.md               ✅ Current status
-```
+**Summary:**
+- Next.js 15 + React 19 + TypeScript (strict)
+- Complete project structure
+- Supabase integration
+- State management (Zustand + React Query)
+- Offline storage (Dexie)
+- PWA configuration
+- i18n (Swedish + English)
+- All configurations verified and tested
 
 ---
 
-## 🎯 Next Steps: EPIC 2 - Database Schema & Authentication
+## ✅ EPIC 2: Database Schema & Authentication (COMPLETE)
+
+See [EPIC-2-COMPLETE.md](./EPIC-2-COMPLETE.md) for full details.
+
+**Summary:**
+
+### Database Schema
+- ✅ 20 tables with complete relationships
+- ✅ Multi-tenant organization structure
+- ✅ Time entries, materials, expenses, mileage
+- ✅ ÄTA, diary entries, checklists
+- ✅ Approvals and export tracking
+- ✅ Audit logging
+- ✅ Auto-calculated fields and triggers
+
+### Security (RLS)
+- ✅ Row Level Security on all tables
+- ✅ Helper functions for permission checks
+- ✅ Multi-tenant data isolation
+- ✅ Role-based access (admin/foreman/worker)
+- ✅ Storage bucket policies
+
+### Authentication
+- ✅ Sign-in page (password + magic link)
+- ✅ Sign-up page with email verification
+- ✅ Verify email page
+- ✅ API routes (signup, signin, signout, callback)
+- ✅ Middleware route protection
+- ✅ Auth helper functions
+
+### Seed Data
+- ✅ 4 Swedish construction checklist templates
+- ✅ Storage buckets (receipts, diary-photos, ata-photos)
+
+**Files Added:** 14 new files, ~2,437 lines of code
+
+---
+
+## 🎯 Next Steps: EPIC 3 - Core UI & Projects Management
 
 ### Prerequisites (Required Before Starting)
 
@@ -101,13 +90,21 @@ ep-tracker/
    - Create new project
    - Wait for provisioning (~2 minutes)
 
-2. **Get Credentials:**
+2. **Run Database Migrations:**
+   - Go to SQL Editor in Supabase dashboard
+   - Run migrations in order:
+     1. `supabase/migrations/20241018000001_initial_schema.sql`
+     2. `supabase/migrations/20241018000002_rls_policies.sql`
+     3. `supabase/migrations/20241018000003_seed_data.sql`
+     4. `supabase/migrations/20241018000004_storage_buckets.sql`
+
+3. **Get Credentials:**
    - Go to Project Settings → API
    - Copy: `URL`, `anon public key`, `service_role key`
 
-3. **Configure Environment:**
+4. **Configure Environment:**
    ```bash
-   # In ep-tracker directory
+   # In EP-Tracker directory
    cp .env.example .env.local
    ```
    Then add your Supabase credentials to `.env.local`:
@@ -120,26 +117,36 @@ ep-tracker/
 
 ### Once Supabase is Set Up, We'll Build:
 
-1. **Database Schema Migration** (`supabase/migrations/001_initial_schema.sql`)
-   - 15+ tables for multi-tenant org structure
-   - RLS policies for security
-   - Helper functions for auth checks
-   - Seed data for pilot org
+1. **Dashboard Layout** (`app/(dashboard)/layout.tsx`)
+   - Mobile-first responsive layout
+   - Bottom navigation for mobile
+   - Side navigation for desktop
+   - User profile menu
+   - Organization switcher
 
-2. **Authentication Pages:**
-   - Sign-in page (`app/(auth)/sign-in/page.tsx`)
-   - Sign-up page (`app/(auth)/sign-up/page.tsx`)
-   - Verify email page (`app/(auth)/verify-email/page.tsx`)
+2. **Projects List** (`app/(dashboard)/projects/page.tsx`)
+   - List all projects in organization
+   - Search and filter
+   - Status badges
+   - Create new project button
 
-3. **Auth API Routes:**
-   - `app/api/auth/signup/route.ts`
-   - `app/api/auth/signin/route.ts`
-   - `app/api/auth/signout/route.ts`
+3. **Project Detail** (`app/(dashboard)/projects/[id]/page.tsx`)
+   - Project overview
+   - Phases management
+   - Work orders management
+   - Team members
+   - Geo-fence map
 
-4. **Storage Buckets:**
-   - `receipts` bucket for materials/expenses photos
-   - `diary-photos` bucket for daily diary photos
-   - RLS policies for org-scoped access
+4. **Project Forms**
+   - Create/edit project form with Zod validation
+   - Phase CRUD (inline editing)
+   - Work order CRUD
+   - Settings (geo-fence, defaults)
+
+5. **Organization Settings** (`app/(dashboard)/settings/page.tsx`)
+   - Organization name and details
+   - User management (invite, roles, rates)
+   - Default settings (mileage rate, work hours)
 
 ---
 
@@ -161,21 +168,24 @@ npx tsc --noEmit
 npm run lint
 ```
 
-### When Ready to Continue (After Supabase Setup)
+### Test Authentication (Once Supabase Setup Complete)
 
 ```bash
-cd "C:\Users\johan\Cursor Portfolio\ep-tracker"
 npm run dev
+# Visit http://localhost:3000
+# Click "Skapa konto" to sign up
+# Check email for verification
+# Sign in and you're ready!
 ```
-
-Then tell the AI: "I've set up Supabase, credentials are in .env.local. Continue with EPIC 2."
 
 ---
 
 ## 📚 Documentation
 
 - **[phase-1-implementation-plan.md](./phase-1-implementation-plan.md)** - Complete implementation plan with all 9 EPICs
-- **[SETUP-COMPLETE.md](./SETUP-COMPLETE.md)** - Detailed EPIC 1 completion summary
+- **[SETUP-COMPLETE.md](./SETUP-COMPLETE.md)** - EPIC 1 completion summary
+- **[EPIC-1-VERIFICATION.md](./EPIC-1-VERIFICATION.md)** - EPIC 1 verification report
+- **[EPIC-2-COMPLETE.md](./EPIC-2-COMPLETE.md)** - EPIC 2 completion summary
 - **[PROJECT-STATUS.md](./PROJECT-STATUS.md)** - This file (current status)
 
 ---
@@ -197,12 +207,12 @@ Then tell the AI: "I've set up Supabase, credentials are in .env.local. Continue
 - ❌ EstimatePro integration (Phase 4)
 
 ### Tech Stack
-- Next.js 15.5.6 + React 19 + TypeScript 5.8.3
+- Next.js 15.5.6 + React 19 + TypeScript 5.9.3
 - Supabase (Postgres, Auth, Storage)
-- Zustand 5.0.2 + React Query 5.62.10
-- Dexie 4.0.10 (IndexedDB)
-- Tailwind CSS 3.4.17 + shadcn/ui
-- i18next 24.0.4
+- Zustand 5.0.8 + React Query 5.90.5
+- Dexie 4.2.1 (IndexedDB)
+- Tailwind CSS 4.1.14 + shadcn/ui
+- i18next 25.6.0
 
 ---
 
@@ -220,9 +230,22 @@ Then tell the AI: "I've set up Supabase, credentials are in .env.local. Continue
 
 ## 🚀 Ready to Continue?
 
-**Status:** Waiting for Supabase project setup
+**Status:** EPIC 2 complete, waiting for Supabase setup
 
-**Next Action:** Set up Supabase project and add credentials to `.env.local`, then proceed to EPIC 2.
+**Next Action:** Set up Supabase project, run migrations, add credentials to `.env.local`, then proceed to EPIC 3.
 
 **Questions?** Check the documentation in `/docs` or ask!
 
+---
+
+## Git Repository
+
+**Repository:** https://github.com/Johan-Jo/EP-Tracker  
+**Branch:** main  
+**Latest Commit:** feat: EPIC 2 complete - database schema and authentication system
+
+### Commit History
+1. `4e690e5` - feat: EPIC 1 complete - project setup and infrastructure
+2. `23f9012` - fix: resolve TypeScript, ESLint, and Tailwind CSS v4 configuration issues
+3. `a38fe99` - docs: add EPIC 1 verification report
+4. `a5c8d44` - feat: EPIC 2 complete - database schema and authentication system
