@@ -1,7 +1,37 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TimeEntryForm } from '@/components/time/time-entry-form';
+import { TimeEntriesList } from '@/components/time/time-entries-list';
+import { CrewClockIn } from '@/components/time/crew-clock-in';
+import { Clock, Users, List } from 'lucide-react';
 
-export default function TimePage() {
+export default async function TimePage() {
+	const supabase = await createClient();
+	const { data: { user } } = await supabase.auth.getUser();
+
+	if (!user) {
+		redirect('/sign-in');
+	}
+
+	// Get user's organization and role
+	const { data: membership } = await supabase
+		.from('memberships')
+		.select('org_id, role')
+		.eq('user_id', user.id)
+		.eq('is_active', true)
+		.single();
+
+	if (!membership) {
+		return (
+			<div className='p-4 md:p-8'>
+				<p className='text-destructive'>Ingen aktiv organisation hittades</p>
+			</div>
+		);
+	}
+
+	const canManageCrew = membership.role === 'admin' || membership.role === 'foreman';
+
 	return (
 		<div className='p-4 md:p-8 space-y-6'>
 			<div>
@@ -11,31 +41,38 @@ export default function TimePage() {
 				</p>
 			</div>
 
-			<Card>
-				<CardHeader>
-					<div className='flex items-center gap-3'>
-						<Clock className='w-8 h-8 text-primary' />
-						<div>
-							<CardTitle>Kommer i EPIC 4</CardTitle>
-							<CardDescription>
-								Time Tracking & Crew Management
-							</CardDescription>
-						</div>
-					</div>
-				</CardHeader>
-				<CardContent>
-					<p className='text-muted-foreground'>
-						Tidrapporteringsfunktioner kommer att implementeras i EPIC 4, inklusive:
-					</p>
-					<ul className='list-disc list-inside space-y-2 mt-4 text-sm text-muted-foreground'>
-						<li>Start/stopp timer</li>
-						<li>Manuell tidregistrering</li>
-						<li>Crew clock-in (bemanning)</li>
-						<li>Tidrapportsöversikt</li>
-						<li>Godkännandeflöde</li>
-					</ul>
-				</CardContent>
-			</Card>
+			<Tabs defaultValue="list" className="space-y-6">
+				<TabsList>
+					<TabsTrigger value="list">
+						<List className="w-4 h-4 mr-2" />
+						Översikt
+					</TabsTrigger>
+					<TabsTrigger value="manual">
+						<Clock className="w-4 h-4 mr-2" />
+						Lägg till tid
+					</TabsTrigger>
+					{canManageCrew && (
+						<TabsTrigger value="crew">
+							<Users className="w-4 h-4 mr-2" />
+							Starta bemanning
+						</TabsTrigger>
+					)}
+				</TabsList>
+
+				<TabsContent value="list" className="space-y-4">
+					<TimeEntriesList orgId={membership.org_id} />
+				</TabsContent>
+
+				<TabsContent value="manual">
+					<TimeEntryForm orgId={membership.org_id} />
+				</TabsContent>
+
+				{canManageCrew && (
+					<TabsContent value="crew">
+						<CrewClockIn orgId={membership.org_id} />
+					</TabsContent>
+				)}
+			</Tabs>
 		</div>
 	);
 }

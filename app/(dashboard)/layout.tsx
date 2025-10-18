@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { Sidebar } from '@/components/core/sidebar';
 import { MobileNav } from '@/components/core/mobile-nav';
 import { TopNav } from '@/components/core/top-nav';
+import { TimerWidget } from '@/components/time/timer-widget';
 
 export default async function DashboardLayout({
 	children,
@@ -18,11 +19,18 @@ export default async function DashboardLayout({
 		redirect('/sign-in');
 	}
 
-	// Fetch user profile
+	// Fetch user profile and membership
 	const { data: profile } = await supabase
 		.from('profiles')
 		.select('*')
 		.eq('id', user.id)
+		.single();
+
+	const { data: membership } = await supabase
+		.from('memberships')
+		.select('org_id')
+		.eq('user_id', user.id)
+		.eq('is_active', true)
 		.single();
 
 	return (
@@ -41,6 +49,9 @@ export default async function DashboardLayout({
 
 			{/* Mobile bottom navigation */}
 			<MobileNav />
+
+			{/* Sticky timer widget */}
+			{membership && <TimerWidget userId={user.id} orgId={membership.org_id} />}
 		</div>
 	);
 }
