@@ -46,17 +46,17 @@ export const useTimerStore = create<TimerState>()(
 					isRunning: false,
 					currentEntry: null,
 				}),
-			switchTask: (entry) =>
-				set((state) => {
-					// Stop current timer and start new one
-					return {
-						isRunning: true,
-						currentEntry: {
-							...entry,
-							start_at: new Date().toISOString(),
-						},
-					};
-				}),
+		switchTask: (entry) =>
+			set(() => {
+				// Stop current timer and start new one
+				return {
+					isRunning: true,
+					currentEntry: {
+						...entry,
+						start_at: new Date().toISOString(),
+					},
+				};
+			}),
 		}),
 		{
 			name: 'ep-tracker-timer',

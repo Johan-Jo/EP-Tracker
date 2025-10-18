@@ -62,7 +62,7 @@ interface SyncQueue {
 	action: 'create' | 'update' | 'delete';
 	entity: string;
 	entity_id: string;
-	payload: any;
+	payload: unknown;
 	created_at: string;
 	retry_count: number;
 	last_error?: string;
