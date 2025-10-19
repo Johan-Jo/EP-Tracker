@@ -355,7 +355,7 @@ export function MaterialForm({ orgId, onSuccess, onCancel, initialData }: Materi
 										<img
 											src={preview}
 											alt={`Preview ${index + 1}`}
-											className="w-full h-24 object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
+											className="w-full h-32 object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
 											onClick={() => {
 												setGalleryStartIndex(index);
 												setIsGalleryOpen(true);

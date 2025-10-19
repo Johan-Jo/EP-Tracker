@@ -305,7 +305,7 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, initialData }: Expense
 										<img
 											src={preview}
 											alt={`Kvitto ${index + 1}`}
-											className="w-full h-24 object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
+											className="w-full h-32 object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
 											onClick={() => {
 												setGalleryStartIndex(index);
 												setIsGalleryOpen(true);
