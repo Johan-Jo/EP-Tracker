@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Receipt, Loader2, Camera, X } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 
 interface ExpenseFormProps {
@@ -27,6 +27,7 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, defaultValues }: Expen
 	const [photoFiles, setPhotoFiles] = useState<File[]>([]);
 	
 	const supabase = createClient();
+	const queryClient = useQueryClient();
 
 	const {
 		register,
@@ -129,6 +130,9 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, defaultValues }: Expen
 				const error = await response.json();
 				throw new Error(error.error || 'Failed to create expense');
 			}
+
+			// Invalidate expenses query to refresh the list
+			queryClient.invalidateQueries({ queryKey: ['expenses', orgId] });
 
 			// Reset form
 			setPhotoFiles([]);

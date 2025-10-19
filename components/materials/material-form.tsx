@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Package, Loader2, Camera, X } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 
 interface MaterialFormProps {
@@ -28,6 +28,7 @@ export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: Mate
 	const [photoFiles, setPhotoFiles] = useState<File[]>([]);
 	
 	const supabase = createClient();
+	const queryClient = useQueryClient();
 
 	const {
 		register,
@@ -144,6 +145,9 @@ export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: Mate
 				const error = await response.json();
 				throw new Error(error.error || 'Failed to create material');
 			}
+
+			// Invalidate materials query to refresh the list
+			queryClient.invalidateQueries({ queryKey: ['materials', orgId] });
 
 			// Reset form
 			setPhotoFiles([]);
