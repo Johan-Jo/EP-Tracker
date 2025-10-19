@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -12,6 +12,7 @@ const inviteUserSchema = z.object({
 export async function POST(request: NextRequest) {
 	try {
 		const supabase = await createClient();
+		const adminClient = createAdminClient();
 
 		// Get current user
 		const {
@@ -86,13 +87,13 @@ export async function POST(request: NextRequest) {
 						);
 					}
 
-					// Send magic link email
-					const { error: emailError } = await supabase.auth.admin.inviteUserByEmail(
-						validatedData.email,
-						{
-							redirectTo: `${request.nextUrl.origin}/dashboard`,
-						}
-					);
+				// Send magic link email
+				const { error: emailError } = await adminClient.auth.admin.inviteUserByEmail(
+					validatedData.email,
+					{
+						redirectTo: `${request.nextUrl.origin}/dashboard`,
+					}
+				);
 
 					if (emailError) {
 						console.error('Error sending invite email:', emailError);
@@ -119,13 +120,13 @@ export async function POST(request: NextRequest) {
 				return NextResponse.json({ error: 'Failed to add user to organization' }, { status: 500 });
 			}
 
-			// Send magic link email
-			const { error: emailError } = await supabase.auth.admin.inviteUserByEmail(
-				validatedData.email,
-				{
-					redirectTo: `${request.nextUrl.origin}/dashboard`,
-				}
-			);
+				// Send magic link email
+				const { error: emailError } = await adminClient.auth.admin.inviteUserByEmail(
+					validatedData.email,
+					{
+						redirectTo: `${request.nextUrl.origin}/dashboard`,
+					}
+				);
 
 			if (emailError) {
 				console.error('Error sending invite email:', emailError);
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
 
 		// User doesn't exist - create invitation
 		// Note: With Supabase, we use inviteUserByEmail which creates the user and sends an invite
-		const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
+		const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
 			validatedData.email,
 			{
 				redirectTo: `${request.nextUrl.origin}/dashboard`,
