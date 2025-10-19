@@ -1,6 +1,6 @@
 # EP Time Tracker - Project Status
 
-**Last Updated:** October 18, 2025  
+**Last Updated:** October 19, 2025  
 **Current Phase:** Phase 1 MVP  
 **Location:** `C:\Users\johan\Cursor Portfolio\EP-Tracker`
 
@@ -14,13 +14,13 @@
 | EPIC 2: Database Schema & Authentication | ✅ Complete | 100% |
 | EPIC 3: Core UI & Projects Management | ✅ Complete | 100% |
 | EPIC 4: Time Tracking & Crew Management | ✅ Complete | 100% |
-| EPIC 5: Materials, Expenses & Mileage | ⏳ Pending | 0% |
+| EPIC 5: Materials, Expenses & Mileage | ✅ Complete | 100% |
 | EPIC 6: ÄTA, Diary & Checklists | ⏳ Pending | 0% |
 | EPIC 7: Approvals & CSV Exports | ⏳ Pending | 0% |
 | EPIC 8: Offline-First & PWA Features | ⏳ Pending | 0% |
 | EPIC 9: Polish & Pilot Prep | ⏳ Pending | 0% |
 
-**Overall Progress:** 44% (EPIC 1-4 of 9 complete)
+**Overall Progress:** 56% (EPIC 1-5 of 9 complete)
 
 ---
 
@@ -157,52 +157,103 @@ See [EPIC-4-COMPLETE.md](./EPIC-4-COMPLETE.md) for full details.
 
 ---
 
-## 🎯 Next Steps: EPIC 5 - Materials, Expenses & Mileage
+## ✅ EPIC 5: Materials, Expenses & Mileage (COMPLETE)
+
+See [EPIC-5-COMPLETE.md](./EPIC-5-COMPLETE.md) for full details.
+
+**Summary:**
+
+### Materials Tracking
+- ✅ Material entry form with camera photo upload
+- ✅ 10 Swedish construction units (st, m, m2, m3, kg, ton, etc.)
+- ✅ Quantity × Unit Price auto-calculation
+- ✅ Materials list with photo thumbnails
+- ✅ Filter by project and status
+
+### Expenses Tracking
+- ✅ Expense entry form with receipt photo
+- ✅ 10 common expense categories
+- ✅ VAT included toggle
+- ✅ Expenses list with totals display
+- ✅ Click receipt to view full size
+
+### Mileage Tracking
+- ✅ Mileage entry form with km/mil conversion
+- ✅ Swedish tax rate: 18.50 kr/mil (1.85 kr/km)
+- ✅ "Standard" button for quick rate
+- ✅ From/to location tracking
+- ✅ Mileage list with totals (km + amount)
+
+### Offline Support
+- ✅ Extended offline queue for materials/expenses/mileage
+- ✅ Photo upload to Supabase Storage
+- ✅ Works with existing sync status indicator
+
+### API Routes
+- ✅ GET /api/materials (list with filters)
+- ✅ POST /api/materials (create)
+- ✅ PATCH /api/materials/[id] (update)
+- ✅ DELETE /api/materials/[id] (delete)
+- ✅ GET /api/expenses (with filters)
+- ✅ POST /api/expenses (create)
+- ✅ PATCH /api/expenses/[id] (update)
+- ✅ DELETE /api/expenses/[id] (delete)
+- ✅ GET /api/mileage (with filters)
+- ✅ POST /api/mileage (create)
+- ✅ PATCH /api/mileage/[id] (update)
+- ✅ DELETE /api/mileage/[id] (delete)
+
+**Files Added:** 15 new files, ~2,100 lines of code
+
+---
+
+## 🎯 Next Steps: EPIC 6 - ÄTA, Diary & Checklists
 
 ### Prerequisites
 
-**✅ COMPLETE:** Time tracking system, offline infrastructure
+**✅ COMPLETE:** Materials, expenses, and mileage tracking with photo upload
 
 ### Features to Build
 
-1. **Materials Entry** (`components/materials/material-form.tsx`)
-   - Description, quantity, unit, unit price
-   - Photo upload (Supabase Storage)
+1. **ÄTA Form** (`components/ata/ata-form.tsx`)
+   - Description, category, estimated cost
+   - Photo gallery (max 10 photos)
    - Project/phase selection
-   - Offline queue support
+   - Approval workflow
 
-2. **Expenses Entry** (`components/expenses/expense-form.tsx`)
-   - Category selection
-   - Amount, VAT toggle
-   - Receipt photo upload
+2. **Diary Entry** (`components/diary/diary-form.tsx`)
+   - AFC-style fields (weather, crew count, work done)
+   - Photo gallery (max 10 photos)
+   - Date navigation
    - Project assignment
 
-3. **Mileage Entry** (`components/mileage/mileage-form.tsx`)
-   - Date, km, rate (18.50 kr/mil)
-   - From/to notes
-   - Project assignment
+3. **Checklist System** (`components/checklists/`)
+   - Template selection (4 Swedish templates)
+   - Dynamic checklist items
+   - Signature capture
+   - Photo attachments
+   - Export to PDF
 
-4. **Travel Time Entry** (`components/mileage/travel-time-form.tsx`)
-   - Date, duration (minutes)
-   - Project assignment
-   - Notes
+4. **ÄTA List** (`components/ata/ata-list.tsx`)
+   - Filter by project and status
+   - Photo gallery view
+   - Approval status indicators
 
-5. **Lists & Filters**
-   - Materials list by project
-   - Expenses list by project
-   - Mileage list by user
-   - Photo galleries
+5. **Diary Calendar** (`components/diary/diary-calendar.tsx`)
+   - Month view with entries
+   - Daily detail view
+   - Weather icons
 
 6. **API Routes**
-   - POST/PATCH/DELETE /api/materials
-   - POST/PATCH/DELETE /api/expenses
-   - POST/PATCH/DELETE /api/mileage
+   - POST/PATCH/DELETE /api/ata
+   - POST/PATCH/DELETE /api/diary
+   - POST/PATCH/DELETE /api/checklists
    - GET with filters
 
 ### Estimated Effort
 - ~1 week (5-7 working days)
-- 15+ new files
-- ~2,000 lines of code
+- 18+ new files
+- ~2,500 lines of code
 
 ---
 
@@ -251,6 +302,8 @@ npm run dev
 - **[EPIC-1-VERIFICATION.md](./EPIC-1-VERIFICATION.md)** - EPIC 1 verification report
 - **[EPIC-2-COMPLETE.md](./EPIC-2-COMPLETE.md)** - EPIC 2 completion summary
 - **[EPIC-3-COMPLETE.md](./EPIC-3-COMPLETE.md)** - EPIC 3 completion summary
+- **[EPIC-4-COMPLETE.md](./EPIC-4-COMPLETE.md)** - EPIC 4 completion summary
+- **[EPIC-5-COMPLETE.md](./EPIC-5-COMPLETE.md)** - EPIC 5 completion summary
 - **[PROJECT-STATUS.md](./PROJECT-STATUS.md)** - This file (current status)
 
 ---
@@ -305,6 +358,18 @@ npm run dev
 
 ## 🎉 Recent Achievements
 
+### October 19, 2025 - EPIC 5 Complete ⭐
+- ✅ Built material entry form with camera photo upload
+- ✅ Implemented expense entry with receipt capture
+- ✅ Created mileage entry with Swedish tax rates (18.50 kr/mil)
+- ✅ Built 3 list views with filters and photo galleries
+- ✅ Extended offline queue for materials/expenses/mileage
+- ✅ Complete materials page with 3 tabs
+- ✅ Created 12 API routes (CRUD for 3 entities)
+- ✅ Photo upload to Supabase Storage
+- ✅ TypeScript: 0 errors
+- ✅ ESLint: 0 errors
+
 ### October 18, 2025 - EPIC 4 Complete
 - ✅ Built sticky timer widget (visible on all pages)
 - ✅ Implemented manual time entry form
@@ -314,17 +379,12 @@ npm run dev
 - ✅ Added sync status indicator
 - ✅ Created 5 API routes for time tracking
 - ✅ Enhanced timer store with persistence
-- ✅ TypeScript: 0 errors
-- ✅ ESLint: 0 errors
 
 ### October 18, 2025 - EPIC 3 Complete
 - ✅ Built complete UI framework with shadcn/ui
 - ✅ Implemented mobile-first navigation
 - ✅ Created projects management (list, create, detail)
 - ✅ Built phases and work orders CRUD (UI complete)
-- ✅ Implemented organization settings
-- ✅ Created user management interface
-- ✅ Added profile settings
 
 ---
 
@@ -333,27 +393,27 @@ npm run dev
 **Repository:** https://github.com/Johan-Jo/EP-Tracker  
 **Branch:** main  
 **Latest Commits:**
-1. `4e690e5` - feat: EPIC 1 complete - project setup and infrastructure
-2. `23f9012` - fix: resolve TypeScript, ESLint, and Tailwind CSS v4 configuration issues
-3. `a38fe99` - docs: add EPIC 1 verification report
-4. `a5c8d44` - feat: EPIC 2 complete - database schema and authentication system
-5. **🆕 Next:** feat: EPIC 3 complete - core UI and projects management
+1. `8342b62` - feat: EPIC 5 complete - materials, expenses and mileage tracking
+2. `ede30b6` - feat: EPIC 4 complete - time tracking and crew management system
+3. `6aad167` - fix: disable Turbopack and add env checks in middleware
+4. `4e690e5` - feat: EPIC 1 complete - project setup and infrastructure
+5. **🆕 Next:** feat: EPIC 6 - ÄTA, diary & checklists
 
 ---
 
 ## Ready to Continue?
 
-**Status:** EPIC 4 complete, ready for EPIC 5
+**Status:** EPIC 5 complete, ready for EPIC 6
 
-**Next Action:** Begin EPIC 5 - Materials, Expenses & Mileage
+**Next Action:** Begin EPIC 6 - ÄTA, Diary & Checklists
 
 **Command to start dev server:**
 ```bash
 npm run dev
 ```
 
-**Questions?** Check the documentation in `/docs` or review the EPIC 3 completion report!
+**Questions?** Check the documentation in `/docs` or review the EPIC 5 completion report!
 
 ---
 
-**🎉 44% Complete - Nearly Halfway! 🚀**
+**🎉 56% Complete - More Than Halfway! 🚀**
