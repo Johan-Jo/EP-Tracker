@@ -14,54 +14,80 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const navItems = [
+type UserRole = 'admin' | 'foreman' | 'worker' | 'finance';
+
+interface NavItem {
+	label: string;
+	href: string;
+	icon: any;
+	roles: UserRole[]; // Roles that can see this item
+}
+
+const navItems: NavItem[] = [
 	{
 		label: 'Översikt',
 		href: '/dashboard',
 		icon: LayoutDashboard,
+		roles: ['admin', 'foreman', 'worker', 'finance'],
 	},
 	{
 		label: 'Projekt',
 		href: '/dashboard/projects',
 		icon: FolderKanban,
+		roles: ['admin', 'foreman', 'worker', 'finance'],
 	},
 	{
 		label: 'Tid',
 		href: '/dashboard/time',
 		icon: Clock,
+		roles: ['admin', 'foreman', 'worker', 'finance'],
 	},
 	{
 		label: 'Material',
 		href: '/dashboard/materials',
 		icon: Package,
+		roles: ['admin', 'foreman', 'worker', 'finance'],
 	},
 	{
 		label: 'Godkännanden',
 		href: '/dashboard/approvals',
 		icon: CheckSquare,
+		roles: ['admin', 'foreman'], // Only admin and foreman can approve
 	},
 ];
 
-const settingsItems = [
+const settingsItems: NavItem[] = [
 	{
 		label: 'Organisation',
 		href: '/dashboard/settings/organization',
 		icon: Building2,
+		roles: ['admin'], // Only admin can manage organization
 	},
 	{
 		label: 'Användare',
 		href: '/dashboard/settings/users',
 		icon: Users,
+		roles: ['admin'], // Only admin can manage users
 	},
 	{
 		label: 'Inställningar',
 		href: '/dashboard/settings',
 		icon: Settings,
+		roles: ['admin', 'foreman', 'worker', 'finance'], // Everyone can see their own settings/profile
 	},
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+	userRole: UserRole;
+}
+
+export function Sidebar({ userRole }: SidebarProps) {
 	const pathname = usePathname();
+
+	// Filter items based on user role
+	const visibleNavItems = navItems.filter((item) => item.roles.includes(userRole));
+	const visibleSettingsItems = settingsItems.filter((item) => item.roles.includes(userRole));
+	const showAdminSection = visibleSettingsItems.length > 0;
 
 	return (
 		<aside className='hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r bg-background'>
@@ -71,7 +97,7 @@ export function Sidebar() {
 				</div>
 
 				<nav className='flex-1 px-3 mt-8 space-y-1'>
-					{navItems.map((item) => {
+					{visibleNavItems.map((item) => {
 						const isActive = pathname === item.href;
 						const Icon = item.icon;
 
@@ -97,38 +123,40 @@ export function Sidebar() {
 						);
 					})}
 
-					<div className='pt-6 mt-6 border-t'>
-						<p className='px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider'>
-							Administration
-						</p>
-						{settingsItems.map((item) => {
-							const isActive = pathname === item.href;
-							const Icon = item.icon;
+					{showAdminSection && (
+						<div className='pt-6 mt-6 border-t'>
+							<p className='px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider'>
+								Administration
+							</p>
+							{visibleSettingsItems.map((item) => {
+								const isActive = pathname === item.href;
+								const Icon = item.icon;
 
-							return (
-								<Link
-									key={item.href}
-									href={item.href}
-									className={cn(
-										'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-										isActive
-											? 'bg-primary text-primary-foreground'
-											: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-									)}
-								>
-									<Icon
+								return (
+									<Link
+										key={item.href}
+										href={item.href}
 										className={cn(
-											'mr-3 flex-shrink-0 h-5 w-5',
+											'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
 											isActive
-												? ''
-												: 'text-muted-foreground group-hover:text-accent-foreground'
+												? 'bg-primary text-primary-foreground'
+												: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
 										)}
-									/>
-									{item.label}
-								</Link>
-							);
-						})}
-					</div>
+									>
+										<Icon
+											className={cn(
+												'mr-3 flex-shrink-0 h-5 w-5',
+												isActive
+													? ''
+													: 'text-muted-foreground group-hover:text-accent-foreground'
+											)}
+										/>
+										{item.label}
+									</Link>
+								);
+							})}
+						</div>
+					)}
 				</nav>
 			</div>
 		</aside>

@@ -28,15 +28,18 @@ export default async function DashboardLayout({
 
 	const { data: membership } = await supabase
 		.from('memberships')
-		.select('org_id')
+		.select('org_id, role')
 		.eq('user_id', user.id)
 		.eq('is_active', true)
 		.single();
 
+	// Default to 'worker' if no membership found (shouldn't happen, but safety fallback)
+	const userRole = (membership?.role as 'admin' | 'foreman' | 'worker' | 'finance') || 'worker';
+
 	return (
 		<div className='min-h-screen bg-background'>
 			{/* Sidebar for desktop */}
-			<Sidebar />
+			<Sidebar userRole={userRole} />
 
 			{/* Main content area */}
 			<div className='flex flex-col md:pl-64'>
@@ -48,7 +51,7 @@ export default async function DashboardLayout({
 			</div>
 
 			{/* Mobile bottom navigation */}
-			<MobileNav />
+			<MobileNav userRole={userRole} />
 
 			{/* Sticky timer widget */}
 			{membership && <TimerWidget userId={user.id} orgId={membership.org_id} />}
