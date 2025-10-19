@@ -6,8 +6,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Receipt, Trash2, Loader2 } from 'lucide-react';
+import { Receipt, Trash2, Loader2, Edit } from 'lucide-react';
 import { ExpenseWithRelations } from '@/lib/schemas/expense';
+import { PhotoGalleryViewer } from '@/components/ui/photo-gallery-viewer';
 import { format, parseISO } from 'date-fns';
 import { sv } from 'date-fns/locale';
 
@@ -19,6 +20,8 @@ interface ExpensesListProps {
 export function ExpensesList({ orgId, projectId }: ExpensesListProps) {
 	const [statusFilter, setStatusFilter] = useState<string>('all');
 	const [projectFilter, setProjectFilter] = useState<string>(projectId || 'all');
+	const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
+	const [isGalleryOpen, setIsGalleryOpen] = useState(false);
 	
 	const { data: expenses, isLoading, refetch } = useQuery({
 		queryKey: ['expenses', orgId, projectFilter, statusFilter],
@@ -145,7 +148,13 @@ export function ExpensesList({ orgId, projectId }: ExpensesListProps) {
 							<CardContent className="p-4">
 								<div className="flex gap-4">
 						{expense.photo_urls && expense.photo_urls.length > 0 && (
-							<div className="relative cursor-pointer" onClick={() => window.open(expense.photo_urls[0]!, '_blank')}>
+							<div 
+								className="relative cursor-pointer hover:opacity-80 transition-opacity" 
+								onClick={() => {
+									setGalleryPhotos(expense.photo_urls);
+									setIsGalleryOpen(true);
+								}}
+							>
 								<img
 									src={expense.photo_urls[0]}
 									alt="Kvitto"
@@ -190,13 +199,27 @@ export function ExpensesList({ orgId, projectId }: ExpensesListProps) {
 									</div>
 
 									{expense.status === 'draft' && (
-										<Button
-											size="sm"
-											variant="ghost"
-											onClick={() => handleDelete(expense.id)}
-										>
-											<Trash2 className="w-4 h-4" />
-										</Button>
+										<div className="flex gap-1">
+											<Button
+												size="sm"
+												variant="ghost"
+												onClick={() => {
+													// TODO: Open edit dialog
+													alert('Edit functionality coming soon!');
+												}}
+												title="Redigera"
+											>
+												<Edit className="w-4 h-4" />
+											</Button>
+											<Button
+												size="sm"
+												variant="ghost"
+												onClick={() => handleDelete(expense.id)}
+												title="Ta bort"
+											>
+												<Trash2 className="w-4 h-4" />
+											</Button>
+										</div>
 									)}
 								</div>
 							</CardContent>
@@ -204,6 +227,13 @@ export function ExpensesList({ orgId, projectId }: ExpensesListProps) {
 					))}
 				</div>
 			)}
+
+			{/* Photo Gallery Viewer */}
+			<PhotoGalleryViewer
+				photos={galleryPhotos}
+				isOpen={isGalleryOpen}
+				onClose={() => setIsGalleryOpen(false)}
+			/>
 		</div>
 	);
 }

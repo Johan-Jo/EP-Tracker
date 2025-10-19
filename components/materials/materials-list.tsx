@@ -6,8 +6,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Package, Trash2, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Package, Trash2, Loader2, Edit } from 'lucide-react';
 import { MaterialWithRelations } from '@/lib/schemas/material';
+import { PhotoGalleryViewer } from '@/components/ui/photo-gallery-viewer';
 
 interface MaterialsListProps {
 	orgId: string;
@@ -17,6 +18,8 @@ interface MaterialsListProps {
 export function MaterialsList({ orgId, projectId }: MaterialsListProps) {
 	const [statusFilter, setStatusFilter] = useState<string>('all');
 	const [projectFilter, setProjectFilter] = useState<string>(projectId || 'all');
+	const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
+	const [isGalleryOpen, setIsGalleryOpen] = useState(false);
 	
 	const { data: materials, isLoading, refetch } = useQuery({
 		queryKey: ['materials', orgId, projectFilter, statusFilter],
@@ -134,7 +137,13 @@ export function MaterialsList({ orgId, projectId }: MaterialsListProps) {
 							<CardContent className="p-4">
 								<div className="flex gap-4">
 					{material.photo_urls && material.photo_urls.length > 0 && (
-						<div className="relative">
+						<div 
+							className="relative cursor-pointer hover:opacity-80 transition-opacity"
+							onClick={() => {
+								setGalleryPhotos(material.photo_urls);
+								setIsGalleryOpen(true);
+							}}
+						>
 							<img
 								src={material.photo_urls[0]}
 								alt={material.description}
@@ -178,13 +187,27 @@ export function MaterialsList({ orgId, projectId }: MaterialsListProps) {
 									</div>
 
 									{material.status === 'draft' && (
-										<Button
-											size="sm"
-											variant="ghost"
-											onClick={() => handleDelete(material.id)}
-										>
-											<Trash2 className="w-4 h-4" />
-										</Button>
+										<div className="flex gap-1">
+											<Button
+												size="sm"
+												variant="ghost"
+												onClick={() => {
+													// TODO: Open edit dialog
+													alert('Edit functionality coming soon!');
+												}}
+												title="Redigera"
+											>
+												<Edit className="w-4 h-4" />
+											</Button>
+											<Button
+												size="sm"
+												variant="ghost"
+												onClick={() => handleDelete(material.id)}
+												title="Ta bort"
+											>
+												<Trash2 className="w-4 h-4" />
+											</Button>
+										</div>
 									)}
 								</div>
 							</CardContent>
@@ -192,6 +215,13 @@ export function MaterialsList({ orgId, projectId }: MaterialsListProps) {
 					))}
 				</div>
 			)}
+
+			{/* Photo Gallery Viewer */}
+			<PhotoGalleryViewer
+				photos={galleryPhotos}
+				isOpen={isGalleryOpen}
+				onClose={() => setIsGalleryOpen(false)}
+			/>
 		</div>
 	);
 }
