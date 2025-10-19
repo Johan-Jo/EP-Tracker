@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation';
 import { Sidebar } from '@/components/core/sidebar';
 import { MobileNav } from '@/components/core/mobile-nav';
 import { TopNav } from '@/components/core/top-nav';
-import { TimerWidget } from '@/components/time/timer-widget';
 import { getSession } from '@/lib/auth/get-session';
 
 export default async function DashboardLayout({
@@ -34,12 +33,9 @@ export default async function DashboardLayout({
 				<main className='flex-1 pb-20 md:pb-0'>{children}</main>
 			</div>
 
-			{/* Mobile bottom navigation */}
-			<MobileNav userRole={userRole} />
-
-			{/* Sticky timer widget */}
-			{membership && <TimerWidget userId={user.id} orgId={membership.org_id} />}
-		</div>
-	);
+		{/* Mobile bottom navigation */}
+		<MobileNav userRole={userRole} />
+	</div>
+);
 }
 

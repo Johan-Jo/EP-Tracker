@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
 import { TimePageClient } from '@/components/time/time-page-client';
+import { TimerWidget } from '@/components/time/timer-widget';
 
 export default async function TimePage() {
 	// Server-side: Only fetch session
@@ -28,6 +29,9 @@ export default async function TimePage() {
 					Logga arbetstid och bemanning
 				</p>
 			</div>
+
+			{/* Timer Widget */}
+			<TimerWidget userId={user.id} orgId={membership.org_id} inline={true} />
 
 			{/* Client component with lazy-loaded tabs */}
 			<TimePageClient orgId={membership.org_id} canManageCrew={canManageCrew} />

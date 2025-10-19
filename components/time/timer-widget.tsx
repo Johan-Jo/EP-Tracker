@@ -12,9 +12,10 @@ import { createClient } from '@/lib/supabase/client';
 interface TimerWidgetProps {
 	userId: string;
 	orgId: string;
+	inline?: boolean; // If true, renders inline instead of fixed/floating
 }
 
-export function TimerWidget({ userId, orgId }: TimerWidgetProps) {
+export function TimerWidget({ userId, orgId, inline = false }: TimerWidgetProps) {
 	const { isRunning, currentEntry, startTimer, stopTimer } = useTimerStore();
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [selectedProject, setSelectedProject] = useState<string>('');
@@ -142,8 +143,12 @@ export function TimerWidget({ userId, orgId }: TimerWidgetProps) {
 		}
 	};
 
+	const cardClassName = inline 
+		? "w-full shadow-md" 
+		: "fixed bottom-20 md:bottom-4 right-4 z-50 w-80 shadow-lg";
+
 	return (
-		<Card className="fixed bottom-20 md:bottom-4 right-4 z-50 w-80 shadow-lg">
+		<Card className={cardClassName}>
 			{/* Collapsed View */}
 			{!isExpanded && (
 				<div className="p-4 flex items-center justify-between">

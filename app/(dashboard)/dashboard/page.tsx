@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { FolderKanban, Clock, Package, Plus } from 'lucide-react';
 import { getSession } from '@/lib/auth/get-session';
+import { TimerWidget } from '@/components/time/timer-widget';
 
 export default async function DashboardPage() {
 	// Use cached session
@@ -45,6 +46,11 @@ export default async function DashboardPage() {
 					Här är en översikt över dina projekt och aktiviteter.
 				</p>
 			</div>
+
+			{/* Timer Widget */}
+			{membership && (
+				<TimerWidget userId={user.id} orgId={membership.org_id} inline={true} />
+			)}
 
 			{/* Quick stats */}
 			<div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
