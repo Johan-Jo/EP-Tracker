@@ -8,7 +8,7 @@ export const materialSchema = z.object({
 	qty: z.number().positive({ message: 'Antal måste vara större än 0' }),
 	unit: z.string().min(1, { message: 'Enhet är obligatorisk' }),
 	unit_price_sek: z.number().min(0, { message: 'Enhetspris kan inte vara negativt' }),
-	photo_url: z.string().url().optional().nullable(),
+	photo_urls: z.array(z.string().url()).max(10, { message: 'Maximalt 10 foton tillåtna' }).default([]),
 	notes: z.string().optional().nullable(),
 	status: z.enum(['draft', 'submitted', 'approved', 'rejected']).default('draft'),
 });

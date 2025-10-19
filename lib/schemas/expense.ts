@@ -7,7 +7,7 @@ export const expenseSchema = z.object({
 	description: z.string().min(1, { message: 'Beskrivning är obligatorisk' }),
 	amount_sek: z.number().positive({ message: 'Belopp måste vara större än 0' }),
 	vat: z.boolean(),
-	photo_url: z.string().url().optional().nullable(),
+	photo_urls: z.array(z.string().url()).max(10, { message: 'Maximalt 10 foton tillåtna' }).default([]),
 	notes: z.string().optional().nullable(),
 	status: z.enum(['draft', 'submitted', 'approved', 'rejected']).default('draft'),
 });

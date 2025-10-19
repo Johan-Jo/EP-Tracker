@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
 				qty: data.qty,
 				unit: data.unit,
 				unit_price_sek: data.unit_price_sek,
-				photo_url: data.photo_url,
+				photo_urls: data.photo_urls,
 				notes: data.notes,
 				status: 'draft',
 			})

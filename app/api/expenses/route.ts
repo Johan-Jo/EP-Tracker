@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
 				description: data.description,
 				amount_sek: data.amount_sek,
 				vat: data.vat,
-				photo_url: data.photo_url,
+				photo_urls: data.photo_urls,
 				notes: data.notes,
 				status: 'draft',
 			})

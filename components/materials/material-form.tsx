@@ -24,8 +24,8 @@ interface MaterialFormProps {
 export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: MaterialFormProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [selectedProject, setSelectedProject] = useState(defaultValues?.project_id || '');
-	const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-	const [photoFile, setPhotoFile] = useState<File | null>(null);
+	const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+	const [photoFiles, setPhotoFiles] = useState<File[]>([]);
 	
 	const supabase = createClient();
 
@@ -36,7 +36,7 @@ export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: Mate
 		setValue,
 		watch,
 	} = useForm<CreateMaterialInput>({
-		resolver: zodResolver(createMaterialSchema),
+		resolver: zodResolver(createMaterialSchema) as any,
 		defaultValues,
 	});
 
@@ -74,48 +74,61 @@ export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: Mate
 	});
 
 	const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (file) {
-			setPhotoFile(file);
+		const files = Array.from(e.target.files || []);
+		if (files.length === 0) return;
+
+		// Check total photo count
+		if (photoPreviews.length + files.length > 10) {
+			alert('Maximalt 10 foton tillåtna');
+			return;
+		}
+
+		// Add new photos
+		files.forEach((file) => {
+			setPhotoFiles((prev) => [...prev, file]);
 			const reader = new FileReader();
 			reader.onloadend = () => {
-				setPhotoPreview(reader.result as string);
+				setPhotoPreviews((prev) => [...prev, reader.result as string]);
 			};
 			reader.readAsDataURL(file);
-		}
+		});
+
+		// Reset input
+		e.target.value = '';
 	};
 
-	const clearPhoto = () => {
-		setPhotoFile(null);
-		setPhotoPreview(null);
-		setValue('photo_url', null);
+	const removePhoto = (index: number) => {
+		setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
+		setPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
 	};
 
 	const onSubmit = async (data: CreateMaterialInput) => {
 		setIsSubmitting(true);
 
 		try {
-			let photoUrl = data.photo_url;
+			const photoUrls: string[] = [];
 
-			// Upload photo if selected
-			if (photoFile) {
-				const fileExt = photoFile.name.split('.').pop();
-				const fileName = `${crypto.randomUUID()}.${fileExt}`;
-				const filePath = `materials/${fileName}`;
+			// Upload all photos if selected
+			if (photoFiles.length > 0) {
+				for (const file of photoFiles) {
+					const fileExt = file.name.split('.').pop();
+					const fileName = `${crypto.randomUUID()}.${fileExt}`;
+					const filePath = `materials/${fileName}`;
 
-				const { error: uploadError } = await supabase.storage
-					.from('receipts')
-					.upload(filePath, photoFile);
+					const { error: uploadError } = await supabase.storage
+						.from('receipts')
+						.upload(filePath, file);
 
-				if (uploadError) {
-					throw new Error('Failed to upload photo: ' + uploadError.message);
+					if (uploadError) {
+						throw new Error('Failed to upload photo: ' + uploadError.message);
+					}
+
+					const { data: urlData } = supabase.storage
+						.from('receipts')
+						.getPublicUrl(filePath);
+
+					photoUrls.push(urlData.publicUrl);
 				}
-
-				const { data: urlData } = supabase.storage
-					.from('receipts')
-					.getPublicUrl(filePath);
-
-				photoUrl = urlData.publicUrl;
 			}
 
 			const response = await fetch('/api/materials', {
@@ -123,7 +136,7 @@ export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: Mate
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					...data,
-					photo_url: photoUrl,
+					photo_urls: photoUrls,
 				}),
 			});
 
@@ -132,6 +145,9 @@ export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: Mate
 				throw new Error(error.error || 'Failed to create material');
 			}
 
+			// Reset form
+			setPhotoFiles([]);
+			setPhotoPreviews([]);
 			onSuccess?.();
 		} catch (error) {
 			console.error('Error creating material:', error);
@@ -277,27 +293,38 @@ export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: Mate
 						)}
 					</div>
 
-					{/* Photo Upload */}
+					{/* Photo Gallery */}
 					<div className="space-y-2">
-						<Label htmlFor="photo">Foto (valfritt)</Label>
-						{photoPreview ? (
-							<div className="relative inline-block max-w-xs">
-								<img
-									src={photoPreview}
-									alt="Preview"
-									className="w-full max-w-xs h-48 object-cover rounded-md border border-border"
-								/>
-								<Button
-									type="button"
-									size="sm"
-									variant="destructive"
-									className="absolute top-2 right-2"
-									onClick={clearPhoto}
-								>
-									<X className="w-4 h-4" />
-								</Button>
+						<Label htmlFor="photo">
+							Foton (valfritt) {photoPreviews.length > 0 && `- ${photoPreviews.length}/10`}
+						</Label>
+						
+						{/* Photo Grid */}
+						{photoPreviews.length > 0 && (
+							<div className="grid grid-cols-3 gap-2 mb-2">
+								{photoPreviews.map((preview, index) => (
+									<div key={index} className="relative group">
+										<img
+											src={preview}
+											alt={`Preview ${index + 1}`}
+											className="w-full h-24 object-cover rounded-md border border-border"
+										/>
+										<Button
+											type="button"
+											size="sm"
+											variant="destructive"
+											className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+											onClick={() => removePhoto(index)}
+										>
+											<X className="w-3 h-3" />
+										</Button>
+									</div>
+								))}
 							</div>
-						) : (
+						)}
+
+						{/* Add Photo Button */}
+						{photoPreviews.length < 10 && (
 							<div className="flex gap-2">
 								<Button
 									type="button"
@@ -306,13 +333,14 @@ export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: Mate
 									onClick={() => document.getElementById('photo-input')?.click()}
 								>
 									<Camera className="w-4 h-4 mr-2" />
-									Ta foto / Välj fil
+									{photoPreviews.length === 0 ? 'Ta foto / Välj fil' : 'Lägg till foto'}
 								</Button>
 								<input
 									id="photo-input"
 									type="file"
 									accept="image/*"
 									capture="environment"
+									multiple
 									className="hidden"
 									onChange={handlePhotoChange}
 								/>

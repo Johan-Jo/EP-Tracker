@@ -133,9 +133,9 @@ export function MaterialsList({ orgId, projectId }: MaterialsListProps) {
 						<Card key={material.id}>
 							<CardContent className="p-4">
 								<div className="flex gap-4">
-									{material.photo_url && (
-										<img
-											src={material.photo_url}
+					{material.photo_urls && material.photo_urls.length > 0 && (
+						<img
+							src={material.photo_urls[0]}
 											alt={material.description}
 											className="w-24 h-24 object-cover rounded-md"
 										/>
