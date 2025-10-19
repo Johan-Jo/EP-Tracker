@@ -1,7 +1,7 @@
 import { db, type SyncQueue } from '@/lib/db/offline-store';
 
 export type SyncAction = 'create' | 'update' | 'delete';
-export type SyncEntity = 'time_entry' | 'material' | 'expense' | 'mileage';
+export type SyncEntity = 'time_entry' | 'material' | 'expense' | 'mileage' | 'travel_time';
 
 interface QueueItem {
 	action: SyncAction;
@@ -152,6 +152,7 @@ export class OfflineQueueManager {
 			material: '/api/materials',
 			expense: '/api/expenses',
 			mileage: '/api/mileage',
+			travel_time: '/api/travel-time',
 		};
 
 		const baseUrl = baseUrls[item.entity as SyncEntity];
