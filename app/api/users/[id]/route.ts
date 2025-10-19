@@ -11,11 +11,11 @@ const updateUserSchema = z.object({
 
 export async function PATCH(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
 		const supabase = await createClient();
-		const userId = params.id;
+		const { id: userId } = await params;
 
 		// Get current user
 		const {
@@ -132,7 +132,7 @@ export async function PATCH(
 		return NextResponse.json({ message: 'User updated successfully' });
 	} catch (error) {
 		if (error instanceof z.ZodError) {
-			return NextResponse.json({ error: error.errors[0].message }, { status: 400 });
+			return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
 		}
 
 		console.error('Error updating user:', error);
@@ -142,11 +142,11 @@ export async function PATCH(
 
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
 		const supabase = await createClient();
-		const userId = params.id;
+		const { id: userId } = await params;
 
 		// Get current user
 		const {
