@@ -9,8 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Receipt, Trash2, Loader2, Edit } from 'lucide-react';
 import { ExpenseWithRelations } from '@/lib/schemas/expense';
 import { PhotoGalleryViewer } from '@/components/ui/photo-gallery-viewer';
-import { format, parseISO } from 'date-fns';
-import { sv } from 'date-fns/locale';
 
 interface ExpensesListProps {
 	orgId: string;
@@ -188,7 +186,7 @@ export function ExpensesList({ orgId, projectId, onEdit }: ExpensesListProps) {
 												{expense.vat && <span className="text-xs ml-1">(inkl. moms)</span>}
 											</span>
 											<span className="text-muted-foreground">
-												{format(parseISO(expense.created_at), 'PPP', { locale: sv })}
+												{new Intl.DateTimeFormat('sv-SE', { dateStyle: 'long' }).format(new Date(expense.created_at))}
 											</span>
 										</div>
 

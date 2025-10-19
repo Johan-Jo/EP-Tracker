@@ -8,8 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Clock, Edit2, Trash2, Loader2, Calendar } from 'lucide-react';
 import { TimeEntryWithRelations } from '@/lib/schemas/time-entry';
-import { format, parseISO } from 'date-fns';
-import { sv } from 'date-fns/locale';
 
 interface TimeEntriesListProps {
 	orgId: string;
@@ -96,7 +94,8 @@ export function TimeEntriesList({ orgId, userId, projectId, onEdit }: TimeEntrie
 
 	// Group entries by date
 	const groupedEntries = entries?.reduce((acc, entry) => {
-		const date = format(parseISO(entry.start_at), 'yyyy-MM-dd');
+		// Use Intl API instead of date-fns (0KB vs 190KB!)
+		const date = new Date(entry.start_at).toISOString().split('T')[0]; // yyyy-MM-dd
 		if (!acc[date]) acc[date] = [];
 		acc[date].push(entry);
 		return acc;
@@ -169,7 +168,12 @@ export function TimeEntriesList({ orgId, userId, projectId, onEdit }: TimeEntrie
 								<div className="flex items-center gap-2">
 									<Calendar className="w-4 h-4 text-muted-foreground" />
 									<h3 className="font-semibold">
-										{format(parseISO(date), 'EEEE d MMMM yyyy', { locale: sv })}
+										{new Intl.DateTimeFormat('sv-SE', {
+											weekday: 'long',
+											day: 'numeric',
+											month: 'long',
+											year: 'numeric'
+										}).format(new Date(date))}
 									</h3>
 								</div>
 								<span className="text-sm text-muted-foreground font-medium">
@@ -201,8 +205,8 @@ export function TimeEntriesList({ orgId, userId, projectId, onEdit }: TimeEntrie
 														<div className="flex items-center gap-1">
 															<Clock className="w-3 h-3" />
 															<span>
-																{format(parseISO(entry.start_at), 'HH:mm')}
-																{entry.stop_at && ` - ${format(parseISO(entry.stop_at), 'HH:mm')}`}
+																{new Date(entry.start_at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}
+																{entry.stop_at && ` - ${new Date(entry.stop_at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`}
 															</span>
 														</div>
 														{entry.duration_min && (

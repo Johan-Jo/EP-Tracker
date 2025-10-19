@@ -8,8 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Car, Trash2, Loader2, MapPin } from 'lucide-react';
 import { MileageWithRelations } from '@/lib/schemas/mileage';
-import { format, parseISO } from 'date-fns';
-import { sv } from 'date-fns/locale';
 
 interface MileageListProps {
 	orgId: string;
@@ -155,7 +153,7 @@ export function MileageList({ orgId, projectId }: MileageListProps) {
 											<div>
 												<h4 className="font-medium">{entry.project.name}</h4>
 												<p className="text-sm text-muted-foreground">
-													{format(parseISO(entry.date), 'PPP', { locale: sv })}
+													{new Intl.DateTimeFormat('sv-SE', { dateStyle: 'long' }).format(new Date(entry.date))}
 												</p>
 											</div>
 											{getStatusBadge(entry.status)}
