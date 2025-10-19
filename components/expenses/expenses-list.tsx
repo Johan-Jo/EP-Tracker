@@ -145,12 +145,18 @@ export function ExpensesList({ orgId, projectId }: ExpensesListProps) {
 							<CardContent className="p-4">
 								<div className="flex gap-4">
 						{expense.photo_urls && expense.photo_urls.length > 0 && (
-							<img
-								src={expense.photo_urls[0]}
-								alt="Kvitto"
-								className="w-24 h-24 object-cover rounded-md cursor-pointer"
-								onClick={() => window.open(expense.photo_urls[0]!, '_blank')}
-										/>
+							<div className="relative cursor-pointer" onClick={() => window.open(expense.photo_urls[0]!, '_blank')}>
+								<img
+									src={expense.photo_urls[0]}
+									alt="Kvitto"
+									className="w-24 h-24 object-cover rounded-md"
+								/>
+								{expense.photo_urls.length > 1 && (
+									<div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+										+{expense.photo_urls.length - 1}
+									</div>
+								)}
+							</div>
 									)}
 									<div className="flex-1 space-y-2">
 										<div className="flex items-start justify-between">
