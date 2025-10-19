@@ -15,9 +15,10 @@ interface TimeEntriesListProps {
 	orgId: string;
 	userId?: string;
 	projectId?: string;
+	onEdit?: (entry: TimeEntryWithRelations) => void;
 }
 
-export function TimeEntriesList({ orgId, userId, projectId }: TimeEntriesListProps) {
+export function TimeEntriesList({ orgId, userId, projectId, onEdit }: TimeEntriesListProps) {
 	const [statusFilter, setStatusFilter] = useState<string>('all');
 	const [projectFilter, setProjectFilter] = useState<string>(projectId || 'all');
 	
@@ -225,10 +226,7 @@ export function TimeEntriesList({ orgId, userId, projectId }: TimeEntriesListPro
 															<Button
 																size="sm"
 																variant="ghost"
-																onClick={() => {
-																	// TODO: Open edit dialog
-																	console.log('Edit entry:', entry.id);
-																}}
+																onClick={() => onEdit?.(entry)}
 															>
 																<Edit2 className="w-4 h-4" />
 															</Button>

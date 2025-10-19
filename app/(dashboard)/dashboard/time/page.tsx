@@ -1,26 +1,46 @@
-import { createClient } from '@/lib/supabase/server';
+'use client';
+
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
 import { redirect } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TimeEntryForm } from '@/components/time/time-entry-form';
 import { TimeEntriesList } from '@/components/time/time-entries-list';
 import { CrewClockIn } from '@/components/time/crew-clock-in';
 import { Clock, Users, List } from 'lucide-react';
+import { TimeEntryWithRelations } from '@/lib/schemas/time-entry';
 
-export default async function TimePage() {
-	const supabase = await createClient();
-	const { data: { user } } = await supabase.auth.getUser();
+export default function TimePage() {
+	const [editingEntry, setEditingEntry] = useState<TimeEntryWithRelations | null>(null);
+	const supabase = createClient();
+
+	const { data: user } = useQuery({
+		queryKey: ['user'],
+		queryFn: async () => {
+			const { data: { user } } = await supabase.auth.getUser();
+			return user;
+		},
+	});
+
+	const { data: membership } = useQuery({
+		queryKey: ['membership', user?.id],
+		queryFn: async () => {
+			if (!user) return null;
+			const { data } = await supabase
+				.from('memberships')
+				.select('org_id, role')
+				.eq('user_id', user.id)
+				.eq('is_active', true)
+				.single();
+			return data;
+		},
+		enabled: !!user,
+	});
 
 	if (!user) {
 		redirect('/sign-in');
 	}
-
-	// Get user's organization and role
-	const { data: membership } = await supabase
-		.from('memberships')
-		.select('org_id, role')
-		.eq('user_id', user.id)
-		.eq('is_active', true)
-		.single();
 
 	if (!membership) {
 		return (
@@ -31,6 +51,18 @@ export default async function TimePage() {
 	}
 
 	const canManageCrew = membership.role === 'admin' || membership.role === 'foreman';
+
+	const handleEdit = (entry: TimeEntryWithRelations) => {
+		setEditingEntry(entry);
+	};
+
+	const handleEditSuccess = () => {
+		setEditingEntry(null);
+	};
+
+	const handleEditCancel = () => {
+		setEditingEntry(null);
+	};
 
 	return (
 		<div className='p-4 md:p-8 space-y-6'>
@@ -60,7 +92,19 @@ export default async function TimePage() {
 				</TabsList>
 
 				<TabsContent value="list" className="space-y-4">
-					<TimeEntriesList orgId={membership.org_id} />
+					{editingEntry ? (
+						<TimeEntryForm 
+							orgId={membership.org_id} 
+							initialData={editingEntry}
+							onSuccess={handleEditSuccess}
+							onCancel={handleEditCancel}
+						/>
+					) : (
+						<TimeEntriesList 
+							orgId={membership.org_id} 
+							onEdit={handleEdit}
+						/>
+					)}
 				</TabsContent>
 
 				<TabsContent value="manual">

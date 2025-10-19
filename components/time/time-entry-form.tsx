@@ -10,21 +10,24 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Clock, Loader2, CheckCircle2 } from 'lucide-react';
+import { Clock, Loader2, CheckCircle2, X } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { TimeEntryWithRelations } from '@/lib/schemas/time-entry';
+import { useEffect } from 'react';
 
 interface TimeEntryFormProps {
 	orgId: string;
 	onSuccess?: () => void;
 	onCancel?: () => void;
-	defaultValues?: Partial<CreateTimeEntryInput>;
+	initialData?: TimeEntryWithRelations;
 }
 
-export function TimeEntryForm({ orgId, onSuccess, onCancel, defaultValues }: TimeEntryFormProps) {
+export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeEntryFormProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [selectedProject, setSelectedProject] = useState(defaultValues?.project_id || '');
+	const [selectedProject, setSelectedProject] = useState(initialData?.project_id || '');
 	const [showSuccess, setShowSuccess] = useState(false);
+	const isEditMode = !!initialData?.id;
 	
 	const supabase = createClient();
 	const queryClient = useQueryClient();
@@ -38,11 +41,34 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, defaultValues }: Tim
 		reset,
 	} = useForm<CreateTimeEntryInput>({
 		resolver: zodResolver(createTimeEntrySchema),
-		defaultValues: {
-			start_at: defaultValues?.start_at || new Date().toISOString().slice(0, 16),
-			...defaultValues,
+		defaultValues: initialData ? {
+			project_id: initialData.project_id,
+			phase_id: initialData.phase_id,
+			work_order_id: initialData.work_order_id,
+			task_label: initialData.task_label,
+			start_at: initialData.start_at.slice(0, 16), // Format for datetime-local
+			stop_at: initialData.stop_at ? initialData.stop_at.slice(0, 16) : null,
+			notes: initialData.notes,
+		} : {
+			start_at: new Date().toISOString().slice(0, 16),
 		},
 	});
+
+	// Reset form when initialData changes
+	useEffect(() => {
+		if (initialData) {
+			reset({
+				project_id: initialData.project_id,
+				phase_id: initialData.phase_id,
+				work_order_id: initialData.work_order_id,
+				task_label: initialData.task_label,
+				start_at: initialData.start_at.slice(0, 16),
+				stop_at: initialData.stop_at ? initialData.stop_at.slice(0, 16) : null,
+				notes: initialData.notes,
+			});
+			setSelectedProject(initialData.project_id);
+		}
+	}, [initialData, reset]);
 
 	// Fetch active projects
 	const { data: projects, isLoading: projectsLoading } = useQuery({
@@ -100,40 +126,45 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, defaultValues }: Tim
 		setShowSuccess(false);
 
 		try {
-			const response = await fetch('/api/time/entries', {
-				method: 'POST',
+			const url = isEditMode ? `/api/time/entries/${initialData.id}` : '/api/time/entries';
+			const method = isEditMode ? 'PATCH' : 'POST';
+			
+			const response = await fetch(url, {
+				method,
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(data),
 			});
 
 			if (!response.ok) {
 				const error = await response.json();
-				throw new Error(error.error || 'Failed to create time entry');
+				throw new Error(error.error || `Failed to ${isEditMode ? 'update' : 'create'} time entry`);
 			}
 
 			// Invalidate time entries cache to refresh the list
 			queryClient.invalidateQueries({ queryKey: ['time-entries', orgId] });
 
-			// Reset form to initial state
-			reset({
-				project_id: '',
-				phase_id: null,
-				work_order_id: null,
-				task_label: '',
-				start_at: new Date().toISOString().slice(0, 16),
-				stop_at: null,
-				notes: '',
-			});
-			setSelectedProject('');
+			if (!isEditMode) {
+				// Reset form to initial state (only for create mode)
+				reset({
+					project_id: '',
+					phase_id: null,
+					work_order_id: null,
+					task_label: '',
+					start_at: new Date().toISOString().slice(0, 16),
+					stop_at: null,
+					notes: '',
+				});
+				setSelectedProject('');
 
-			// Show success message
-			setShowSuccess(true);
-			setTimeout(() => setShowSuccess(false), 5000);
+				// Show success message
+				setShowSuccess(true);
+				setTimeout(() => setShowSuccess(false), 5000);
+			}
 
 			onSuccess?.();
 		} catch (error) {
-			console.error('Error creating time entry:', error);
-			alert(error instanceof Error ? error.message : 'Misslyckades att skapa tidrapport');
+			console.error(`Error ${isEditMode ? 'updating' : 'creating'} time entry:`, error);
+			alert(error instanceof Error ? error.message : `Misslyckades att ${isEditMode ? 'uppdatera' : 'skapa'} tidrapport`);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -142,12 +173,26 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, defaultValues }: Tim
 	return (
 		<Card>
 			<CardHeader>
-				<div className="flex items-center gap-3">
-					<Clock className="w-6 h-6 text-primary" />
-					<div>
-						<CardTitle>Lägg till tid</CardTitle>
-						<CardDescription>Registrera arbetstid manuellt</CardDescription>
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-3">
+						<Clock className="w-6 h-6 text-primary" />
+						<div>
+							<CardTitle>{isEditMode ? 'Redigera tidrapport' : 'Lägg till tid'}</CardTitle>
+							<CardDescription>
+								{isEditMode ? 'Uppdatera tidrapport information' : 'Registrera arbetstid manuellt'}
+							</CardDescription>
+						</div>
 					</div>
+					{isEditMode && onCancel && (
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							onClick={onCancel}
+						>
+							<X className="w-4 h-4" />
+						</Button>
+					)}
 				</div>
 		</CardHeader>
 		<CardContent>
@@ -291,11 +336,11 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, defaultValues }: Tim
 					</div>
 
 					{/* Actions */}
-					<div className="flex gap-3 pt-4">
-						<Button type="submit" disabled={isSubmitting}>
-							{isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-							Spara tid
-						</Button>
+				<div className="flex gap-3 pt-4">
+					<Button type="submit" disabled={isSubmitting}>
+						{isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+						{isEditMode ? 'Uppdatera tid' : 'Spara tid'}
+					</Button>
 						{onCancel && (
 							<Button type="button" variant="outline" onClick={onCancel}>
 								Avbryt
