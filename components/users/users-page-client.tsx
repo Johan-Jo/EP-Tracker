@@ -1,11 +1,14 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { InviteUserDialog } from '@/components/users/invite-user-dialog';
+import { Button } from '@/components/ui/button';
 import { EditUserDialog } from '@/components/users/edit-user-dialog';
+import { Mail, CheckCircle2, X } from 'lucide-react';
+import Link from 'next/link';
+import { useState, useEffect } from 'react';
 
 interface Member {
 	id: string;
@@ -26,6 +29,18 @@ interface UsersPageClientProps {
 
 export function UsersPageClient({ members, canInvite }: UsersPageClientProps) {
 	const router = useRouter();
+	const searchParams = useSearchParams();
+	const [showSuccess, setShowSuccess] = useState(false);
+
+	useEffect(() => {
+		if (searchParams.get('invited') === 'true') {
+			setShowSuccess(true);
+			// Remove the query param from URL
+			const url = new URL(window.location.href);
+			url.searchParams.delete('invited');
+			window.history.replaceState({}, '', url.toString());
+		}
+	}, [searchParams]);
 
 	const handleRefresh = () => {
 		router.refresh();
@@ -55,6 +70,21 @@ export function UsersPageClient({ members, canInvite }: UsersPageClientProps) {
 
 	return (
 		<div className='p-4 md:p-8 space-y-6'>
+			{showSuccess && (
+				<div className='flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg'>
+					<CheckCircle2 className='w-5 h-5 text-green-600 flex-shrink-0' />
+					<p className='text-sm text-green-800 flex-1'>
+						Inbjudan har skickats! Användaren kommer att få ett e-postmeddelande med instruktioner.
+					</p>
+					<button
+						onClick={() => setShowSuccess(false)}
+						className='text-green-600 hover:text-green-800'
+					>
+						<X className='w-4 h-4' />
+					</button>
+				</div>
+			)}
+
 			<div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
 				<div>
 					<h1 className='text-3xl font-bold tracking-tight'>Användare</h1>
@@ -62,7 +92,14 @@ export function UsersPageClient({ members, canInvite }: UsersPageClientProps) {
 						Hantera teammedlemmar och deras behörigheter
 					</p>
 				</div>
-				{canInvite && <InviteUserDialog onSuccess={handleRefresh} />}
+				{canInvite && (
+					<Link href='/dashboard/settings/users/invite'>
+						<Button>
+							<Mail className='w-4 h-4 mr-2' />
+							Bjud in användare
+						</Button>
+					</Link>
+				)}
 			</div>
 
 			<Card>
