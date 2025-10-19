@@ -11,7 +11,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
 					queries: {
 						// NO CACHING during development - always fetch fresh data
 						staleTime: 0,
-						cacheTime: 0,
+						gcTime: 0, // Renamed from cacheTime in React Query v5
 						retry: 1,
 						// Disable automatic refetching to avoid confusion during development
 						refetchOnWindowFocus: false,

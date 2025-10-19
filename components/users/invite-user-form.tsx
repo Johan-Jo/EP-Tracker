@@ -21,10 +21,7 @@ const inviteUserSchema = z.object({
 	email: z.string().email({ message: 'Ogiltig e-postadress' }),
 	full_name: z.string().min(1, { message: 'Namn krävs' }).optional().nullable(),
 	role: membershipRoleEnum,
-	hourly_rate_sek: z.preprocess(
-		(val) => (val === '' ? null : Number(val)),
-		z.number().min(0, { message: 'Timtaxa måste vara positiv' }).optional().nullable()
-	),
+	hourly_rate_sek: z.number().min(0, { message: 'Timtaxa måste vara positiv' }).optional().nullable(),
 });
 
 type InviteUserFormValues = z.infer<typeof inviteUserSchema>;
@@ -62,10 +59,16 @@ export function InviteUserForm({ orgId }: InviteUserFormProps) {
 		setError(null);
 
 		try {
+			// Convert empty string to null for hourly_rate_sek
+			const payload = {
+				...values,
+				hourly_rate_sek: values.hourly_rate_sek === null || values.hourly_rate_sek === undefined ? null : values.hourly_rate_sek,
+			};
+
 			const response = await fetch('/api/users/invite', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(values),
+				body: JSON.stringify(payload),
 			});
 
 			if (!response.ok) {
