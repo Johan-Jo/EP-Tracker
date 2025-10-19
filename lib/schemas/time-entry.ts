@@ -6,8 +6,16 @@ export const timeEntrySchema = z.object({
 	phase_id: z.string().uuid().optional().nullable(),
 	work_order_id: z.string().uuid().optional().nullable(),
 	task_label: z.string().optional().nullable(),
-	start_at: z.string().datetime({ message: 'Starttid måste vara ett giltigt datum' }),
-	stop_at: z.string().datetime({ message: 'Sluttid måste vara ett giltigt datum' }).optional().nullable(),
+	start_at: z.string().refine((val) => {
+		// Accept both ISO datetime and datetime-local format (yyyy-MM-ddTHH:mm)
+		const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{3})?)?([+-]\d{2}:\d{2}|Z)?$/;
+		return isoRegex.test(val) && !isNaN(new Date(val).getTime());
+	}, { message: 'Starttid måste vara ett giltigt datum' }),
+	stop_at: z.string().refine((val) => {
+		// Accept both ISO datetime and datetime-local format (yyyy-MM-ddTHH:mm)
+		const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{3})?)?([+-]\d{2}:\d{2}|Z)?$/;
+		return isoRegex.test(val) && !isNaN(new Date(val).getTime());
+	}, { message: 'Sluttid måste vara ett giltigt datum' }).optional().nullable(),
 	notes: z.string().optional().nullable(),
 	status: z.enum(['draft', 'submitted', 'approved', 'rejected']).default('draft'),
 }).refine(
@@ -37,7 +45,11 @@ export const crewClockInSchema = z.object({
 	work_order_id: z.string().uuid().optional().nullable(),
 	task_label: z.string().optional().nullable(),
 	user_ids: z.array(z.string().uuid()).min(1, { message: 'Minst en användare måste väljas' }),
-	start_at: z.string().datetime({ message: 'Starttid måste vara ett giltigt datum' }),
+	start_at: z.string().refine((val) => {
+		// Accept both ISO datetime and datetime-local format (yyyy-MM-ddTHH:mm)
+		const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{3})?)?([+-]\d{2}:\d{2}|Z)?$/;
+		return isoRegex.test(val) && !isNaN(new Date(val).getTime());
+	}, { message: 'Starttid måste vara ett giltigt datum' }),
 });
 
 // TypeScript types

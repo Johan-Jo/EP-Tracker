@@ -33,20 +33,20 @@ export async function GET(request: NextRequest) {
 		const end_date = searchParams.get('end_date');
 		const limit = parseInt(searchParams.get('limit') || '100');
 
-		// Build query
-		let query = supabase
-			.from('time_entries')
-			.select(`
-				*,
-				project:projects(id, name, project_number),
-				phase:phases(id, name),
-				work_order:work_orders(id, name),
-				user:profiles(id, full_name, email),
-				approved_by_user:profiles!time_entries_approved_by_fkey(id, full_name, email)
-			`)
-			.eq('org_id', membership.org_id)
-			.order('start_at', { ascending: false })
-			.limit(limit);
+	// Build query
+	let query = supabase
+		.from('time_entries')
+		.select(`
+			*,
+			project:projects(id, name, project_number),
+			phase:phases(id, name),
+			work_order:work_orders(id, name),
+			user:profiles!time_entries_user_id_fkey(id, full_name, email),
+			approved_by_user:profiles!time_entries_approved_by_fkey(id, full_name, email)
+		`)
+		.eq('org_id', membership.org_id)
+		.order('start_at', { ascending: false })
+		.limit(limit);
 
 		// Apply filters
 		if (project_id) query = query.eq('project_id', project_id);
