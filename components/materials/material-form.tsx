@@ -234,13 +234,14 @@ export function MaterialForm({ orgId, onSuccess, onCancel, initialData }: Materi
 							</div>
 						) : (
 							<Select
+								name="project_id"
 								value={watch('project_id') || ''}
 								onValueChange={(value) => {
 									setValue('project_id', value);
 									setSelectedProject(value);
 								}}
 							>
-								<SelectTrigger>
+								<SelectTrigger id="project_id">
 									<SelectValue placeholder="Välj projekt" />
 								</SelectTrigger>
 								<SelectContent>
@@ -263,10 +264,11 @@ export function MaterialForm({ orgId, onSuccess, onCancel, initialData }: Materi
 						<div className="space-y-2">
 							<Label htmlFor="phase_id">Fas (valfritt)</Label>
 							<Select
+								name="phase_id"
 								value={watch('phase_id') || ''}
 								onValueChange={(value) => setValue('phase_id', value || null)}
 							>
-								<SelectTrigger>
+								<SelectTrigger id="phase_id">
 									<SelectValue placeholder="Välj fas" />
 								</SelectTrigger>
 								<SelectContent>
@@ -312,10 +314,11 @@ export function MaterialForm({ orgId, onSuccess, onCancel, initialData }: Materi
 						<div className="space-y-2">
 							<Label htmlFor="unit">Enhet *</Label>
 							<Select
+								name="unit"
 								value={watch('unit') || ''}
 								onValueChange={(value) => setValue('unit', value)}
 							>
-								<SelectTrigger>
+								<SelectTrigger id="unit">
 									<SelectValue placeholder="Välj enhet" />
 								</SelectTrigger>
 								<SelectContent>

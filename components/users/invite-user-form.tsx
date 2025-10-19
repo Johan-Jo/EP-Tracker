@@ -131,10 +131,11 @@ export function InviteUserForm({ orgId }: InviteUserFormProps) {
 					Roll <span className="text-red-500">*</span>
 				</label>
 				<Select
+					name="role"
 					value={form.watch('role')}
 					onValueChange={(value) => form.setValue('role', value as any)}
 				>
-					<SelectTrigger>
+					<SelectTrigger id="role">
 						<SelectValue placeholder="Välj roll" />
 					</SelectTrigger>
 					<SelectContent>
