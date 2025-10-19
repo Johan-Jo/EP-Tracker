@@ -281,11 +281,11 @@ export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: Mate
 					<div className="space-y-2">
 						<Label htmlFor="photo">Foto (valfritt)</Label>
 						{photoPreview ? (
-							<div className="relative">
+							<div className="relative inline-block max-w-xs">
 								<img
 									src={photoPreview}
 									alt="Preview"
-									className="w-full h-48 object-cover rounded-md"
+									className="w-full max-w-xs h-48 object-cover rounded-md border border-border"
 								/>
 								<Button
 									type="button"
