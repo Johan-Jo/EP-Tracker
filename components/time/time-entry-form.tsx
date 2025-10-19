@@ -10,8 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Clock, Loader2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { Clock, Loader2, CheckCircle2 } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 
 interface TimeEntryFormProps {
@@ -24,8 +24,10 @@ interface TimeEntryFormProps {
 export function TimeEntryForm({ orgId, onSuccess, onCancel, defaultValues }: TimeEntryFormProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [selectedProject, setSelectedProject] = useState(defaultValues?.project_id || '');
+	const [showSuccess, setShowSuccess] = useState(false);
 	
 	const supabase = createClient();
+	const queryClient = useQueryClient();
 
 	const {
 		register,
@@ -33,6 +35,7 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, defaultValues }: Tim
 		formState: { errors },
 		setValue,
 		watch,
+		reset,
 	} = useForm<CreateTimeEntryInput>({
 		resolver: zodResolver(createTimeEntrySchema),
 		defaultValues: {
@@ -94,6 +97,7 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, defaultValues }: Tim
 
 	const onSubmit = async (data: CreateTimeEntryInput) => {
 		setIsSubmitting(true);
+		setShowSuccess(false);
 
 		try {
 			const response = await fetch('/api/time/entries', {
@@ -106,6 +110,25 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, defaultValues }: Tim
 				const error = await response.json();
 				throw new Error(error.error || 'Failed to create time entry');
 			}
+
+			// Invalidate time entries cache to refresh the list
+			queryClient.invalidateQueries({ queryKey: ['time-entries', orgId] });
+
+			// Reset form to initial state
+			reset({
+				project_id: '',
+				phase_id: null,
+				work_order_id: null,
+				task_label: '',
+				start_at: new Date().toISOString().slice(0, 16),
+				stop_at: null,
+				notes: '',
+			});
+			setSelectedProject('');
+
+			// Show success message
+			setShowSuccess(true);
+			setTimeout(() => setShowSuccess(false), 5000);
 
 			onSuccess?.();
 		} catch (error) {
@@ -126,10 +149,21 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, defaultValues }: Tim
 						<CardDescription>Registrera arbetstid manuellt</CardDescription>
 					</div>
 				</div>
-			</CardHeader>
-			<CardContent>
-				<form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-					{/* Project Selection */}
+		</CardHeader>
+		<CardContent>
+			{/* Success Message */}
+			{showSuccess && (
+				<div className="mb-4 p-4 rounded-lg bg-green-50 border border-green-200 flex items-center gap-3">
+					<CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+					<div>
+						<p className="text-sm font-medium text-green-900">Tidrapport sparad!</p>
+						<p className="text-sm text-green-700">Din arbetstid har registrerats.</p>
+					</div>
+				</div>
+			)}
+
+			<form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+				{/* Project Selection */}
 					<div className="space-y-2">
 						<Label htmlFor="project_id">Projekt *</Label>
 						{projectsLoading ? (
