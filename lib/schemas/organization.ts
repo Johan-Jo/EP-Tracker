@@ -18,7 +18,7 @@ export type Organization = {
 export type OrganizationFormData = z.infer<typeof organizationSchema>;
 
 // Membership role enum
-export const membershipRoleEnum = z.enum(['admin', 'foreman', 'worker']);
+export const membershipRoleEnum = z.enum(['admin', 'foreman', 'worker', 'finance']);
 
 // Membership schema
 export const membershipSchema = z.object({

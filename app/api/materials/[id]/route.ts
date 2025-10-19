@@ -51,6 +51,11 @@ export async function PATCH(
 			return NextResponse.json({ error: 'Material not found' }, { status: 404 });
 		}
 
+		// Finance users have read-only access
+		if (membership.role === 'finance') {
+			return NextResponse.json({ error: 'Finance users cannot edit materials' }, { status: 403 });
+		}
+
 		if (membership.role === 'worker' && existingMaterial.user_id !== user.id) {
 			return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 		}
@@ -119,6 +124,11 @@ export async function DELETE(
 
 		if (fetchError || !existingMaterial) {
 			return NextResponse.json({ error: 'Material not found' }, { status: 404 });
+		}
+
+		// Finance users have read-only access
+		if (membership.role === 'finance') {
+			return NextResponse.json({ error: 'Finance users cannot delete materials' }, { status: 403 });
 		}
 
 		if (membership.role === 'worker' && existingMaterial.user_id !== user.id) {

@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
 		if (start_date) query = query.gte('date', start_date);
 		if (end_date) query = query.lte('date', end_date);
 
+		// Workers only see their own mileage; admin/foreman/finance see all
 		if (membership.role === 'worker') {
 			query = query.eq('user_id', user.id);
 		}

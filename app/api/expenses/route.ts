@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
 		if (status) query = query.eq('status', status);
 		if (category) query = query.eq('category', category);
 
+		// Workers only see their own expenses; admin/foreman/finance see all
 		if (membership.role === 'worker') {
 			query = query.eq('user_id', user.id);
 		}

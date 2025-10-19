@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 		if (user_id) query = query.eq('user_id', user_id);
 		if (status) query = query.eq('status', status);
 
-		// If not admin/foreman, only show own materials
+		// Workers only see their own materials; admin/foreman/finance see all
 		if (membership.role === 'worker') {
 			query = query.eq('user_id', user.id);
 		}

@@ -50,6 +50,11 @@ export async function PATCH(
 			return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
 		}
 
+		// Finance users have read-only access
+		if (membership.role === 'finance') {
+			return NextResponse.json({ error: 'Finance users cannot edit expenses' }, { status: 403 });
+		}
+
 		if (membership.role === 'worker' && existingExpense.user_id !== user.id) {
 			return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 		}
@@ -117,6 +122,11 @@ export async function DELETE(
 
 		if (fetchError || !existingExpense) {
 			return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
+		}
+
+		// Finance users have read-only access
+		if (membership.role === 'finance') {
+			return NextResponse.json({ error: 'Finance users cannot delete expenses' }, { status: 403 });
 		}
 
 		if (membership.role === 'worker' && existingExpense.user_id !== user.id) {

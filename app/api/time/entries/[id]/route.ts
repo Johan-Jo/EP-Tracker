@@ -53,6 +53,11 @@ export async function PATCH(
 			return NextResponse.json({ error: 'Time entry not found' }, { status: 404 });
 		}
 
+		// Finance users have read-only access
+		if (membership.role === 'finance') {
+			return NextResponse.json({ error: 'Finance users cannot edit time entries' }, { status: 403 });
+		}
+
 		// Only allow editing own entries (unless admin/foreman)
 		if (membership.role === 'worker' && existingEntry.user_id !== user.id) {
 			return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
@@ -134,6 +139,11 @@ export async function DELETE(
 
 		if (fetchError || !existingEntry) {
 			return NextResponse.json({ error: 'Time entry not found' }, { status: 404 });
+		}
+
+		// Finance users have read-only access
+		if (membership.role === 'finance') {
+			return NextResponse.json({ error: 'Finance users cannot delete time entries' }, { status: 403 });
 		}
 
 		// Only allow deleting own entries (unless admin/foreman)

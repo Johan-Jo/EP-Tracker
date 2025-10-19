@@ -50,6 +50,11 @@ export async function PATCH(
 			return NextResponse.json({ error: 'Mileage not found' }, { status: 404 });
 		}
 
+		// Finance users have read-only access
+		if (membership.role === 'finance') {
+			return NextResponse.json({ error: 'Finance users cannot edit mileage' }, { status: 403 });
+		}
+
 		if (membership.role === 'worker' && existingMileage.user_id !== user.id) {
 			return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 		}
@@ -117,6 +122,11 @@ export async function DELETE(
 
 		if (fetchError || !existingMileage) {
 			return NextResponse.json({ error: 'Mileage not found' }, { status: 404 });
+		}
+
+		// Finance users have read-only access
+		if (membership.role === 'finance') {
+			return NextResponse.json({ error: 'Finance users cannot delete mileage' }, { status: 403 });
 		}
 
 		if (membership.role === 'worker' && existingMileage.user_id !== user.id) {

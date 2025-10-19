@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 		if (start_date) query = query.gte('start_at', start_date);
 		if (end_date) query = query.lte('start_at', end_date);
 
-		// If not admin/foreman, only show own entries
+		// Workers only see their own entries; admin/foreman/finance see all
 		if (membership.role === 'worker') {
 			query = query.eq('user_id', user.id);
 		}
