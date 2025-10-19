@@ -47,7 +47,7 @@ export function CrewClockIn({ orgId, onSuccess }: CrewClockInProps) {
 				.select(`
 					user_id,
 					role,
-					profiles (
+					profiles!inner (
 						id,
 						full_name,
 						email
@@ -58,7 +58,13 @@ export function CrewClockIn({ orgId, onSuccess }: CrewClockInProps) {
 				.order('role');
 
 			if (error) throw error;
-			return data || [];
+			
+			// Map the data to handle the profiles array correctly
+			return (data || []).map((member: any) => ({
+				user_id: member.user_id,
+				role: member.role,
+				profiles: Array.isArray(member.profiles) ? member.profiles[0] : member.profiles,
+			}));
 		},
 	});
 
