@@ -31,16 +31,16 @@ export async function GET(request: NextRequest) {
 		const end_date = searchParams.get('end_date');
 		const limit = parseInt(searchParams.get('limit') || '100');
 
-		let query = supabase
-			.from('mileage')
-			.select(`
-				*,
-				project:projects(id, name, project_number),
-				user:profiles(id, full_name, email)
-			`)
-			.eq('org_id', membership.org_id)
-			.order('date', { ascending: false })
-			.limit(limit);
+	let query = supabase
+		.from('mileage')
+		.select(`
+			*,
+			project:projects(id, name, project_number),
+			user:profiles!mileage_user_id_fkey(id, full_name, email)
+		`)
+		.eq('org_id', membership.org_id)
+		.order('date', { ascending: false })
+		.limit(limit);
 
 		if (project_id) query = query.eq('project_id', project_id);
 		if (user_id) query = query.eq('user_id', user_id);
