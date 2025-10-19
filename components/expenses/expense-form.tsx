@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Receipt, Loader2, Camera, X } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { PhotoGalleryViewer } from '@/components/ui/photo-gallery-viewer';
 
 interface ExpenseFormProps {
 	orgId: string;
@@ -26,6 +27,8 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, initialData }: Expense
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [photoPreviews, setPhotoPreviews] = useState<string[]>(initialData?.photo_urls || []);
 	const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+	const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+	const [galleryStartIndex, setGalleryStartIndex] = useState(0);
 	
 	const supabase = createClient();
 	const queryClient = useQueryClient();
@@ -180,6 +183,7 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, initialData }: Expense
 	};
 
 	return (
+		<>
 		<Card>
 			<CardHeader>
 				<div className="flex items-center gap-3">
@@ -301,7 +305,11 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, initialData }: Expense
 										<img
 											src={preview}
 											alt={`Kvitto ${index + 1}`}
-											className="w-full h-24 object-cover rounded-md border border-border"
+											className="w-full h-24 object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
+											onClick={() => {
+												setGalleryStartIndex(index);
+												setIsGalleryOpen(true);
+											}}
 										/>
 										<Button
 											type="button"
@@ -368,6 +376,15 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, initialData }: Expense
 				</form>
 			</CardContent>
 		</Card>
+
+		{/* Photo Gallery Viewer */}
+		<PhotoGalleryViewer
+			photos={photoPreviews.filter(p => p.startsWith('http'))}
+			isOpen={isGalleryOpen}
+			onClose={() => setIsGalleryOpen(false)}
+			initialIndex={galleryStartIndex}
+		/>
+	</>
 	);
 }
 

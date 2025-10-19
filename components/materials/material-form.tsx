@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Package, Loader2, Camera, X } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { PhotoGalleryViewer } from '@/components/ui/photo-gallery-viewer';
 
 interface MaterialFormProps {
 	orgId: string;
@@ -27,6 +28,8 @@ export function MaterialForm({ orgId, onSuccess, onCancel, initialData }: Materi
 	const [selectedProject, setSelectedProject] = useState(initialData?.project_id || '');
 	const [photoPreviews, setPhotoPreviews] = useState<string[]>(initialData?.photo_urls || []);
 	const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+	const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+	const [galleryStartIndex, setGalleryStartIndex] = useState(0);
 	
 	const supabase = createClient();
 	const queryClient = useQueryClient();
@@ -200,6 +203,7 @@ export function MaterialForm({ orgId, onSuccess, onCancel, initialData }: Materi
 	};
 
 	return (
+		<>
 		<Card>
 			<CardHeader>
 				<div className="flex items-center gap-3">
@@ -351,7 +355,11 @@ export function MaterialForm({ orgId, onSuccess, onCancel, initialData }: Materi
 										<img
 											src={preview}
 											alt={`Preview ${index + 1}`}
-											className="w-full h-24 object-cover rounded-md border border-border"
+											className="w-full h-24 object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
+											onClick={() => {
+												setGalleryStartIndex(index);
+												setIsGalleryOpen(true);
+											}}
 										/>
 										<Button
 											type="button"
@@ -418,6 +426,15 @@ export function MaterialForm({ orgId, onSuccess, onCancel, initialData }: Materi
 				</form>
 			</CardContent>
 		</Card>
+
+		{/* Photo Gallery Viewer */}
+		<PhotoGalleryViewer
+			photos={photoPreviews.filter(p => p.startsWith('http'))}
+			isOpen={isGalleryOpen}
+			onClose={() => setIsGalleryOpen(false)}
+			initialIndex={galleryStartIndex}
+		/>
+	</>
 	);
 }
 
