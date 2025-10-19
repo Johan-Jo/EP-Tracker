@@ -233,14 +233,13 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, initialData }: Expense
 					<div className="space-y-2">
 						<Label htmlFor="category">Kategori (valfritt)</Label>
 						<Select
-							value={watch('category') || ''}
-							onValueChange={(value) => setValue('category', value || null)}
+							value={watch('category') || undefined}
+							onValueChange={(value) => setValue('category', value)}
 						>
 							<SelectTrigger>
 								<SelectValue placeholder="Välj kategori" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="">Ingen kategori</SelectItem>
 								{EXPENSE_CATEGORIES.map((cat) => (
 									<SelectItem key={cat.value} value={cat.value}>
 										{cat.label}
