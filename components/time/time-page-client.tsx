@@ -1,13 +1,25 @@
 'use client';
 
-import { Suspense, lazy, useState } from 'react';
+import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clock, Users, List, Loader2 } from 'lucide-react';
 
-// Lazy load heavy components
-const TimeEntryForm = lazy(() => import('@/components/time/time-entry-form').then(m => ({ default: m.TimeEntryForm })));
-const TimeEntriesList = lazy(() => import('@/components/time/time-entries-list').then(m => ({ default: m.TimeEntriesList })));
-const CrewClockIn = lazy(() => import('@/components/time/crew-clock-in').then(m => ({ default: m.CrewClockIn })));
+// Use Next.js dynamic() for better code splitting (no SSR for client-only components)
+const TimeEntryForm = dynamic(() => import('@/components/time/time-entry-form').then(m => ({ default: m.TimeEntryForm })), {
+	loading: () => <TabLoading />,
+	ssr: false,
+});
+
+const TimeEntriesList = dynamic(() => import('@/components/time/time-entries-list').then(m => ({ default: m.TimeEntriesList })), {
+	loading: () => <TabLoading />,
+	ssr: false,
+});
+
+const CrewClockIn = dynamic(() => import('@/components/time/crew-clock-in').then(m => ({ default: m.CrewClockIn })), {
+	loading: () => <TabLoading />,
+	ssr: false,
+});
 
 // Loading component
 function TabLoading() {
@@ -57,38 +69,32 @@ export function TimePageClient({ orgId, canManageCrew }: TimePageClientProps) {
 				)}
 			</TabsList>
 
-			{/* List Tab - Lazy loaded */}
+			{/* List Tab - Dynamically loaded */}
 			<TabsContent value="list" className="space-y-4">
-				<Suspense fallback={<TabLoading />}>
-					{editingEntry ? (
-						<TimeEntryForm 
-							orgId={orgId} 
-							initialData={editingEntry}
-							onSuccess={handleEditSuccess}
-							onCancel={handleEditCancel}
-						/>
-					) : (
-						<TimeEntriesList 
-							orgId={orgId} 
-							onEdit={handleEdit}
-						/>
-					)}
-				</Suspense>
+				{editingEntry ? (
+					<TimeEntryForm 
+						orgId={orgId} 
+						initialData={editingEntry}
+						onSuccess={handleEditSuccess}
+						onCancel={handleEditCancel}
+					/>
+				) : (
+					<TimeEntriesList 
+						orgId={orgId} 
+						onEdit={handleEdit}
+					/>
+				)}
 			</TabsContent>
 
-			{/* Manual Entry Tab - Lazy loaded */}
+			{/* Manual Entry Tab - Dynamically loaded */}
 			<TabsContent value="manual">
-				<Suspense fallback={<TabLoading />}>
-					<TimeEntryForm orgId={orgId} />
-				</Suspense>
+				<TimeEntryForm orgId={orgId} />
 			</TabsContent>
 
-			{/* Crew Tab - Lazy loaded (only for admins/foremen) */}
+			{/* Crew Tab - Dynamically loaded (only for admins/foremen) */}
 			{canManageCrew && (
 				<TabsContent value="crew">
-					<Suspense fallback={<TabLoading />}>
-						<CrewClockIn orgId={orgId} />
-					</Suspense>
+					<CrewClockIn orgId={orgId} />
 				</TabsContent>
 			)}
 		</Tabs>

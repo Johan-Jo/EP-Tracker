@@ -1,14 +1,29 @@
 'use client';
 
-import { Suspense, lazy } from 'react';
+import dynamic from 'next/dynamic';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Package, Receipt, Car, Loader2 } from 'lucide-react';
 
-// Lazy load heavy components - only load when tab is clicked
-const MaterialsTabContent = lazy(() => import('@/components/materials/materials-tab-content').then(m => ({ default: m.MaterialsTabContent })));
-const ExpensesTabContent = lazy(() => import('@/components/expenses/expenses-tab-content').then(m => ({ default: m.ExpensesTabContent })));
-const MileageForm = lazy(() => import('@/components/mileage/mileage-form').then(m => ({ default: m.MileageForm })));
-const MileageList = lazy(() => import('@/components/mileage/mileage-list').then(m => ({ default: m.MileageList })));
+// Use Next.js dynamic() for better code splitting
+const MaterialsTabContent = dynamic(() => import('@/components/materials/materials-tab-content').then(m => ({ default: m.MaterialsTabContent })), {
+	loading: () => <TabLoading />,
+	ssr: false,
+});
+
+const ExpensesTabContent = dynamic(() => import('@/components/expenses/expenses-tab-content').then(m => ({ default: m.ExpensesTabContent })), {
+	loading: () => <TabLoading />,
+	ssr: false,
+});
+
+const MileageForm = dynamic(() => import('@/components/mileage/mileage-form').then(m => ({ default: m.MileageForm })), {
+	loading: () => <TabLoading />,
+	ssr: false,
+});
+
+const MileageList = dynamic(() => import('@/components/mileage/mileage-list').then(m => ({ default: m.MileageList })), {
+	loading: () => <TabLoading />,
+	ssr: false,
+});
 
 // Loading component
 function TabLoading() {
@@ -41,29 +56,23 @@ export function MaterialsPageClient({ orgId }: MaterialsPageClientProps) {
 				</TabsTrigger>
 			</TabsList>
 
-			{/* Materials Tab - Lazy loaded */}
+			{/* Materials Tab - Dynamically loaded */}
 			<TabsContent value="materials" className="space-y-6">
-				<Suspense fallback={<TabLoading />}>
-					<MaterialsTabContent orgId={orgId} />
-				</Suspense>
+				<MaterialsTabContent orgId={orgId} />
 			</TabsContent>
 
-			{/* Expenses Tab - Lazy loaded */}
+			{/* Expenses Tab - Dynamically loaded */}
 			<TabsContent value="expenses" className="space-y-6">
-				<Suspense fallback={<TabLoading />}>
-					<ExpensesTabContent orgId={orgId} />
-				</Suspense>
+				<ExpensesTabContent orgId={orgId} />
 			</TabsContent>
 
-			{/* Mileage Tab - Lazy loaded */}
+			{/* Mileage Tab - Dynamically loaded */}
 			<TabsContent value="mileage" className="space-y-6">
-				<Suspense fallback={<TabLoading />}>
-					<MileageForm orgId={orgId} />
-					<div>
-						<h2 className="text-xl font-semibold mb-4">Milersättning</h2>
-						<MileageList orgId={orgId} />
-					</div>
-				</Suspense>
+				<MileageForm orgId={orgId} />
+				<div>
+					<h2 className="text-xl font-semibold mb-4">Milersättning</h2>
+					<MileageList orgId={orgId} />
+				</div>
 			</TabsContent>
 		</Tabs>
 	);
