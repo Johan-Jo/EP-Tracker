@@ -36,9 +36,6 @@ const nextConfig = {
 	// Reduce server-side processing
 	serverExternalPackages: ['@supabase/supabase-js'],
 	
-	// Improve build performance
-	swcMinify: true,
-	
 	// Enable modularizeImports for better tree-shaking
 	modularizeImports: {
 		'lucide-react': {
