@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createMaterialSchema, type CreateMaterialInput, MATERIAL_UNITS } from '@/lib/schemas/material';
+import { createMaterialSchema, type CreateMaterialInput, type MaterialWithRelations, MATERIAL_UNITS } from '@/lib/schemas/material';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,13 +18,14 @@ interface MaterialFormProps {
 	orgId: string;
 	onSuccess?: () => void;
 	onCancel?: () => void;
-	defaultValues?: Partial<CreateMaterialInput>;
+	initialData?: MaterialWithRelations | null;
 }
 
-export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: MaterialFormProps) {
+export function MaterialForm({ orgId, onSuccess, onCancel, initialData }: MaterialFormProps) {
+	const isEditMode = !!initialData;
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [selectedProject, setSelectedProject] = useState(defaultValues?.project_id || '');
-	const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+	const [selectedProject, setSelectedProject] = useState(initialData?.project_id || '');
+	const [photoPreviews, setPhotoPreviews] = useState<string[]>(initialData?.photo_urls || []);
 	const [photoFiles, setPhotoFiles] = useState<File[]>([]);
 	
 	const supabase = createClient();
@@ -36,10 +37,37 @@ export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: Mate
 		formState: { errors },
 		setValue,
 		watch,
+		reset,
 	} = useForm<CreateMaterialInput>({
 		resolver: zodResolver(createMaterialSchema) as any,
-		defaultValues,
+		defaultValues: initialData ? {
+			description: initialData.description,
+			qty: initialData.qty,
+			unit: initialData.unit,
+			unit_price_sek: initialData.unit_price_sek,
+			project_id: initialData.project_id,
+			phase_id: initialData.phase_id || undefined,
+			notes: initialData.notes || '',
+		} : undefined,
 	});
+
+	// Update form when initialData changes
+	useEffect(() => {
+		if (initialData) {
+			reset({
+				description: initialData.description,
+				qty: initialData.qty,
+				unit: initialData.unit,
+				unit_price_sek: initialData.unit_price_sek,
+				project_id: initialData.project_id,
+				phase_id: initialData.phase_id || undefined,
+				notes: initialData.notes || '',
+			});
+			setSelectedProject(initialData.project_id);
+			setPhotoPreviews(initialData.photo_urls || []);
+			setPhotoFiles([]);
+		}
+	}, [initialData, reset]);
 
 	// Fetch active projects
 	const { data: projects, isLoading: projectsLoading } = useQuery({
@@ -109,7 +137,7 @@ export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: Mate
 		try {
 			const photoUrls: string[] = [];
 
-			// Upload all photos if selected
+			// Upload new photos if selected
 			if (photoFiles.length > 0) {
 				for (const file of photoFiles) {
 					const fileExt = file.name.split('.').pop();
@@ -132,30 +160,40 @@ export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: Mate
 				}
 			}
 
-			const response = await fetch('/api/materials', {
-				method: 'POST',
+			// Combine existing photos (from photoPreviews that are URLs) with new uploads
+			const existingPhotoUrls = photoPreviews.filter(p => p.startsWith('http'));
+			const allPhotoUrls = [...existingPhotoUrls, ...photoUrls];
+
+			// Determine HTTP method and URL
+			const method = isEditMode ? 'PATCH' : 'POST';
+			const url = isEditMode ? `/api/materials/${initialData!.id}` : '/api/materials';
+
+			const response = await fetch(url, {
+				method,
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					...data,
-					photo_urls: photoUrls,
+					photo_urls: allPhotoUrls,
 				}),
 			});
 
 			if (!response.ok) {
 				const error = await response.json();
-				throw new Error(error.error || 'Failed to create material');
+				throw new Error(error.error || `Failed to ${isEditMode ? 'update' : 'create'} material`);
 			}
 
 			// Invalidate materials query to refresh the list
 			queryClient.invalidateQueries({ queryKey: ['materials', orgId] });
 
 			// Reset form
+			reset();
 			setPhotoFiles([]);
 			setPhotoPreviews([]);
+			setSelectedProject('');
 			onSuccess?.();
 		} catch (error) {
-			console.error('Error creating material:', error);
-			alert(error instanceof Error ? error.message : 'Misslyckades att skapa material');
+			console.error(`Error ${isEditMode ? 'updating' : 'creating'} material:`, error);
+			alert(error instanceof Error ? error.message : `Misslyckades att ${isEditMode ? 'uppdatera' : 'skapa'} material`);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -167,8 +205,10 @@ export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: Mate
 				<div className="flex items-center gap-3">
 					<Package className="w-6 h-6 text-primary" />
 					<div>
-						<CardTitle>Lägg till material</CardTitle>
-						<CardDescription>Registrera inköpt material</CardDescription>
+						<CardTitle>{isEditMode ? 'Redigera material' : 'Lägg till material'}</CardTitle>
+						<CardDescription>
+							{isEditMode ? 'Uppdatera material information' : 'Registrera inköpt material'}
+						</CardDescription>
 					</div>
 				</div>
 			</CardHeader>
@@ -367,7 +407,7 @@ export function MaterialForm({ orgId, onSuccess, onCancel, defaultValues }: Mate
 					<div className="flex gap-3 pt-4">
 						<Button type="submit" disabled={isSubmitting}>
 							{isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-							Spara material
+							{isEditMode ? 'Uppdatera material' : 'Spara material'}
 						</Button>
 						{onCancel && (
 							<Button type="button" variant="outline" onClick={onCancel}>

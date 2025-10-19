@@ -13,9 +13,10 @@ import { PhotoGalleryViewer } from '@/components/ui/photo-gallery-viewer';
 interface MaterialsListProps {
 	orgId: string;
 	projectId?: string;
+	onEdit?: (material: MaterialWithRelations) => void;
 }
 
-export function MaterialsList({ orgId, projectId }: MaterialsListProps) {
+export function MaterialsList({ orgId, projectId, onEdit }: MaterialsListProps) {
 	const [statusFilter, setStatusFilter] = useState<string>('all');
 	const [projectFilter, setProjectFilter] = useState<string>(projectId || 'all');
 	const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
@@ -191,10 +192,7 @@ export function MaterialsList({ orgId, projectId }: MaterialsListProps) {
 											<Button
 												size="sm"
 												variant="ghost"
-												onClick={() => {
-													// TODO: Open edit dialog
-													alert('Edit functionality coming soon!');
-												}}
+												onClick={() => onEdit?.(material)}
 												title="Redigera"
 											>
 												<Edit className="w-4 h-4" />

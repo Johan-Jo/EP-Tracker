@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createExpenseSchema, type CreateExpenseInput, EXPENSE_CATEGORIES } from '@/lib/schemas/expense';
+import { createExpenseSchema, type CreateExpenseInput, type ExpenseWithRelations, EXPENSE_CATEGORIES } from '@/lib/schemas/expense';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,12 +18,13 @@ interface ExpenseFormProps {
 	orgId: string;
 	onSuccess?: () => void;
 	onCancel?: () => void;
-	defaultValues?: Partial<CreateExpenseInput>;
+	initialData?: ExpenseWithRelations | null;
 }
 
-export function ExpenseForm({ orgId, onSuccess, onCancel, defaultValues }: ExpenseFormProps) {
+export function ExpenseForm({ orgId, onSuccess, onCancel, initialData }: ExpenseFormProps) {
+	const isEditMode = !!initialData;
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+	const [photoPreviews, setPhotoPreviews] = useState<string[]>(initialData?.photo_urls || []);
 	const [photoFiles, setPhotoFiles] = useState<File[]>([]);
 	
 	const supabase = createClient();
@@ -35,13 +36,36 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, defaultValues }: Expen
 		formState: { errors },
 		setValue,
 		watch,
+		reset,
 	} = useForm<CreateExpenseInput>({
 		resolver: zodResolver(createExpenseSchema) as any,
-		defaultValues: {
+		defaultValues: initialData ? {
+			category: initialData.category,
+			description: initialData.description,
+			amount_sek: initialData.amount_sek,
+			vat: initialData.vat,
+			project_id: initialData.project_id,
+			notes: initialData.notes || '',
+		} : {
 			vat: true,
-			...defaultValues,
 		},
 	});
+
+	// Update form when initialData changes
+	useEffect(() => {
+		if (initialData) {
+			reset({
+				category: initialData.category,
+				description: initialData.description,
+				amount_sek: initialData.amount_sek,
+				vat: initialData.vat,
+				project_id: initialData.project_id,
+				notes: initialData.notes || '',
+			});
+			setPhotoPreviews(initialData.photo_urls || []);
+			setPhotoFiles([]);
+		}
+	}, [initialData, reset]);
 
 	// Fetch active projects
 	const { data: projects, isLoading: projectsLoading } = useQuery({
@@ -94,14 +118,14 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, defaultValues }: Expen
 		try {
 			const photoUrls: string[] = [];
 
-			// Upload all photos if selected
+			// Upload new photos if selected
 			if (photoFiles.length > 0) {
 				for (const file of photoFiles) {
 					const fileExt = file.name.split('.').pop();
 					const fileName = `${crypto.randomUUID()}.${fileExt}`;
 					const filePath = `expenses/${fileName}`;
 
-					const { error: uploadError } = await supabase.storage
+					const { error: uploadError} = await supabase.storage
 						.from('receipts')
 						.upload(filePath, file);
 
@@ -117,30 +141,39 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, defaultValues }: Expen
 				}
 			}
 
-			const response = await fetch('/api/expenses', {
-				method: 'POST',
+			// Combine existing photos (from photoPreviews that are URLs) with new uploads
+			const existingPhotoUrls = photoPreviews.filter(p => p.startsWith('http'));
+			const allPhotoUrls = [...existingPhotoUrls, ...photoUrls];
+
+			// Determine HTTP method and URL
+			const method = isEditMode ? 'PATCH' : 'POST';
+			const url = isEditMode ? `/api/expenses/${initialData!.id}` : '/api/expenses';
+
+			const response = await fetch(url, {
+				method,
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					...data,
-					photo_urls: photoUrls,
+					photo_urls: allPhotoUrls,
 				}),
 			});
 
 			if (!response.ok) {
 				const error = await response.json();
-				throw new Error(error.error || 'Failed to create expense');
+				throw new Error(error.error || `Failed to ${isEditMode ? 'update' : 'create'} expense`);
 			}
 
 			// Invalidate expenses query to refresh the list
 			queryClient.invalidateQueries({ queryKey: ['expenses', orgId] });
 
 			// Reset form
+			reset();
 			setPhotoFiles([]);
 			setPhotoPreviews([]);
 			onSuccess?.();
 		} catch (error) {
-			console.error('Error creating expense:', error);
-			alert(error instanceof Error ? error.message : 'Misslyckades att skapa utlägg');
+			console.error(`Error ${isEditMode ? 'updating' : 'creating'} expense:`, error);
+			alert(error instanceof Error ? error.message : `Misslyckades att ${isEditMode ? 'uppdatera' : 'skapa'} utlägg`);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -152,8 +185,10 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, defaultValues }: Expen
 				<div className="flex items-center gap-3">
 					<Receipt className="w-6 h-6 text-primary" />
 					<div>
-						<CardTitle>Lägg till utlägg</CardTitle>
-						<CardDescription>Registrera kostnader och kvitton</CardDescription>
+						<CardTitle>{isEditMode ? 'Redigera utlägg' : 'Lägg till utlägg'}</CardTitle>
+						<CardDescription>
+							{isEditMode ? 'Uppdatera utlägg information' : 'Registrera kostnader och kvitton'}
+						</CardDescription>
 					</div>
 				</div>
 			</CardHeader>
@@ -322,7 +357,7 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, defaultValues }: Expen
 					<div className="flex gap-3 pt-4">
 						<Button type="submit" disabled={isSubmitting}>
 							{isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-							Spara utlägg
+							{isEditMode ? 'Uppdatera utlägg' : 'Spara utlägg'}
 						</Button>
 						{onCancel && (
 							<Button type="button" variant="outline" onClick={onCancel}>

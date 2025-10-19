@@ -15,9 +15,10 @@ import { sv } from 'date-fns/locale';
 interface ExpensesListProps {
 	orgId: string;
 	projectId?: string;
+	onEdit?: (expense: ExpenseWithRelations) => void;
 }
 
-export function ExpensesList({ orgId, projectId }: ExpensesListProps) {
+export function ExpensesList({ orgId, projectId, onEdit }: ExpensesListProps) {
 	const [statusFilter, setStatusFilter] = useState<string>('all');
 	const [projectFilter, setProjectFilter] = useState<string>(projectId || 'all');
 	const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
@@ -203,10 +204,7 @@ export function ExpensesList({ orgId, projectId }: ExpensesListProps) {
 											<Button
 												size="sm"
 												variant="ghost"
-												onClick={() => {
-													// TODO: Open edit dialog
-													alert('Edit functionality coming soon!');
-												}}
+												onClick={() => onEdit?.(expense)}
 												title="Redigera"
 											>
 												<Edit className="w-4 h-4" />
