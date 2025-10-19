@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -144,9 +144,46 @@ export function AtaForm({ projectId, onSuccess, onCancel }: AtaFormProps) {
 	const unitPrice = watch('unit_price_sek');
 	const total = qty && unitPrice ? Number(qty) * Number(unitPrice) : 0;
 
+	const selectedProjectId = watch('project_id');
+
+	// Fetch projects
+	const { data: projects } = useQuery({
+		queryKey: ['projects'],
+		queryFn: async () => {
+			const { data, error } = await supabase
+				.from('projects')
+				.select('id, name, project_number')
+				.order('name');
+			if (error) throw error;
+			return data || [];
+		},
+	});
+
 	return (
 		<form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 			<div className="space-y-4">
+				<div>
+					<Label htmlFor="project_id">Projekt *</Label>
+					<Select
+						value={selectedProjectId || ''}
+						onValueChange={(value) => setValue('project_id', value)}
+					>
+						<SelectTrigger>
+							<SelectValue placeholder="Välj projekt" />
+						</SelectTrigger>
+						<SelectContent>
+							{projects?.map((project) => (
+								<SelectItem key={project.id} value={project.id}>
+									{project.project_number ? `${project.project_number} - ` : ''}{project.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					{errors.project_id && (
+						<p className="text-sm text-destructive mt-1">{errors.project_id.message}</p>
+					)}
+				</div>
+
 				<div>
 					<Label htmlFor="ata_number">ÄTA-nummer (valfritt)</Label>
 					<Input
