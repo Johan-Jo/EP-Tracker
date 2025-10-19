@@ -79,8 +79,10 @@ export const config = {
 		 * - _next/image (image optimization files)
 		 * - favicon.ico (favicon file)
 		 * - public files (public folder)
+		 * - API routes (handled separately)
+		 * - sw.js and workbox files (service worker)
 		 */
-		'/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+		'/((?!_next/static|_next/image|_next/webpack-hmr|favicon.ico|sw.js|workbox-.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|json)$).*)',
 	],
 };
 
