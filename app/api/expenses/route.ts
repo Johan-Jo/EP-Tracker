@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 			.select(`
 				*,
 				project:projects(id, name, project_number),
-				user:profiles(id, full_name, email)
+				user:profiles!expenses_user_id_fkey(id, full_name, email)
 			`)
 			.eq('org_id', membership.org_id)
 			.order('created_at', { ascending: false })

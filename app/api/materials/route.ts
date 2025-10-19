@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 				*,
 				project:projects(id, name, project_number),
 				phase:phases(id, name),
-				user:profiles(id, full_name, email)
+				user:profiles!materials_user_id_fkey(id, full_name, email)
 			`)
 			.eq('org_id', membership.org_id)
 			.order('created_at', { ascending: false })
