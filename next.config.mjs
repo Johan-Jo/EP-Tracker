@@ -29,7 +29,6 @@ const nextConfig = {
 			'@radix-ui/react-dropdown-menu',
 			'@radix-ui/react-select',
 			'@radix-ui/react-tabs',
-			'date-fns',
 		],
 	},
 	
