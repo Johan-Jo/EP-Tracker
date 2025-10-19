@@ -22,7 +22,7 @@ export default async function DashboardPage() {
 	startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
 	startOfWeek.setHours(0, 0, 0, 0);
 
-	const [projectsResult, timeEntriesResult] = await Promise.all([
+	const [projectsResult, timeEntriesResult, materialsResult, expensesResult] = await Promise.all([
 		supabase
 			.from('projects')
 			.select('*', { count: 'exact', head: true }),
@@ -31,10 +31,21 @@ export default async function DashboardPage() {
 			.select('*', { count: 'exact', head: true })
 			.eq('user_id', user.id)
 			.gte('start_at', startOfWeek.toISOString()),
+		supabase
+			.from('materials')
+			.select('*', { count: 'exact', head: true })
+			.eq('user_id', user.id)
+			.gte('created_at', startOfWeek.toISOString()),
+		supabase
+			.from('expenses')
+			.select('*', { count: 'exact', head: true })
+			.eq('user_id', user.id)
+			.gte('created_at', startOfWeek.toISOString()),
 	]);
 
 	const projectsCount = projectsResult.count;
 	const timeEntriesCount = timeEntriesResult.count;
+	const materialsCount = (materialsResult.count || 0) + (expensesResult.count || 0);
 
 	return (
 		<div className='p-4 md:p-8 space-y-8'>
@@ -84,18 +95,20 @@ export default async function DashboardPage() {
 					</CardContent>
 				</Card>
 
-				<Card>
-					<CardHeader className='flex flex-row items-center justify-between pb-2 space-y-0'>
-						<CardTitle className='text-sm font-medium'>Material & Kostnader</CardTitle>
-						<Package className='w-4 h-4 text-muted-foreground' />
-					</CardHeader>
-					<CardContent>
-						<div className='text-2xl font-bold'>0</div>
-						<p className='text-xs text-muted-foreground mt-1'>
-							Kommer i EPIC 5
-						</p>
-					</CardContent>
-				</Card>
+			<Card>
+				<CardHeader className='flex flex-row items-center justify-between pb-2 space-y-0'>
+					<CardTitle className='text-sm font-medium'>Material & Utlägg denna vecka</CardTitle>
+					<Package className='w-4 h-4 text-muted-foreground' />
+				</CardHeader>
+				<CardContent>
+					<div className='text-2xl font-bold'>{materialsCount}</div>
+					<p className='text-xs text-muted-foreground mt-1'>
+						<Link href='/dashboard/materials' className='text-primary hover:underline'>
+							Hantera material & utlägg →
+						</Link>
+					</p>
+				</CardContent>
+			</Card>
 			</div>
 
 			{/* Quick actions */}
@@ -133,19 +146,6 @@ export default async function DashboardPage() {
 				</CardContent>
 			</Card>
 
-			{/* EPIC 3 Progress */}
-			<Card className='border-primary/50 bg-primary/5'>
-				<CardHeader>
-					<CardTitle className='flex items-center gap-2'>
-						✅ EPIC 3 In Progress
-					</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<p className='text-sm text-muted-foreground'>
-						Navigering och layout är klara. Projekthantering kommer härnäst.
-					</p>
-				</CardContent>
-			</Card>
 		</div>
 	);
 }
