@@ -218,13 +218,14 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 							</div>
 						) : (
 							<Select
+								name="project_id"
 								value={watch('project_id') || ''}
 								onValueChange={(value) => {
 									setValue('project_id', value);
 									setSelectedProject(value);
 								}}
 							>
-								<SelectTrigger>
+								<SelectTrigger id="project_id">
 									<SelectValue placeholder="Välj projekt" />
 								</SelectTrigger>
 								<SelectContent>
@@ -247,10 +248,11 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 						<div className="space-y-2">
 							<Label htmlFor="phase_id">Fas (valfritt)</Label>
 							<Select
+								name="phase_id"
 								value={watch('phase_id') || ''}
 								onValueChange={(value) => setValue('phase_id', value || null)}
 							>
-								<SelectTrigger>
+								<SelectTrigger id="phase_id">
 									<SelectValue placeholder="Välj fas" />
 								</SelectTrigger>
 								<SelectContent>
@@ -270,10 +272,11 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 						<div className="space-y-2">
 							<Label htmlFor="work_order_id">Arbetsorder (valfritt)</Label>
 							<Select
+								name="work_order_id"
 								value={watch('work_order_id') || ''}
 								onValueChange={(value) => setValue('work_order_id', value || null)}
 							>
-								<SelectTrigger>
+								<SelectTrigger id="work_order_id">
 									<SelectValue placeholder="Välj arbetsorder" />
 								</SelectTrigger>
 								<SelectContent>

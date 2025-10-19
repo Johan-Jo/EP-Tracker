@@ -108,10 +108,11 @@ export function MileageForm({ orgId, onSuccess, onCancel, defaultValues }: Milea
 							</div>
 						) : (
 							<Select
+								name="project_id"
 								value={watch('project_id') || ''}
 								onValueChange={(value) => setValue('project_id', value)}
 							>
-								<SelectTrigger>
+								<SelectTrigger id="project_id">
 									<SelectValue placeholder="Välj projekt" />
 								</SelectTrigger>
 								<SelectContent>

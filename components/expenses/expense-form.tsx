@@ -214,10 +214,11 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, initialData }: Expense
 							</div>
 						) : (
 							<Select
+								name="project_id"
 								value={watch('project_id') || ''}
 								onValueChange={(value) => setValue('project_id', value)}
 							>
-								<SelectTrigger>
+								<SelectTrigger id="project_id">
 									<SelectValue placeholder="Välj projekt" />
 								</SelectTrigger>
 								<SelectContent>
@@ -239,10 +240,11 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, initialData }: Expense
 					<div className="space-y-2">
 						<Label htmlFor="category">Kategori (valfritt)</Label>
 						<Select
+							name="category"
 							value={watch('category') || undefined}
 							onValueChange={(value) => setValue('category', value)}
 						>
-							<SelectTrigger>
+							<SelectTrigger id="category">
 								<SelectValue placeholder="Välj kategori" />
 							</SelectTrigger>
 							<SelectContent>
