@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Search, MapPin } from 'lucide-react';
 import { ProjectsFilter } from '@/components/projects/projects-filter';
 import { ProjectsList } from '@/components/projects/projects-list';
+import { getSession } from '@/lib/auth/get-session';
 
 interface PageProps {
 	searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -15,24 +16,15 @@ interface PageProps {
 
 export default async function ProjectsPage(props: PageProps) {
 	const searchParams = await props.searchParams;
-	const supabase = await createClient();
 	
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
+	// Use cached session
+	const { user, membership } = await getSession();
 
 	if (!user) {
 		redirect('/sign-in');
 	}
 
-	// Get user's organization memberships
-	const { data: memberships } = await supabase
-		.from('memberships')
-		.select('org_id, role')
-		.eq('user_id', user.id)
-		.eq('is_active', true);
-
-	if (!memberships || memberships.length === 0) {
+	if (!membership) {
 		return (
 			<div className='p-4 md:p-8'>
 				<Card>
@@ -49,15 +41,15 @@ export default async function ProjectsPage(props: PageProps) {
 		);
 	}
 
-	const orgIds = memberships.map((m) => m.org_id);
+	const supabase = await createClient();
 	const search = typeof searchParams.search === 'string' ? searchParams.search : '';
 	const status = typeof searchParams.status === 'string' ? searchParams.status : 'active';
 
-	// Build query
+	// Build query - simplified to use single org_id
 	let query = supabase
 		.from('projects')
 		.select('*, phases(count)')
-		.in('org_id', orgIds)
+		.eq('org_id', membership.org_id)
 		.order('created_at', { ascending: false });
 
 	// Apply filters

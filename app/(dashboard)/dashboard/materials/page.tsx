@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MaterialsTabContent } from '@/components/materials/materials-tab-content';
@@ -6,22 +5,15 @@ import { ExpensesTabContent } from '@/components/expenses/expenses-tab-content';
 import { MileageForm } from '@/components/mileage/mileage-form';
 import { MileageList } from '@/components/mileage/mileage-list';
 import { Package, Receipt, Car } from 'lucide-react';
+import { getSession } from '@/lib/auth/get-session';
 
 export default async function MaterialsPage() {
-	const supabase = await createClient();
-	const { data: { user } } = await supabase.auth.getUser();
+	// Use cached session
+	const { user, membership } = await getSession();
 
 	if (!user) {
 		redirect('/sign-in');
 	}
-
-	// Get user's organization
-	const { data: membership } = await supabase
-		.from('memberships')
-		.select('org_id, role')
-		.eq('user_id', user.id)
-		.eq('is_active', true)
-		.single();
 
 	if (!membership) {
 		return (

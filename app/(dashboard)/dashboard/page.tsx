@@ -4,39 +4,36 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FolderKanban, Clock, Package, Plus } from 'lucide-react';
+import { getSession } from '@/lib/auth/get-session';
 
 export default async function DashboardPage() {
-	const supabase = await createClient();
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
+	// Use cached session
+	const { user, profile, membership } = await getSession();
 
 	if (!user) {
 		redirect('/sign-in');
 	}
 
-	// Fetch user profile
-	const { data: profile } = await supabase
-		.from('profiles')
-		.select('*')
-		.eq('id', user.id)
-		.single();
+	const supabase = await createClient();
 
-	// Fetch projects count
-	const { count: projectsCount } = await supabase
-		.from('projects')
-		.select('*', { count: 'exact', head: true });
-
-	// Fetch time entries count for this week
+	// Fetch stats in parallel for better performance
 	const startOfWeek = new Date();
 	startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
 	startOfWeek.setHours(0, 0, 0, 0);
 
-	const { count: timeEntriesCount } = await supabase
-		.from('time_entries')
-		.select('*', { count: 'exact', head: true })
-		.eq('user_id', user.id)
-		.gte('start_at', startOfWeek.toISOString());
+	const [projectsResult, timeEntriesResult] = await Promise.all([
+		supabase
+			.from('projects')
+			.select('*', { count: 'exact', head: true }),
+		supabase
+			.from('time_entries')
+			.select('*', { count: 'exact', head: true })
+			.eq('user_id', user.id)
+			.gte('start_at', startOfWeek.toISOString()),
+	]);
+
+	const projectsCount = projectsResult.count;
+	const timeEntriesCount = timeEntriesResult.count;
 
 	return (
 		<div className='p-4 md:p-8 space-y-8'>

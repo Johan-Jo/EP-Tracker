@@ -1,27 +1,16 @@
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Building2, Users, Settings as SettingsIcon, ChevronRight } from 'lucide-react';
+import { getSession } from '@/lib/auth/get-session';
 
 export default async function SettingsPage() {
-	const supabase = await createClient();
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
+	// Use cached session
+	const { user, membership } = await getSession();
 
 	if (!user) {
 		redirect('/sign-in');
 	}
-
-	// Get user's role
-	const { data: membership } = await supabase
-		.from('memberships')
-		.select('role')
-		.eq('user_id', user.id)
-		.eq('is_active', true)
-		.single();
 
 	const isAdmin = membership?.role === 'admin';
 	const canManageUsers = membership?.role && ['admin', 'foreman'].includes(membership.role);

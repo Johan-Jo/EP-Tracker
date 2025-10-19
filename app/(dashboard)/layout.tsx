@@ -1,37 +1,21 @@
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { Sidebar } from '@/components/core/sidebar';
 import { MobileNav } from '@/components/core/mobile-nav';
 import { TopNav } from '@/components/core/top-nav';
 import { TimerWidget } from '@/components/time/timer-widget';
+import { getSession } from '@/lib/auth/get-session';
 
 export default async function DashboardLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
-	const supabase = await createClient();
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
+	// Use cached session to avoid duplicate DB calls
+	const { user, profile, membership } = await getSession();
 
 	if (!user) {
 		redirect('/sign-in');
 	}
-
-	// Fetch user profile and membership
-	const { data: profile } = await supabase
-		.from('profiles')
-		.select('*')
-		.eq('id', user.id)
-		.single();
-
-	const { data: membership } = await supabase
-		.from('memberships')
-		.select('org_id, role')
-		.eq('user_id', user.id)
-		.eq('is_active', true)
-		.single();
 
 	// Default to 'worker' if no membership found (shouldn't happen, but safety fallback)
 	const userRole = (membership?.role as 'admin' | 'foreman' | 'worker' | 'finance') || 'worker';
