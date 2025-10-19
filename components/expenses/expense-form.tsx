@@ -299,13 +299,13 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, initialData }: Expense
 						
 						{/* Photo Grid */}
 						{photoPreviews.length > 0 && (
-							<div className="grid grid-cols-3 gap-2 mb-2">
+							<div className="grid grid-cols-3 gap-4 mb-2">
 								{photoPreviews.map((preview, index) => (
-									<div key={index} className="relative group">
+									<div key={index} className="relative group bg-muted rounded-md p-2">
 										<img
 											src={preview}
 											alt={`Kvitto ${index + 1}`}
-											className="w-full h-32 object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
+											className="w-full max-h-64 object-contain rounded-md cursor-pointer hover:opacity-80 transition-opacity"
 											onClick={() => {
 												setGalleryStartIndex(index);
 												setIsGalleryOpen(true);
