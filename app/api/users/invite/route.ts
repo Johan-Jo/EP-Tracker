@@ -68,8 +68,8 @@ export async function POST(request: NextRequest) {
 						{ status: 400 }
 					);
 				} else {
-					// Reactivate the membership
-					const { error: reactivateError } = await supabase
+					// Reactivate the membership using admin client
+					const { error: reactivateError } = await adminClient
 						.from('memberships')
 						.update({
 							is_active: true,
@@ -106,8 +106,8 @@ export async function POST(request: NextRequest) {
 				}
 			}
 
-			// User exists but not in this org - add membership
-			const { error: membershipInsertError } = await supabase.from('memberships').insert({
+			// User exists but not in this org - add membership using admin client
+			const { error: membershipInsertError } = await adminClient.from('memberships').insert({
 				org_id: membership.org_id,
 				user_id: existingProfile.id,
 				role: validatedData.role,
@@ -156,12 +156,19 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: 'Failed to send invitation' }, { status: 500 });
 		}
 
-		// The profile will be created via trigger when user accepts invite
-		// Store pending invite data temporarily
-		// For now, we'll create the profile and membership in a pending state
-		const { data: newProfile, error: profileError } = await supabase
+		// Get the invited user's ID from the invite response
+		if (!inviteData?.user?.id) {
+			console.error('No user ID in invite response');
+			return NextResponse.json({ error: 'Failed to get user ID' }, { status: 500 });
+		}
+
+		const invitedUserId = inviteData.user.id;
+
+		// Create profile using admin client (bypasses RLS)
+		const { data: newProfile, error: profileError } = await adminClient
 			.from('profiles')
 			.insert({
+				id: invitedUserId, // Use the auth user ID
 				email: validatedData.email,
 				full_name: validatedData.full_name,
 			})
@@ -173,10 +180,10 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: 'Failed to create user profile' }, { status: 500 });
 		}
 
-		// Create membership
-		const { error: membershipInsertError } = await supabase.from('memberships').insert({
+		// Create membership using admin client (bypasses RLS)
+		const { error: membershipInsertError } = await adminClient.from('memberships').insert({
 			org_id: membership.org_id,
-			user_id: newProfile.id,
+			user_id: invitedUserId,
 			role: validatedData.role,
 			hourly_rate_sek: validatedData.hourly_rate_sek,
 			is_active: true,
