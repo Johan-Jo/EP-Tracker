@@ -11,6 +11,8 @@ import {
 	Settings,
 	Building2,
 	Users,
+	FileEdit,
+	BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -47,6 +49,18 @@ const navItems: NavItem[] = [
 		href: '/dashboard/materials',
 		icon: Package,
 		roles: ['admin', 'foreman', 'worker', 'finance'],
+	},
+	{
+		label: 'ÄTA',
+		href: '/dashboard/ata',
+		icon: FileEdit,
+		roles: ['admin', 'foreman'],
+	},
+	{
+		label: 'Dagbok',
+		href: '/dashboard/diary',
+		icon: BookOpen,
+		roles: ['admin', 'foreman'],
 	},
 	{
 		label: 'Godkännanden',
