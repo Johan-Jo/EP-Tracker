@@ -1,21 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TimeEntryForm } from '@/components/time/time-entry-form';
 import { TimeEntriesList } from '@/components/time/time-entries-list';
 import { CrewClockIn } from '@/components/time/crew-clock-in';
-import { Clock, Users, List } from 'lucide-react';
+import { Clock, Users, List, Loader2 } from 'lucide-react';
 import { TimeEntryWithRelations } from '@/lib/schemas/time-entry';
 
 export default function TimePage() {
 	const [editingEntry, setEditingEntry] = useState<TimeEntryWithRelations | null>(null);
 	const supabase = createClient();
+	const router = useRouter();
 
-	const { data: user } = useQuery({
+	const { data: user, isLoading: userLoading } = useQuery({
 		queryKey: ['user'],
 		queryFn: async () => {
 			const { data: { user } } = await supabase.auth.getUser();
@@ -23,7 +24,7 @@ export default function TimePage() {
 		},
 	});
 
-	const { data: membership } = useQuery({
+	const { data: membership, isLoading: membershipLoading } = useQuery({
 		queryKey: ['membership', user?.id],
 		queryFn: async () => {
 			if (!user) return null;
@@ -38,8 +39,25 @@ export default function TimePage() {
 		enabled: !!user,
 	});
 
+	// Handle auth redirect on client side
+	useEffect(() => {
+		if (!userLoading && !user) {
+			router.push('/sign-in');
+		}
+	}, [user, userLoading, router]);
+
+	// Show loading state while checking auth
+	if (userLoading || membershipLoading) {
+		return (
+			<div className='flex items-center justify-center min-h-[400px]'>
+				<Loader2 className='w-8 h-8 animate-spin text-primary' />
+			</div>
+		);
+	}
+
+	// Don't render if no user (will redirect)
 	if (!user) {
-		redirect('/sign-in');
+		return null;
 	}
 
 	if (!membership) {
