@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -150,9 +151,11 @@ export function MaterialsList({ orgId, projectId, onEdit }: MaterialsListProps) 
 								setIsGalleryOpen(true);
 							}}
 						>
-							<img
+							<Image
 								src={material.photo_urls[0]}
 								alt={material.description}
+								width={96}
+								height={96}
 								className="w-24 h-24 object-cover rounded-md"
 							/>
 							{material.photo_urls.length > 1 && (
@@ -161,7 +164,7 @@ export function MaterialsList({ orgId, projectId, onEdit }: MaterialsListProps) 
 								</div>
 							)}
 						</div>
-									)}
+					)}
 									<div className="flex-1 space-y-2">
 										<div className="flex items-start justify-between">
 											<div>

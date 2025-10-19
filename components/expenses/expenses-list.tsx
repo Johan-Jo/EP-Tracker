@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -154,17 +155,19 @@ export function ExpensesList({ orgId, projectId, onEdit }: ExpensesListProps) {
 						{expense.photo_urls && expense.photo_urls.length > 0 && (
 							<div 
 								className="relative cursor-pointer hover:opacity-80 transition-opacity" 
-								onClick={() => {
-									setGalleryPhotos(expense.photo_urls);
-									setIsGalleryOpen(true);
-								}}
-							>
-								<img
-									src={expense.photo_urls[0]}
-									alt="Kvitto"
-									className="w-24 h-24 object-cover rounded-md"
-								/>
-								{expense.photo_urls.length > 1 && (
+							onClick={() => {
+								setGalleryPhotos(expense.photo_urls);
+								setIsGalleryOpen(true);
+							}}
+						>
+							<Image
+								src={expense.photo_urls[0]}
+								alt="Kvitto"
+								width={96}
+								height={96}
+								className="w-24 h-24 object-cover rounded-md"
+							/>
+							{expense.photo_urls.length > 1 && (
 									<div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
 										+{expense.photo_urls.length - 1}
 									</div>

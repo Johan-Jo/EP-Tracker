@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createExpenseSchema, type CreateExpenseInput, type ExpenseWithRelations, EXPENSE_CATEGORIES } from '@/lib/schemas/expense';
@@ -306,9 +307,11 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, initialData }: Expense
 							<div className="grid grid-cols-3 gap-4 mb-2">
 								{photoPreviews.map((preview, index) => (
 									<div key={index} className="relative group bg-muted rounded-md p-2">
-										<img
+										<Image
 											src={preview}
 											alt={`Kvitto ${index + 1}`}
+											width={400}
+											height={256}
 											className="w-full max-h-64 object-contain rounded-md cursor-pointer hover:opacity-80 transition-opacity"
 											onClick={() => {
 												setGalleryStartIndex(index);
