@@ -58,13 +58,48 @@ export default async function DashboardPage() {
 				</p>
 			</div>
 
-			{/* Timer Widget */}
-			{membership && (
-				<TimerWidget userId={user.id} orgId={membership.org_id} inline={true} />
-			)}
+		{/* Timer Widget */}
+		{membership && (
+			<TimerWidget userId={user.id} orgId={membership.org_id} inline={true} />
+		)}
 
-			{/* Quick stats */}
-			<div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
+		{/* Quick actions */}
+		<Card>
+			<CardHeader>
+				<CardTitle>Snabbåtgärder</CardTitle>
+				<CardDescription>
+					Vanliga uppgifter för att komma igång snabbt
+				</CardDescription>
+			</CardHeader>
+			<CardContent className='grid gap-3 md:grid-cols-2 lg:grid-cols-4'>
+				<Button asChild className='w-full'>
+					<Link href='/dashboard/projects/new'>
+						<Plus className='w-4 h-4 mr-2' />
+						Nytt projekt
+					</Link>
+				</Button>
+				<Button asChild variant='outline' className='w-full'>
+					<Link href='/dashboard/time'>
+						<Clock className='w-4 h-4 mr-2' />
+						Logga tid
+					</Link>
+				</Button>
+				<Button asChild variant='outline' className='w-full'>
+					<Link href='/dashboard/materials'>
+						<Package className='w-4 h-4 mr-2' />
+						Lägg till material
+					</Link>
+				</Button>
+				<Button asChild variant='outline' className='w-full'>
+					<Link href='/dashboard/approvals'>
+						Godkännanden
+					</Link>
+				</Button>
+			</CardContent>
+		</Card>
+
+		{/* Quick stats */}
+		<div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
 				<Card>
 					<CardHeader className='flex flex-row items-center justify-between pb-2 space-y-0'>
 						<CardTitle className='text-sm font-medium'>Aktiva Projekt</CardTitle>
@@ -108,45 +143,9 @@ export default async function DashboardPage() {
 						</Link>
 					</p>
 				</CardContent>
-			</Card>
-			</div>
-
-			{/* Quick actions */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Snabbåtgärder</CardTitle>
-					<CardDescription>
-						Vanliga uppgifter för att komma igång snabbt
-					</CardDescription>
-				</CardHeader>
-				<CardContent className='grid gap-3 md:grid-cols-2 lg:grid-cols-4'>
-					<Button asChild className='w-full'>
-						<Link href='/dashboard/projects/new'>
-							<Plus className='w-4 h-4 mr-2' />
-							Nytt projekt
-						</Link>
-					</Button>
-					<Button asChild variant='outline' className='w-full'>
-						<Link href='/dashboard/time'>
-							<Clock className='w-4 h-4 mr-2' />
-							Logga tid
-						</Link>
-					</Button>
-					<Button asChild variant='outline' className='w-full'>
-						<Link href='/dashboard/materials'>
-							<Package className='w-4 h-4 mr-2' />
-							Lägg till material
-						</Link>
-					</Button>
-					<Button asChild variant='outline' className='w-full'>
-						<Link href='/dashboard/approvals'>
-							Godkännanden
-						</Link>
-					</Button>
-				</CardContent>
-			</Card>
-
+		</Card>
 		</div>
-	);
+	</div>
+);
 }
 
