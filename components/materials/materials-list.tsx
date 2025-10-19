@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Package, Trash2, Loader2, Edit } from 'lucide-react';
 import { MaterialWithRelations } from '@/lib/schemas/material';
-import { PhotoGalleryViewer } from '@/components/ui/photo-gallery-viewer';
+
+// Lazy load PhotoGalleryViewer - only loads when user opens gallery
+const PhotoGalleryViewer = dynamic(() => import('@/components/ui/photo-gallery-viewer').then(m => ({ default: m.PhotoGalleryViewer })), {
+	ssr: false,
+});
 
 interface MaterialsListProps {
 	orgId: string;

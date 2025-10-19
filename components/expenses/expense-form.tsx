@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createExpenseSchema, type CreateExpenseInput, type ExpenseWithRelations, EXPENSE_CATEGORIES } from '@/lib/schemas/expense';
@@ -13,7 +14,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Receipt, Loader2, Camera, X } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { PhotoGalleryViewer } from '@/components/ui/photo-gallery-viewer';
+
+// Lazy load PhotoGalleryViewer - only loads when user opens gallery
+const PhotoGalleryViewer = dynamic(() => import('@/components/ui/photo-gallery-viewer').then(m => ({ default: m.PhotoGalleryViewer })), {
+	ssr: false,
+});
 
 interface ExpenseFormProps {
 	orgId: string;
