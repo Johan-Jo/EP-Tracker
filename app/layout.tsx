@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { QueryProvider } from '@/lib/providers/query-provider';
+import { Toaster } from 'react-hot-toast';
 
 const inter = Inter({
 	subsets: ['latin'],
@@ -32,6 +33,7 @@ export default function RootLayout({
 		<html lang='sv'>
 			<body className={`${inter.variable} font-sans antialiased`}>
 				<QueryProvider>{children}</QueryProvider>
+				<Toaster position="top-center" />
 			</body>
 		</html>
 	);

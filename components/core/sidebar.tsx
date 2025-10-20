@@ -13,6 +13,7 @@ import {
 	Users,
 	FileEdit,
 	BookOpen,
+	HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -54,7 +55,7 @@ const navItems: NavItem[] = [
 		label: 'ÄTA',
 		href: '/dashboard/ata',
 		icon: FileEdit,
-		roles: ['admin', 'foreman'],
+		roles: ['admin', 'foreman', 'worker'],
 	},
 	{
 		label: 'Dagbok',
@@ -63,10 +64,22 @@ const navItems: NavItem[] = [
 		roles: ['admin', 'foreman'],
 	},
 	{
+		label: 'Checklistor',
+		href: '/dashboard/checklists',
+		icon: CheckSquare,
+		roles: ['admin', 'foreman'],
+	},
+	{
 		label: 'Godkännanden',
 		href: '/dashboard/approvals',
 		icon: CheckSquare,
 		roles: ['admin', 'foreman'], // Only admin and foreman can approve
+	},
+	{
+		label: 'Hjälp',
+		href: '/dashboard/help',
+		icon: HelpCircle,
+		roles: ['admin', 'foreman', 'worker', 'finance'], // Everyone can see help
 	},
 ];
 

@@ -13,6 +13,8 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SyncStatus } from '@/components/core/sync-status';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 interface TopNavProps {
 	userEmail?: string;
@@ -20,6 +22,9 @@ interface TopNavProps {
 }
 
 export function TopNav({ userEmail, userName }: TopNavProps) {
+	const router = useRouter();
+	const [isLoggingOut, setIsLoggingOut] = useState(false);
+
 	const initials = userName
 		? userName
 				.split(' ')
@@ -28,6 +33,28 @@ export function TopNav({ userEmail, userName }: TopNavProps) {
 				.toUpperCase()
 				.slice(0, 2)
 		: userEmail?.charAt(0).toUpperCase() || 'U';
+
+	const handleSignOut = async () => {
+		if (isLoggingOut) return;
+		
+		setIsLoggingOut(true);
+		try {
+			const res = await fetch('/api/auth/signout', {
+				method: 'POST',
+			});
+
+			if (res.ok) {
+				router.push('/sign-in');
+				router.refresh();
+			} else {
+				console.error('Sign out failed');
+				setIsLoggingOut(false);
+			}
+		} catch (error) {
+			console.error('Sign out error:', error);
+			setIsLoggingOut(false);
+		}
+	};
 
 	return (
 		<header className='sticky top-0 z-40 border-b bg-background'>
@@ -72,14 +99,14 @@ export function TopNav({ userEmail, userName }: TopNavProps) {
 							<DropdownMenuItem asChild>
 								<Link href='/dashboard/settings/profile'>Profil</Link>
 							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem asChild>
-								<form action='/api/auth/signout' method='POST'>
-									<button type='submit' className='w-full text-left'>
-										Logga ut
-									</button>
-								</form>
-							</DropdownMenuItem>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							onClick={handleSignOut}
+							disabled={isLoggingOut}
+							className='cursor-pointer'
+						>
+							{isLoggingOut ? 'Loggar ut...' : 'Logga ut'}
+						</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>

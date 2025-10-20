@@ -13,6 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { ImagePlus, X, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import { SignatureInput } from '@/components/shared/signature-input';
+import toast from 'react-hot-toast';
 
 const ataSchema = z.object({
 	project_id: z.string().uuid('Välj ett projekt'),
@@ -30,13 +33,18 @@ interface AtaFormProps {
 	projectId?: string;
 	onSuccess?: () => void;
 	onCancel?: () => void;
+	userRole?: 'admin' | 'foreman' | 'worker' | 'finance';
 }
 
-export function AtaForm({ projectId, onSuccess, onCancel }: AtaFormProps) {
+export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormProps) {
 	const [photos, setPhotos] = useState<File[]>([]);
 	const [photosPreviews, setPhotosPreviews] = useState<string[]>([]);
+	const [signature, setSignature] = useState<{ name: string; timestamp: string } | null>(null);
+	const [submitAsPending, setSubmitAsPending] = useState(false);
+	const isWorker = userRole === 'worker';
 	const queryClient = useQueryClient();
 	const supabase = createClient();
+	const router = useRouter();
 
 	const {
 		register,
@@ -53,11 +61,23 @@ export function AtaForm({ projectId, onSuccess, onCancel }: AtaFormProps) {
 
 	const createAtaMutation = useMutation({
 		mutationFn: async (data: AtaFormData) => {
-			// Create ÄTA entry
+			// Determine status based on whether it's submitted for approval
+			const status = submitAsPending ? 'pending_approval' : 'draft';
+			
+			// Create ÄTA entry with signature if provided
+			const ataData = {
+				...data,
+				status,
+				...(signature && {
+					signed_by_name: signature.name,
+					signed_at: signature.timestamp,
+				}),
+			};
+
 			const response = await fetch('/api/ata', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(data),
+				body: JSON.stringify(ataData),
 			});
 
 			if (!response.ok) {
@@ -75,8 +95,24 @@ export function AtaForm({ projectId, onSuccess, onCancel }: AtaFormProps) {
 			return ata;
 		},
 		onSuccess: () => {
+			const message = submitAsPending 
+				? 'ÄTA skickad för godkännande!' 
+				: 'ÄTA sparad som utkast!';
+			toast.success(message);
 			queryClient.invalidateQueries({ queryKey: ['ata'] });
-			onSuccess?.();
+			if (onSuccess) {
+				onSuccess();
+			} else {
+				// If no onSuccess callback, redirect to ata list after a short delay
+				setTimeout(() => {
+					router.push('/dashboard/ata');
+					router.refresh();
+				}, 1000);
+			}
+		},
+		onError: (error: Error) => {
+			console.error('ÄTA save error:', error);
+			toast.error(error.message || 'Kunde inte spara ÄTA');
 		},
 	});
 
@@ -86,12 +122,13 @@ export function AtaForm({ projectId, onSuccess, onCancel }: AtaFormProps) {
 			const fileExt = photo.name.split('.').pop();
 			const fileName = `${ataId}/${crypto.randomUUID()}.${fileExt}`;
 
-			const { data: uploadData, error: uploadError } = await supabase.storage
+			const { error: uploadError } = await supabase.storage
 				.from('ata-photos')
 				.upload(fileName, photo);
 
 			if (uploadError) {
 				console.error('Photo upload error:', uploadError);
+				toast.error(`Kunde inte ladda upp foto ${i + 1}: ${uploadError.message}`);
 				continue;
 			}
 
@@ -100,7 +137,7 @@ export function AtaForm({ projectId, onSuccess, onCancel }: AtaFormProps) {
 				.getPublicUrl(fileName);
 
 			// Save photo record
-			await fetch('/api/ata/photos', {
+			const response = await fetch('/api/ata/photos', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -109,13 +146,19 @@ export function AtaForm({ projectId, onSuccess, onCancel }: AtaFormProps) {
 					sort_order: i,
 				}),
 			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				console.error('Failed to save photo record:', error);
+				toast.error(`Kunde inte spara foto ${i + 1} i databasen`);
+			}
 		}
 	};
 
 	const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = Array.from(e.target.files || []);
 		if (photos.length + files.length > 10) {
-			alert('Max 10 foton tillåtna');
+			toast.error('Max 10 foton tillåtna');
 			return;
 		}
 
@@ -313,23 +356,60 @@ export function AtaForm({ projectId, onSuccess, onCancel }: AtaFormProps) {
 				</div>
 			</div>
 
-			<div className="flex gap-3 justify-end">
-				{onCancel && (
-					<Button
-						type="button"
-						variant="outline"
-						onClick={onCancel}
-						disabled={createAtaMutation.isPending}
-					>
-						Avbryt
-					</Button>
+			{/* Signature - optional for draft, required for pending_approval */}
+			<div className="border-t pt-6">
+				<SignatureInput
+					onSign={setSignature}
+					label={isWorker ? "Signatur (obligatoriskt)" : "Signatur (valfritt för utkast, obligatoriskt för att skicka för godkännande)"}
+					existingSignature={signature}
+				/>
+				{submitAsPending && !signature && (
+					<p className="text-sm text-destructive mt-2">
+						Signatur krävs {isWorker ? '' : 'när du skickar för godkännande'}
+					</p>
 				)}
-				<Button type="submit" disabled={createAtaMutation.isPending}>
-					{createAtaMutation.isPending && (
-						<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-					)}
-					Spara ÄTA
+			</div>
+
+			<div className="flex gap-3 justify-between">
+				<Button
+					type="button"
+					variant="outline"
+					onClick={() => {
+						if (onCancel) {
+							onCancel();
+						} else {
+							router.push('/dashboard/ata');
+						}
+					}}
+					disabled={createAtaMutation.isPending}
+				>
+					Avbryt
 				</Button>
+				<div className="flex gap-3">
+					{!isWorker && (
+						<Button
+							type="submit"
+							variant="outline"
+							disabled={createAtaMutation.isPending}
+							onClick={() => setSubmitAsPending(false)}
+						>
+							{createAtaMutation.isPending && !submitAsPending && (
+								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+							)}
+							Spara som utkast
+						</Button>
+					)}
+					<Button
+						type="submit"
+						disabled={createAtaMutation.isPending || !signature}
+						onClick={() => setSubmitAsPending(true)}
+					>
+						{createAtaMutation.isPending && submitAsPending && (
+							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+						)}
+						{isWorker ? 'Skicka för godkännande' : 'Skicka för godkännande'}
+					</Button>
+				</div>
 			</div>
 		</form>
 	);

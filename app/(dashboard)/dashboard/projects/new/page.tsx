@@ -14,10 +14,10 @@ export default async function NewProjectPage() {
 		redirect('/sign-in');
 	}
 
-	// Get user's organization (first one for now)
+	// Get user's organization and role (first one for now)
 	const { data: memberships } = await supabase
 		.from('memberships')
-		.select('org_id')
+		.select('org_id, role')
 		.eq('user_id', user.id)
 		.eq('is_active', true)
 		.limit(1);
@@ -36,6 +36,12 @@ export default async function NewProjectPage() {
 	}
 
 	const orgId = memberships[0].org_id;
+	const userRole = memberships[0].role;
+
+	// Only admin and foreman can create projects - redirect others
+	if (userRole !== 'admin' && userRole !== 'foreman') {
+		redirect('/dashboard/projects');
+	}
 
 	async function createProject(data: ProjectFormData) {
 		'use server';

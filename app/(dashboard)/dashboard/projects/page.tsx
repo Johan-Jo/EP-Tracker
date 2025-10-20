@@ -69,6 +69,8 @@ export default async function ProjectsPage(props: PageProps) {
 		console.error('Error fetching projects:', error);
 	}
 
+	const canCreateProjects = membership.role === 'admin' || membership.role === 'foreman';
+
 	return (
 		<div className='p-4 md:p-8 space-y-6'>
 			{/* Header */}
@@ -79,12 +81,14 @@ export default async function ProjectsPage(props: PageProps) {
 						Hantera dina byggprojekt och arbetsorder
 					</p>
 				</div>
-				<Button asChild>
-					<Link href='/dashboard/projects/new'>
-						<Plus className='w-4 h-4 mr-2' />
-						Nytt projekt
-					</Link>
-				</Button>
+				{canCreateProjects && (
+					<Button asChild>
+						<Link href='/dashboard/projects/new'>
+							<Plus className='w-4 h-4 mr-2' />
+							Nytt projekt
+						</Link>
+					</Button>
+				)}
 			</div>
 
 			{/* Search and filters */}
@@ -164,7 +168,7 @@ export default async function ProjectsPage(props: PageProps) {
 								? 'Inga projekt hittades med dessa filter'
 								: 'Du har inga projekt än'}
 						</p>
-						{!search && status === 'active' && (
+						{!search && status === 'active' && canCreateProjects && (
 							<Button asChild>
 								<Link href='/dashboard/projects/new'>
 									<Plus className='w-4 h-4 mr-2' />

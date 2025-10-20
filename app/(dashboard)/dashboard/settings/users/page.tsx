@@ -25,21 +25,9 @@ export default async function UsersSettingsPage() {
 		.eq('is_active', true)
 		.single();
 
-	if (!membership || !['admin', 'foreman'].includes(membership.role)) {
-		return (
-			<div className='p-4 md:p-8'>
-				<Card>
-					<CardHeader>
-						<CardTitle>Åtkomst nekad</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<p className='text-muted-foreground'>
-							Du behöver vara administratör eller arbetsledare för att hantera användare.
-						</p>
-					</CardContent>
-				</Card>
-			</div>
-		);
+	// Only admin can manage users - redirect others
+	if (!membership || membership.role !== 'admin') {
+		redirect('/dashboard');
 	}
 
 	// Get all members in organization with their profiles

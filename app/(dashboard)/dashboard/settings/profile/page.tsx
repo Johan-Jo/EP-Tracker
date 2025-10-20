@@ -23,6 +23,26 @@ export default async function ProfilePage() {
 		.eq('id', user.id)
 		.single();
 
+	// Fetch user's role from membership
+	const { data: membership } = await supabase
+		.from('memberships')
+		.select('role, organizations(name)')
+		.eq('user_id', user.id)
+		.eq('is_active', true)
+		.single();
+
+	// Map role to Swedish display name
+	const roleDisplayNames: Record<string, string> = {
+		admin: 'Administratör',
+		foreman: 'Arbetsledare',
+		worker: 'Arbetare',
+		finance: 'Ekonomi',
+	};
+
+	const roleDisplay = membership?.role ? roleDisplayNames[membership.role] : 'Okänd';
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const orgName = (membership?.organizations as any)?.name || 'Ingen organisation';
+
 	async function updateProfile(formData: FormData) {
 		'use server';
 
@@ -116,8 +136,16 @@ export default async function ProfilePage() {
 				<CardHeader>
 					<CardTitle>Kontoinformation</CardTitle>
 				</CardHeader>
-				<CardContent className='space-y-2 text-sm'>
-					<div className='flex justify-between'>
+				<CardContent className='space-y-3 text-sm'>
+					<div className='flex justify-between items-center'>
+						<span className='text-muted-foreground'>Roll:</span>
+						<span className='font-semibold'>{roleDisplay}</span>
+					</div>
+					<div className='flex justify-between items-center'>
+						<span className='text-muted-foreground'>Organisation:</span>
+						<span>{orgName}</span>
+					</div>
+					<div className='flex justify-between pt-2 border-t'>
 						<span className='text-muted-foreground'>Användar-ID:</span>
 						<span className='font-mono text-xs'>{user.id}</span>
 					</div>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,18 +12,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ImagePlus, X, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { SignatureInput } from '@/components/shared/signature-input';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 const diarySchema = z.object({
 	project_id: z.string().uuid('Välj ett projekt'),
 	date: z.string().min(1, 'Datum krävs'),
-	weather: z.string().optional(),
-	temperature_c: z.string().optional(),
-	crew_count: z.string().optional(),
-	work_performed: z.string().optional(),
-	obstacles: z.string().optional(),
-	safety_notes: z.string().optional(),
-	deliveries: z.string().optional(),
-	visitors: z.string().optional(),
+	weather: z.string().optional().nullable(),
+	temperature_c: z.string().optional().nullable(),
+	crew_count: z.string().optional().nullable(),
+	work_performed: z.string().optional().nullable(),
+	obstacles: z.string().optional().nullable(),
+	safety_notes: z.string().optional().nullable(),
+	deliveries: z.string().optional().nullable(),
+	visitors: z.string().optional().nullable(),
 });
 
 type DiaryFormData = z.infer<typeof diarySchema>;
@@ -46,9 +49,23 @@ const weatherOptions = [
 export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 	const [photos, setPhotos] = useState<File[]>([]);
 	const [photosPreviews, setPhotosPreviews] = useState<string[]>([]);
-	const [signatureName, setSignatureName] = useState('');
+	const [signature, setSignature] = useState<{ name: string; timestamp: string } | null>(null);
 	const queryClient = useQueryClient();
 	const supabase = createClient();
+	const router = useRouter();
+
+	// Fetch projects for dropdown
+	const { data: projects } = useQuery({
+		queryKey: ['projects'],
+		queryFn: async () => {
+			const { data, error } = await supabase
+				.from('projects')
+				.select('id, name, project_number')
+				.order('created_at', { ascending: false });
+			if (error) throw error;
+			return data;
+		},
+	});
 
 	const {
 		register,
@@ -66,14 +83,21 @@ export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 
 	const createDiaryMutation = useMutation({
 		mutationFn: async (data: DiaryFormData) => {
+			// Convert empty strings to null for numeric fields
+			const cleanedData = {
+				...data,
+				temperature_c: data.temperature_c ? data.temperature_c : null,
+				crew_count: data.crew_count ? data.crew_count : null,
+			};
+
 			// Add signature if provided
-			const diaryData = signatureName
+			const diaryData = signature
 				? {
-						...data,
-						signature_name: signatureName,
-						signature_timestamp: new Date().toISOString(),
+						...cleanedData,
+						signed_by_name: signature.name,
+						signed_at: signature.timestamp,
 				  }
-				: data;
+				: cleanedData;
 
 			// Create diary entry
 			const response = await fetch('/api/diary', {
@@ -97,8 +121,22 @@ export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 			return diary;
 		},
 		onSuccess: () => {
+			toast.success('Dagbokspost sparad!');
 			queryClient.invalidateQueries({ queryKey: ['diary'] });
-			onSuccess?.();
+			
+			if (onSuccess) {
+				onSuccess();
+			} else {
+				// Redirect to diary list after a short delay to show toast
+				setTimeout(() => {
+					router.push('/dashboard/diary');
+					router.refresh();
+				}, 1000);
+			}
+		},
+		onError: (error: Error) => {
+			console.error('Diary save error:', error);
+			toast.error(error.message || 'Kunde inte spara dagbokspost');
 		},
 	});
 
@@ -108,12 +146,13 @@ export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 			const fileExt = photo.name.split('.').pop();
 			const fileName = `${diaryId}/${crypto.randomUUID()}.${fileExt}`;
 
-			const { data: uploadData, error: uploadError } = await supabase.storage
+			const { error: uploadError } = await supabase.storage
 				.from('diary-photos')
 				.upload(fileName, photo);
 
 			if (uploadError) {
 				console.error('Photo upload error:', uploadError);
+				toast.error(`Kunde inte ladda upp foto ${i + 1}: ${uploadError.message}`);
 				continue;
 			}
 
@@ -122,7 +161,7 @@ export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 				.getPublicUrl(fileName);
 
 			// Save photo record
-			await fetch('/api/diary/photos', {
+			const response = await fetch('/api/diary/photos', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -131,6 +170,12 @@ export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 					sort_order: i,
 				}),
 			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				console.error('Failed to save photo record:', error);
+				toast.error(`Kunde inte spara foto ${i + 1} i databasen`);
+			}
 		}
 	};
 
@@ -159,18 +204,43 @@ export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 	};
 
 	const onSubmit = (data: DiaryFormData) => {
-		if (!signatureName.trim()) {
-			alert('Signatur krävs för att spara dagboksposten');
+		if (!signature) {
+			toast.error('Signatur krävs för att spara dagboksposten');
 			return;
 		}
 		createDiaryMutation.mutate(data);
 	};
 
 	const selectedWeather = watch('weather');
+	const selectedProject = watch('project_id');
 
 	return (
 		<form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 			<div className="space-y-4">
+				{!projectId && (
+					<div>
+						<Label htmlFor="project_id">Projekt *</Label>
+						<Select
+							value={selectedProject || ''}
+							onValueChange={(value) => setValue('project_id', value)}
+						>
+							<SelectTrigger>
+								<SelectValue placeholder="Välj projekt" />
+							</SelectTrigger>
+							<SelectContent>
+								{projects?.map((project) => (
+									<SelectItem key={project.id} value={project.id}>
+										{project.project_number ? `${project.project_number} - ` : ''}{project.name}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						{errors.project_id && (
+							<p className="text-sm text-destructive mt-1">{errors.project_id.message}</p>
+						)}
+					</div>
+				)}
+
 				<div className="grid grid-cols-2 gap-4">
 					<div>
 						<Label htmlFor="date">Datum *</Label>
@@ -324,17 +394,17 @@ export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 				</div>
 
 				{/* Signature */}
-				<div>
-					<Label htmlFor="signature_name">Signatur (namn) *</Label>
-					<Input
-						id="signature_name"
-						value={signatureName}
-						onChange={(e) => setSignatureName(e.target.value)}
-						placeholder="Ditt fullständiga namn"
+				<div className="border-t pt-6">
+					<SignatureInput
+						onSign={setSignature}
+						label="Signatur (obligatoriskt)"
+						existingSignature={signature}
 					/>
-					<p className="text-xs text-muted-foreground mt-1">
-						Genom att ange ditt namn bekräftar du att uppgifterna är korrekta
-					</p>
+					{!signature && (
+						<p className="text-sm text-destructive mt-2">
+							Signatur krävs för att spara dagboksposten
+						</p>
+					)}
 				</div>
 			</div>
 

@@ -25,21 +25,9 @@ export default async function OrganizationSettingsPage() {
 		.eq('is_active', true)
 		.single();
 
+	// Only admin can manage organization - redirect others
 	if (!membership || membership.role !== 'admin') {
-		return (
-			<div className='p-4 md:p-8'>
-				<Card>
-					<CardHeader>
-						<CardTitle>Åtkomst nekad</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<p className='text-muted-foreground'>
-							Du behöver vara administratör för att hantera organisationsinställningar.
-						</p>
-					</CardContent>
-				</Card>
-			</div>
-		);
+		redirect('/dashboard');
 	}
 
 	const organization = membership.organizations as any;

@@ -1,7 +1,27 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckSquare } from 'lucide-react';
+import { getSession } from '@/lib/auth/get-session';
+import { redirect } from 'next/navigation';
+import { ApprovalsPageClient } from '@/components/approvals/approvals-page-client';
 
-export default function ApprovalsPage() {
+export default async function ApprovalsPage() {
+	const { user, membership } = await getSession();
+
+	if (!user) {
+		redirect('/sign-in');
+	}
+
+	if (!membership) {
+		return (
+			<div className='p-4 md:p-8'>
+				<p className='text-destructive'>Ingen aktiv organisation hittades</p>
+			</div>
+		);
+	}
+
+	// Only admin and foreman can access Approvals - redirect others
+	if (membership.role !== 'admin' && membership.role !== 'foreman') {
+		redirect('/dashboard');
+	}
+
 	return (
 		<div className='p-4 md:p-8 space-y-6'>
 			<div>
@@ -11,32 +31,10 @@ export default function ApprovalsPage() {
 				</p>
 			</div>
 
-			<Card>
-				<CardHeader>
-					<div className='flex items-center gap-3'>
-						<CheckSquare className='w-8 h-8 text-primary' />
-						<div>
-							<CardTitle>Kommer i EPIC 7</CardTitle>
-							<CardDescription>
-								Approvals & CSV Exports
-							</CardDescription>
-						</div>
-					</div>
-				</CardHeader>
-				<CardContent>
-					<p className='text-muted-foreground'>
-						Godkännandefunktioner kommer att implementeras i EPIC 7, inklusive:
-					</p>
-					<ul className='list-disc list-inside space-y-2 mt-4 text-sm text-muted-foreground'>
-						<li>Veckoöversikt av tidrapporter</li>
-						<li>Godkänn/avvisa tidrapporter</li>
-						<li>Kommentarsfunktion</li>
-						<li>CSV-export för lön</li>
-						<li>CSV-export för fakturering</li>
-						<li>Historik och granskningslogg</li>
-					</ul>
-				</CardContent>
-			</Card>
+			<ApprovalsPageClient 
+				orgId={membership.org_id} 
+				userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance'} 
+			/>
 		</div>
 	);
 }

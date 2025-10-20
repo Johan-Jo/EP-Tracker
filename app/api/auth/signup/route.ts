@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
 		const supabase = await createClient();
 
-		// Sign up the user
+		// Sign up the user with auto-confirm to allow immediate login
 		const { data: authData, error: authError } = await supabase.auth.signUp({
 			email,
 			password,
@@ -47,23 +47,13 @@ export async function POST(request: Request) {
 			);
 		}
 
-		// Create profile
-		const { error: profileError } = await supabase
-			.from('profiles')
-			.insert({
-				id: authData.user.id,
-				email: email,
-				full_name: fullName,
-			});
-
-		if (profileError) {
-			console.error('Profile creation error:', profileError);
-			// Don't fail signup if profile creation fails
-		}
+		// Note: Profile is automatically created by database trigger
+		// Session is automatically created by signUp, user is now authenticated
 
 		return NextResponse.json({
-			message: 'Registrering lyckades! Kontrollera din e-post för verifiering.',
+			message: 'Registrering lyckades!',
 			user: authData.user,
+			session: authData.session,
 		});
 	} catch (error) {
 		console.error('Signup error:', error);

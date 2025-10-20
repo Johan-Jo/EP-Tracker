@@ -17,6 +17,12 @@ export default async function AtaPage() {
 		);
 	}
 
+	// Workers can create ÄTA proposals, but only admin and foreman can approve
+	// Finance role cannot access ÄTA
+	if (membership.role === 'finance') {
+		redirect('/dashboard');
+	}
+
 	return (
 		<div className='p-4 md:p-8 space-y-6'>
 			<div>
@@ -26,7 +32,10 @@ export default async function AtaPage() {
 				</p>
 			</div>
 
-			<AtaPageClient orgId={membership.org_id} />
+			<AtaPageClient 
+				orgId={membership.org_id} 
+				userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance'} 
+			/>
 		</div>
 	);
 }

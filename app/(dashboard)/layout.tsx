@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { Sidebar } from '@/components/core/sidebar';
 import { MobileNav } from '@/components/core/mobile-nav';
 import { TopNav } from '@/components/core/top-nav';
+import { OfflineBanner } from '@/components/core/offline-banner';
+import { ServiceWorkerUpdatePrompt } from '@/components/core/sw-update-prompt';
 import { getSession } from '@/lib/auth/get-session';
 
 export default async function DashboardLayout({
@@ -16,8 +18,12 @@ export default async function DashboardLayout({
 		redirect('/sign-in');
 	}
 
-	// Default to 'worker' if no membership found (shouldn't happen, but safety fallback)
-	const userRole = (membership?.role as 'admin' | 'foreman' | 'worker' | 'finance') || 'worker';
+	// Redirect to complete setup if user hasn't created organization yet
+	if (!membership) {
+		redirect('/complete-setup');
+	}
+
+	const userRole = membership.role as 'admin' | 'foreman' | 'worker' | 'finance';
 
 	return (
 		<div className='min-h-screen bg-background'>
@@ -33,9 +39,15 @@ export default async function DashboardLayout({
 				<main className='flex-1 pb-20 md:pb-0'>{children}</main>
 			</div>
 
-		{/* Mobile bottom navigation */}
-		<MobileNav userRole={userRole} />
-	</div>
-);
+			{/* Mobile bottom navigation */}
+			<MobileNav userRole={userRole} />
+
+			{/* Offline banner */}
+			<OfflineBanner />
+
+			{/* Service worker update prompt */}
+			<ServiceWorkerUpdatePrompt />
+		</div>
+	);
 }
 

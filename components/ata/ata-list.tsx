@@ -1,12 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Eye, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { FileText, Eye, CheckCircle, XCircle, Clock, ClipboardCheck } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
+import { AtaApprovalDialog } from './ata-approval-dialog';
 
 interface Ata {
 	id: string;
@@ -28,6 +30,7 @@ interface Ata {
 interface AtaListProps {
 	projectId?: string;
 	orgId: string;
+	userRole?: 'admin' | 'foreman' | 'worker' | 'finance';
 }
 
 const statusConfig = {
@@ -38,8 +41,11 @@ const statusConfig = {
 	invoiced: { label: 'Fakturerad', icon: CheckCircle, variant: 'default' as const },
 };
 
-export function AtaList({ projectId, orgId }: AtaListProps) {
+export function AtaList({ projectId, orgId, userRole }: AtaListProps) {
 	const supabase = createClient();
+	const [selectedAtaForApproval, setSelectedAtaForApproval] = useState<Ata | null>(null);
+
+	const canApprove = userRole === 'admin' || userRole === 'foreman';
 
 	const { data: ataList, isLoading } = useQuery({
 		queryKey: ['ata', orgId, projectId],
@@ -94,8 +100,9 @@ export function AtaList({ projectId, orgId }: AtaListProps) {
 	}
 
 	return (
-		<div className="space-y-4">
-			{ataList.map((ata) => {
+		<>
+			<div className="space-y-4">
+				{ataList.map((ata) => {
 				const config = statusConfig[ata.status];
 				const StatusIcon = config.icon;
 
@@ -120,11 +127,23 @@ export function AtaList({ projectId, orgId }: AtaListProps) {
 										</p>
 									)}
 								</div>
-								<Button variant="ghost" size="icon" asChild>
-									<Link href={`/dashboard/ata/${ata.id}`}>
-										<Eye className="h-4 w-4" />
-									</Link>
-								</Button>
+								<div className="flex gap-2">
+									{canApprove && ata.status === 'pending_approval' && (
+										<Button
+											variant="default"
+											size="sm"
+											onClick={() => setSelectedAtaForApproval(ata)}
+										>
+											<ClipboardCheck className="h-4 w-4 mr-2" />
+											Godkänn
+										</Button>
+									)}
+									<Button variant="ghost" size="icon" asChild>
+										<Link href={`/dashboard/ata/${ata.id}`}>
+											<Eye className="h-4 w-4" />
+										</Link>
+									</Button>
+								</div>
 							</div>
 						</CardHeader>
 						<CardContent className="pt-0">
@@ -154,8 +173,19 @@ export function AtaList({ projectId, orgId }: AtaListProps) {
 						</CardContent>
 					</Card>
 				);
-			})}
-		</div>
+				})}
+			</div>
+
+			{selectedAtaForApproval && (
+				<AtaApprovalDialog
+					ata={selectedAtaForApproval}
+					open={!!selectedAtaForApproval}
+					onOpenChange={(open) => {
+						if (!open) setSelectedAtaForApproval(null);
+					}}
+				/>
+			)}
+		</>
 	);
 }
 
