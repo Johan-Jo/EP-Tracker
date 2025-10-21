@@ -135,18 +135,18 @@ export function MileageList({ orgId, projectId }: MileageListProps) {
 				)}
 			</div>
 
-			{!mileage || mileage.length === 0 ? (
-				<Card>
-					<CardContent className="flex flex-col items-center justify-center p-8 text-center">
+		{!mileage || mileage.length === 0 ? (
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+				<CardContent className="flex flex-col items-center justify-center p-8 text-center">
 						<Car className="w-12 h-12 text-muted-foreground mb-4" />
 						<p className="text-muted-foreground">Inga milersättningar hittades</p>
 					</CardContent>
 				</Card>
 			) : (
-				<div className="grid gap-4">
-					{mileage.map((entry) => (
-						<Card key={entry.id}>
-							<CardContent className="p-4">
+			<div className="grid gap-4">
+				{mileage.map((entry) => (
+					<Card key={entry.id} className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+						<CardContent className="p-4">
 								<div className="flex items-start justify-between">
 									<div className="flex-1 space-y-2">
 										<div className="flex items-start justify-between">

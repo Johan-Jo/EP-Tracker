@@ -23,10 +23,10 @@ export default async function ChecklistsPage() {
 	}
 
 	return (
-		<div className='p-4 md:p-8 space-y-6'>
+		<div className='container mx-auto p-6 lg:p-8 space-y-6'>
 			<div>
-				<h1 className='text-3xl font-bold tracking-tight'>Checklistor</h1>
-				<p className='text-muted-foreground mt-2'>
+				<h1 className='text-3xl font-bold tracking-tight text-gray-900 dark:text-white'>Checklistor</h1>
+				<p className='text-gray-600 dark:text-gray-400 mt-2'>
 					Skapa och hantera checklistor för dina projekt
 				</p>
 			</div>

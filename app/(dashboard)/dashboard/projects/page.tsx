@@ -72,17 +72,17 @@ export default async function ProjectsPage(props: PageProps) {
 	const canCreateProjects = membership.role === 'admin' || membership.role === 'foreman';
 
 	return (
-		<div className='p-4 md:p-8 space-y-6'>
+		<div className='container mx-auto p-6 lg:p-8 space-y-6'>
 			{/* Header */}
 			<div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
 				<div>
-					<h1 className='text-3xl font-bold tracking-tight'>Projekt</h1>
-					<p className='text-muted-foreground mt-1'>
+					<h1 className='text-3xl font-bold tracking-tight text-gray-900 dark:text-white'>Projekt</h1>
+					<p className='text-gray-600 dark:text-gray-400 mt-1'>
 						Hantera dina byggprojekt och arbetsorder
 					</p>
 				</div>
 				{canCreateProjects && (
-					<Button asChild>
+					<Button asChild className='bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600'>
 						<Link href='/dashboard/projects/new'>
 							<Plus className='w-4 h-4 mr-2' />
 							Nytt projekt
@@ -111,7 +111,7 @@ export default async function ProjectsPage(props: PageProps) {
 				<div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
 					{projects.map((project) => (
 						<Link key={project.id} href={`/dashboard/projects/${project.id}`}>
-							<Card className='hover:shadow-lg transition-shadow cursor-pointer h-full'>
+							<Card className='border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full dark:border-gray-800 dark:bg-gray-950'>
 								<CardHeader>
 									<div className='flex items-start justify-between'>
 										<div className='flex-1'>
@@ -161,15 +161,15 @@ export default async function ProjectsPage(props: PageProps) {
 					))}
 				</div>
 			) : (
-				<Card>
+				<Card className='border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950'>
 					<CardContent className='py-12 text-center'>
-						<p className='text-muted-foreground mb-4'>
+						<p className='text-gray-600 dark:text-gray-400 mb-4'>
 							{search || status !== 'active'
 								? 'Inga projekt hittades med dessa filter'
 								: 'Du har inga projekt än'}
 						</p>
 						{!search && status === 'active' && canCreateProjects && (
-							<Button asChild>
+							<Button asChild className='bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600'>
 								<Link href='/dashboard/projects/new'>
 									<Plus className='w-4 h-4 mr-2' />
 									Skapa ditt första projekt

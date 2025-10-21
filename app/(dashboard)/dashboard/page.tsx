@@ -48,12 +48,12 @@ export default async function DashboardPage() {
 	const materialsCount = (materialsResult.count || 0) + (expensesResult.count || 0);
 
 	return (
-		<div className='p-4 md:p-8 space-y-8'>
+		<div className='container mx-auto p-6 lg:p-8 space-y-8'>
 			<div>
-				<h1 className='text-3xl font-bold tracking-tight'>
+				<h1 className='text-3xl font-bold tracking-tight text-gray-900 dark:text-white'>
 					Välkommen, {profile?.full_name || 'användare'}! 👋
 				</h1>
-				<p className='text-muted-foreground mt-2'>
+				<p className='text-gray-600 dark:text-gray-400 mt-2'>
 					Här är en översikt över dina projekt och aktiviteter.
 				</p>
 			</div>
@@ -64,33 +64,33 @@ export default async function DashboardPage() {
 		)}
 
 		{/* Quick actions */}
-		<Card>
+		<Card className='border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950'>
 			<CardHeader>
-				<CardTitle>Snabbåtgärder</CardTitle>
-				<CardDescription>
+				<CardTitle className='text-gray-900 dark:text-white'>Snabbåtgärder</CardTitle>
+				<CardDescription className='text-gray-600 dark:text-gray-400'>
 					Vanliga uppgifter för att komma igång snabbt
 				</CardDescription>
 			</CardHeader>
 			<CardContent className='grid gap-3 md:grid-cols-2 lg:grid-cols-4'>
-				<Button asChild className='w-full'>
+				<Button asChild className='w-full bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600'>
 					<Link href='/dashboard/projects/new'>
 						<Plus className='w-4 h-4 mr-2' />
 						Nytt projekt
 					</Link>
 				</Button>
-				<Button asChild variant='outline' className='w-full'>
+				<Button asChild variant='outline' className='w-full border-gray-300 dark:border-gray-700'>
 					<Link href='/dashboard/time'>
 						<Clock className='w-4 h-4 mr-2' />
 						Logga tid
 					</Link>
 				</Button>
-				<Button asChild variant='outline' className='w-full'>
+				<Button asChild variant='outline' className='w-full border-gray-300 dark:border-gray-700'>
 					<Link href='/dashboard/materials'>
 						<Package className='w-4 h-4 mr-2' />
 						Lägg till material
 					</Link>
 				</Button>
-				<Button asChild variant='outline' className='w-full'>
+				<Button asChild variant='outline' className='w-full border-gray-300 dark:border-gray-700'>
 					<Link href='/dashboard/approvals'>
 						Godkännanden
 					</Link>
@@ -100,45 +100,45 @@ export default async function DashboardPage() {
 
 		{/* Quick stats */}
 		<div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
-				<Card>
+				<Card className='border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950'>
 					<CardHeader className='flex flex-row items-center justify-between pb-2 space-y-0'>
-						<CardTitle className='text-sm font-medium'>Aktiva Projekt</CardTitle>
-						<FolderKanban className='w-4 h-4 text-muted-foreground' />
+						<CardTitle className='text-sm font-medium text-gray-900 dark:text-white'>Aktiva Projekt</CardTitle>
+						<FolderKanban className='w-5 h-5 text-blue-500' />
 					</CardHeader>
 					<CardContent>
-						<div className='text-2xl font-bold'>{projectsCount || 0}</div>
-						<p className='text-xs text-muted-foreground mt-1'>
-							<Link href='/dashboard/projects' className='text-primary hover:underline'>
+						<div className='text-2xl font-bold text-gray-900 dark:text-white'>{projectsCount || 0}</div>
+						<p className='text-xs text-gray-600 dark:text-gray-400 mt-1'>
+							<Link href='/dashboard/projects' className='text-orange-600 hover:text-orange-700 hover:underline dark:text-orange-500 dark:hover:text-orange-400'>
 								Visa alla projekt →
 							</Link>
 						</p>
 					</CardContent>
 				</Card>
 
-				<Card>
+				<Card className='border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950'>
 					<CardHeader className='flex flex-row items-center justify-between pb-2 space-y-0'>
-						<CardTitle className='text-sm font-medium'>Tidrapporter denna vecka</CardTitle>
-						<Clock className='w-4 h-4 text-muted-foreground' />
+						<CardTitle className='text-sm font-medium text-gray-900 dark:text-white'>Tidrapporter denna vecka</CardTitle>
+						<Clock className='w-5 h-5 text-green-500' />
 					</CardHeader>
 					<CardContent>
-						<div className='text-2xl font-bold'>{timeEntriesCount || 0}</div>
-						<p className='text-xs text-muted-foreground mt-1'>
-							<Link href='/dashboard/time' className='text-primary hover:underline'>
+						<div className='text-2xl font-bold text-gray-900 dark:text-white'>{timeEntriesCount || 0}</div>
+						<p className='text-xs text-gray-600 dark:text-gray-400 mt-1'>
+							<Link href='/dashboard/time' className='text-orange-600 hover:text-orange-700 hover:underline dark:text-orange-500 dark:hover:text-orange-400'>
 								Logga tid →
 							</Link>
 						</p>
 					</CardContent>
 				</Card>
 
-			<Card>
+			<Card className='border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950'>
 				<CardHeader className='flex flex-row items-center justify-between pb-2 space-y-0'>
-					<CardTitle className='text-sm font-medium'>Material & Utlägg denna vecka</CardTitle>
-					<Package className='w-4 h-4 text-muted-foreground' />
+					<CardTitle className='text-sm font-medium text-gray-900 dark:text-white'>Material & Utlägg denna vecka</CardTitle>
+					<Package className='w-5 h-5 text-orange-500' />
 				</CardHeader>
 				<CardContent>
-					<div className='text-2xl font-bold'>{materialsCount}</div>
-					<p className='text-xs text-muted-foreground mt-1'>
-						<Link href='/dashboard/materials' className='text-primary hover:underline'>
+					<div className='text-2xl font-bold text-gray-900 dark:text-white'>{materialsCount}</div>
+					<p className='text-xs text-gray-600 dark:text-gray-400 mt-1'>
+						<Link href='/dashboard/materials' className='text-orange-600 hover:text-orange-700 hover:underline dark:text-orange-500 dark:hover:text-orange-400'>
 							Hantera material & utlägg →
 						</Link>
 					</p>

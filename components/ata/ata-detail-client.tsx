@@ -83,7 +83,7 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 
 	if (!ata) {
 		return (
-			<Card>
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
 				<CardContent className="py-12 text-center">
 					<p className="text-muted-foreground">ÄTA hittades inte</p>
 				</CardContent>
@@ -102,7 +102,7 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 	return (
 		<div className="max-w-4xl space-y-6">
 			{/* Header Card */}
-			<Card>
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
 				<CardHeader>
 					<div className="flex items-start justify-between">
 						<div className="space-y-2">
@@ -143,10 +143,10 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 				</CardContent>
 			</Card>
 
-			{/* Description Card */}
-			{ata.description && (
-				<Card>
-					<CardHeader>
+		{/* Description Card */}
+		{ata.description && (
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+				<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							<FileText className="h-5 w-5" />
 							Beskrivning
@@ -158,10 +158,10 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 				</Card>
 			)}
 
-			{/* Cost Details Card */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Kostnadsuppgifter</CardTitle>
+		{/* Cost Details Card */}
+		<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+			<CardHeader>
+				<CardTitle>Kostnadsuppgifter</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<div className="space-y-4">
@@ -183,10 +183,10 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 				</CardContent>
 			</Card>
 
-			{/* Photos Card */}
-			{photos && photos.length > 0 && (
-				<Card>
-					<CardHeader>
+		{/* Photos Card */}
+		{photos && photos.length > 0 && (
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+				<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							<ImageIcon className="h-5 w-5" />
 							Foton ({photos.length})
@@ -212,10 +212,10 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 				</Card>
 			)}
 
-			{/* Signature Card (for pending or approved) */}
-			{ata.signed_by_name && (
-				<Card>
-					<CardHeader>
+		{/* Signature Card (for pending or approved) */}
+		{ata.signed_by_name && (
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+				<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							<CheckCircle2 className="h-5 w-5 text-primary" />
 							Signatur

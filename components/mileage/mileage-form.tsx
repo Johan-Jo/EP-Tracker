@@ -86,7 +86,7 @@ export function MileageForm({ orgId, onSuccess, onCancel, defaultValues }: Milea
 	};
 
 	return (
-		<Card>
+		<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
 			<CardHeader>
 				<div className="flex items-center gap-3">
 					<Car className="w-6 h-6 text-primary" />

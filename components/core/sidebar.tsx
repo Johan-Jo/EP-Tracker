@@ -117,13 +117,17 @@ export function Sidebar({ userRole }: SidebarProps) {
 	const showAdminSection = visibleSettingsItems.length > 0;
 
 	return (
-		<aside className='hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r bg-background'>
-			<div className='flex flex-col flex-1 min-h-0 pt-5 pb-4'>
-				<div className='flex items-center flex-shrink-0 px-6'>
-					<h1 className='text-xl font-bold text-primary'>EP Time Tracker</h1>
+		<aside className='hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950'>
+			<div className='flex flex-col flex-1 min-h-0'>
+				{/* Header */}
+				<div className='border-b border-gray-200 px-6 py-5 dark:border-gray-800'>
+					<h1 className='text-xl font-bold text-gray-900 dark:text-white'>EP Tracker</h1>
+					<p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
+						Tidrapportering
+					</p>
 				</div>
 
-				<nav className='flex-1 px-3 mt-8 space-y-1'>
+				<nav className='flex-1 px-2 py-4 space-y-1 overflow-y-auto'>
 					{visibleNavItems.map((item) => {
 						const isActive = pathname === item.href;
 						const Icon = item.icon;
@@ -133,16 +137,16 @@ export function Sidebar({ userRole }: SidebarProps) {
 								key={item.href}
 								href={item.href}
 								className={cn(
-									'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+									'group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors',
 									isActive
-										? 'bg-primary text-primary-foreground'
-										: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+										? 'bg-orange-100 text-orange-900 dark:bg-orange-900/20 dark:text-orange-100'
+										: 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100'
 								)}
 							>
 								<Icon
 									className={cn(
-										'mr-3 flex-shrink-0 h-5 w-5',
-										isActive ? '' : 'text-muted-foreground group-hover:text-accent-foreground'
+										'flex-shrink-0 h-5 w-5',
+										isActive ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-600'
 									)}
 								/>
 								{item.label}
@@ -151,8 +155,8 @@ export function Sidebar({ userRole }: SidebarProps) {
 					})}
 
 					{showAdminSection && (
-						<div className='pt-6 mt-6 border-t'>
-							<p className='px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider'>
+						<div className='pt-6 mt-6 border-t border-gray-200 dark:border-gray-800'>
+							<p className='px-3 mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
 								Administration
 							</p>
 							{visibleSettingsItems.map((item) => {
@@ -164,18 +168,16 @@ export function Sidebar({ userRole }: SidebarProps) {
 										key={item.href}
 										href={item.href}
 										className={cn(
-											'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+											'group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors',
 											isActive
-												? 'bg-primary text-primary-foreground'
-												: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+												? 'bg-orange-100 text-orange-900 dark:bg-orange-900/20 dark:text-orange-100'
+												: 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100'
 										)}
 									>
 										<Icon
 											className={cn(
-												'mr-3 flex-shrink-0 h-5 w-5',
-												isActive
-													? ''
-													: 'text-muted-foreground group-hover:text-accent-foreground'
+												'flex-shrink-0 h-5 w-5',
+												isActive ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-600'
 											)}
 										/>
 										{item.label}

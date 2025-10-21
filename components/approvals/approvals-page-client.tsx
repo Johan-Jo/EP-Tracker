@@ -33,20 +33,20 @@ export function ApprovalsPageClient({ orgId, userRole }: ApprovalsPageClientProp
     return (
         <div className="space-y-6">
             {/* Week Selector */}
-            <Card>
+            <Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <Calendar className="w-8 h-8 text-primary" />
+                            <Calendar className="w-8 h-8 text-orange-600 dark:text-orange-500" />
                             <div>
-                                <CardTitle>Välj period</CardTitle>
-                                <CardDescription>
+                                <CardTitle className="text-gray-900 dark:text-white">Välj period</CardTitle>
+                                <CardDescription className="text-gray-600 dark:text-gray-400">
                                     Granska och godkänn tidrapporter och kostnader
                                 </CardDescription>
                             </div>
                         </div>
                         <Link href="/dashboard/approvals/history">
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-700">
                                 <FileText className="w-4 h-4 mr-2" />
                                 Historik
                             </Button>
@@ -63,44 +63,44 @@ export function ApprovalsPageClient({ orgId, userRole }: ApprovalsPageClientProp
 
             {/* Quick Stats */}
             <div className="grid gap-4 md:grid-cols-3">
-                <Card>
+                <Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
+                        <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
                             Väntande tidrapporter
                         </CardTitle>
-                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <Clock className="h-5 w-5 text-blue-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">-</div>
-                        <p className="text-xs text-muted-foreground">
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white">-</div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
                             För vald period
                         </p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
+                        <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
                             Väntande kostnader
                         </CardTitle>
-                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <FileText className="h-5 w-5 text-green-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">-</div>
-                        <p className="text-xs text-muted-foreground">
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white">-</div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
                             Material, utlägg, miltal
                         </p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
+                        <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">
                             Unika användare
                         </CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <Users className="h-5 w-5 text-orange-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">-</div>
-                        <p className="text-xs text-muted-foreground">
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white">-</div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
                             Med pendande poster
                         </p>
                     </CardContent>
@@ -121,10 +121,10 @@ export function ApprovalsPageClient({ orgId, userRole }: ApprovalsPageClientProp
                 </TabsList>
 
                 <TabsContent value="time" className="space-y-4">
-                    <Card>
+                    <Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
                         <CardHeader>
-                            <CardTitle>Tidrapporter att granska</CardTitle>
-                            <CardDescription>
+                            <CardTitle className="text-gray-900 dark:text-white">Tidrapporter att granska</CardTitle>
+                            <CardDescription className="text-gray-600 dark:text-gray-400">
                                 Granska och godkänn tidrapporter för perioden {selectedWeek.toLocaleDateString('sv-SE')} - {weekEnd.toLocaleDateString('sv-SE')}
                             </CardDescription>
                         </CardHeader>
@@ -139,10 +139,10 @@ export function ApprovalsPageClient({ orgId, userRole }: ApprovalsPageClientProp
                 </TabsContent>
 
                 <TabsContent value="materials" className="space-y-4">
-                    <Card>
+                    <Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
                         <CardHeader>
-                            <CardTitle>Kostnader att granska</CardTitle>
-                            <CardDescription>
+                            <CardTitle className="text-gray-900 dark:text-white">Kostnader att granska</CardTitle>
+                            <CardDescription className="text-gray-600 dark:text-gray-400">
                                 Granska och godkänn material, utlägg och miltal för perioden {selectedWeek.toLocaleDateString('sv-SE')} - {weekEnd.toLocaleDateString('sv-SE')}
                             </CardDescription>
                         </CardHeader>
@@ -158,29 +158,29 @@ export function ApprovalsPageClient({ orgId, userRole }: ApprovalsPageClientProp
             </Tabs>
 
             {/* Export Actions */}
-            <Card>
+            <Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
                 <CardHeader>
-                    <CardTitle>Exportera data</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-gray-900 dark:text-white">Exportera data</CardTitle>
+                    <CardDescription className="text-gray-600 dark:text-gray-400">
                         Generera CSV-filer för lön och fakturering
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex flex-wrap gap-3">
                         <Link href={`/dashboard/approvals/export/salary?start=${selectedWeek.toISOString().split('T')[0]}&end=${weekEnd.toISOString().split('T')[0]}`}>
-                            <Button variant="outline">
+                            <Button variant="outline" className="border-gray-300 dark:border-gray-700">
                                 <Download className="w-4 h-4 mr-2" />
                                 Löne-CSV
                             </Button>
                         </Link>
                         <Link href={`/dashboard/approvals/export/invoice?start=${selectedWeek.toISOString().split('T')[0]}&end=${weekEnd.toISOString().split('T')[0]}`}>
-                            <Button variant="outline">
+                            <Button variant="outline" className="border-gray-300 dark:border-gray-700">
                                 <Download className="w-4 h-4 mr-2" />
                                 Faktura-CSV
                             </Button>
                         </Link>
                         <Link href={`/dashboard/approvals/export/attachments?start=${selectedWeek.toISOString().split('T')[0]}&end=${weekEnd.toISOString().split('T')[0]}`}>
-                            <Button variant="outline">
+                            <Button variant="outline" className="border-gray-300 dark:border-gray-700">
                                 <Download className="w-4 h-4 mr-2" />
                                 Bilagor (.zip)
                             </Button>

@@ -171,7 +171,7 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 	};
 
 	return (
-		<Card>
+		<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
 			<CardHeader>
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-3">

@@ -42,7 +42,7 @@ export function ChecklistDetailClient({ checklistId }: ChecklistDetailClientProp
 
 	if (!checklist) {
 		return (
-			<Card>
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
 				<CardContent className="py-12 text-center">
 					<p className="text-muted-foreground">Checklista hittades inte</p>
 				</CardContent>
@@ -59,7 +59,7 @@ export function ChecklistDetailClient({ checklistId }: ChecklistDetailClientProp
 	return (
 		<div className="max-w-4xl space-y-6">
 			{/* Header Card */}
-			<Card>
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
 				<CardHeader>
 					<div className="flex items-start justify-between">
 						<div className="space-y-2">
@@ -116,9 +116,9 @@ export function ChecklistDetailClient({ checklistId }: ChecklistDetailClientProp
 				</CardContent>
 			</Card>
 
-			{/* Checklist Items */}
-			<Card>
-				<CardHeader>
+		{/* Checklist Items */}
+		<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+			<CardHeader>
 					<CardTitle className="flex items-center gap-2">
 						<FileText className="h-5 w-5" />
 						Checkpunkter
@@ -151,10 +151,10 @@ export function ChecklistDetailClient({ checklistId }: ChecklistDetailClientProp
 				</CardContent>
 			</Card>
 
-			{/* Signature */}
-			{checklist.signed_by_name && (
-				<Card>
-					<CardHeader>
+		{/* Signature */}
+		{checklist.signed_by_name && (
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+				<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							<CheckCircle2 className="h-5 w-5 text-primary" />
 							Signatur

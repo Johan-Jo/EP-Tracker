@@ -139,18 +139,18 @@ export function ExpensesList({ orgId, projectId, onEdit }: ExpensesListProps) {
 				)}
 			</div>
 
-			{!expenses || expenses.length === 0 ? (
-				<Card>
-					<CardContent className="flex flex-col items-center justify-center p-8 text-center">
+		{!expenses || expenses.length === 0 ? (
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+				<CardContent className="flex flex-col items-center justify-center p-8 text-center">
 						<Receipt className="w-12 h-12 text-muted-foreground mb-4" />
 						<p className="text-muted-foreground">Inga utlägg hittades</p>
 					</CardContent>
 				</Card>
 			) : (
-				<div className="grid gap-4">
-					{expenses.map((expense) => (
-						<Card key={expense.id}>
-							<CardContent className="p-4">
+			<div className="grid gap-4">
+				{expenses.map((expense) => (
+					<Card key={expense.id} className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+						<CardContent className="p-4">
 								<div className="flex gap-4">
 						{expense.photo_urls && expense.photo_urls.length > 0 && (
 							<div 

@@ -73,22 +73,22 @@ export default async function ProfilePage() {
 	}
 
 	return (
-		<div className='p-4 md:p-8 space-y-6'>
+		<div className='container mx-auto p-6 lg:p-8 space-y-6'>
 			<div>
-				<h1 className='text-3xl font-bold tracking-tight'>Min profil</h1>
-				<p className='text-muted-foreground mt-2'>
+				<h1 className='text-3xl font-bold tracking-tight text-gray-900 dark:text-white'>Min profil</h1>
+				<p className='text-gray-600 dark:text-gray-400 mt-2'>
 					Hantera dina personliga uppgifter
 				</p>
 			</div>
 
-			<form action={updateProfile}>
-				<Card>
-					<CardHeader>
-						<CardTitle>Personuppgifter</CardTitle>
-						<CardDescription>
-							Uppdatera ditt namn och kontaktinformation
-						</CardDescription>
-					</CardHeader>
+		<form action={updateProfile}>
+			<Card className='border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950'>
+				<CardHeader>
+					<CardTitle className='text-gray-900 dark:text-white'>Personuppgifter</CardTitle>
+					<CardDescription className='text-gray-600 dark:text-gray-400'>
+						Uppdatera ditt namn och kontaktinformation
+					</CardDescription>
+				</CardHeader>
 					<CardContent className='space-y-4'>
 						<div className='space-y-2'>
 							<Label htmlFor='email'>E-postadress</Label>
@@ -125,40 +125,40 @@ export default async function ProfilePage() {
 							/>
 						</div>
 
-						<div className='flex justify-end pt-4'>
-							<Button type='submit'>Spara ändringar</Button>
+					<div className='flex justify-end pt-4'>
+						<Button type='submit' className='bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600'>Spara ändringar</Button>
 						</div>
 					</CardContent>
 				</Card>
 			</form>
 
-			<Card>
-				<CardHeader>
-					<CardTitle>Kontoinformation</CardTitle>
-				</CardHeader>
-				<CardContent className='space-y-3 text-sm'>
-					<div className='flex justify-between items-center'>
-						<span className='text-muted-foreground'>Roll:</span>
-						<span className='font-semibold'>{roleDisplay}</span>
-					</div>
-					<div className='flex justify-between items-center'>
-						<span className='text-muted-foreground'>Organisation:</span>
-						<span>{orgName}</span>
-					</div>
-					<div className='flex justify-between pt-2 border-t'>
-						<span className='text-muted-foreground'>Användar-ID:</span>
-						<span className='font-mono text-xs'>{user.id}</span>
-					</div>
-					<div className='flex justify-between'>
-						<span className='text-muted-foreground'>Registrerad:</span>
-						<span>
-							{new Date(profile?.created_at || '').toLocaleDateString('sv-SE', {
-								year: 'numeric',
-								month: 'long',
-								day: 'numeric',
-							})}
-						</span>
-					</div>
+		<Card className='border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950'>
+			<CardHeader>
+				<CardTitle className='text-gray-900 dark:text-white'>Kontoinformation</CardTitle>
+			</CardHeader>
+			<CardContent className='space-y-3 text-sm'>
+				<div className='flex justify-between items-center'>
+					<span className='text-gray-600 dark:text-gray-400'>Roll:</span>
+					<span className='font-semibold text-gray-900 dark:text-white'>{roleDisplay}</span>
+				</div>
+				<div className='flex justify-between items-center'>
+					<span className='text-gray-600 dark:text-gray-400'>Organisation:</span>
+					<span className='text-gray-900 dark:text-white'>{orgName}</span>
+				</div>
+				<div className='flex justify-between pt-2 border-t border-gray-200 dark:border-gray-800'>
+					<span className='text-gray-600 dark:text-gray-400'>Användar-ID:</span>
+					<span className='font-mono text-xs text-gray-900 dark:text-white'>{user.id}</span>
+				</div>
+				<div className='flex justify-between'>
+					<span className='text-gray-600 dark:text-gray-400'>Registrerad:</span>
+					<span className='text-gray-900 dark:text-white'>
+						{new Date(profile?.created_at || '').toLocaleDateString('sv-SE', {
+							year: 'numeric',
+							month: 'long',
+							day: 'numeric',
+						})}
+					</span>
+				</div>
 				</CardContent>
 			</Card>
 		</div>

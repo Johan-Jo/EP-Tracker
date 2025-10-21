@@ -69,11 +69,11 @@ export function UsersPageClient({ members, canInvite }: UsersPageClientProps) {
 	};
 
 	return (
-		<div className='p-4 md:p-8 space-y-6'>
+		<div className='container mx-auto p-6 lg:p-8 space-y-6'>
 			{showSuccess && (
-				<div className='flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg'>
-					<CheckCircle2 className='w-5 h-5 text-green-600 flex-shrink-0' />
-					<p className='text-sm text-green-800 flex-1'>
+				<div className='flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg dark:bg-green-900/20 dark:border-green-800'>
+					<CheckCircle2 className='w-5 h-5 text-green-600 flex-shrink-0 dark:text-green-400' />
+					<p className='text-sm text-green-800 flex-1 dark:text-green-300'>
 						Inbjudan har skickats! Användaren kommer att få ett e-postmeddelande med instruktioner.
 					</p>
 					<button
@@ -87,14 +87,14 @@ export function UsersPageClient({ members, canInvite }: UsersPageClientProps) {
 
 			<div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
 				<div>
-					<h1 className='text-3xl font-bold tracking-tight'>Användare</h1>
-					<p className='text-muted-foreground mt-2'>
+					<h1 className='text-3xl font-bold tracking-tight text-gray-900 dark:text-white'>Användare</h1>
+					<p className='text-gray-600 dark:text-gray-400 mt-2'>
 						Hantera teammedlemmar och deras behörigheter
 					</p>
 				</div>
 				{canInvite && (
 					<Link href='/dashboard/settings/users/invite'>
-						<Button>
+						<Button className='bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600'>
 							<Mail className='w-4 h-4 mr-2' />
 							Bjud in användare
 						</Button>
@@ -102,10 +102,10 @@ export function UsersPageClient({ members, canInvite }: UsersPageClientProps) {
 				)}
 			</div>
 
-			<Card>
+			<Card className='border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950'>
 				<CardHeader>
-					<CardTitle>Teammedlemmar ({members?.length || 0})</CardTitle>
-					<CardDescription>
+					<CardTitle className='text-gray-900 dark:text-white'>Teammedlemmar ({members?.length || 0})</CardTitle>
+					<CardDescription className='text-gray-600 dark:text-gray-400'>
 						Alla användare i din organisation
 					</CardDescription>
 				</CardHeader>
@@ -126,11 +126,11 @@ export function UsersPageClient({ members, canInvite }: UsersPageClientProps) {
 								return (
 									<div
 										key={member.id}
-										className='flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors'
+										className='flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors dark:border-gray-800 dark:hover:bg-gray-900'
 									>
 										<div className='flex items-center gap-4'>
 											<Avatar>
-												<AvatarFallback className='bg-primary text-primary-foreground'>
+												<AvatarFallback className='bg-orange-600 text-white dark:bg-orange-500'>
 													{initials}
 												</AvatarFallback>
 											</Avatar>

@@ -66,7 +66,7 @@ export function DiaryDetailClient({ diaryId }: DiaryDetailClientProps) {
 
 	if (!diary) {
 		return (
-			<Card>
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
 				<CardContent className="py-12 text-center">
 					<p className="text-muted-foreground">Dagbokspost hittades inte</p>
 				</CardContent>
@@ -77,7 +77,7 @@ export function DiaryDetailClient({ diaryId }: DiaryDetailClientProps) {
 	return (
 		<div className="max-w-4xl space-y-6">
 			{/* Header Card */}
-			<Card>
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
 				<CardHeader>
 					<div className="flex items-start justify-between">
 						<div className="space-y-2">
@@ -120,10 +120,10 @@ export function DiaryDetailClient({ diaryId }: DiaryDetailClientProps) {
 				</CardHeader>
 			</Card>
 
-			{/* Work Performed */}
-			{diary.work_performed && (
-				<Card>
-					<CardHeader>
+		{/* Work Performed */}
+		{diary.work_performed && (
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+				<CardHeader>
 						<CardTitle>Utfört arbete</CardTitle>
 					</CardHeader>
 					<CardContent>
@@ -132,10 +132,10 @@ export function DiaryDetailClient({ diaryId }: DiaryDetailClientProps) {
 				</Card>
 			)}
 
-			{/* Obstacles */}
-			{diary.obstacles && (
-				<Card>
-					<CardHeader>
+		{/* Obstacles */}
+		{diary.obstacles && (
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+				<CardHeader>
 						<CardTitle>Hinder/Problem</CardTitle>
 					</CardHeader>
 					<CardContent>
@@ -144,11 +144,11 @@ export function DiaryDetailClient({ diaryId }: DiaryDetailClientProps) {
 				</Card>
 			)}
 
-			{/* Safety Notes */}
-			{diary.safety_notes && (
-				<Card>
-					<CardHeader>
-						<CardTitle>Säkerhet</CardTitle>
+		{/* Safety Notes */}
+		{diary.safety_notes && (
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+				<CardHeader>
+					<CardTitle>Säkerhet</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<p className="whitespace-pre-wrap">{diary.safety_notes}</p>
@@ -156,11 +156,11 @@ export function DiaryDetailClient({ diaryId }: DiaryDetailClientProps) {
 				</Card>
 			)}
 
-			{/* Deliveries */}
-			{diary.deliveries && (
-				<Card>
-					<CardHeader>
-						<CardTitle>Leveranser</CardTitle>
+		{/* Deliveries */}
+		{diary.deliveries && (
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+				<CardHeader>
+					<CardTitle>Leveranser</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<p className="whitespace-pre-wrap">{diary.deliveries}</p>
@@ -168,11 +168,11 @@ export function DiaryDetailClient({ diaryId }: DiaryDetailClientProps) {
 				</Card>
 			)}
 
-			{/* Visitors */}
-			{diary.visitors && (
-				<Card>
-					<CardHeader>
-						<CardTitle>Besökare</CardTitle>
+		{/* Visitors */}
+		{diary.visitors && (
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+				<CardHeader>
+					<CardTitle>Besökare</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<p className="whitespace-pre-wrap">{diary.visitors}</p>
@@ -180,10 +180,10 @@ export function DiaryDetailClient({ diaryId }: DiaryDetailClientProps) {
 				</Card>
 			)}
 
-			{/* Photos */}
-			{photos && photos.length > 0 && (
-				<Card>
-					<CardHeader>
+		{/* Photos */}
+		{photos && photos.length > 0 && (
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+				<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							<ImageIcon className="h-5 w-5" />
 							Foton ({photos.length})
@@ -209,10 +209,10 @@ export function DiaryDetailClient({ diaryId }: DiaryDetailClientProps) {
 				</Card>
 			)}
 
-			{/* Signature */}
-			{diary.signed_by_name && (
-				<Card>
-					<CardHeader>
+		{/* Signature */}
+		{diary.signed_by_name && (
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+				<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							<CheckCircle className="h-5 w-5 text-primary" />
 							Signatur

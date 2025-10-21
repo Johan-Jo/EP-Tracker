@@ -16,10 +16,10 @@ export default async function SettingsPage() {
 	const canManageUsers = membership?.role && ['admin', 'foreman'].includes(membership.role);
 
 	return (
-		<div className='p-4 md:p-8 space-y-6'>
+		<div className='container mx-auto p-6 lg:p-8 space-y-6'>
 			<div>
-				<h1 className='text-3xl font-bold tracking-tight'>Inställningar</h1>
-				<p className='text-muted-foreground mt-2'>
+				<h1 className='text-3xl font-bold tracking-tight text-gray-900 dark:text-white'>Inställningar</h1>
+				<p className='text-gray-600 dark:text-gray-400 mt-2'>
 					Hantera ditt konto och organisationsinställningar
 				</p>
 			</div>
@@ -27,14 +27,14 @@ export default async function SettingsPage() {
 			<div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
 				{isAdmin && (
 					<Link href='/dashboard/settings/organization'>
-						<Card className='hover:shadow-lg transition-shadow cursor-pointer h-full'>
+						<Card className='border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full dark:border-gray-800 dark:bg-gray-950'>
 							<CardHeader>
 								<div className='flex items-center justify-between'>
-									<Building2 className='w-8 h-8 text-primary' />
-									<ChevronRight className='w-5 h-5 text-muted-foreground' />
+									<Building2 className='w-8 h-8 text-orange-600 dark:text-orange-500' />
+									<ChevronRight className='w-5 h-5 text-gray-400' />
 								</div>
-								<CardTitle className='mt-4'>Organisation</CardTitle>
-								<CardDescription>
+								<CardTitle className='mt-4 text-gray-900 dark:text-white'>Organisation</CardTitle>
+								<CardDescription className='text-gray-600 dark:text-gray-400'>
 									Hantera organisationsinformation och standardinställningar
 								</CardDescription>
 							</CardHeader>
@@ -44,14 +44,14 @@ export default async function SettingsPage() {
 
 				{canManageUsers && (
 					<Link href='/dashboard/settings/users'>
-						<Card className='hover:shadow-lg transition-shadow cursor-pointer h-full'>
+						<Card className='border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full dark:border-gray-800 dark:bg-gray-950'>
 							<CardHeader>
 								<div className='flex items-center justify-between'>
-									<Users className='w-8 h-8 text-primary' />
-									<ChevronRight className='w-5 h-5 text-muted-foreground' />
+									<Users className='w-8 h-8 text-orange-600 dark:text-orange-500' />
+									<ChevronRight className='w-5 h-5 text-gray-400' />
 								</div>
-								<CardTitle className='mt-4'>Användare</CardTitle>
-								<CardDescription>
+								<CardTitle className='mt-4 text-gray-900 dark:text-white'>Användare</CardTitle>
+								<CardDescription className='text-gray-600 dark:text-gray-400'>
 									Hantera teammedlemmar, roller och behörigheter
 								</CardDescription>
 							</CardHeader>
@@ -60,14 +60,14 @@ export default async function SettingsPage() {
 				)}
 
 				<Link href='/dashboard/settings/profile'>
-					<Card className='hover:shadow-lg transition-shadow cursor-pointer h-full'>
+					<Card className='border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full dark:border-gray-800 dark:bg-gray-950'>
 						<CardHeader>
 							<div className='flex items-center justify-between'>
-								<SettingsIcon className='w-8 h-8 text-primary' />
-								<ChevronRight className='w-5 h-5 text-muted-foreground' />
+								<SettingsIcon className='w-8 h-8 text-orange-600 dark:text-orange-500' />
+								<ChevronRight className='w-5 h-5 text-gray-400' />
 							</div>
-							<CardTitle className='mt-4'>Min profil</CardTitle>
-							<CardDescription>
+							<CardTitle className='mt-4 text-gray-900 dark:text-white'>Min profil</CardTitle>
+							<CardDescription className='text-gray-600 dark:text-gray-400'>
 								Uppdatera dina personliga uppgifter och inställningar
 							</CardDescription>
 						</CardHeader>
@@ -75,9 +75,9 @@ export default async function SettingsPage() {
 				</Link>
 			</div>
 
-			<Card>
+			<Card className='border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950'>
 				<CardHeader>
-					<CardTitle>Systeminformation</CardTitle>
+					<CardTitle className='text-gray-900 dark:text-white'>Systeminformation</CardTitle>
 				</CardHeader>
 				<CardContent className='space-y-2 text-sm'>
 					<div className='flex justify-between'>

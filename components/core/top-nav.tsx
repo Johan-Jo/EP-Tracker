@@ -57,7 +57,7 @@ export function TopNav({ userEmail, userName }: TopNavProps) {
 	};
 
 	return (
-		<header className='sticky top-0 z-40 border-b bg-background'>
+		<header className='sticky top-0 z-40 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950'>
 			<div className='flex items-center justify-between h-16 px-4 md:px-6'>
 				{/* Mobile menu button + Logo */}
 				<div className='flex items-center gap-4'>
@@ -79,7 +79,7 @@ export function TopNav({ userEmail, userName }: TopNavProps) {
 						<DropdownMenuTrigger asChild>
 							<Button variant='ghost' className='relative h-9 w-9 rounded-full'>
 								<Avatar className='h-9 w-9'>
-									<AvatarFallback className='bg-primary text-primary-foreground'>
+									<AvatarFallback className='bg-orange-600 text-white dark:bg-orange-500'>
 										{initials}
 									</AvatarFallback>
 								</Avatar>
