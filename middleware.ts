@@ -45,11 +45,15 @@ export async function middleware(request: NextRequest) {
 	// Protected routes
 	const protectedRoutes = ['/dashboard', '/projects', '/time', '/approvals', '/settings'];
 	const authRoutes = ['/sign-in', '/sign-up', '/verify-email'];
+	const superAdminRoutes = ['/super-admin'];
 
 	const isProtectedRoute = protectedRoutes.some((route) =>
 		request.nextUrl.pathname.startsWith(route)
 	);
 	const isAuthRoute = authRoutes.some((route) =>
+		request.nextUrl.pathname.startsWith(route)
+	);
+	const isSuperAdminRoute = superAdminRoutes.some((route) =>
 		request.nextUrl.pathname.startsWith(route)
 	);
 
@@ -58,6 +62,31 @@ export async function middleware(request: NextRequest) {
 		const url = request.nextUrl.clone();
 		url.pathname = '/sign-in';
 		return NextResponse.redirect(url);
+	}
+
+	// Super Admin route protection
+	if (isSuperAdminRoute) {
+		if (!user) {
+			// Not authenticated at all
+			const url = request.nextUrl.clone();
+			url.pathname = '/sign-in';
+			return NextResponse.redirect(url);
+		}
+
+		// Check if user is super admin
+		const { data: superAdminData } = await supabase
+			.from('super_admins')
+			.select('id, revoked_at')
+			.eq('user_id', user.id)
+			.is('revoked_at', null)
+			.maybeSingle();
+
+		if (!superAdminData) {
+			// User is authenticated but not a super admin - redirect to dashboard
+			const url = request.nextUrl.clone();
+			url.pathname = '/dashboard';
+			return NextResponse.redirect(url);
+		}
 	}
 
 	// Redirect to home if accessing auth routes while authenticated

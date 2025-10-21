@@ -616,8 +616,12 @@ ALTER TABLE organizations ADD COLUMN trial_ends_at TIMESTAMPTZ;
 
 ## 💰 Pricing Plan Specification
 
-### Free Trial
-- **Price:** 0 SEK (14 days)
+> **Note:** All prices exclude 25% Swedish VAT (moms). Customer pays listed price + VAT.  
+> **Currency:** SEK (Swedish Kronor). EUR support planned for future expansion.
+
+### Free Trial (14 Days)
+- **Price:** 0 SEK
+- **Duration:** 14 days (no credit card required)
 - **Users:** Up to 5
 - **Storage:** 2 GB
 - **Features:**
@@ -630,56 +634,105 @@ ALTER TABLE organizations ADD COLUMN trial_ends_at TIMESTAMPTZ;
   - Offline mode
   - PWA installation
 - **Limitations:**
-  - 14-day trial period
-  - Converts to Basic plan or suspended after trial
   - Watermark on exports: "Trial - Upgrade to remove"
+  - Must convert to paid plan after 14 days or account suspended
+- **After Trial:** Auto-converts to Basic plan (if payment method added) or suspended
+
+---
 
 ### Basic Plan
-- **Price:** 199 SEK/month
+**Monthly Billing:**
+- **Price:** 199 SEK/month (+ 25% VAT = 248.75 SEK total)
+- **Annual Equivalent:** 2,388 SEK/year + VAT
+
+**Annual Billing (10% discount):**
+- **Price:** 2,149 SEK/year (+ 25% VAT = 2,686.25 SEK total)
+- **Monthly Equivalent:** 179 SEK/month + VAT
+- **Savings:** 239 SEK/year
+
+**Limits:**
 - **Users:** Up to 5
 - **Storage:** 2 GB
-- **Features:**
-  - All core features (same as trial)
-  - No watermarks
-  - Email support
-  - 99.5% uptime SLA
-- **Best For:** Small teams, 1-2 projects
+
+**Features:**
+- All core features (same as trial)
+- No watermarks on exports
+- Email support (< 48h response)
+- 99.5% uptime SLA
+
+**Best For:** Small teams, 1-2 projects, solo contractors
+
+---
 
 ### Pro Plan ⭐ Most Popular
-- **Price:** 299 SEK/month
+**Monthly Billing:**
+- **Price:** 299 SEK/month (+ 25% VAT = 373.75 SEK total)
+- **Annual Equivalent:** 3,588 SEK/year + VAT
+
+**Annual Billing (10% discount):**
+- **Price:** 3,229 SEK/year (+ 25% VAT = 4,036.25 SEK total)
+- **Monthly Equivalent:** 269 SEK/month + VAT
+- **Savings:** 359 SEK/year
+
+**Limits:**
 - **Users:** Up to 25
 - **Storage:** 25 GB
-- **Features:**
-  - All Basic features
-  - Priority email support (< 12h response)
-  - Advanced analytics
-  - Custom checklist templates
-  - Bulk operations
-  - API access (future)
-  - 99.9% uptime SLA
-- **Best For:** Growing companies, 3-10 projects
+
+**Features:**
+- All Basic features
+- Priority email support (< 12h response)
+- Advanced analytics & reporting
+- Custom checklist templates
+- Bulk operations
+- API access (future)
+- 99.9% uptime SLA
+
+**Best For:** Growing companies, 3-10 projects, teams of 5-25
+
+---
 
 ### Enterprise Plan
-- **Price:** Custom (starting 999+ SEK/month)
-- **Users:** Up to 100 (or custom)
-- **Storage:** 100 GB (or custom)
-- **Features:**
-  - All Pro features
-  - Dedicated account manager
-  - Phone support
-  - Custom integrations (Fortnox, Visma)
-  - Custom training & onboarding
-  - 99.95% uptime SLA
-  - Single Sign-On (SSO)
-  - Custom SLA contracts
-  - White-label options
-- **Best For:** Large construction companies, 10+ projects
+**Custom Pricing:**
+- **Starting:** 999 SEK/month (+ 25% VAT)
+- **Actual:** Negotiated based on needs
 
-### Add-ons (Future)
-- **Extra Users:** +50 SEK/user/month
-- **Extra Storage:** +20 SEK/10GB/month
-- **SMS Notifications:** +100 SEK/month (500 SMS)
-- **Advanced Reporting:** +150 SEK/month
+**Limits:**
+- **Users:** Up to 100 (or unlimited)
+- **Storage:** 100 GB (or unlimited)
+- **Custom:** Volume discounts available
+
+**Features:**
+- All Pro features
+- Dedicated account manager
+- Phone support (< 4h response)
+- Custom integrations (Fortnox, Visma, etc.)
+- Custom training & onboarding
+- 99.95% uptime SLA
+- Single Sign-On (SSO)
+- Custom SLA contracts
+- White-label options
+- Priority feature requests
+
+**Best For:** Large construction companies, 10+ projects, enterprise deployments
+
+---
+
+### Add-ons (Available on all paid plans)
+- **Extra Users:** +50 SEK/user/month + VAT
+- **Extra Storage:** +20 SEK/10GB/month + VAT
+- **SMS Notifications:** +100 SEK/month + VAT (500 SMS included)
+- **Advanced Reporting Module:** +150 SEK/month + VAT
+- **Fortnox Integration:** +200 SEK/month + VAT (Enterprise only)
+- **Visma Integration:** +200 SEK/month + VAT (Enterprise only)
+
+---
+
+### Annual Plan Benefits
+- **10% discount** on all annual subscriptions
+- **Lock in current pricing** (no price increases during contract)
+- **Priority support** (faster response times)
+- **Flexible payment terms** (invoice available for Enterprise)
+- **Easy upgrades** (prorate remaining balance)
 
 ---
 
@@ -706,14 +759,14 @@ ALTER TABLE organizations ADD COLUMN trial_ends_at TIMESTAMPTZ;
 
 ---
 
-## 🚀 Updated Open Questions (Remaining)
+## ✅ All Decisions Finalized
 
 1. **Impersonation:** ✅ Allowed for support (with audit log)
 2. **Data Retention:** ✅ 30 days for soft-deleted orgs
-3. **VAT Handling:** Should prices include or exclude Swedish 25% VAT?
-4. **Currency:** SEK only, or support EUR/USD?
-5. **Billing Cycle:** Monthly only, or offer annual discount (e.g. 10% off)?
-6. **Free Plan:** Should there be a permanent free plan, or trial only?
+3. **VAT Handling:** ✅ Prices EXCLUDE 25% Swedish VAT (added at checkout)
+4. **Currency:** ✅ SEK only (EUR support planned for future)
+5. **Billing Cycle:** ✅ Monthly + Annual (10% discount on annual)
+6. **Free Plan:** ✅ Trial only (no permanent free tier)
 
 ---
 
