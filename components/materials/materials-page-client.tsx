@@ -41,8 +41,8 @@ interface MaterialsPageClientProps {
 export function MaterialsPageClient({ orgId }: MaterialsPageClientProps) {
 	return (
 		<Tabs defaultValue="materials" className="space-y-6">
-			<TabsList className="grid w-full grid-cols-3">
-				<TabsTrigger value="materials">
+			<TabsList className="grid w-full grid-cols-3" data-tour="materials-tabs">
+				<TabsTrigger value="materials" data-tour="add-material">
 					<Package className="w-4 h-4 mr-2" />
 					Material
 				</TabsTrigger>

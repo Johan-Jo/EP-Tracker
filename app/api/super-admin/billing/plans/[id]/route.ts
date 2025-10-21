@@ -9,10 +9,13 @@ import { updatePricingPlanSchema } from '@/lib/schemas/billing';
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireSuperAdmin();
+    
+    // Await params in Next.js 15
+    const { id } = await params;
     
     const body = await request.json();
     const validation = updatePricingPlanSchema.safeParse(body);
@@ -29,7 +32,7 @@ export async function PATCH(
     const { data, error } = await supabase
       .from('pricing_plans')
       .update(validation.data)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
     
@@ -59,10 +62,13 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireSuperAdmin();
+    
+    // Await params in Next.js 15
+    const { id } = await params;
     
     const supabase = await createClient();
     
@@ -70,7 +76,7 @@ export async function DELETE(
     const { count } = await supabase
       .from('subscriptions')
       .select('*', { count: 'exact', head: true })
-      .eq('plan_id', params.id)
+      .eq('plan_id', id)
       .in('status', ['trial', 'active']);
     
     if (count && count > 0) {
@@ -84,7 +90,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('pricing_plans')
       .update({ is_active: false })
-      .eq('id', params.id);
+      .eq('id', id);
     
     if (error) {
       console.error('Error deactivating pricing plan:', error);

@@ -53,14 +53,14 @@ export function TimePageClient({ orgId, canManageCrew }: TimePageClientProps) {
 	return (
 		<Tabs defaultValue="list" className="space-y-6">
 			<TabsList>
-				<TabsTrigger value="list">
-					<List className="w-4 h-4 mr-2" />
-					Översikt
-				</TabsTrigger>
-				<TabsTrigger value="manual">
-					<Clock className="w-4 h-4 mr-2" />
-					Lägg till tid
-				</TabsTrigger>
+			<TabsTrigger value="list">
+				<List className="w-4 h-4 mr-2" />
+				Översikt
+			</TabsTrigger>
+			<TabsTrigger value="manual" data-tour="add-time">
+				<Clock className="w-4 h-4 mr-2" />
+				Lägg till tid
+			</TabsTrigger>
 				{canManageCrew && (
 					<TabsTrigger value="crew">
 						<Users className="w-4 h-4 mr-2" />

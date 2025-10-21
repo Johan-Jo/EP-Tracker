@@ -9,6 +9,7 @@ import { Plus, Search, MapPin } from 'lucide-react';
 import { ProjectsFilter } from '@/components/projects/projects-filter';
 import { ProjectsList } from '@/components/projects/projects-list';
 import { getSession } from '@/lib/auth/get-session';
+import { ProjectsPageWithTour } from '@/components/projects/projects-page-with-tour';
 
 interface PageProps {
 	searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -72,23 +73,24 @@ export default async function ProjectsPage(props: PageProps) {
 	const canCreateProjects = membership.role === 'admin' || membership.role === 'foreman';
 
 	return (
-		<div className='container mx-auto p-6 lg:p-8 space-y-6'>
-			{/* Header */}
-			<div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
-				<div>
-					<h1 className='text-3xl font-bold tracking-tight text-gray-900 dark:text-white'>Projekt</h1>
-					<p className='text-gray-600 dark:text-gray-400 mt-1'>
-						Hantera dina byggprojekt och arbetsorder
-					</p>
-				</div>
-				{canCreateProjects && (
-					<Button asChild className='bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600'>
-						<Link href='/dashboard/projects/new'>
-							<Plus className='w-4 h-4 mr-2' />
-							Nytt projekt
-						</Link>
-					</Button>
-				)}
+		<ProjectsPageWithTour>
+			<div className='container mx-auto p-6 lg:p-8 space-y-6'>
+				{/* Header */}
+				<div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between' data-tour="projects-list">
+					<div>
+						<h1 className='text-3xl font-bold tracking-tight text-gray-900 dark:text-white'>Projekt</h1>
+						<p className='text-gray-600 dark:text-gray-400 mt-1'>
+							Hantera dina byggprojekt och arbetsorder
+						</p>
+					</div>
+					{canCreateProjects && (
+						<Button asChild className='bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600' data-tour="create-project">
+							<Link href='/dashboard/projects/new'>
+								<Plus className='w-4 h-4 mr-2' />
+								Nytt projekt
+							</Link>
+						</Button>
+					)}
 			</div>
 
 			{/* Search and filters */}
@@ -179,7 +181,8 @@ export default async function ProjectsPage(props: PageProps) {
 					</CardContent>
 				</Card>
 			)}
-		</div>
+			</div>
+		</ProjectsPageWithTour>
 	);
 }
 

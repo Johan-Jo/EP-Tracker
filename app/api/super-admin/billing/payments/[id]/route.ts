@@ -9,10 +9,13 @@ import { updatePaymentSchema } from '@/lib/schemas/billing';
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireSuperAdmin();
+    
+    // Await params in Next.js 15
+    const { id } = await params;
     
     const body = await request.json();
     const validation = updatePaymentSchema.safeParse(body);
@@ -30,7 +33,7 @@ export async function PATCH(
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
     
     if (paymentError || !payment) {
@@ -44,7 +47,7 @@ export async function PATCH(
     const { data: updatedPayment, error: updateError } = await supabase
       .from('payments')
       .update(validation.data)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
     

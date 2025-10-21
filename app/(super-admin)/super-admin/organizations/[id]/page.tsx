@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { OrganizationActions } from '@/components/super-admin/organizations/organization-actions';
 import { SupportActionsPanel } from '@/components/super-admin/support/support-actions-panel';
+import { OrganizationUsersList } from '@/components/super-admin/support/organization-users-list';
 import { ManageBillingButton } from '@/components/billing/manage-billing-button';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 
@@ -41,16 +42,43 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
   
   const { data: orgMembers } = await supabase
     .from('organization_members')
-    .select('user_id')
-    .eq('organization_id', id);
+    .select(`
+      user_id,
+      role,
+      profiles:user_id (
+        id,
+        email,
+        full_name
+      )
+    `)
+    .eq('org_id', id);
   
-  // Get user emails from auth.users using admin client
+  // Build user list with complete information
   const userEmails: string[] = [];
+  const organizationUsers: Array<{
+    id: string;
+    email: string;
+    full_name: string | null;
+    role: string;
+    last_sign_in_at: string | null;
+  }> = [];
+
   if (orgMembers && orgMembers.length > 0) {
     for (const member of orgMembers) {
-      const { data: { user } } = await adminClient.auth.admin.getUserById(member.user_id);
-      if (user?.email) {
-        userEmails.push(user.email);
+      const profile: any = member.profiles;
+      if (profile) {
+        userEmails.push(profile.email);
+        
+        // Get last sign in from auth.users
+        const { data: { user } } = await adminClient.auth.admin.getUserById(member.user_id);
+        
+        organizationUsers.push({
+          id: member.user_id,
+          email: profile.email,
+          full_name: profile.full_name,
+          role: member.role,
+          last_sign_in_at: user?.last_sign_in_at || null,
+        });
       }
     }
   }
@@ -130,7 +158,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
               Trial ending soon
             </p>
             <p className="mt-1 text-sm text-orange-700 dark:text-orange-300">
-              This organization's trial ends in {trialDaysRemaining} {trialDaysRemaining === 1 ? 'day' : 'days'}.
+              This organization&apos;s trial ends in {trialDaysRemaining} {trialDaysRemaining === 1 ? 'day' : 'days'}.
             </p>
           </div>
         </div>
@@ -370,14 +398,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
         )}
         
         {tab === 'users' && (
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Organization Members
-            </h3>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              Coming soon: View and manage all users in this organization
-            </p>
-          </div>
+          <OrganizationUsersList users={organizationUsers} />
         )}
         
         {tab === 'usage' && (

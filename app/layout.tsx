@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { QueryProvider } from '@/lib/providers/query-provider';
 import { Toaster } from 'react-hot-toast';
+import { ZodInit } from '@/components/core/zod-init';
 
 const inter = Inter({
 	subsets: ['latin'],
@@ -32,6 +33,7 @@ export default function RootLayout({
 	return (
 		<html lang='sv'>
 			<body className={`${inter.variable} font-sans antialiased`}>
+				<ZodInit />
 				<QueryProvider>{children}</QueryProvider>
 				<Toaster position="top-center" />
 			</body>

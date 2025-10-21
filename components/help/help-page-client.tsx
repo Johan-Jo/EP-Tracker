@@ -10,9 +10,11 @@ import {
     CheckSquare, 
     BookOpen, 
     AlertCircle,
-    PlayCircle
+    PlayCircle,
+    Lightbulb
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { TourLauncher } from '@/components/onboarding/tour-launcher';
 
 type HelpPageClientProps = {
     userRole: 'admin' | 'foreman' | 'worker' | 'finance';
@@ -24,6 +26,10 @@ export function HelpPageClient({ userRole }: HelpPageClientProps) {
     return (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList>
+                <TabsTrigger value="tours">
+                    <Lightbulb className="w-4 h-4 mr-2" />
+                    Interaktiva guider
+                </TabsTrigger>
                 <TabsTrigger value="guides">
                     <BookOpen className="w-4 h-4 mr-2" />
                     Guider
@@ -37,6 +43,10 @@ export function HelpPageClient({ userRole }: HelpPageClientProps) {
                     Videotutorials
                 </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="tours" className="space-y-4">
+                <TourLauncher />
+            </TabsContent>
 
             <TabsContent value="guides" className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">

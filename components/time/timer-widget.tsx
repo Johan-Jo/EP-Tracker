@@ -145,7 +145,7 @@ export function TimerWidget({ userId, orgId, inline = false }: TimerWidgetProps)
 
 	const cardClassName = inline 
 		? "w-full shadow-md" 
-		: "fixed bottom-20 md:bottom-4 right-4 z-50 w-80 shadow-lg";
+		: "fixed bottom-20 md:bottom-4 right-4 z-[1003] w-80 shadow-lg";
 
 	return (
 		<Card className={cardClassName}>

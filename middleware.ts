@@ -57,6 +57,26 @@ export async function middleware(request: NextRequest) {
 		request.nextUrl.pathname.startsWith(route)
 	);
 
+	// Validate impersonation session if user is on protected route (not super-admin route)
+	// This prevents expensive DB queries on every request
+	if (isProtectedRoute && !isSuperAdminRoute && user) {
+		const impersonationCookie = request.cookies.get('impersonation_session');
+		if (impersonationCookie) {
+			try {
+				const session = JSON.parse(impersonationCookie.value);
+				
+				// Quick expiry check (no DB query)
+				if (new Date(session.expires_at) < new Date()) {
+					supabaseResponse.cookies.delete('impersonation_session');
+				}
+				// Note: Full super admin validation happens in the API route
+			} catch (error) {
+				// Invalid session cookie, clear it
+				supabaseResponse.cookies.delete('impersonation_session');
+			}
+		}
+	}
+
 	// Redirect to sign-in if accessing protected route without auth
 	if (isProtectedRoute && !user) {
 		const url = request.nextUrl.clone();

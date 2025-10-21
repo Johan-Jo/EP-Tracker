@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { sendBulkAnnouncement } from '@/lib/email/send';
+import { rateLimit, RateLimitPresets, getRateLimitHeaders } from '@/lib/rate-limit';
 
 /**
  * POST /api/super-admin/email/send-announcement
@@ -10,6 +11,25 @@ import { sendBulkAnnouncement } from '@/lib/email/send';
 export async function POST(request: NextRequest) {
   try {
     const user = await requireSuperAdmin();
+
+    // Rate limit: 20 emails per hour (to prevent spam)
+    const rateLimitResult = rateLimit({
+      ...RateLimitPresets.EMAIL,
+      identifier: `email:${user.user_id}`,
+    });
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { 
+          error: 'För många e-postmeddelanden skickade. Försök igen senare.',
+          retryAfter: rateLimitResult.retryAfter,
+        },
+        { 
+          status: 429,
+          headers: getRateLimitHeaders(rateLimitResult),
+        }
+      );
+    }
     
     const body = await request.json();
     const { organizationIds, subject, message, ctaText, ctaUrl } = body;

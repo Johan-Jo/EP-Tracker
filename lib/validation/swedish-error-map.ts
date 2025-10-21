@@ -1,0 +1,225 @@
+import { z } from 'zod';
+
+/**
+ * Swedish error map for Zod validation
+ * Override default English error messages with Swedish ones
+ */
+export const swedishErrorMap: z.ZodErrorMap = (issue, ctx) => {
+	let message: string;
+
+	switch (issue.code) {
+		case z.ZodIssueCode.invalid_type:
+			if (issue.received === 'undefined') {
+				message = 'Obligatoriskt fält';
+			} else if (issue.received === 'null') {
+				message = 'Obligatoriskt fält';
+			} else {
+				message = `Förväntat ${getSwedishType(issue.expected)}, fick ${getSwedishType(issue.received)}`;
+			}
+			break;
+
+		case z.ZodIssueCode.invalid_literal:
+			message = `Ogiltigt värde, förväntat ${JSON.stringify(issue.expected)}`;
+			break;
+
+		case z.ZodIssueCode.unrecognized_keys:
+			message = `Okända nycklar i objekt: ${issue.keys
+				.map((k) => `'${k}'`)
+				.join(', ')}`;
+			break;
+
+		case z.ZodIssueCode.invalid_union:
+			message = 'Ogiltigt värde';
+			break;
+
+		case z.ZodIssueCode.invalid_union_discriminator:
+			message = `Ogiltigt värde. Förväntat ${issue.options
+				.map((o) => `'${o}'`)
+				.join(' eller ')}`;
+			break;
+
+		case z.ZodIssueCode.invalid_enum_value:
+			message = `Ogiltigt värde. Förväntat ${issue.options
+				.map((o) => `'${o}'`)
+				.join(', ')}, fick '${issue.received}'`;
+			break;
+
+		case z.ZodIssueCode.invalid_arguments:
+			message = 'Ogiltiga funktionsargument';
+			break;
+
+		case z.ZodIssueCode.invalid_return_type:
+			message = 'Ogiltig returtyp från funktion';
+			break;
+
+		case z.ZodIssueCode.invalid_date:
+			message = 'Ogiltigt datum';
+			break;
+
+		case z.ZodIssueCode.invalid_string:
+			if (typeof issue.validation === 'object') {
+				if ('startsWith' in issue.validation) {
+					message = `Måste börja med "${issue.validation.startsWith}"`;
+				} else if ('endsWith' in issue.validation) {
+					message = `Måste sluta med "${issue.validation.endsWith}"`;
+				} else if ('includes' in issue.validation) {
+					message = `Måste innehålla "${issue.validation.includes}"`;
+				} else {
+					message = 'Ogiltig sträng';
+				}
+			} else {
+				switch (issue.validation) {
+					case 'email':
+						message = 'Ogiltig e-postadress';
+						break;
+					case 'url':
+						message = 'Ogiltig URL';
+						break;
+					case 'uuid':
+						message = 'Ogiltigt UUID';
+						break;
+					case 'cuid':
+						message = 'Ogiltigt CUID';
+						break;
+					case 'regex':
+						message = 'Ogiltigt format';
+						break;
+					case 'datetime':
+						message = 'Ogiltigt datum/tid-format';
+						break;
+					case 'ip':
+						message = 'Ogiltig IP-adress';
+						break;
+					default:
+						message = 'Ogiltig sträng';
+				}
+			}
+			break;
+
+		case z.ZodIssueCode.too_small:
+			if (issue.type === 'array') {
+				message =
+					issue.exact
+						? `Måste innehålla exakt ${issue.minimum} ${issue.minimum === 1 ? 'element' : 'element'}`
+						: issue.inclusive
+						? `Måste innehålla minst ${issue.minimum} ${issue.minimum === 1 ? 'element' : 'element'}`
+						: `Måste innehålla fler än ${issue.minimum} ${issue.minimum === 1 ? 'element' : 'element'}`;
+			} else if (issue.type === 'string') {
+				message =
+					issue.exact
+						? `Måste vara exakt ${issue.minimum} ${issue.minimum === 1 ? 'tecken' : 'tecken'}`
+						: issue.inclusive
+						? `Måste vara minst ${issue.minimum} ${issue.minimum === 1 ? 'tecken' : 'tecken'}`
+						: `Måste vara fler än ${issue.minimum} ${issue.minimum === 1 ? 'tecken' : 'tecken'}`;
+			} else if (issue.type === 'number') {
+				message =
+					issue.exact
+						? `Måste vara exakt ${issue.minimum}`
+						: issue.inclusive
+						? `Måste vara minst ${issue.minimum}`
+						: `Måste vara större än ${issue.minimum}`;
+			} else if (issue.type === 'date') {
+				message =
+					issue.exact
+						? `Datum måste vara exakt ${new Date(Number(issue.minimum)).toLocaleDateString('sv-SE')}`
+						: issue.inclusive
+						? `Datum måste vara ${new Date(Number(issue.minimum)).toLocaleDateString('sv-SE')} eller senare`
+						: `Datum måste vara efter ${new Date(Number(issue.minimum)).toLocaleDateString('sv-SE')}`;
+			} else {
+				message = 'Ogiltigt värde';
+			}
+			break;
+
+		case z.ZodIssueCode.too_big:
+			if (issue.type === 'array') {
+				message =
+					issue.exact
+						? `Måste innehålla exakt ${issue.maximum} ${issue.maximum === 1 ? 'element' : 'element'}`
+						: issue.inclusive
+						? `Måste innehålla högst ${issue.maximum} ${issue.maximum === 1 ? 'element' : 'element'}`
+						: `Måste innehålla färre än ${issue.maximum} ${issue.maximum === 1 ? 'element' : 'element'}`;
+			} else if (issue.type === 'string') {
+				message =
+					issue.exact
+						? `Måste vara exakt ${issue.maximum} ${issue.maximum === 1 ? 'tecken' : 'tecken'}`
+						: issue.inclusive
+						? `Måste vara högst ${issue.maximum} ${issue.maximum === 1 ? 'tecken' : 'tecken'}`
+						: `Måste vara färre än ${issue.maximum} ${issue.maximum === 1 ? 'tecken' : 'tecken'}`;
+			} else if (issue.type === 'number') {
+				message =
+					issue.exact
+						? `Måste vara exakt ${issue.maximum}`
+						: issue.inclusive
+						? `Måste vara högst ${issue.maximum}`
+						: `Måste vara mindre än ${issue.maximum}`;
+			} else if (issue.type === 'date') {
+				message =
+					issue.exact
+						? `Datum måste vara exakt ${new Date(Number(issue.maximum)).toLocaleDateString('sv-SE')}`
+						: issue.inclusive
+						? `Datum måste vara ${new Date(Number(issue.maximum)).toLocaleDateString('sv-SE')} eller tidigare`
+						: `Datum måste vara före ${new Date(Number(issue.maximum)).toLocaleDateString('sv-SE')}`;
+			} else {
+				message = 'Ogiltigt värde';
+			}
+			break;
+
+		case z.ZodIssueCode.custom:
+			message = issue.message || 'Ogiltigt värde';
+			break;
+
+		case z.ZodIssueCode.invalid_intersection_types:
+			message = 'Typer kan inte kombineras';
+			break;
+
+		case z.ZodIssueCode.not_multiple_of:
+			message = `Måste vara en multipel av ${issue.multipleOf}`;
+			break;
+
+		case z.ZodIssueCode.not_finite:
+			message = 'Måste vara ett ändligt tal';
+			break;
+
+		default:
+			message = ctx.defaultError;
+	}
+
+	return { message };
+};
+
+/**
+ * Helper function to get Swedish names for Zod types
+ */
+function getSwedishType(type: z.ZodParsedType): string {
+	const typeMap: Record<z.ZodParsedType, string> = {
+		string: 'text',
+		number: 'nummer',
+		bigint: 'stort nummer',
+		boolean: 'sant/falskt',
+		date: 'datum',
+		undefined: 'odefinierat',
+		null: 'null',
+		array: 'lista',
+		object: 'objekt',
+		unknown: 'okänd',
+		promise: 'löfte',
+		void: 'void',
+		never: 'aldrig',
+		map: 'map',
+		set: 'set',
+		function: 'funktion',
+		nan: 'NaN',
+		symbol: 'symbol',
+	};
+
+	return typeMap[type] || type;
+}
+
+/**
+ * Set Zod's default error map to Swedish
+ * Call this once at app initialization
+ */
+export function setSwedishErrorMap() {
+	z.setErrorMap(swedishErrorMap);
+}
+

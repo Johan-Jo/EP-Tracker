@@ -69,11 +69,6 @@ const navigation: NavItem[] = [
     icon: HeadphonesIcon,
   },
   {
-    name: 'Audit Logs',
-    href: '/super-admin/logs',
-    icon: FileText,
-  },
-  {
     name: 'E-postloggar',
     href: '/super-admin/email-logs',
     icon: Mail,
@@ -87,6 +82,12 @@ const navigation: NavItem[] = [
     name: 'System',
     href: '/super-admin/system',
     icon: Settings,
+    subItems: [
+      { name: 'Status', href: '/super-admin/system' },
+      { name: 'Feature Flags', href: '/super-admin/system/features' },
+      { name: 'Underhållsläge', href: '/super-admin/system/maintenance' },
+      { name: 'Granskningsloggar', href: '/super-admin/logs' },
+    ],
   },
 ];
 

@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Calendar, Users, FileText, Download, Clock } from 'lucide-react';
+import { Calendar, Users, FileText, Download, Clock, Shield } from 'lucide-react';
 import { TimeEntriesReviewTable } from './time-entries-review-table';
 import { MaterialsReviewTable } from './materials-review-table';
 import { WeekSelector } from './week-selector';
+import { PeriodLocksManager } from './period-locks-manager';
+import { ExportPreviewDialog } from './export-preview-dialog';
 import Link from 'next/link';
 
 type ApprovalsPageClientProps = {
@@ -45,15 +47,25 @@ export function ApprovalsPageClient({ orgId, userRole }: ApprovalsPageClientProp
                                 </CardDescription>
                             </div>
                         </div>
-                        <Link href="/dashboard/approvals/history">
-                            <Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-700">
-                                <FileText className="w-4 h-4 mr-2" />
-                                Historik
-                            </Button>
-                        </Link>
+                        <div className="flex gap-2">
+                            <Link href="/dashboard/approvals/history">
+                                <Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-700">
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    Historik
+                                </Button>
+                            </Link>
+                            {userRole === 'admin' && (
+                                <Link href="/dashboard/approvals/audit-logs">
+                                    <Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-700">
+                                        <Shield className="w-4 h-4 mr-2" />
+                                        Granskningsloggar
+                                    </Button>
+                                </Link>
+                            )}
+                        </div>
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent data-tour="week-selector">
                     <WeekSelector
                         selectedWeek={selectedWeek}
                         onWeekChange={setSelectedWeek}
@@ -109,7 +121,7 @@ export function ApprovalsPageClient({ orgId, userRole }: ApprovalsPageClientProp
 
             {/* Review Tables */}
             <Tabs defaultValue="time" className="space-y-4">
-                <TabsList>
+                <TabsList data-tour="approvals-tabs">
                     <TabsTrigger value="time">
                         <Clock className="w-4 h-4 mr-2" />
                         Tidrapporter
@@ -166,20 +178,30 @@ export function ApprovalsPageClient({ orgId, userRole }: ApprovalsPageClientProp
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex flex-wrap gap-3">
-                        <Link href={`/dashboard/approvals/export/salary?start=${selectedWeek.toISOString().split('T')[0]}&end=${weekEnd.toISOString().split('T')[0]}`}>
+                    <div className="flex flex-wrap gap-3" data-tour="export-buttons">
+                        <ExportPreviewDialog
+                            exportType="salary"
+                            periodStart={selectedWeek}
+                            periodEnd={weekEnd}
+                        >
                             <Button variant="outline" className="border-gray-300 dark:border-gray-700">
                                 <Download className="w-4 h-4 mr-2" />
                                 Löne-CSV
                             </Button>
-                        </Link>
-                        <Link href={`/dashboard/approvals/export/invoice?start=${selectedWeek.toISOString().split('T')[0]}&end=${weekEnd.toISOString().split('T')[0]}`}>
+                        </ExportPreviewDialog>
+
+                        <ExportPreviewDialog
+                            exportType="invoice"
+                            periodStart={selectedWeek}
+                            periodEnd={weekEnd}
+                        >
                             <Button variant="outline" className="border-gray-300 dark:border-gray-700">
                                 <Download className="w-4 h-4 mr-2" />
                                 Faktura-CSV
                             </Button>
-                        </Link>
-                        <Link href={`/dashboard/approvals/export/attachments?start=${selectedWeek.toISOString().split('T')[0]}&end=${weekEnd.toISOString().split('T')[0]}`}>
+                        </ExportPreviewDialog>
+
+                        <Link href={`/api/exports/attachments?start=${selectedWeek.toISOString().split('T')[0]}&end=${weekEnd.toISOString().split('T')[0]}`}>
                             <Button variant="outline" className="border-gray-300 dark:border-gray-700">
                                 <Download className="w-4 h-4 mr-2" />
                                 Bilagor (.zip)
@@ -188,6 +210,9 @@ export function ApprovalsPageClient({ orgId, userRole }: ApprovalsPageClientProp
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Period Locks */}
+            <PeriodLocksManager orgId={orgId} userRole={userRole} />
         </div>
     );
 }

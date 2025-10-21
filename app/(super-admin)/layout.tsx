@@ -1,7 +1,7 @@
 import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { SuperAdminBanner } from '@/components/super-admin/super-admin-banner';
 import { SuperAdminNav } from '@/components/super-admin/super-admin-nav';
-import { GlobalSearch } from '@/components/super-admin/global-search';
+import { GlobalSearch } from '@/components/super-admin/support/global-search';
 
 /**
  * Super Admin Layout
