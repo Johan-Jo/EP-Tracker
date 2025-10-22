@@ -3,7 +3,7 @@
 import { Plus, Search, FolderKanban, Clock, Calendar, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 interface Project {
   id: string;
@@ -27,6 +27,31 @@ interface ProjectsClientProps {
 
 export default function ProjectsClient({ projects, canCreateProjects, search, status }: ProjectsClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+
+  const handleSearch = (searchValue: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    
+    if (searchValue && searchValue.trim()) {
+      params.set('search', searchValue.trim());
+    } else {
+      params.delete('search');
+    }
+    
+    const newUrl = `${pathname}?${params.toString()}`;
+    // Force a full page reload to ensure server re-renders with new search params
+    window.location.href = newUrl;
+  };
+
+  const clearSearch = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('search');
+    
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    window.location.href = newUrl;
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -96,13 +121,7 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
               const searchValue = formData.get('search') as string;
-              const url = new URL(window.location.href);
-              if (searchValue) {
-                url.searchParams.set('search', searchValue);
-              } else {
-                url.searchParams.delete('search');
-              }
-              router.push(url.pathname + url.search);
+              handleSearch(searchValue);
             }}
             className="flex gap-2"
           >
@@ -118,6 +137,16 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
             <Button type="submit" variant="outline" className="shrink-0">
               Sök
             </Button>
+            {search && (
+              <Button 
+                type="button"
+                variant="ghost"
+                className="shrink-0"
+                onClick={clearSearch}
+              >
+                Rensa
+              </Button>
+            )}
           </form>
         </div>
       </header>

@@ -4,6 +4,10 @@ import { getSession } from '@/lib/auth/get-session';
 import ProjectsClient from './projects-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface PageProps {
 	searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
@@ -42,7 +46,7 @@ export default async function ProjectsPage(props: PageProps) {
 	// Build query - simplified to use single org_id
 	let query = supabase
 		.from('projects')
-		.select('*, phases(count)')
+		.select('*, phases(count), budget_hours')
 		.eq('org_id', membership.org_id)
 		.order('created_at', { ascending: false });
 
