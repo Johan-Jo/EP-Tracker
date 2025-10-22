@@ -132,7 +132,10 @@ export function Sidebar({ userRole }: SidebarProps) {
 
 				<nav className='flex-1 px-4 py-4 space-y-1 overflow-y-auto'>
 					{visibleNavItems.map((item) => {
-						const isActive = pathname === item.href;
+						// For dashboard, exact match. For others, check if pathname starts with href
+						const isActive = item.href === '/dashboard' 
+							? pathname === item.href 
+							: pathname.startsWith(item.href);
 						const Icon = item.icon;
 
 						return (

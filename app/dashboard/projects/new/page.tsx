@@ -74,16 +74,34 @@ export default async function NewProjectPage() {
 	}
 
 	return (
-		<div className='p-4 md:p-8'>
-			<div className='max-w-3xl mx-auto space-y-6'>
-				<div>
-					<h1 className='text-3xl font-bold tracking-tight'>Skapa nytt projekt</h1>
-					<p className='text-muted-foreground mt-2'>
-						Fyll i projektets information nedan
-					</p>
-				</div>
+		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
+			<div className='px-4 md:px-8 py-6'>
+				<div className='max-w-4xl mx-auto space-y-6'>
+					{/* Breadcrumb */}
+					<nav className='flex items-center gap-2 text-sm text-muted-foreground mb-4'>
+						<a href='/dashboard' className='hover:text-foreground transition-colors'>
+							Dashboard
+						</a>
+						<span>/</span>
+						<a href='/dashboard/projects' className='hover:text-foreground transition-colors'>
+							Projekt
+						</a>
+						<span>/</span>
+						<span className='text-foreground font-medium'>Skapa nytt</span>
+					</nav>
 
-				<ProjectForm orgId={orgId} onSubmit={createProject} />
+					{/* Header */}
+					<div className='bg-gradient-to-r from-orange-50 to-orange-100/50 border border-orange-200 rounded-xl p-6'>
+						<h1 className='text-3xl font-bold tracking-tight text-gray-900'>
+							Skapa nytt projekt
+						</h1>
+						<p className='text-gray-600 mt-2'>
+							Fyll i projektets information nedan för att komma igång
+						</p>
+					</div>
+
+					<ProjectForm orgId={orgId} onSubmit={createProject} />
+				</div>
 			</div>
 		</div>
 	);

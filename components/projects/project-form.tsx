@@ -77,14 +77,14 @@ export function ProjectForm({ project, orgId, onSubmit }: ProjectFormProps) {
 				</Card>
 			)}
 
-			<Card>
-				<CardHeader>
-					<CardTitle>Grunduppgifter</CardTitle>
+			<Card className='border-2 hover:border-gray-300 transition-colors shadow-sm'>
+				<CardHeader className='bg-gray-50/50'>
+					<CardTitle className='text-xl'>Grunduppgifter</CardTitle>
 					<CardDescription>
 						Fyll i projektets grundläggande information
 					</CardDescription>
 				</CardHeader>
-				<CardContent className='space-y-4'>
+				<CardContent className='space-y-4 pt-6'>
 					<div className='space-y-2'>
 						<Label htmlFor='name'>
 							Projektnamn <span className='text-destructive'>*</span>
@@ -184,14 +184,14 @@ export function ProjectForm({ project, orgId, onSubmit }: ProjectFormProps) {
 				</CardContent>
 			</Card>
 
-			<Card>
-				<CardHeader>
-					<CardTitle>Platsinställningar (Valfritt)</CardTitle>
+			<Card className='border-2 hover:border-gray-300 transition-colors shadow-sm'>
+				<CardHeader className='bg-gray-50/50'>
+					<CardTitle className='text-xl'>Platsinställningar (Valfritt)</CardTitle>
 					<CardDescription>
 						Geo-fence inställningar för platsbaserade påminnelser (Kommer i Phase 2)
 					</CardDescription>
 				</CardHeader>
-				<CardContent className='space-y-4'>
+				<CardContent className='space-y-4 pt-6'>
 					<div className='grid gap-4 md:grid-cols-3'>
 						<div className='space-y-2'>
 							<Label htmlFor='site_lat'>Latitud</Label>
@@ -228,16 +228,21 @@ export function ProjectForm({ project, orgId, onSubmit }: ProjectFormProps) {
 				</CardContent>
 			</Card>
 
-			<div className='flex gap-3 justify-end'>
+			<div className='flex gap-3 justify-end pt-2'>
 				<Button
 					type='button'
 					variant='outline'
 					onClick={() => router.back()}
 					disabled={isSubmitting}
+					className='min-w-[120px]'
 				>
 					Avbryt
 				</Button>
-				<Button type='submit' disabled={isSubmitting}>
+				<Button 
+					type='submit' 
+					disabled={isSubmitting}
+					className='min-w-[160px] bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-200'
+				>
 					{isSubmitting && <Loader2 className='w-4 h-4 mr-2 animate-spin' />}
 					{project?.id ? 'Uppdatera projekt' : 'Skapa projekt'}
 				</Button>
