@@ -62,7 +62,7 @@ const navItems: NavItem[] = [
 		roles: ['admin', 'foreman', 'worker', 'finance'],
 	},
 	{
-		label: 'ATA',
+		label: 'ÄTA',
 		href: '/dashboard/ata',
 		icon: FileEdit,
 		roles: ['admin', 'foreman', 'worker'],
@@ -127,18 +127,15 @@ export function Sidebar({ userRole }: SidebarProps) {
 	const showAdminSection = visibleSettingsItems.length > 0;
 
 	return (
-		<aside className='hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r border-[#E5E7EB] bg-white dark:border-gray-800 dark:bg-gray-950'>
+		<aside className='hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-white dark:bg-gray-950'>
 			<div className='flex flex-col flex-1 min-h-0'>
-				{/* Header */}
-				<div className="px-5 pt-6 pb-4">
+				{/* Header - matches TopNav height (h-16) */}
+				<div className="h-16 px-6 flex items-center border-b border-gray-200">
 					<div className="flex flex-col">
 						<span className="text-lg font-semibold text-gray-900">EP Tracker</span>
 						<span className="text-sm text-gray-500">Tidsrapportering</span>
 					</div>
 				</div>
-
-				{/* Separator line */}
-				<div className="mx-5 border-t border-gray-200" />
 
 				<nav className='flex-1 px-4 py-4 space-y-1 overflow-y-auto'>
 					{visibleNavItems.map((item) => {

@@ -14,6 +14,7 @@ interface Project {
   site_address: string | null;
   created_at: string;
   budget_hours: number | null;
+  budget_amount: number | null;
   phases?: { count: number }[];
   total_hours?: number;
 }
@@ -289,10 +290,18 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
                         <Clock className="w-4 h-4 text-muted-foreground" />
                         <span className="text-muted-foreground">{project.total_hours || 0}h</span>
                       </div>
-                      {project.budget_hours && (
+                      {(project.budget_hours || project.budget_amount) && (
                         <div className="flex items-center gap-1.5">
                           <span className="text-muted-foreground">Budget:</span>
-                          <span className="font-medium">{project.budget_hours}h</span>
+                          {project.budget_hours && (
+                            <span className="font-medium">{project.budget_hours}h</span>
+                          )}
+                          {project.budget_hours && project.budget_amount && (
+                            <span className="text-muted-foreground mx-1">/</span>
+                          )}
+                          {project.budget_amount && (
+                            <span className="font-medium">{project.budget_amount.toLocaleString('sv-SE')} kr</span>
+                          )}
                         </div>
                       )}
                       <div className="flex items-center gap-1.5">

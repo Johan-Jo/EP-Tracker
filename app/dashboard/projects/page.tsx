@@ -46,7 +46,7 @@ export default async function ProjectsPage(props: PageProps) {
 	// Build query - simplified to use single org_id
 	let query = supabase
 		.from('projects')
-		.select('*, phases(count), budget_hours')
+		.select('*, phases(count)')
 		.eq('org_id', membership.org_id)
 		.order('created_at', { ascending: false });
 
@@ -67,9 +67,10 @@ export default async function ProjectsPage(props: PageProps) {
 		console.error('Error fetching projects:', error);
 	}
 
-	// Fetch time entries for each project to calculate hours worked
+	// Fetch time entries and phase budgets for each project
 	const projectsWithHours = await Promise.all(
 		(projects || []).map(async (project) => {
+			// Fetch time entries
 			const { data: timeEntries, error: timeError } = await supabase
 				.from('time_entries')
 				.select('start_at, stop_at')
@@ -88,9 +89,34 @@ export default async function ProjectsPage(props: PageProps) {
 				return sum + hours;
 			}, 0) || 0;
 
+			// Fetch phases with their budgets
+			const { data: phases, error: phasesError } = await supabase
+				.from('phases')
+				.select('budget_hours, budget_amount')
+				.eq('project_id', project.id);
+
+			if (phasesError) {
+				console.error(`Error fetching phases for project ${project.id}:`, phasesError);
+			}
+
+			// Sum up budget from phases
+			const phasesBudgetHours = phases?.reduce((sum, phase) => {
+				return sum + (phase.budget_hours || 0);
+			}, 0) || 0;
+			const phasesBudgetAmount = phases?.reduce((sum, phase) => {
+				return sum + (phase.budget_amount || 0);
+			}, 0) || 0;
+
+			// If there are phases with budgets, use the sum of phases' budgets
+			// Otherwise, fall back to the project's direct budget
+			const effectiveBudgetHours = (phasesBudgetHours > 0) ? phasesBudgetHours : project.budget_hours;
+			const effectiveBudgetAmount = (phasesBudgetAmount > 0) ? phasesBudgetAmount : project.budget_amount;
+
 			return {
 				...project,
 				total_hours: Math.round(totalHours * 10) / 10, // Round to 1 decimal
+				budget_hours: effectiveBudgetHours,
+				budget_amount: effectiveBudgetAmount,
 			};
 		})
 	);

@@ -23,7 +23,7 @@ export default async function DashboardPage() {
 	startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
 	startOfWeek.setHours(0, 0, 0, 0);
 
-	const [projectsResult, timeEntriesResult, materialsResult, expensesResult] = await Promise.all([
+	const [projectsResult, timeEntriesResult, materialsResult, expensesResult, activeTimeEntry, recentProject, allProjects] = await Promise.all([
 		supabase
 			.from('projects')
 			.select('*', { count: 'exact', head: true })
@@ -43,6 +43,31 @@ export default async function DashboardPage() {
 			.select('*', { count: 'exact', head: true })
 			.eq('user_id', user.id)
 			.gte('created_at', startOfWeek.toISOString()),
+		// Fetch active time entry (where stop_at is null)
+		supabase
+			.from('time_entries')
+			.select('*, projects(id, name)')
+			.eq('user_id', user.id)
+			.is('stop_at', null)
+			.order('start_at', { ascending: false })
+			.limit(1)
+			.maybeSingle(),
+		// Fetch most recent project
+		supabase
+			.from('projects')
+			.select('id, name')
+			.eq('org_id', membership.org_id)
+			.eq('status', 'active')
+			.order('created_at', { ascending: false })
+			.limit(1)
+			.maybeSingle(),
+		// Fetch all active projects for dropdown
+		supabase
+			.from('projects')
+			.select('id, name')
+			.eq('org_id', membership.org_id)
+			.eq('status', 'active')
+			.order('name', { ascending: true }),
 	]);
 
 	const stats = {
@@ -55,6 +80,10 @@ export default async function DashboardPage() {
 		<DashboardClient 
 			userName={profile?.full_name || 'användare'} 
 			stats={stats}
+			activeTimeEntry={activeTimeEntry.data}
+			recentProject={recentProject.data}
+			allProjects={allProjects.data || []}
+			userId={user.id}
 		/>
 	);
 }

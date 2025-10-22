@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
-import { MaterialsPageClient } from '@/components/materials/materials-page-client';
-import { MaterialsPageWithTour } from '@/components/materials/materials-page-with-tour';
+import { MaterialsPageNew } from '@/components/materials/materials-page-new';
 
 export default async function MaterialsPage() {
 	// Server-side: Only fetch session
@@ -19,19 +18,5 @@ export default async function MaterialsPage() {
 		);
 	}
 
-	return (
-		<MaterialsPageWithTour>
-			<div className='container mx-auto p-6 lg:p-8 space-y-6'>
-				<div data-tour="materials-tabs">
-					<h1 className='text-3xl font-bold tracking-tight text-gray-900 dark:text-white'>Material & Kostnader</h1>
-					<p className='text-gray-600 dark:text-gray-400 mt-2'>
-						Registrera material, utlägg och milersättning
-					</p>
-				</div>
-
-				{/* Client component with lazy-loaded tabs */}
-				<MaterialsPageClient orgId={membership.org_id} />
-			</div>
-		</MaterialsPageWithTour>
-	);
+	return <MaterialsPageNew orgId={membership.org_id} />;
 }

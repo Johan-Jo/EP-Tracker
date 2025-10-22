@@ -60,6 +60,8 @@ export type ProjectWithPhases = Project & {
 export const phaseSchema = z.object({
 	name: z.string().min(1, 'Fasnamn krävs').max(200, 'Fasnamn är för långt'),
 	sort_order: z.number().int().min(0).default(0),
+	budget_hours: z.number().positive('Timmar måste vara större än 0').optional().nullable(),
+	budget_amount: z.number().positive('Budget måste vara större än 0').optional().nullable(),
 });
 
 export type Phase = {
@@ -67,6 +69,8 @@ export type Phase = {
 	project_id: string;
 	name: string;
 	sort_order: number;
+	budget_hours: number | null;
+	budget_amount: number | null;
 	created_at: string;
 	updated_at: string;
 };

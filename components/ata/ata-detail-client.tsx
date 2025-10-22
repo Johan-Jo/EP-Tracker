@@ -1,12 +1,24 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Clock, XCircle, FileText, Calendar, User, Image as ImageIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+	CheckCircle2,
+	Clock,
+	XCircle,
+	FileText,
+	Calendar,
+	User,
+	Image as ImageIcon,
+	DollarSign,
+	Package,
+	Tag,
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
 import { GalleryViewer } from '@/components/shared/gallery-viewer';
+import Image from 'next/image';
 
 interface AtaDetailClientProps {
 	ataId: string;
@@ -17,22 +29,27 @@ const statusConfig = {
 	draft: {
 		icon: FileText,
 		label: 'Utkast',
-		variant: 'secondary' as const,
+		color: 'bg-gray-100 text-gray-700 border-gray-200',
 	},
 	pending_approval: {
 		icon: Clock,
 		label: 'Väntar på godkännande',
-		variant: 'default' as const,
+		color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
 	},
 	approved: {
 		icon: CheckCircle2,
 		label: 'Godkänd',
-		variant: 'default' as const,
+		color: 'bg-green-100 text-green-700 border-green-200',
 	},
 	rejected: {
 		icon: XCircle,
 		label: 'Avvisad',
-		variant: 'destructive' as const,
+		color: 'bg-red-100 text-red-700 border-red-200',
+	},
+	invoiced: {
+		icon: CheckCircle2,
+		label: 'Fakturerad',
+		color: 'bg-blue-100 text-blue-700 border-blue-200',
 	},
 };
 
@@ -75,19 +92,18 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 
 	if (isLoading) {
 		return (
-			<div className="flex items-center justify-center py-12">
-				<div className="text-muted-foreground">Laddar ÄTA...</div>
+			<div className='flex items-center justify-center py-12'>
+				<div className='text-muted-foreground'>Laddar ÄTA...</div>
 			</div>
 		);
 	}
 
 	if (!ata) {
 		return (
-			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
-				<CardContent className="py-12 text-center">
-					<p className="text-muted-foreground">ÄTA hittades inte</p>
-				</CardContent>
-			</Card>
+			<div className='bg-card border-2 border-border rounded-xl p-12 text-center'>
+				<FileText className='w-12 h-12 text-muted-foreground mx-auto mb-4' />
+				<p className='text-muted-foreground'>ÄTA hittades inte</p>
+			</div>
 		);
 	}
 
@@ -100,213 +116,233 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 	const total = qty * unitPrice;
 
 	return (
-		<div className="max-w-4xl space-y-6">
-			{/* Header Card */}
-			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
-				<CardHeader>
-					<div className="flex items-start justify-between">
-						<div className="space-y-2">
-							<div className="flex items-center gap-2">
+		<div className='max-w-5xl space-y-6'>
+			{/* Hero Section with Gradient */}
+			<div className='bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-6 md:p-8 border-2 border-orange-200'>
+				<div className='flex items-start justify-between mb-4'>
+					<div className='flex items-center gap-3'>
+						<div className='p-3 bg-white rounded-xl shadow-sm'>
+							<FileText className='w-6 h-6 text-orange-600' />
+						</div>
+						<div>
+							<div className='flex items-center gap-2 mb-2'>
 								{ata.ata_number && (
-									<Badge variant="outline">{ata.ata_number}</Badge>
+									<Badge variant='outline' className='bg-white border-orange-300'>
+										{ata.ata_number}
+									</Badge>
 								)}
-								<Badge variant={config.variant} className="flex items-center gap-1">
-									<StatusIcon className="h-3 w-3" />
+								<Badge className={`border-2 ${config.color}`}>
+									<StatusIcon className='h-3 w-3 mr-1' />
 									{config.label}
 								</Badge>
 							</div>
-							<CardTitle className="text-2xl">{ata.title}</CardTitle>
-							<p className="text-sm text-muted-foreground">
-								Projekt: {ata.project.project_number ? `${ata.project.project_number} - ` : ''}{ata.project.name}
-							</p>
+							<h1 className='text-2xl md:text-3xl font-bold text-gray-900'>{ata.title}</h1>
 						</div>
 					</div>
-				</CardHeader>
-				<CardContent>
-					<div className="space-y-2 text-sm">
-						<p className="flex items-center gap-2 text-muted-foreground">
-							<Calendar className="h-4 w-4" />
-							Skapad: {new Date(ata.created_at).toLocaleDateString('sv-SE', {
-								weekday: 'long',
+				</div>
+
+				<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+					<div className='bg-white rounded-xl p-4'>
+						<div className='flex items-center gap-2 mb-2'>
+							<Tag className='w-4 h-4 text-muted-foreground' />
+							<span className='text-sm text-muted-foreground'>Projekt</span>
+						</div>
+						<p className='font-medium'>
+							{ata.project.project_number ? `${ata.project.project_number} - ` : ''}
+							{ata.project.name}
+						</p>
+					</div>
+
+					<div className='bg-white rounded-xl p-4'>
+						<div className='flex items-center gap-2 mb-2'>
+							<Calendar className='w-4 h-4 text-muted-foreground' />
+							<span className='text-sm text-muted-foreground'>Skapad</span>
+						</div>
+						<p className='font-medium'>
+							{new Date(ata.created_at).toLocaleDateString('sv-SE', {
 								year: 'numeric',
 								month: 'long',
 								day: 'numeric',
 							})}
 						</p>
-						{ata.created_by_user && (
-							<p className="flex items-center gap-2 text-muted-foreground">
-								<User className="h-4 w-4" />
-								Skapad av: {ata.created_by_user.full_name}
-							</p>
-						)}
 					</div>
-				</CardContent>
-			</Card>
 
-		{/* Description Card */}
-		{ata.description && (
-			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
-				<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<FileText className="h-5 w-5" />
-							Beskrivning
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<p className="whitespace-pre-wrap">{ata.description}</p>
-					</CardContent>
-				</Card>
+					{ata.created_by_user && (
+						<div className='bg-white rounded-xl p-4'>
+							<div className='flex items-center gap-2 mb-2'>
+								<User className='w-4 h-4 text-muted-foreground' />
+								<span className='text-sm text-muted-foreground'>Skapad av</span>
+							</div>
+							<p className='font-medium'>{ata.created_by_user.full_name}</p>
+						</div>
+					)}
+
+					<div className='bg-white rounded-xl p-4'>
+						<div className='flex items-center gap-2 mb-2'>
+							<Package className='w-4 h-4 text-muted-foreground' />
+							<span className='text-sm text-muted-foreground'>Antal</span>
+						</div>
+						<p className='font-medium'>
+							{qty} {ata.unit || 'st'}
+						</p>
+					</div>
+				</div>
+			</div>
+
+			{/* Description */}
+			{ata.description && (
+				<div className='bg-card border-2 border-border rounded-xl p-6 hover:border-orange-300 hover:shadow-md transition-all duration-200'>
+					<div className='flex items-center gap-2 mb-4'>
+						<FileText className='w-5 h-5 text-orange-600' />
+						<h2 className='text-xl font-semibold'>Beskrivning</h2>
+					</div>
+					<p className='whitespace-pre-wrap text-muted-foreground'>{ata.description}</p>
+				</div>
 			)}
 
-		{/* Cost Details Card */}
-		<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
-			<CardHeader>
-				<CardTitle>Kostnadsuppgifter</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<div className="space-y-4">
-						<div className="grid grid-cols-3 gap-4">
-							<div>
-								<p className="text-sm text-muted-foreground">Antal</p>
-								<p className="text-lg font-medium">{qty} {ata.unit || 'st'}</p>
-							</div>
-							<div>
-								<p className="text-sm text-muted-foreground">À-pris</p>
-								<p className="text-lg font-medium">{unitPrice.toFixed(2)} SEK</p>
-							</div>
-							<div>
-								<p className="text-sm text-muted-foreground">Totalt</p>
-								<p className="text-lg font-bold text-primary">{total.toFixed(2)} SEK</p>
-							</div>
-						</div>
+			{/* Pricing */}
+			<div className='bg-orange-50 rounded-xl p-6 border-2 border-orange-200'>
+				<div className='flex items-center gap-2 mb-4'>
+					<DollarSign className='w-5 h-5 text-orange-600' />
+					<h2 className='text-xl font-semibold text-orange-900'>Kostnadsuppgifter</h2>
+				</div>
+				<div className='grid grid-cols-2 md:grid-cols-3 gap-4'>
+					<div className='bg-white rounded-xl p-4'>
+						<p className='text-sm text-muted-foreground mb-1'>À-pris</p>
+						<p className='text-2xl text-gray-900'>{unitPrice.toLocaleString('sv-SE')} kr</p>
 					</div>
-				</CardContent>
-			</Card>
+					<div className='bg-white rounded-xl p-4'>
+						<p className='text-sm text-muted-foreground mb-1'>Antal</p>
+						<p className='text-2xl text-gray-900'>
+							{qty} {ata.unit || 'st'}
+						</p>
+					</div>
+					<div className='bg-white rounded-xl p-4 md:col-span-1 col-span-2'>
+						<p className='text-sm text-muted-foreground mb-1'>Totalt</p>
+						<p className='text-2xl text-gray-900'>{total.toLocaleString('sv-SE')} kr</p>
+					</div>
+				</div>
+			</div>
 
-		{/* Photos Card */}
-		{photos && photos.length > 0 && (
-			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
-				<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<ImageIcon className="h-5 w-5" />
-							Foton ({photos.length})
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-							{photos.map((photo, index) => (
-								<button
-									key={photo.id}
-									onClick={() => setSelectedPhotoIndex(index)}
-									className="relative aspect-square rounded-lg overflow-hidden border hover:opacity-80 transition-opacity"
-								>
-									<img
-										src={photo.photo_url}
-										alt={`Foto ${index + 1}`}
-										className="w-full h-full object-cover"
-									/>
-								</button>
-							))}
-						</div>
-					</CardContent>
-				</Card>
+			{/* Photos */}
+			{photos && photos.length > 0 && (
+				<div className='bg-card border-2 border-border rounded-xl p-6 hover:border-orange-300 hover:shadow-md transition-all duration-200'>
+					<div className='flex items-center gap-2 mb-4'>
+						<ImageIcon className='w-5 h-5 text-orange-600' />
+						<h2 className='text-xl font-semibold'>
+							Foton <span className='text-muted-foreground'>({photos.length})</span>
+						</h2>
+					</div>
+					<div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
+						{photos.map((photo, index) => (
+							<button
+								key={photo.id}
+								onClick={() => setSelectedPhotoIndex(index)}
+								className='relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-orange-300 hover:shadow-lg hover:scale-[1.02] transition-all duration-200'
+							>
+								<Image
+									src={photo.photo_url}
+									alt={`Foto ${index + 1}`}
+									fill
+									className='object-cover'
+									sizes='(max-width: 768px) 50vw, 25vw'
+								/>
+							</button>
+						))}
+					</div>
+				</div>
 			)}
 
-		{/* Signature Card (for pending or approved) */}
-		{ata.signed_by_name && (
-			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
-				<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<CheckCircle2 className="h-5 w-5 text-primary" />
-							Signatur
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<p className="text-sm">
-							<strong>Signerad av:</strong> {ata.signed_by_name}
+			{/* Signature */}
+			{ata.signed_by_name && (
+				<div className='bg-card border-2 border-border rounded-xl p-6 hover:border-orange-300 hover:shadow-md transition-all duration-200'>
+					<div className='flex items-center gap-2 mb-4'>
+						<CheckCircle2 className='w-5 h-5 text-orange-600' />
+						<h2 className='text-xl font-semibold'>Signatur</h2>
+					</div>
+					<div className='space-y-2'>
+						<p className='text-sm'>
+							<span className='font-medium'>Signerad av:</span> {ata.signed_by_name}
 						</p>
 						{ata.signed_at && (
-							<p className="text-sm text-muted-foreground mt-1">
+							<p className='text-sm text-muted-foreground'>
 								{new Date(ata.signed_at).toLocaleString('sv-SE')}
 							</p>
 						)}
-					</CardContent>
-				</Card>
+					</div>
+				</div>
 			)}
 
-			{/* Approval/Rejection Card */}
+			{/* Approval */}
 			{ata.status === 'approved' && (
-				<Card className="border-primary">
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2 text-primary">
-							<CheckCircle2 className="h-5 w-5" />
-							Godkänd
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
+				<div className='bg-green-50 border-2 border-green-200 rounded-xl p-6'>
+					<div className='flex items-center gap-2 mb-4'>
+						<CheckCircle2 className='w-6 h-6 text-green-600' />
+						<h2 className='text-xl font-semibold text-green-900'>Godkänd</h2>
+					</div>
+					<div className='space-y-2'>
 						{ata.approved_by_user && (
-							<p className="text-sm">
-								<strong>Godkänd av:</strong> {ata.approved_by_user.full_name}
+							<p className='text-sm'>
+								<span className='font-medium'>Godkänd av:</span> {ata.approved_by_user.full_name}
 							</p>
 						)}
 						{ata.approved_by_name && (
-							<p className="text-sm mt-1">
-								<strong>Signerad av:</strong> {ata.approved_by_name}
+							<p className='text-sm'>
+								<span className='font-medium'>Signerad av:</span> {ata.approved_by_name}
 							</p>
 						)}
 						{ata.approved_at && (
-							<p className="text-sm text-muted-foreground mt-1">
+							<p className='text-sm text-muted-foreground'>
 								{new Date(ata.approved_at).toLocaleString('sv-SE')}
 							</p>
 						)}
 						{ata.comments && (
-							<div className="mt-4 p-3 bg-muted rounded-md">
-								<p className="text-sm font-medium mb-1">Kommentar:</p>
-								<p className="text-sm whitespace-pre-wrap">{ata.comments}</p>
+							<div className='mt-4 p-4 bg-white rounded-lg'>
+								<p className='text-sm font-medium mb-1'>Kommentar:</p>
+								<p className='text-sm whitespace-pre-wrap text-muted-foreground'>{ata.comments}</p>
 							</div>
 						)}
-					</CardContent>
-				</Card>
+					</div>
+				</div>
 			)}
 
+			{/* Rejection */}
 			{ata.status === 'rejected' && (
-				<Card className="border-destructive">
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2 text-destructive">
-							<XCircle className="h-5 w-5" />
-							Avvisad
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
+				<div className='bg-red-50 border-2 border-red-200 rounded-xl p-6'>
+					<div className='flex items-center gap-2 mb-4'>
+						<XCircle className='w-6 h-6 text-red-600' />
+						<h2 className='text-xl font-semibold text-red-900'>Avvisad</h2>
+					</div>
+					<div className='space-y-2'>
 						{ata.approved_by_user && (
-							<p className="text-sm">
-								<strong>Avvisad av:</strong> {ata.approved_by_user.full_name}
+							<p className='text-sm'>
+								<span className='font-medium'>Avvisad av:</span> {ata.approved_by_user.full_name}
 							</p>
 						)}
 						{ata.approved_by_name && (
-							<p className="text-sm mt-1">
-								<strong>Signerad av:</strong> {ata.approved_by_name}
+							<p className='text-sm'>
+								<span className='font-medium'>Signerad av:</span> {ata.approved_by_name}
 							</p>
 						)}
 						{ata.approved_at && (
-							<p className="text-sm text-muted-foreground mt-1">
+							<p className='text-sm text-muted-foreground'>
 								{new Date(ata.approved_at).toLocaleString('sv-SE')}
 							</p>
 						)}
 						{ata.comments && (
-							<div className="mt-4 p-3 bg-destructive/10 rounded-md">
-								<p className="text-sm font-medium mb-1">Skäl till avvisning:</p>
-								<p className="text-sm whitespace-pre-wrap">{ata.comments}</p>
+							<div className='mt-4 p-4 bg-white rounded-lg'>
+								<p className='text-sm font-medium mb-1'>Skäl till avvisning:</p>
+								<p className='text-sm whitespace-pre-wrap text-muted-foreground'>{ata.comments}</p>
 							</div>
 						)}
-					</CardContent>
-				</Card>
+					</div>
+				</div>
 			)}
 
 			{/* Photo Gallery Viewer */}
 			{selectedPhotoIndex !== null && photos && (
 				<GalleryViewer
-					images={photos.map(p => p.photo_url)}
+					images={photos.map((p) => p.photo_url)}
 					initialIndex={selectedPhotoIndex}
 					onClose={() => setSelectedPhotoIndex(null)}
 				/>
@@ -314,4 +350,3 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 		</div>
 	);
 }
-

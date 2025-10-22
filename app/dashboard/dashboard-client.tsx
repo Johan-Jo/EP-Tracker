@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { TimeSlider } from '@/components/core/time-slider';
 
 interface DashboardClientProps {
   userName: string;
@@ -9,11 +10,70 @@ interface DashboardClientProps {
     timeEntriesCount: number;
     materialsCount: number;
   };
+  activeTimeEntry?: {
+    id: string;
+    start_at: string;
+    projects: { id: string; name: string } | null;
+  } | null;
+  recentProject?: {
+    id: string;
+    name: string;
+  } | null;
+  allProjects: Array<{
+    id: string;
+    name: string;
+  }>;
+  userId: string;
 }
 
-export default function DashboardClient({ userName, stats }: DashboardClientProps) {
+export default function DashboardClient({ userName, stats, activeTimeEntry, recentProject, allProjects, userId }: DashboardClientProps) {
   const router = useRouter();
   const [showQuickStart, setShowQuickStart] = useState(false);
+
+  const handleCheckIn = async (projectId: string) => {
+    try {
+      const response = await fetch('/api/time/entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: projectId,
+          start_at: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to start time entry');
+      }
+
+      router.refresh();
+    } catch (error) {
+      console.error('Error starting time:', error);
+      router.refresh();
+    }
+  };
+
+  const handleCheckOut = async () => {
+    if (!activeTimeEntry) return;
+
+    try {
+      const response = await fetch(`/api/time/entries/${activeTimeEntry.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stop_at: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to stop time entry');
+      }
+
+      router.refresh();
+    } catch (error) {
+      console.error('Error stopping time:', error);
+      router.refresh();
+    }
+  };
 
   return (
     <div className="p-4 sm:p-6">
@@ -27,28 +87,48 @@ export default function DashboardClient({ userName, stats }: DashboardClientProp
         </p>
       </div>
 
-      {/* No Active Time Banner - ORANGE GRADIENT */}
-      <div className="mb-6 bg-gradient-to-r from-orange-50 to-orange-100/50 border-2 border-orange-200 rounded-xl p-5 sm:p-6 hover:shadow-md hover:border-orange-300 transition-all duration-200">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center">
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 7v5l3 2" />
-              </svg>
-            </div>
-            <div className="leading-tight">
-              <div className="font-medium">Ingen aktiv tid</div>
-              <div className="text-sm text-gray-600">Vad jobbar du med nu?</div>
+      {/* Time Check-in/Check-out Slider */}
+      <div className="mb-6 bg-gradient-to-r from-orange-50 to-orange-100/50 border-2 border-orange-200 rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="h-8 w-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          </div>
+          <div className="leading-tight flex-1 min-w-0">
+            <div className={activeTimeEntry ? "text-sm font-medium" : "text-base font-medium"}>
+              {activeTimeEntry ? 'Aktiv tid' : 'Ingen aktiv tid'}
             </div>
           </div>
-          <button 
-            onClick={() => router.push('/dashboard/time')}
-            className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600"
-          >
-            Start
-          </button>
         </div>
+        
+        {/* Centered check-in info above timer */}
+        {activeTimeEntry && activeTimeEntry.start_at && activeTimeEntry.projects?.name && (
+          <div className="text-center text-sm text-gray-700 mb-2">
+            Du checkade in <span className="font-bold">{new Date(activeTimeEntry.start_at).toLocaleTimeString('sv-SE', {
+              hour: '2-digit',
+              minute: '2-digit'
+            })}</span>, projekt: <span className="font-bold text-orange-600">{activeTimeEntry.projects.name}</span>
+          </div>
+        )}
+        <TimeSlider
+          isActive={!!activeTimeEntry}
+          projectName={
+            activeTimeEntry 
+              ? activeTimeEntry.projects?.name 
+              : recentProject?.name
+          }
+          projectId={
+            activeTimeEntry 
+              ? activeTimeEntry.projects?.id 
+              : recentProject?.id
+          }
+          startTime={activeTimeEntry?.start_at}
+          availableProjects={allProjects}
+          onCheckIn={handleCheckIn}
+          onCheckOut={handleCheckOut}
+        />
       </div>
 
       {/* Quick Start Banner - BLUE GRADIENT */}

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
-import { AtaPageClient } from '@/components/ata/ata-page-client';
+import { AtaPageNew } from '@/components/ata/ata-page-new';
 
 export default async function AtaPage() {
 	const { user, membership } = await getSession();
@@ -23,20 +23,6 @@ export default async function AtaPage() {
 		redirect('/dashboard');
 	}
 
-	return (
-		<div className='container mx-auto p-6 lg:p-8 space-y-6'>
-			<div>
-				<h1 className='text-3xl font-bold tracking-tight text-gray-900 dark:text-white'>ÄTA</h1>
-				<p className='text-gray-600 dark:text-gray-400 mt-2'>
-					Hantera ändrings- och tilläggsarbeten
-				</p>
-			</div>
-
-			<AtaPageClient 
-				orgId={membership.org_id} 
-				userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance'} 
-			/>
-		</div>
-	);
+	return <AtaPageNew orgId={membership.org_id} userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance'} />;
 }
 
