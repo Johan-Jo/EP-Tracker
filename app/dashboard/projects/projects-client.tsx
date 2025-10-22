@@ -215,9 +215,21 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
         {/* Projects List */}
         {projects && projects.length > 0 ? (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">
-              {status === 'active' ? 'Aktiva projekt' : status === 'all' ? 'Alla projekt' : 'Projekt'}
-            </h3>
+            {search ? (
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold mb-1">
+                  Hittade {projects.length} {projects.length === 1 ? 'projekt' : 'projekt'} som motsvarar din sökning &quot;{search}&quot;
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {status === 'active' && 'Visar endast aktiva projekt'}
+                  {status === 'all' && 'Visar alla projekt'}
+                </p>
+              </div>
+            ) : (
+              <h3 className="text-lg font-semibold">
+                {status === 'active' ? 'Aktiva projekt' : status === 'all' ? 'Alla projekt' : 'Projekt'}
+              </h3>
+            )}
             
             {projects.map((project) => (
               <div
@@ -326,19 +338,36 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
         ) : (
           <div className="bg-card border-2 border-border rounded-xl p-12 text-center">
             <FolderKanban className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">
-              {search || status !== 'active'
-                ? 'Inga projekt hittades med dessa filter'
-                : 'Du har inga projekt än'}
-            </p>
-            {!search && status === 'active' && canCreateProjects && (
-              <Button 
-                onClick={() => router.push('/dashboard/projects/new')}
-                className="bg-orange-500 hover:bg-orange-600"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Skapa ditt första projekt
-              </Button>
+            {search ? (
+              <>
+                <h3 className="text-lg font-semibold mb-2">
+                  Inga projekt hittades för &quot;{search}&quot;
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  Prova att söka på något annat eller rensa sökningen
+                </p>
+                <Button 
+                  variant="outline"
+                  onClick={clearSearch}
+                >
+                  Rensa sökning
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground mb-4">
+                  {status !== 'active' ? 'Inga projekt hittades med dessa filter' : 'Du har inga projekt än'}
+                </p>
+                {status === 'active' && canCreateProjects && (
+                  <Button 
+                    onClick={() => router.push('/dashboard/projects/new')}
+                    className="bg-orange-500 hover:bg-orange-600"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Skapa ditt första projekt
+                  </Button>
+                )}
+              </>
             )}
           </div>
         )}
