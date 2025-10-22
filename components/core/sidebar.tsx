@@ -15,7 +15,6 @@ import {
 	BookOpen,
 	HelpCircle,
 	Plus,
-	List,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -42,12 +41,6 @@ const navItems: NavItem[] = [
 		icon: FolderKanban,
 		roles: ['admin', 'foreman', 'worker', 'finance'],
 		subItems: [
-			{
-				label: 'Alla projekt',
-				href: '/dashboard/projects',
-				icon: List,
-				roles: ['admin', 'foreman', 'worker', 'finance'],
-			},
 			{
 				label: 'Skapa nytt',
 				href: '/dashboard/projects/new',
