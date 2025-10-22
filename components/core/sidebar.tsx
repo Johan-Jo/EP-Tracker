@@ -14,6 +14,8 @@ import {
 	FileEdit,
 	BookOpen,
 	HelpCircle,
+	Plus,
+	List,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +26,7 @@ interface NavItem {
 	href: string;
 	icon: any;
 	roles: UserRole[]; // Roles that can see this item
+	subItems?: NavItem[]; // Optional sub-navigation items
 }
 
 const navItems: NavItem[] = [
@@ -38,6 +41,20 @@ const navItems: NavItem[] = [
 		href: '/dashboard/projects',
 		icon: FolderKanban,
 		roles: ['admin', 'foreman', 'worker', 'finance'],
+		subItems: [
+			{
+				label: 'Alla projekt',
+				href: '/dashboard/projects',
+				icon: List,
+				roles: ['admin', 'foreman', 'worker', 'finance'],
+			},
+			{
+				label: 'Skapa nytt',
+				href: '/dashboard/projects/new',
+				icon: Plus,
+				roles: ['admin', 'foreman'],
+			},
+		],
 	},
 	{
 		label: 'Tid',
@@ -137,26 +154,61 @@ export function Sidebar({ userRole }: SidebarProps) {
 							? pathname === item.href 
 							: pathname.startsWith(item.href);
 						const Icon = item.icon;
+						
+						// Filter sub-items based on user role
+						const visibleSubItems = item.subItems?.filter(subItem => 
+							subItem.roles.includes(userRole)
+						) || [];
 
 						return (
-							<Link
-								key={item.href}
-								href={item.href}
-								className={cn(
-									'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
-									isActive
-										? 'bg-orange-50 text-orange-600 font-medium'
-										: 'text-gray-700 hover:bg-gray-50'
-								)}
-							>
-								<Icon
+							<div key={item.href}>
+								<Link
+									href={item.href}
 									className={cn(
-										'flex-shrink-0 h-5 w-5',
-										isActive ? 'text-orange-600' : 'text-gray-400'
+										'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
+										isActive
+											? 'bg-orange-50 text-orange-600 font-medium'
+											: 'text-gray-700 hover:bg-gray-50'
 									)}
-								/>
-								{item.label}
-							</Link>
+								>
+									<Icon
+										className={cn(
+											'flex-shrink-0 h-5 w-5',
+											isActive ? 'text-orange-600' : 'text-gray-400'
+										)}
+									/>
+									{item.label}
+								</Link>
+								
+								{/* Sub-navigation - only show when parent is active */}
+								{isActive && visibleSubItems.length > 0 && (
+									<div className='ml-8 mt-1 space-y-1'>
+										{visibleSubItems.map((subItem) => {
+											const isSubItemActive = pathname === subItem.href;
+											const SubIcon = subItem.icon;
+											
+											return (
+												<Link
+													key={subItem.href}
+													href={subItem.href}
+													className={cn(
+														'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
+														isSubItemActive
+															? 'bg-orange-100 text-orange-700 font-medium'
+															: 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+													)}
+												>
+													<SubIcon className={cn(
+														'flex-shrink-0 h-4 w-4',
+														isSubItemActive ? 'text-orange-600' : 'text-gray-400'
+													)} />
+													{subItem.label}
+												</Link>
+											);
+										})}
+									</div>
+								)}
+							</div>
 						);
 					})}
 
