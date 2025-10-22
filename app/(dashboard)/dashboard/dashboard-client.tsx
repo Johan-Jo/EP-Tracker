@@ -11,7 +11,7 @@ interface DashboardClientProps {
   };
 }
 
-export function DashboardClient({ userName, stats }: DashboardClientProps) {
+export default function DashboardClient({ userName, stats }: DashboardClientProps) {
   const router = useRouter();
   const [showQuickStart, setShowQuickStart] = useState(false);
 

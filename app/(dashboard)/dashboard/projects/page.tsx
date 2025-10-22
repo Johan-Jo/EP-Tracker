@@ -1,15 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Search, MapPin } from 'lucide-react';
-import { ProjectsFilter } from '@/components/projects/projects-filter';
-import { ProjectsList } from '@/components/projects/projects-list';
 import { getSession } from '@/lib/auth/get-session';
-import { ProjectsPageWithTour } from '@/components/projects/projects-page-with-tour';
+import ProjectsClient from './projects-client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface PageProps {
 	searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -70,119 +63,43 @@ export default async function ProjectsPage(props: PageProps) {
 		console.error('Error fetching projects:', error);
 	}
 
+	// Fetch time entries for each project to calculate hours worked
+	const projectsWithHours = await Promise.all(
+		(projects || []).map(async (project) => {
+			const { data: timeEntries, error: timeError } = await supabase
+				.from('time_entries')
+				.select('start_at, stop_at')
+				.eq('project_id', project.id);
+
+			if (timeError) {
+				console.error(`Error fetching time entries for project ${project.id}:`, timeError);
+			}
+
+			// Calculate total hours (including active entries)
+			const totalHours = timeEntries?.reduce((sum, entry) => {
+				const start = new Date(entry.start_at);
+				// Use stop_at if it exists, otherwise use current time for active entries
+				const end = entry.stop_at ? new Date(entry.stop_at) : new Date();
+				const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+				return sum + hours;
+			}, 0) || 0;
+
+			return {
+				...project,
+				total_hours: Math.round(totalHours * 10) / 10, // Round to 1 decimal
+			};
+		})
+	);
+
 	const canCreateProjects = membership.role === 'admin' || membership.role === 'foreman';
 
 	return (
-		<ProjectsPageWithTour>
-			<div className='container mx-auto p-6 lg:p-8 space-y-6'>
-				{/* Header */}
-				<div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between' data-tour="projects-list">
-					<div>
-						<h1 className='text-3xl font-bold tracking-tight text-gray-900 dark:text-white'>Projekt</h1>
-						<p className='text-gray-600 dark:text-gray-400 mt-1'>
-							Hantera dina byggprojekt och arbetsorder
-						</p>
-					</div>
-					{canCreateProjects && (
-						<Button asChild className='bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600' data-tour="create-project">
-							<Link href='/dashboard/projects/new'>
-								<Plus className='w-4 h-4 mr-2' />
-								Nytt projekt
-							</Link>
-						</Button>
-					)}
-			</div>
-
-			{/* Search and filters */}
-			<div className='flex flex-col gap-4 md:flex-row'>
-				<div className='relative flex-1'>
-					<Search className='absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground' />
-					<Input
-						type='search'
-						placeholder='Sök projekt...'
-						className='pl-10'
-						defaultValue={search}
-						name='search'
-					/>
-				</div>
-				<ProjectsFilter currentStatus={status} />
-			</div>
-
-			{/* Projects grid */}
-			{projects && projects.length > 0 ? (
-				<div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
-					{projects.map((project) => (
-						<Link key={project.id} href={`/dashboard/projects/${project.id}`}>
-							<Card className='border-gray-200 bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full dark:border-gray-800 dark:bg-gray-950'>
-								<CardHeader>
-									<div className='flex items-start justify-between'>
-										<div className='flex-1'>
-											<CardTitle className='text-lg line-clamp-1'>
-												{project.name}
-											</CardTitle>
-											{project.project_number && (
-												<p className='text-sm text-muted-foreground mt-1'>
-													#{project.project_number}
-												</p>
-											)}
-										</div>
-										<Badge
-											variant={
-												project.status === 'active'
-													? 'default'
-													: project.status === 'paused'
-													? 'secondary'
-													: 'outline'
-											}
-										>
-											{project.status === 'active' && 'Aktiv'}
-											{project.status === 'paused' && 'Pausad'}
-											{project.status === 'completed' && 'Klar'}
-											{project.status === 'archived' && 'Arkiverad'}
-										</Badge>
-									</div>
-								</CardHeader>
-								<CardContent className='space-y-2'>
-									{project.client_name && (
-										<p className='text-sm'>
-											<span className='font-medium'>Kund:</span> {project.client_name}
-										</p>
-									)}
-									{project.site_address && (
-										<p className='text-sm flex items-start gap-2'>
-											<MapPin className='w-4 h-4 mt-0.5 flex-shrink-0 text-muted-foreground' />
-											<span className='line-clamp-2'>{project.site_address}</span>
-										</p>
-									)}
-									<div className='pt-2 text-xs text-muted-foreground'>
-										{project.phases?.[0]?.count || 0} faser
-									</div>
-								</CardContent>
-							</Card>
-						</Link>
-					))}
-				</div>
-			) : (
-				<Card className='border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950'>
-					<CardContent className='py-12 text-center'>
-						<p className='text-gray-600 dark:text-gray-400 mb-4'>
-							{search || status !== 'active'
-								? 'Inga projekt hittades med dessa filter'
-								: 'Du har inga projekt än'}
-						</p>
-						{!search && status === 'active' && canCreateProjects && (
-							<Button asChild className='bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600'>
-								<Link href='/dashboard/projects/new'>
-									<Plus className='w-4 h-4 mr-2' />
-									Skapa ditt första projekt
-								</Link>
-							</Button>
-						)}
-					</CardContent>
-				</Card>
-			)}
-			</div>
-		</ProjectsPageWithTour>
+		<ProjectsClient 
+			projects={projectsWithHours || []} 
+			canCreateProjects={canCreateProjects}
+			search={search}
+			status={status}
+		/>
 	);
 }
 

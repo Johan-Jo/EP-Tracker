@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
-import { DashboardClient } from './dashboard-client';
+import DashboardClient from './dashboard-client';
 
 export default async function DashboardPage() {
 	// Use cached session
