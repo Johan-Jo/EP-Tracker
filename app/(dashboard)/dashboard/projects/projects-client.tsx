@@ -116,30 +116,36 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
           </div>
 
           {/* Search and Filters */}
-          <form 
-            onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              const searchValue = formData.get('search') as string;
-              handleSearch(searchValue);
-            }}
-            className="flex gap-2"
-          >
+          <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                name="search"
+                id="project-search-input"
                 placeholder="Sök projekt..."
                 className="pl-9"
                 defaultValue={search}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const input = e.currentTarget as HTMLInputElement;
+                    handleSearch(input.value);
+                  }
+                }}
               />
             </div>
-            <Button type="submit" variant="outline" className="shrink-0">
+            <Button 
+              variant="outline" 
+              className="shrink-0"
+              onClick={() => {
+                const input = document.getElementById('project-search-input') as HTMLInputElement;
+                if (input) {
+                  handleSearch(input.value);
+                }
+              }}
+            >
               Sök
             </Button>
             {search && (
               <Button 
-                type="button"
                 variant="ghost"
                 className="shrink-0"
                 onClick={clearSearch}
@@ -147,7 +153,7 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
                 Rensa
               </Button>
             )}
-          </form>
+          </div>
         </div>
       </header>
 
