@@ -31,7 +31,15 @@ export async function GET(request: NextRequest) {
 
 		if (error) throw error;
 
-		return NextResponse.json({ checklists: data });
+		// Map database column names to expected API format
+		const checklists = data.map((checklist: any) => ({
+			...checklist,
+			title: checklist.name,  // Map 'name' to 'title'
+			signed_by_name: checklist.signature_name,  // Map 'signature_name' to 'signed_by_name'
+			signed_at: checklist.signature_timestamp,  // Map 'signature_timestamp' to 'signed_at'
+		}));
+
+		return NextResponse.json({ checklists });
 	} catch (error) {
 		console.error('Error fetching checklists:', error);
 		return NextResponse.json(
@@ -69,12 +77,12 @@ export async function POST(request: NextRequest) {
 			org_id: membership.org_id,
 			project_id,
 			template_id: template_id || null,
-			title,
+			name: title,  // Changed from 'title' to 'name'
 			checklist_data,
 			created_by: user.id,
 			completed_at: completed_at || null,
-			signed_by_name: signed_by_name || null,
-			signed_at: signed_at || null,
+			signature_name: signed_by_name || null,  // Changed from 'signed_by_name' to 'signature_name'
+			signature_timestamp: signed_at || null,  // Changed from 'signed_at' to 'signature_timestamp'
 		};
 
 		const { data, error } = await supabase
@@ -85,11 +93,31 @@ export async function POST(request: NextRequest) {
 
 		if (error) throw error;
 
-		return NextResponse.json({ checklist: data }, { status: 201 });
-	} catch (error) {
+		// Map database column names to expected API format
+		const checklist = {
+			...data,
+			title: data.name,
+			signed_by_name: data.signature_name,
+			signed_at: data.signature_timestamp,
+		};
+
+		return NextResponse.json({ checklist }, { status: 201 });
+	} catch (error: any) {
 		console.error('Error creating checklist:', error);
+		
+		// Return more specific error messages
+		let errorMessage = 'Failed to create checklist';
+		
+		if (error?.code === '23503') {
+			errorMessage = 'Ogiltigt projekt eller mall vald';
+		} else if (error?.code === '23505') {
+			errorMessage = 'En checklista med detta namn finns redan';
+		} else if (error?.message) {
+			errorMessage = error.message;
+		}
+		
 		return NextResponse.json(
-			{ error: 'Failed to create checklist' },
+			{ error: errorMessage },
 			{ status: 500 }
 		);
 	}

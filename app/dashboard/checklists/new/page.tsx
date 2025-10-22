@@ -26,24 +26,28 @@ export default async function NewChecklistPage() {
 	}
 
 	return (
-		<div className='p-4 md:p-8 space-y-6'>
-			<div className="flex items-center gap-4">
-				<Button variant="ghost" size="icon" asChild>
-					<Link href="/dashboard/checklists">
-						<ArrowLeft className="h-4 w-4" />
-					</Link>
-				</Button>
-				<div>
-					<h1 className='text-3xl font-bold tracking-tight'>Ny checklista</h1>
-					<p className='text-muted-foreground mt-2'>
-						Skapa en ny checklista från mall eller egen
-					</p>
+		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
+			<header className='sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border'>
+				<div className='px-4 md:px-8 py-4 md:py-6'>
+					<div className="flex items-center gap-4">
+						<Button variant="ghost" size="icon" asChild>
+							<Link href="/dashboard/checklists">
+								<ArrowLeft className="h-5 w-5" />
+							</Link>
+						</Button>
+						<div>
+							<h1 className='text-3xl font-bold tracking-tight'>Ny checklista</h1>
+							<p className='text-sm text-muted-foreground mt-1'>
+								Skapa en ny checklista från mall eller egen
+							</p>
+						</div>
+					</div>
 				</div>
-			</div>
+			</header>
 
-			<div className="max-w-4xl">
+			<main className='px-4 md:px-8 py-6 max-w-3xl mx-auto'>
 				<ChecklistForm />
-			</div>
+			</main>
 		</div>
 	);
 }

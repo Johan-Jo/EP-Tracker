@@ -3,7 +3,7 @@ import { getSession } from '@/lib/auth/get-session';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { DiaryDetailClient } from '@/components/diary/diary-detail-client';
+import { DiaryDetailNew } from '@/components/diary/diary-detail-new';
 
 export default async function DiaryDetailPage({ params }: { params: Promise<{ id: string }> }) {
 	const { id } = await params;
@@ -27,19 +27,23 @@ export default async function DiaryDetailPage({ params }: { params: Promise<{ id
 	}
 
 	return (
-		<div className='p-4 md:p-8 space-y-6'>
-			<div className="flex items-center gap-4">
-				<Button variant="ghost" size="icon" asChild>
-					<Link href="/dashboard/diary">
-						<ArrowLeft className="h-4 w-4" />
-					</Link>
-				</Button>
-				<div>
-					<h1 className='text-3xl font-bold tracking-tight'>Dagbokspost</h1>
+		<div className='flex-1 overflow-auto'>
+			<header className='sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border'>
+				<div className='px-4 md:px-8 py-4 md:py-6'>
+					<div className='flex items-center gap-4'>
+						<Button variant='ghost' size='icon' asChild>
+							<Link href='/dashboard/diary'>
+								<ArrowLeft className='h-5 w-5' />
+							</Link>
+						</Button>
+						<div>
+							<h1 className='text-3xl font-bold tracking-tight'>Dagbokspost</h1>
+						</div>
+					</div>
 				</div>
-			</div>
+			</header>
 
-			<DiaryDetailClient diaryId={id} />
+			<DiaryDetailNew diaryId={id} />
 		</div>
 	);
 }

@@ -154,14 +154,14 @@ export function AuditLogViewer({ orgId }: AuditLogViewerProps) {
 						<div>
 							<Label htmlFor="entity_type">Entitetstyp</Label>
 							<Select
-								value={filters.entity_type}
-								onValueChange={(value) => handleFilterChange('entity_type', value)}
+								value={filters.entity_type || "all"}
+								onValueChange={(value) => handleFilterChange('entity_type', value === "all" ? "" : value)}
 							>
 								<SelectTrigger>
 									<SelectValue placeholder="Alla" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="">Alla</SelectItem>
+									<SelectItem value="all">Alla</SelectItem>
 									{Object.entries(entityLabels).map(([key, label]) => (
 										<SelectItem key={key} value={key}>
 											{label}
@@ -174,14 +174,14 @@ export function AuditLogViewer({ orgId }: AuditLogViewerProps) {
 						<div>
 							<Label htmlFor="action">Åtgärd</Label>
 							<Select
-								value={filters.action}
-								onValueChange={(value) => handleFilterChange('action', value)}
+								value={filters.action || "all"}
+								onValueChange={(value) => handleFilterChange('action', value === "all" ? "" : value)}
 							>
 								<SelectTrigger>
 									<SelectValue placeholder="Alla" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="">Alla</SelectItem>
+									<SelectItem value="all">Alla</SelectItem>
 									{Object.entries(actionLabels).map(([key, label]) => (
 										<SelectItem key={key} value={key}>
 											{label}

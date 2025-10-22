@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
-import { ChecklistPageClient } from '@/components/checklists/checklist-page-client';
+import { ChecklistPageNew } from '@/components/checklists/checklist-page-new';
 
 export default async function ChecklistsPage() {
 	const { user, membership } = await getSession();
@@ -22,17 +22,6 @@ export default async function ChecklistsPage() {
 		redirect('/dashboard');
 	}
 
-	return (
-		<div className='container mx-auto p-6 lg:p-8 space-y-6'>
-			<div>
-				<h1 className='text-3xl font-bold tracking-tight text-gray-900 dark:text-white'>Checklistor</h1>
-				<p className='text-gray-600 dark:text-gray-400 mt-2'>
-					Skapa och hantera checklistor för dina projekt
-				</p>
-			</div>
-
-			<ChecklistPageClient orgId={membership.org_id} />
-		</div>
-	);
+	return <ChecklistPageNew orgId={membership.org_id} />;
 }
 

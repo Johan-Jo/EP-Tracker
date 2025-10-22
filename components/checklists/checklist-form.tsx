@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, CheckCircle2, Circle } from 'lucide-react';
+import { Loader2, Plus, X, GripVertical } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { createClient } from '@/lib/supabase/client';
 import { SignatureInput } from '@/components/shared/signature-input';
 import { useRouter } from 'next/navigation';
@@ -18,7 +18,10 @@ import toast from 'react-hot-toast';
 
 const checklistSchema = z.object({
 	project_id: z.string().uuid('Välj ett projekt'),
-	template_id: z.string().uuid('Välj en mall').optional().nullable(),
+	template_id: z.preprocess(
+		val => val === '' ? null : val,
+		z.string().uuid().nullable().optional()
+	),
 	title: z.string().min(1, 'Titel krävs'),
 });
 
@@ -39,6 +42,7 @@ interface ChecklistItem {
 
 export function ChecklistForm({ projectId, onSuccess, onCancel }: ChecklistFormProps) {
 	const [items, setItems] = useState<ChecklistItem[]>([]);
+	const [newItemText, setNewItemText] = useState('');
 	const [signature, setSignature] = useState<{ name: string; timestamp: string } | null>(null);
 	const queryClient = useQueryClient();
 	const supabase = createClient();
@@ -87,7 +91,7 @@ export function ChecklistForm({ projectId, onSuccess, onCancel }: ChecklistFormP
 
 	// Load template when selected
 	useEffect(() => {
-		if (selectedTemplate && templates) {
+		if (selectedTemplate && selectedTemplate !== 'none' && templates) {
 			const template = templates.find((t: { id: string }) => t.id === selectedTemplate);
 			if (template && template.template_data?.items) {
 				const templateItems = template.template_data.items.map((item: { text: string }, index: number) => ({
@@ -99,6 +103,9 @@ export function ChecklistForm({ projectId, onSuccess, onCancel }: ChecklistFormP
 				setItems(templateItems);
 				setValue('title', template.name);
 			}
+		} else if (selectedTemplate === 'none') {
+			// Clear items when "no template" is selected
+			setItems([]);
 		}
 	}, [selectedTemplate, templates, setValue]);
 
@@ -163,13 +170,20 @@ export function ChecklistForm({ projectId, onSuccess, onCancel }: ChecklistFormP
 	};
 
 	const addCustomItem = () => {
-		const newItem: ChecklistItem = {
-			id: `custom-${Date.now()}`,
-			text: 'Ny punkt...',
-			checked: false,
-			notes: '',
-		};
-		setItems([...items, newItem]);
+		if (newItemText.trim()) {
+			const newItem: ChecklistItem = {
+				id: `custom-${Date.now()}`,
+				text: newItemText.trim(),
+				checked: false,
+				notes: '',
+			};
+			setItems([...items, newItem]);
+			setNewItemText('');
+		}
+	};
+
+	const removeItem = (id: string) => {
+		setItems(items.filter(item => item.id !== id));
 	};
 
 	const updateItemText = (id: string, text: string) => {
@@ -190,16 +204,19 @@ export function ChecklistForm({ projectId, onSuccess, onCancel }: ChecklistFormP
 	const allChecked = items.length > 0 && items.every(item => item.checked);
 
 	return (
-		<form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-			<div className="space-y-4">
+		<form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+			{/* Project & Template Selection Card */}
+			<div className="bg-card border-2 border-border rounded-xl p-5 space-y-4">
 				{!projectId && (
-					<div>
-						<Label htmlFor="project_id">Projekt *</Label>
+					<div className="space-y-2">
+						<Label htmlFor="project_id" className="flex items-center gap-1 text-base font-medium">
+							Projekt <span className="text-destructive">*</span>
+						</Label>
 						<Select
-							value={selectedProject || ''}
+							value={selectedProject ?? ''}
 							onValueChange={(value) => setValue('project_id', value)}
 						>
-							<SelectTrigger>
+							<SelectTrigger id="project_id" className="h-12 border-2 hover:border-primary/30 transition-colors">
 								<SelectValue placeholder="Välj projekt" />
 							</SelectTrigger>
 							<SelectContent>
@@ -211,21 +228,24 @@ export function ChecklistForm({ projectId, onSuccess, onCancel }: ChecklistFormP
 							</SelectContent>
 						</Select>
 						{errors.project_id && (
-							<p className="text-sm text-destructive mt-1">{errors.project_id.message}</p>
+							<p className="text-sm text-destructive mt-1 flex items-center gap-1">
+								⚠️ {errors.project_id.message}
+							</p>
 						)}
 					</div>
 				)}
 
-				<div>
-					<Label htmlFor="template_id">Välj mall (valfritt)</Label>
+				<div className="space-y-2">
+					<Label htmlFor="template_id" className="text-base font-medium">Välj mall (valfritt)</Label>
 					<Select
-						value={selectedTemplate || ''}
-						onValueChange={(value) => setValue('template_id', value)}
+						value={selectedTemplate ?? 'none'}
+						onValueChange={(value) => setValue('template_id', value === 'none' ? null : value)}
 					>
-						<SelectTrigger>
+						<SelectTrigger id="template_id" className="h-12 border-2 hover:border-primary/30 transition-colors">
 							<SelectValue placeholder="Välj en mall eller skapa egen" />
 						</SelectTrigger>
 						<SelectContent>
+							<SelectItem value="none">✨ Ingen mall - Skapa egen</SelectItem>
 							{templates?.map((template: { id: string; name: string; category: string }) => (
 								<SelectItem key={template.id} value={template.id}>
 									{template.category ? `[${template.category}] ` : ''}{template.name}
@@ -233,95 +253,166 @@ export function ChecklistForm({ projectId, onSuccess, onCancel }: ChecklistFormP
 							))}
 						</SelectContent>
 					</Select>
+					<p className="text-xs text-muted-foreground mt-1">
+						Välj en mall för att snabbt komma igång med förifyllda punkter
+					</p>
 				</div>
 
-				<div>
-					<Label htmlFor="title">Titel *</Label>
+				<div className="space-y-2">
+					<Label htmlFor="title" className="flex items-center gap-1 text-base font-medium">
+						Titel <span className="text-destructive">*</span>
+					</Label>
 					<Input
 						id="title"
 						{...register('title')}
 						placeholder="T.ex. Säkerhetscheck 2025-10-19"
+						className="h-12 border-2 hover:border-primary/30 focus:border-primary transition-colors"
 					/>
 					{errors.title && (
-						<p className="text-sm text-destructive mt-1">{errors.title.message}</p>
+						<p className="text-sm text-destructive mt-1 flex items-center gap-1">
+							⚠️ {errors.title.message}
+						</p>
 					)}
 				</div>
+			</div>
 
-				{/* Checklist Items */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center justify-between">
-							<span>Checkpunkter</span>
-							<Button type="button" variant="outline" size="sm" onClick={addCustomItem}>
-								Lägg till punkt
-							</Button>
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						{items.length === 0 && (
-							<p className="text-muted-foreground text-center py-4">
-								Välj en mall eller lägg till egna punkter
-							</p>
-						)}
-						{items.map((item) => (
-							<div key={item.id} className="border rounded-lg p-4 space-y-2">
-								<div className="flex items-start gap-3">
+			{/* Checkpoints Card */}
+			<div className="bg-card border-2 border-border rounded-xl p-5 space-y-4">
+				<div className="flex items-center justify-between">
+					<div>
+						<Label className="text-base font-medium">Checkpunkter</Label>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							Lägg till punkter som ska kontrolleras
+						</p>
+					</div>
+					<div className="flex items-center gap-2 px-3 py-1 bg-accent rounded-full">
+						<span className="text-xs font-medium text-muted-foreground">Totalt:</span>
+						<span className="text-sm font-bold text-primary">{items.length}</span>
+					</div>
+				</div>
+
+				{/* Add New Item */}
+				<div className="flex gap-2">
+					<div className="relative flex-1">
+						<Input
+							value={newItemText}
+							onChange={(e) => setNewItemText(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter') {
+									e.preventDefault();
+									addCustomItem();
+								}
+							}}
+							placeholder="Skriv en ny checkpunkt och tryck Enter..."
+							className="h-12 border-2 pl-10 hover:border-primary/30 focus:border-primary transition-colors"
+						/>
+						<Plus className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+					</div>
+					<Button
+						type="button"
+						onClick={addCustomItem}
+						disabled={!newItemText.trim()}
+						className="h-12 px-6 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
+					>
+						Lägg till
+					</Button>
+				</div>
+
+				{/* Items List */}
+				{items.length === 0 ? (
+					<div className="border-2 border-dashed border-border rounded-xl p-10 text-center bg-muted/30">
+						<div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-accent/50 mb-4">
+							<Plus className="w-8 h-8 text-muted-foreground" />
+						</div>
+						<p className="text-sm font-medium text-foreground mb-1">
+							Inga checkpunkter ännu
+						</p>
+						<p className="text-xs text-muted-foreground">
+							Välj en mall eller lägg till egna punkter för att komma igång
+						</p>
+					</div>
+				) : (
+					<div className="space-y-2">
+						{items.map((item, index) => (
+							<div
+								key={item.id}
+								className="flex items-center gap-3 p-4 bg-accent/30 border-2 border-transparent hover:border-primary/30 rounded-lg hover:bg-accent/50 transition-all group"
+							>
+								<button
+									type="button"
+									className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors"
+									title="Drag för att omorganisera"
+								>
+									<GripVertical className="w-5 h-5" />
+								</button>
+
+								<Checkbox
+									id={`item-${item.id}`}
+									checked={item.checked}
+									onCheckedChange={(checked) => toggleItem(item.id)}
+									className="border-2"
+								/>
+
+								<label
+									htmlFor={`item-${item.id}`}
+									className="flex-1 cursor-pointer text-sm font-medium"
+								>
+									{item.text}
+								</label>
+
+								<div className="flex items-center gap-2">
+									<span className="text-xs font-medium text-muted-foreground bg-background/50 px-2 py-1 rounded-full">
+										#{index + 1}
+									</span>
+
 									<button
 										type="button"
-										onClick={() => toggleItem(item.id)}
-										className="mt-1"
+										onClick={() => removeItem(item.id)}
+										className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-destructive/10 rounded-lg text-muted-foreground hover:text-destructive"
+										title="Ta bort punkt"
 									>
-										{item.checked ? (
-											<CheckCircle2 className="h-5 w-5 text-primary" />
-										) : (
-											<Circle className="h-5 w-5 text-muted-foreground" />
-										)}
+										<X className="w-4 h-4" />
 									</button>
-									<Input
-										value={item.text}
-										onChange={(e) => updateItemText(item.id, e.target.value)}
-										className="flex-1"
-									/>
 								</div>
-								<Input
-									placeholder="Anteckningar (valfritt)"
-									value={item.notes || ''}
-									onChange={(e) => updateNotes(item.id, e.target.value)}
-									className="ml-8"
-								/>
 							</div>
 						))}
-					</CardContent>
-				</Card>
-
-				{/* Signature */}
-				{allChecked && (
-					<div className="border-t pt-6">
-						<SignatureInput
-							onSign={setSignature}
-							label="Signatur (när alla punkter är checkade)"
-							existingSignature={signature}
-						/>
 					</div>
 				)}
 			</div>
 
-			<div className="flex gap-3 justify-end">
+			{/* Signature */}
+			{allChecked && (
+				<div className="bg-green-50 border-2 border-green-200 rounded-xl p-5">
+					<SignatureInput
+						onSign={setSignature}
+						label="✅ Signatur (alla punkter är checkade)"
+						existingSignature={signature}
+					/>
+				</div>
+			)}
+
+			{/* Action Buttons */}
+			<div className="flex gap-3 pt-2">
 				{onCancel && (
 					<Button
 						type="button"
 						variant="outline"
 						onClick={onCancel}
 						disabled={createChecklistMutation.isPending}
+						className="flex-1 md:flex-none h-12 border-2"
 					>
 						Avbryt
 					</Button>
 				)}
-				<Button type="submit" disabled={createChecklistMutation.isPending}>
+				<Button
+					type="submit"
+					disabled={createChecklistMutation.isPending || items.length === 0}
+					className="flex-1 md:flex-auto h-12 text-base font-semibold shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:scale-[1.02] transition-all"
+				>
 					{createChecklistMutation.isPending && (
-						<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+						<Loader2 className="mr-2 h-5 w-5 animate-spin" />
 					)}
-					Spara checklista
+					{createChecklistMutation.isPending ? 'Sparar...' : 'Spara checklista'}
 				</Button>
 			</div>
 		</form>

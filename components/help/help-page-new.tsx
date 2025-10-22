@@ -1,0 +1,404 @@
+'use client';
+
+import { useState } from 'react';
+import {
+	Lightbulb,
+	BookOpen,
+	HelpCircle,
+	Video,
+	Clock,
+	Package,
+	CheckSquare,
+	FileText,
+	Info,
+	PlayCircle,
+	RotateCcw,
+	ChevronDown,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import toast from 'react-hot-toast';
+
+interface HelpPageNewProps {
+	userRole: 'admin' | 'foreman' | 'worker' | 'finance';
+}
+
+export function HelpPageNew({ userRole }: HelpPageNewProps) {
+	const [activeTab, setActiveTab] = useState('guides');
+	const [openFaqs, setOpenFaqs] = useState<string[]>([]);
+
+	const toggleFaq = (id: string) => {
+		setOpenFaqs((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+	};
+
+	const guides = [
+		{
+			title: 'Tidsrapportering',
+			description: 'Lär dig att registrera arbetstid',
+			icon: Clock,
+			sections: [
+				{
+					title: 'Snabbstart timer',
+					items: [
+						'Klicka på "Starta timer" i navigationen',
+						'Välj projekt och uppgift',
+						'Timern börjar direkt',
+						'Klicka "Stoppa" när du är klar',
+					],
+				},
+				{
+					title: 'Manuell registrering',
+					items: [
+						'Gå till "Tid"-sidan',
+						'Klicka "Lägg till tid"',
+						'Fyll i datum, start, stopp',
+						'Välj projekt och fas',
+						'Spara',
+					],
+				},
+			],
+		},
+		{
+			title: 'Material & Utlägg',
+			description: 'Registrera material och kostnader',
+			icon: Package,
+			sections: [
+				{
+					title: 'Material',
+					items: [
+						'Gå till "Material"-sidan',
+						'Klicka "Lägg till material"',
+						'Beskriv vad du har beställt',
+						'Ange antal och pris',
+						'Ta foto på kvitto (valfritt)',
+						'Spara',
+					],
+				},
+				{
+					title: 'Utlägg',
+					items: [
+						'Välj "Utlägg"-fliken',
+						'Klicka "Lägg till utlägg"',
+						'Välj kategori (parkering, verktyg, etc.)',
+						'Ange belopp',
+						'Ta foto på kvitto',
+						'Spara',
+					],
+				},
+			],
+		},
+		{
+			title: 'Godkännanden',
+			description: 'Granska och godkänn tidrapporter',
+			icon: CheckSquare,
+			sections: [
+				{
+					title: 'Godkänna tidrapporter',
+					items: [
+						'Gå till "Godkännanden"',
+						'Välj vecka att granska',
+						'Granska tidrapporter i tabellen',
+						'Markera de du vill godkänna',
+						'Klicka "Godkänn"',
+					],
+				},
+				{
+					title: 'Hantera avslag',
+					items: [
+						'Klicka meddelande-ikonen på tidrapport',
+						'Skriv vad som behöver ändras',
+						'Skicka feedback',
+						'Användaren ser din kommentar',
+					],
+				},
+			],
+		},
+		{
+			title: 'CSV Export',
+			description: 'Exportera data för lön och fakturering',
+			icon: FileText,
+			sections: [
+				{
+					title: 'Löne-CSV',
+					items: [
+						'Godkänn alla tidrapporter först',
+						'Välj period (vecka)',
+						'Klicka "Löne-CSV"',
+						'Granska CSV-fil',
+						'Importera i lönesystem',
+					],
+				},
+				{
+					title: 'Faktura-CSV',
+					items: ['Godkänn tid, material, ÄTA', 'Välj period', 'Klicka "Faktura-CSV"', 'Granska CSV-fil', 'Använd för fakturering'],
+				},
+			],
+		},
+		{
+			title: 'Offline-läge',
+			description: 'Arbeta utan internetanslutning',
+			icon: Info,
+			sections: [
+				{
+					title: '',
+					items: [
+						'EP Tracker fungerar offline! Allt du gör sparas lokalt på din enhet. När du får internetanslutning igen synkroniseras automatiskt alla dina ändringar till servern. Du ser en synkroniseringsstatus längst upp i appen.',
+					],
+				},
+			],
+		},
+	];
+
+	const interactiveGuides = [
+		{
+			id: 'overview',
+			title: 'Översikt',
+			description: 'Lär dig använda översiktssidan, snabbåtgärder och statistik',
+			icon: Lightbulb,
+		},
+		{
+			id: 'project',
+			title: 'Projekt',
+			description: 'Hur du skapar och hanterar projekt',
+			icon: BookOpen,
+		},
+		{
+			id: 'time',
+			title: 'Tidsrapportering',
+			description: 'Rapportera tid med timer eller manuellt',
+			icon: Clock,
+		},
+		{
+			id: 'material',
+			title: 'Material & Utlägg',
+			description: 'Lägg till material, utlägg och miltal',
+			icon: Package,
+		},
+		{
+			id: 'approval',
+			title: 'Godkännanden',
+			description: 'Granska och godkänn tidrapporter, exportera till lön',
+			icon: CheckSquare,
+		},
+	];
+
+	const faqs = [
+		{
+			id: 'faq-1',
+			question: 'Hur rättar jag en tidrapport?',
+			answer:
+				'Du kan redigera tidrapporter som har status "Utkast". Om en tidrapport redan är godkänd, kontakta din arbetsledare för att begära ändringar.',
+		},
+		{
+			id: 'faq-2',
+			question: 'Vad händer om jag glömmer stoppa timern?',
+			answer:
+				'Timern fortsätter räkna tills du stoppar den manuellt. Du kan redigera start- och stopptid efter att du behöver korrigera tiden.',
+		},
+		{
+			id: 'faq-3',
+			question: 'Kan jag ta bort en tidrapport?',
+			answer:
+				'Ja, tidrapporter med status "Utkast" kan tas bort. Godkända tidrapporter kan inte tas bort av säkerhetsskäl.',
+		},
+		{
+			id: 'faq-4',
+			question: 'Hur fungerar offline-läge?',
+			answer:
+				'När du är offline sparas all data lokalt på din enhet. När du får internetanslutning igen synkroniseras automatiskt alla dina ändringar till servern. Du ser en synkroniseringsstatus längst upp i appen.',
+		},
+		{
+			id: 'faq-5',
+			question: 'Hur godkänner jag flera tidrapporter samtidigt?',
+			answer:
+				'Gå till "Godkännanden", markera checkboxarna på de tidrapporter du vill godkänna, och klicka sedan på "Godkänn"-knappen. Du kan också godkänna alla tidrapporter för en användare eller ett projekt på en gång.',
+		},
+		{
+			id: 'faq-6',
+			question: 'Var hittar jag tidigare exporter?',
+			answer:
+				'Klicka på "Historik"-knappen på godkännandesidan. Där ser du alla tidigare CSV-exporter med information om period, antal poster och vem som skapade exporten.',
+		},
+	];
+
+	const handleStartGuide = (guideId: string) => {
+		toast.success(`Guide startar snart: ${interactiveGuides.find((g) => g.id === guideId)?.title}`);
+	};
+
+	const handleResetAll = () => {
+		toast.success('Alla guider och checklistor har återställts');
+	};
+
+	return (
+		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
+			{/* Header */}
+			<header className='sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border'>
+				<div className='px-4 md:px-8 py-4 md:py-6'>
+					<div>
+						<h1 className='text-3xl font-bold tracking-tight mb-1'>Hjälp & Support</h1>
+						<p className='text-sm text-muted-foreground'>Guider och svar på vanliga frågor</p>
+					</div>
+				</div>
+			</header>
+
+			{/* Main Content */}
+			<main className='px-4 md:px-8 py-6 max-w-7xl'>
+				{/* Tabs */}
+				<Tabs value={activeTab} onValueChange={setActiveTab} className='space-y-6'>
+					<TabsList className='grid w-full md:w-auto md:inline-grid grid-cols-2 md:grid-cols-4 gap-1 h-auto p-1'>
+						<TabsTrigger value='guides' className='gap-2 h-10'>
+							<BookOpen className='w-4 h-4' />
+							<span>Guider</span>
+						</TabsTrigger>
+						<TabsTrigger value='interactive' className='gap-2 h-10'>
+							<Lightbulb className='w-4 h-4' />
+							<span className='hidden sm:inline'>Interaktiva</span>
+							<span className='sm:hidden'>Inter.</span>
+						</TabsTrigger>
+						<TabsTrigger value='faq' className='gap-2 h-10'>
+							<HelpCircle className='w-4 h-4' />
+							<span>FAQ</span>
+						</TabsTrigger>
+						<TabsTrigger value='videos' className='gap-2 h-10'>
+							<Video className='w-4 h-4' />
+							<span>Videos</span>
+						</TabsTrigger>
+					</TabsList>
+
+					{/* Guides Tab */}
+					<TabsContent value='guides' className='space-y-4 mt-6'>
+						<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+							{guides.map((guide, index) => {
+								const IconComponent = guide.icon;
+								return (
+									<div
+										key={index}
+										className='bg-card border-2 border-border rounded-xl p-5 hover:border-primary/30 hover:shadow-lg transition-all duration-200'
+									>
+										<div className='flex items-start gap-3 mb-4'>
+											<div className='p-2 rounded-lg bg-accent shrink-0'>
+												<IconComponent className='w-5 h-5 text-primary' />
+											</div>
+											<div className='flex-1 min-w-0'>
+												<h3 className='text-lg font-semibold mb-1'>{guide.title}</h3>
+												<p className='text-sm text-muted-foreground'>{guide.description}</p>
+											</div>
+										</div>
+
+										<div className='space-y-4'>
+											{guide.sections.map((section, sIndex) => (
+												<div key={sIndex}>
+													{section.title && <h4 className='text-sm font-semibold mb-2'>{section.title}:</h4>}
+													<ol className='space-y-1.5 list-decimal list-inside text-sm text-muted-foreground'>
+														{section.items.map((item, iIndex) => (
+															<li key={iIndex} className='pl-1'>
+																{item}
+															</li>
+														))}
+													</ol>
+												</div>
+											))}
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					</TabsContent>
+
+					{/* Interactive Guides Tab */}
+					<TabsContent value='interactive' className='space-y-6 mt-6'>
+						<div className='bg-card border-2 border-border rounded-xl p-6'>
+							<h3 className='text-lg font-semibold mb-2'>Interaktiva guider</h3>
+							<p className='text-sm text-muted-foreground mb-6'>Starta om guiderna för att lära dig funktionerna igen</p>
+
+							<div className='space-y-3'>
+								{interactiveGuides.map((guide) => {
+									const IconComponent = guide.icon;
+									return (
+										<div
+											key={guide.id}
+											className='bg-accent/30 border-2 border-border rounded-xl p-4 flex items-center gap-4 hover:border-primary/30 transition-all duration-200'
+										>
+											<div className='p-2 rounded-lg bg-accent shrink-0'>
+												<IconComponent className='w-5 h-5 text-primary' />
+											</div>
+
+											<div className='flex-1 min-w-0'>
+												<h4 className='font-semibold mb-1'>{guide.title}</h4>
+												<p className='text-sm text-muted-foreground'>{guide.description}</p>
+											</div>
+
+											<Button
+												variant='outline'
+												size='sm'
+												onClick={() => handleStartGuide(guide.id)}
+												className='shrink-0 gap-2 hover:bg-primary hover:text-primary-foreground transition-colors'
+											>
+												<PlayCircle className='w-4 h-4' />
+												Starta
+											</Button>
+										</div>
+									);
+								})}
+							</div>
+						</div>
+
+						{/* Reset Section */}
+						<div className='bg-accent/50 border-2 border-primary/20 rounded-xl p-6'>
+							<h4 className='font-semibold mb-2'>Starta om från början</h4>
+							<p className='text-sm text-muted-foreground mb-4'>
+								Återställ alla guider och checklistor. Du kommer att se välkomstskärmen igen.
+							</p>
+							<Button variant='outline' onClick={handleResetAll} className='gap-2'>
+								<RotateCcw className='w-4 h-4' />
+								Återställ allt
+							</Button>
+						</div>
+					</TabsContent>
+
+					{/* FAQ Tab */}
+					<TabsContent value='faq' className='space-y-3 mt-6'>
+						{faqs.map((faq) => {
+							const isOpen = openFaqs.includes(faq.id);
+
+							return (
+								<Collapsible key={faq.id} open={isOpen} onOpenChange={() => toggleFaq(faq.id)}>
+									<div className='bg-card border-2 border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all duration-200'>
+										<CollapsibleTrigger className='w-full p-5 flex items-center justify-between gap-3 text-left hover:bg-accent/50 transition-colors'>
+											<h4 className='font-semibold'>{faq.question}</h4>
+											<ChevronDown
+												className={`w-5 h-5 text-muted-foreground shrink-0 transition-transform duration-200 ${
+													isOpen ? 'rotate-180' : ''
+												}`}
+											/>
+										</CollapsibleTrigger>
+										<CollapsibleContent>
+											<div className='px-5 pb-5 pt-2 border-t border-border'>
+												<p className='text-sm text-muted-foreground leading-relaxed'>{faq.answer}</p>
+											</div>
+										</CollapsibleContent>
+									</div>
+								</Collapsible>
+							);
+						})}
+					</TabsContent>
+
+					{/* Videos Tab */}
+					<TabsContent value='videos' className='space-y-4 mt-6'>
+						<div className='bg-card border-2 border-border rounded-xl p-12 text-center'>
+							<div className='inline-flex items-center justify-center w-20 h-20 rounded-full bg-muted mb-6'>
+								<Video className='w-10 h-10 text-muted-foreground' />
+							</div>
+							<h3 className='text-xl font-semibold mb-3'>Videotutorials kommer snart</h3>
+							<p className='text-sm text-muted-foreground max-w-md mx-auto'>
+								Vi arbetar på att skapa videoguider som visar hur du använder systemet. Håll utkik!
+							</p>
+						</div>
+					</TabsContent>
+				</Tabs>
+			</main>
+		</div>
+	);
+}
+
