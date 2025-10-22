@@ -24,6 +24,8 @@ export const projectSchema = z.object({
 	site_lon: z.number().min(-180).max(180).optional().nullable(),
 	geo_fence_radius_m: z.number().int().min(0).max(10000).default(100),
 	budget_mode: budgetModeEnum.default('none'),
+	budget_hours: z.number().positive('Budget måste vara större än 0').optional().nullable(),
+	budget_amount: z.number().positive('Budget måste vara större än 0').optional().nullable(),
 	status: projectStatusEnum.default('active'),
 });
 

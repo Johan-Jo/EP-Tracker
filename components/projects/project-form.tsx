@@ -47,6 +47,8 @@ export function ProjectForm({ project, orgId, onSubmit }: ProjectFormProps) {
 			site_lon: null,
 			geo_fence_radius_m: 100,
 			budget_mode: 'none' as const,
+			budget_hours: null,
+			budget_amount: null,
 			status: 'active' as const,
 		},
 	});
@@ -181,6 +183,49 @@ export function ProjectForm({ project, orgId, onSubmit }: ProjectFormProps) {
 							)}
 						</div>
 					</div>
+
+					{/* Budget input fields - show based on selected budget mode */}
+					{budgetMode === 'hours' && (
+						<div className='space-y-2'>
+							<Label htmlFor='budget_hours'>
+								Budget (timmar) <span className='text-destructive'>*</span>
+							</Label>
+							<Input
+								id='budget_hours'
+								type='number'
+								step='0.5'
+								{...register('budget_hours', { valueAsNumber: true })}
+								placeholder='Ex: 125'
+							/>
+							{errors.budget_hours && (
+								<p className='text-sm text-destructive'>{errors.budget_hours.message}</p>
+							)}
+							<p className='text-xs text-muted-foreground'>
+								Ange planerade timmar för projektet
+							</p>
+						</div>
+					)}
+
+					{budgetMode === 'amount' && (
+						<div className='space-y-2'>
+							<Label htmlFor='budget_amount'>
+								Budget (kronor) <span className='text-destructive'>*</span>
+							</Label>
+							<Input
+								id='budget_amount'
+								type='number'
+								step='1'
+								{...register('budget_amount', { valueAsNumber: true })}
+								placeholder='Ex: 250000'
+							/>
+							{errors.budget_amount && (
+								<p className='text-sm text-destructive'>{errors.budget_amount.message}</p>
+							)}
+							<p className='text-xs text-muted-foreground'>
+								Ange budget i svenska kronor (SEK)
+							</p>
+						</div>
+					)}
 				</CardContent>
 			</Card>
 
