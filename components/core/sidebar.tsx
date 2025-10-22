@@ -52,7 +52,7 @@ const navItems: NavItem[] = [
 		roles: ['admin', 'foreman', 'worker', 'finance'],
 	},
 	{
-		label: 'ÄTA',
+		label: 'ATA',
 		href: '/dashboard/ata',
 		icon: FileEdit,
 		roles: ['admin', 'foreman', 'worker'],
@@ -64,7 +64,7 @@ const navItems: NavItem[] = [
 		roles: ['admin', 'foreman'],
 	},
 	{
-		label: 'Checklistor',
+		label: 'Checklista',
 		href: '/dashboard/checklists',
 		icon: CheckSquare,
 		roles: ['admin', 'foreman'],
@@ -117,17 +117,20 @@ export function Sidebar({ userRole }: SidebarProps) {
 	const showAdminSection = visibleSettingsItems.length > 0;
 
 	return (
-		<aside className='hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950'>
+		<aside className='hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r border-[#E5E7EB] bg-white dark:border-gray-800 dark:bg-gray-950'>
 			<div className='flex flex-col flex-1 min-h-0'>
 				{/* Header */}
-				<div className='border-b border-gray-200 px-6 py-5 dark:border-gray-800'>
-					<h1 className='text-xl font-bold text-gray-900 dark:text-white'>EP Tracker</h1>
-					<p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-						Tidrapportering
-					</p>
+				<div className="px-5 pt-6 pb-4">
+					<div className="flex flex-col">
+						<span className="text-lg font-semibold text-gray-900">EP Tracker</span>
+						<span className="text-sm text-gray-500">Tidsrapportering</span>
+					</div>
 				</div>
 
-				<nav className='flex-1 px-2 py-4 space-y-1 overflow-y-auto'>
+				{/* Separator line */}
+				<div className="mx-5 border-t border-gray-200" />
+
+				<nav className='flex-1 px-4 py-4 space-y-1 overflow-y-auto'>
 					{visibleNavItems.map((item) => {
 						const isActive = pathname === item.href;
 						const Icon = item.icon;
@@ -137,16 +140,16 @@ export function Sidebar({ userRole }: SidebarProps) {
 								key={item.href}
 								href={item.href}
 								className={cn(
-									'group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors',
+									'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
 									isActive
-										? 'bg-orange-100 text-orange-900 dark:bg-orange-900/20 dark:text-orange-100'
-										: 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100'
+										? 'bg-orange-50 text-orange-600 font-medium'
+										: 'text-gray-700 hover:bg-gray-50'
 								)}
 							>
 								<Icon
 									className={cn(
 										'flex-shrink-0 h-5 w-5',
-										isActive ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-600'
+										isActive ? 'text-orange-600' : 'text-gray-400'
 									)}
 								/>
 								{item.label}
@@ -155,9 +158,9 @@ export function Sidebar({ userRole }: SidebarProps) {
 					})}
 
 					{showAdminSection && (
-						<div className='pt-6 mt-6 border-t border-gray-200 dark:border-gray-800'>
-							<p className='px-3 mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
-								Administration
+						<div className='pt-6 mt-6 border-t border-gray-200'>
+							<p className='px-3 pt-4 mb-2 text-xs font-medium text-gray-400 uppercase tracking-wide'>
+								ADMINISTRATION
 							</p>
 							{visibleSettingsItems.map((item) => {
 								const isActive = pathname === item.href;
@@ -168,16 +171,16 @@ export function Sidebar({ userRole }: SidebarProps) {
 										key={item.href}
 										href={item.href}
 										className={cn(
-											'group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors',
+											'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
 											isActive
-												? 'bg-orange-100 text-orange-900 dark:bg-orange-900/20 dark:text-orange-100'
-												: 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100'
+												? 'bg-orange-50 text-orange-600 font-medium'
+												: 'text-gray-700 hover:bg-gray-50'
 										)}
 									>
 										<Icon
 											className={cn(
 												'flex-shrink-0 h-5 w-5',
-												isActive ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 group-hover:text-gray-600'
+												isActive ? 'text-orange-600' : 'text-gray-400'
 											)}
 										/>
 										{item.label}
@@ -191,4 +194,3 @@ export function Sidebar({ userRole }: SidebarProps) {
 		</aside>
 	);
 }
-

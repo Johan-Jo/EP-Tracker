@@ -77,12 +77,10 @@ export function TopNav({ userEmail, userName }: TopNavProps) {
 
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button variant='ghost' className='relative h-9 w-9 rounded-full'>
-								<Avatar className='h-9 w-9'>
-									<AvatarFallback className='bg-orange-600 text-white dark:bg-orange-500'>
-										{initials}
-									</AvatarFallback>
-								</Avatar>
+							<Button variant='ghost' className='relative h-8 w-8 rounded-full p-0'>
+								<div className="h-8 w-8 rounded-full bg-[#111827] text-white text-sm font-medium flex items-center justify-center">
+									{initials}
+								</div>
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align='end'>

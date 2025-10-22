@@ -99,11 +99,13 @@ export function SyncStatus() {
 
     if (pendingCount === 0 && !isSyncing) {
         return (
-            <div className="flex items-center gap-2">
-                <Badge variant="outline" className="flex items-center gap-1 bg-green-50 border-green-200">
-                    <Check className="w-3 h-3 text-green-600" />
-                    <span className="text-green-700">Synkad</span>
-                </Badge>
+            <div className="flex items-center gap-2 text-sm">
+                <span className="inline-flex items-center gap-1 rounded-full border border-[#E5E7EB] px-2 py-1">
+                    <svg viewBox="0 0 8 8" className="h-2.5 w-2.5 text-[#10B981]" aria-hidden="true">
+                        <circle cx="4" cy="4" r="4" fill="currentColor" />
+                    </svg>
+                    <span className="text-[#374151]">Synkat</span>
+                </span>
                 {lastSyncTime && (
                     <span className="text-xs text-muted-foreground hidden md:inline">
                         {lastSyncTime.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}
