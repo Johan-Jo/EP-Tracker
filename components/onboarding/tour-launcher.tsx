@@ -37,6 +37,18 @@ const availableTours: TourInfo[] = [
 		page: '/dashboard/materials',
 	},
 	{
+		id: 'planning',
+		title: 'Planering',
+		description: 'Schemalägg uppdrag och tilldela personal',
+		page: '/dashboard/planning',
+	},
+	{
+		id: 'planning-today',
+		title: 'Dagens uppdrag',
+		description: 'Checka in/ut och navigera till arbetsplatser',
+		page: '/dashboard/planning/today',
+	},
+	{
 		id: 'approvals',
 		title: 'Godkännanden',
 		description: 'Granska och godkänn tidrapporter, exportera till lön',
