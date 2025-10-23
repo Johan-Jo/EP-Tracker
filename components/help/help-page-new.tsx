@@ -215,17 +215,19 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 
 	const allInteractiveGuides = [
 		{
-			id: 'overview',
+			id: 'dashboard',
 			title: 'Översikt',
 			description: 'Lär dig använda översiktssidan, snabbåtgärder och statistik',
 			icon: Lightbulb,
+			page: '/dashboard',
 			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 		{
-			id: 'project',
+			id: 'projects',
 			title: 'Projekt',
 			description: 'Hur du skapar och hanterar projekt',
 			icon: BookOpen,
+			page: '/dashboard/projects',
 			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 		{
@@ -233,20 +235,23 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			title: 'Tidsrapportering',
 			description: 'Rapportera tid med timer eller manuellt',
 			icon: Clock,
+			page: '/dashboard/time',
 			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 		{
-			id: 'material',
+			id: 'materials',
 			title: 'Material & Utlägg',
 			description: 'Lägg till material, utlägg och miltal',
 			icon: Package,
+			page: '/dashboard/materials',
 			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 		{
-			id: 'today',
+			id: 'planning-today',
 			title: 'Dagens uppdrag',
 			description: 'Checka in/ut och navigera till arbetsplatser',
 			icon: CalendarCheck,
+			page: '/dashboard/planning/today',
 			roles: ['admin', 'foreman', 'worker'],
 		},
 		{
@@ -254,13 +259,15 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			title: 'Planering',
 			description: 'Schemalägg uppdrag och tilldela personal',
 			icon: Calendar,
+			page: '/dashboard/planning',
 			roles: ['admin', 'foreman'],
 		},
 		{
-			id: 'approval',
+			id: 'approvals',
 			title: 'Godkännanden',
 			description: 'Granska och godkänn tidrapporter, exportera till lön',
 			icon: CheckSquare,
+			page: '/dashboard/approvals',
 			roles: ['admin', 'foreman'],
 		},
 	];
@@ -345,7 +352,13 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 	const faqs = allFaqs.filter((faq) => faq.roles.includes(userRole));
 
 	const handleStartGuide = (guideId: string) => {
-		toast.success(`Guide startar snart: ${interactiveGuides.find((g) => g.id === guideId)?.title}`);
+		// Remove completed flag
+		localStorage.removeItem(`tour-${guideId}-completed`);
+		// Find guide and navigate with tour parameter
+		const guide = interactiveGuides.find((g) => g.id === guideId);
+		if (guide) {
+			window.location.href = `${guide.page}?tour=${guideId}`;
+		}
 	};
 
 	const handleResetAll = () => {
