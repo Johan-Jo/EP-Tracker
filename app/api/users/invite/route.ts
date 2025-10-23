@@ -164,34 +164,64 @@ export async function POST(request: NextRequest) {
 
 		const invitedUserId = inviteData.user.id;
 
-		// Create profile using admin client (bypasses RLS)
+		// Create or update profile using admin client (bypasses RLS)
+		// Use upsert to handle case where profile already exists
 		const { data: newProfile, error: profileError } = await adminClient
 			.from('profiles')
-			.insert({
+			.upsert({
 				id: invitedUserId, // Use the auth user ID
 				email: validatedData.email,
 				full_name: validatedData.full_name,
+				updated_at: new Date().toISOString(),
+			}, {
+				onConflict: 'id', // On conflict with id, update the row
 			})
 			.select()
 			.single();
 
 		if (profileError) {
-			console.error('Error creating profile:', profileError);
+			console.error('Error creating/updating profile:', profileError);
 			return NextResponse.json({ error: 'Failed to create user profile' }, { status: 500 });
 		}
 
-		// Create membership using admin client (bypasses RLS)
-		const { error: membershipInsertError } = await adminClient.from('memberships').insert({
-			org_id: membership.org_id,
-			user_id: invitedUserId,
-			role: validatedData.role,
-			hourly_rate_sek: validatedData.hourly_rate_sek,
-			is_active: true,
-		});
+		// Check if membership already exists
+		const { data: existingOrgMembership } = await adminClient
+			.from('memberships')
+			.select('id, is_active')
+			.eq('user_id', invitedUserId)
+			.eq('org_id', membership.org_id)
+			.single();
 
-		if (membershipInsertError) {
-			console.error('Error creating membership:', membershipInsertError);
-			return NextResponse.json({ error: 'Failed to create membership' }, { status: 500 });
+		if (existingOrgMembership) {
+			// Update existing membership
+			const { error: membershipUpdateError } = await adminClient
+				.from('memberships')
+				.update({
+					role: validatedData.role,
+					hourly_rate_sek: validatedData.hourly_rate_sek,
+					is_active: true,
+					updated_at: new Date().toISOString(),
+				})
+				.eq('id', existingOrgMembership.id);
+
+			if (membershipUpdateError) {
+				console.error('Error updating membership:', membershipUpdateError);
+				return NextResponse.json({ error: 'Failed to update membership' }, { status: 500 });
+			}
+		} else {
+			// Create new membership using admin client (bypasses RLS)
+			const { error: membershipInsertError } = await adminClient.from('memberships').insert({
+				org_id: membership.org_id,
+				user_id: invitedUserId,
+				role: validatedData.role,
+				hourly_rate_sek: validatedData.hourly_rate_sek,
+				is_active: true,
+			});
+
+			if (membershipInsertError) {
+				console.error('Error creating membership:', membershipInsertError);
+				return NextResponse.json({ error: 'Failed to create membership' }, { status: 500 });
+			}
 		}
 
 		return NextResponse.json({
