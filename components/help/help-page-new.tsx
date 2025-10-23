@@ -34,11 +34,12 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 		setOpenFaqs((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
 	};
 
-	const guides = [
+	const allGuides = [
 		{
 			title: 'Tidsrapportering',
 			description: 'Lär dig att registrera arbetstid',
 			icon: Clock,
+			roles: ['admin', 'foreman', 'worker', 'finance'],
 			sections: [
 				{
 					title: 'Snabbstart timer',
@@ -65,6 +66,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			title: 'Material & Utlägg',
 			description: 'Registrera material och kostnader',
 			icon: Package,
+			roles: ['admin', 'foreman', 'worker', 'finance'],
 			sections: [
 				{
 					title: 'Material',
@@ -91,9 +93,36 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			],
 		},
 		{
+			title: 'Dagens uppdrag (Mobil)',
+			description: 'Checklista för fältarbetare',
+			icon: CalendarCheck,
+			roles: ['admin', 'foreman', 'worker'],
+			sections: [
+				{
+					title: 'Dagens jobb',
+					items: [
+						'Gå till "Planering → Idag"',
+						'Se alla dina uppdrag för dagen',
+						'Checka in när du börjar',
+						'Navigera till arbetsplatsen',
+						'Checka ut när du är klar',
+					],
+				},
+				{
+					title: 'Snabbnavigering',
+					items: [
+						'Klicka "Navigera" på ett uppdrag',
+						'Google Maps öppnas automatiskt',
+						'Kör till arbetsplatsen',
+					],
+				},
+			],
+		},
+		{
 			title: 'Planering',
 			description: 'Schemalägg uppdrag för veckan',
 			icon: Calendar,
+			roles: ['admin', 'foreman'],
 			sections: [
 				{
 					title: 'Skapa uppdrag',
@@ -117,34 +146,10 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			],
 		},
 		{
-			title: 'Dagens uppdrag (Mobil)',
-			description: 'Checklista för fältarbetare',
-			icon: CalendarCheck,
-			sections: [
-				{
-					title: 'Dagens jobb',
-					items: [
-						'Gå till "Planering → Idag"',
-						'Se alla dina uppdrag för dagen',
-						'Checka in när du börjar',
-						'Navigera till arbetsplatsen',
-						'Checka ut när du är klar',
-					],
-				},
-				{
-					title: 'Snabbnavigering',
-					items: [
-						'Klicka "Navigera" på ett uppdrag',
-						'Google Maps öppnas automatiskt',
-						'Kör till arbetsplatsen',
-					],
-				},
-			],
-		},
-		{
 			title: 'Godkännanden',
 			description: 'Granska och godkänn tidrapporter',
 			icon: CheckSquare,
+			roles: ['admin', 'foreman'],
 			sections: [
 				{
 					title: 'Godkänna tidrapporter',
@@ -171,6 +176,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			title: 'CSV Export',
 			description: 'Exportera data för lön och fakturering',
 			icon: FileText,
+			roles: ['admin', 'foreman', 'finance'],
 			sections: [
 				{
 					title: 'Löne-CSV',
@@ -192,6 +198,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			title: 'Offline-läge',
 			description: 'Arbeta utan internetanslutning',
 			icon: Info,
+			roles: ['admin', 'foreman', 'worker', 'finance'],
 			sections: [
 				{
 					title: '',
@@ -203,113 +210,139 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 		},
 	];
 
-	const interactiveGuides = [
+	// Filter guides based on user role
+	const guides = allGuides.filter((guide) => guide.roles.includes(userRole));
+
+	const allInteractiveGuides = [
 		{
 			id: 'overview',
 			title: 'Översikt',
 			description: 'Lär dig använda översiktssidan, snabbåtgärder och statistik',
 			icon: Lightbulb,
+			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 		{
 			id: 'project',
 			title: 'Projekt',
 			description: 'Hur du skapar och hanterar projekt',
 			icon: BookOpen,
+			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 		{
 			id: 'time',
 			title: 'Tidsrapportering',
 			description: 'Rapportera tid med timer eller manuellt',
 			icon: Clock,
+			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 		{
 			id: 'material',
 			title: 'Material & Utlägg',
 			description: 'Lägg till material, utlägg och miltal',
 			icon: Package,
-		},
-		{
-			id: 'planning',
-			title: 'Planering',
-			description: 'Schemalägg uppdrag och tilldela personal',
-			icon: Calendar,
+			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 		{
 			id: 'today',
 			title: 'Dagens uppdrag',
 			description: 'Checka in/ut och navigera till arbetsplatser',
 			icon: CalendarCheck,
+			roles: ['admin', 'foreman', 'worker'],
+		},
+		{
+			id: 'planning',
+			title: 'Planering',
+			description: 'Schemalägg uppdrag och tilldela personal',
+			icon: Calendar,
+			roles: ['admin', 'foreman'],
 		},
 		{
 			id: 'approval',
 			title: 'Godkännanden',
 			description: 'Granska och godkänn tidrapporter, exportera till lön',
 			icon: CheckSquare,
+			roles: ['admin', 'foreman'],
 		},
 	];
 
-	const faqs = [
+	// Filter interactive guides based on user role
+	const interactiveGuides = allInteractiveGuides.filter((guide) => guide.roles.includes(userRole));
+
+	const allFaqs = [
 		{
 			id: 'faq-1',
 			question: 'Hur rättar jag en tidrapport?',
 			answer:
 				'Du kan redigera tidrapporter som har status "Utkast". Om en tidrapport redan är godkänd, kontakta din arbetsledare för att begära ändringar.',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 		{
 			id: 'faq-2',
 			question: 'Vad händer om jag glömmer stoppa timern?',
 			answer:
 				'Timern fortsätter räkna tills du stoppar den manuellt. Du kan redigera start- och stopptid efter att du behöver korrigera tiden.',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 		{
 			id: 'faq-3',
 			question: 'Kan jag ta bort en tidrapport?',
 			answer:
 				'Ja, tidrapporter med status "Utkast" kan tas bort. Godkända tidrapporter kan inte tas bort av säkerhetsskäl.',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 		{
 			id: 'faq-4',
 			question: 'Hur fungerar offline-läge?',
 			answer:
 				'När du är offline sparas all data lokalt på din enhet. När du får internetanslutning igen synkroniseras automatiskt alla dina ändringar till servern. Du ser en synkroniseringsstatus längst upp i appen.',
-		},
-		{
-			id: 'faq-5',
-			question: 'Hur godkänner jag flera tidrapporter samtidigt?',
-			answer:
-				'Gå till "Godkännanden", markera checkboxarna på de tidrapporter du vill godkänna, och klicka sedan på "Godkänn"-knappen. Du kan också godkänna alla tidrapporter för en användare eller ett projekt på en gång.',
-		},
-		{
-			id: 'faq-6',
-			question: 'Var hittar jag tidigare exporter?',
-			answer:
-				'Klicka på "Historik"-knappen på godkännandesidan. Där ser du alla tidigare CSV-exporter med information om period, antal poster och vem som skapade exporten.',
-		},
-		{
-			id: 'faq-7',
-			question: 'Hur flyttar jag ett uppdrag till ett annat datum?',
-			answer:
-				'Gå till Planering-sidan, dra uppdraget från ett datum och släpp det på det nya datumet. Ändringar sparas automatiskt. Du kan också dubbel-klicka på uppdraget för att redigera datum manuellt.',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 		{
 			id: 'faq-8',
 			question: 'Var hittar jag mina dagliga uppdrag?',
 			answer:
 				'Gå till "Planering → Idag" för att se alla dina uppdrag för dagen. Här kan du checka in/ut, navigera till arbetsplatser och se anteckningar för varje jobb.',
-		},
-		{
-			id: 'faq-9',
-			question: 'Vad betyder färgerna på projekten?',
-			answer:
-				'Varje projekt har en unik färg som visas i kalendern och på uppdragskort. Detta gör det lätt att snabbt se vilka projekt som är schemalagda och filtrera vyn efter specifika projekt.',
+			roles: ['admin', 'foreman', 'worker'],
 		},
 		{
 			id: 'faq-10',
 			question: 'Kan jag checka in utan internetanslutning?',
 			answer:
 				'Ja! Check-in/out fungerar offline. Händelserna sparas lokalt och synkroniseras automatiskt när du får internetanslutning igen. Du ser din status uppdateras direkt.',
+			roles: ['admin', 'foreman', 'worker'],
+		},
+		{
+			id: 'faq-7',
+			question: 'Hur flyttar jag ett uppdrag till ett annat datum?',
+			answer:
+				'Gå till Planering-sidan, dra uppdraget från ett datum och släpp det på det nya datumet. Ändringar sparas automatiskt. Du kan också dubbel-klicka på uppdraget för att redigera datum manuellt.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-9',
+			question: 'Vad betyder färgerna på projekten?',
+			answer:
+				'Varje projekt har en unik färg som visas i kalendern och på uppdragskort. Detta gör det lätt att snabbt se vilka projekt som är schemalagda och filtrera vyn efter specifika projekt.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-5',
+			question: 'Hur godkänner jag flera tidrapporter samtidigt?',
+			answer:
+				'Gå till "Godkännanden", markera checkboxarna på de tidrapporter du vill godkänna, och klicka sedan på "Godkänn"-knappen. Du kan också godkänna alla tidrapporter för en användare eller ett projekt på en gång.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-6',
+			question: 'Var hittar jag tidigare exporter?',
+			answer:
+				'Klicka på "Historik"-knappen på godkännandesidan. Där ser du alla tidigare CSV-exporter med information om period, antal poster och vem som skapade exporten.',
+			roles: ['admin', 'foreman', 'finance'],
 		},
 	];
+
+	// Filter FAQs based on user role
+	const faqs = allFaqs.filter((faq) => faq.roles.includes(userRole));
 
 	const handleStartGuide = (guideId: string) => {
 		toast.success(`Guide startar snart: ${interactiveGuides.find((g) => g.id === guideId)?.title}`);
