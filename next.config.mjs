@@ -32,6 +32,14 @@ const nextConfig = {
 		],
 	},
 	
+	// Disable webpack tracing to avoid EPERM errors on Windows
+	webpack: (config, { isServer }) => {
+		config.infrastructureLogging = {
+			level: 'error',
+		};
+		return config;
+	},
+	
 	// Reduce server-side processing
 	serverExternalPackages: ['@supabase/supabase-js'],
 	

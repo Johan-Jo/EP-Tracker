@@ -18,10 +18,7 @@ import toast from 'react-hot-toast';
 
 const checklistSchema = z.object({
 	project_id: z.string().uuid('Välj ett projekt'),
-	template_id: z.preprocess(
-		val => val === '' ? null : val,
-		z.string().uuid().nullable().optional()
-	),
+	template_id: z.string().uuid().nullable().optional(),
 	title: z.string().min(1, 'Titel krävs'),
 });
 

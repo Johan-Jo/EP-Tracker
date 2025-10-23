@@ -63,10 +63,16 @@ export function DeleteOrganizationDialog({
     <SimpleDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Delete Organization"
-      description={`Are you sure you want to delete "${organizationName}"?`}
     >
       <div className="space-y-4">
+        {/* Title and Description */}
+        <div>
+          <h2 className="text-lg font-semibold">Delete Organization</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Are you sure you want to delete &ldquo;{organizationName}&rdquo;?
+          </p>
+        </div>
+
         {/* Danger Warning */}
         <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900/50 dark:bg-red-900/20">
           <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />

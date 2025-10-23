@@ -5,12 +5,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSuperAdmin } from '@/lib/auth/super-admin';
+import { requireSuperAdminWithDetails } from '@/lib/auth/super-admin';
 import { endImpersonation } from '@/lib/super-admin/impersonation';
 
 export async function POST(request: NextRequest) {
 	try {
-		const superAdmin = await requireSuperAdmin();
+		const superAdmin = await requireSuperAdminWithDetails();
 
 		await endImpersonation(superAdmin.user_id);
 

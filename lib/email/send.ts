@@ -45,25 +45,25 @@ export async function sendEmail(options: SendEmailOptions) {
     
     switch (template) {
       case 'announcement':
-        html = render(AnnouncementEmail(templateData));
+        html = await render(AnnouncementEmail(templateData as any));
         break;
       case 'trial-ending':
-        html = render(TrialEndingEmail(templateData));
+        html = await render(TrialEndingEmail(templateData as any));
         break;
       case 'payment-failed':
-        html = render(PaymentFailedEmail(templateData));
+        html = await render(PaymentFailedEmail(templateData as any));
         break;
       case 'payment-successful':
-        html = render(PaymentSuccessfulEmail(templateData));
+        html = await render(PaymentSuccessfulEmail(templateData as any));
         break;
       case 'account-suspended':
-        html = render(AccountSuspendedEmail(templateData));
+        html = await render(AccountSuspendedEmail(templateData as any));
         break;
       case 'welcome':
-        html = render(WelcomeEmail(templateData));
+        html = await render(WelcomeEmail(templateData as any));
         break;
       case 'password-reset':
-        html = render(PasswordResetEmail(templateData));
+        html = await render(PasswordResetEmail(templateData as any));
         break;
       case 'custom':
         html = templateData.html;

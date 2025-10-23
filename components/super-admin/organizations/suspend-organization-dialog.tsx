@@ -60,10 +60,16 @@ export function SuspendOrganizationDialog({
     <SimpleDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Suspend Organization"
-      description={`Are you sure you want to suspend "${organizationName}"? All users will be blocked from accessing the system.`}
     >
       <div className="space-y-4">
+        {/* Title and Description */}
+        <div>
+          <h2 className="text-lg font-semibold">Suspend Organization</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Are you sure you want to suspend &ldquo;{organizationName}&rdquo;? All users will be blocked from accessing the system.
+          </p>
+        </div>
+
         {/* Warning */}
         <div className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 p-3 dark:border-orange-900/50 dark:bg-orange-900/20">
           <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />

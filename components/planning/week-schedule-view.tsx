@@ -266,7 +266,7 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 				projectColor: assignment.project.color,
 				startTime: assignment.all_day ? 'Heldag' : format(new Date(assignment.start_ts), 'HH:mm'),
 				endTime: assignment.all_day ? '' : format(new Date(assignment.end_ts), 'HH:mm'),
-				address: assignment.address || assignment.project.client_name,
+				address: assignment.address || assignment.project.client_name || undefined,
 				personCount: undefined,
 			};
 		})()
@@ -429,7 +429,7 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 				person={selectedPerson}
 				assignment={selectedAssignment}
 				onSubmit={onAddAssignment}
-				projects={data.projects}
+				projects={data.projects.map(p => ({ ...p, site_address: p.site_address || undefined }))}
 				users={data.resources.map(r => ({ id: r.id, name: r.full_name || r.email }))}
 			/>
 		</div>

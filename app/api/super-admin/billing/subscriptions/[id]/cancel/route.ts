@@ -12,6 +12,7 @@ export async function POST(
 	{ params }: { params: Promise<{ id: string }> }
 ) {
 	const { id } = await params;
+  
   try {
     await requireSuperAdmin();
     
@@ -33,7 +34,7 @@ export async function POST(
     const { data: subscription, error: subError } = await supabase
       .from('subscriptions')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
     
     if (subError || !subscription) {
@@ -59,7 +60,7 @@ export async function POST(
     const { data: updatedSub, error: updateError } = await supabase
       .from('subscriptions')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
     

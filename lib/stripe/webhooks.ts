@@ -137,7 +137,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
   }
 
   // Get the full subscription object from Stripe
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
 
   // Get plan ID from metadata
   const planId = session.metadata?.plan_id;
@@ -186,9 +186,10 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
 async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
   const supabase = await createClient();
 
-  const subscriptionId = typeof invoice.subscription === 'string'
-    ? invoice.subscription
-    : invoice.subscription?.id;
+  const invoiceData = invoice as any;
+  const subscriptionId = typeof invoiceData.subscription === 'string'
+    ? invoiceData.subscription
+    : invoiceData.subscription?.id;
 
   if (!subscriptionId) {
     console.log('Invoice not associated with a subscription, skipping');
@@ -214,17 +215,17 @@ async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
     .insert({
       organization_id: subscription.organization_id,
       subscription_id: subscription.plan_id, // This might need fixing - should be subscription ID not plan ID
-      amount: invoice.amount_paid / 100, // Convert from cents to SEK
+      amount: invoiceData.amount_paid / 100, // Convert from cents to SEK
       currency: 'SEK',
       status: 'successful',
       payment_method: 'stripe',
-      stripe_payment_intent_id: typeof invoice.payment_intent === 'string'
-        ? invoice.payment_intent
-        : invoice.payment_intent?.id,
-      stripe_invoice_id: invoice.id,
-      stripe_charge_id: typeof invoice.charge === 'string'
-        ? invoice.charge
-        : invoice.charge?.id,
+      stripe_payment_intent_id: typeof invoiceData.payment_intent === 'string'
+        ? invoiceData.payment_intent
+        : invoiceData.payment_intent?.id,
+      stripe_invoice_id: invoiceData.id,
+      stripe_charge_id: typeof invoiceData.charge === 'string'
+        ? invoiceData.charge
+        : invoiceData.charge?.id,
       created_at: now,
       updated_at: now,
     });
@@ -257,9 +258,10 @@ async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
   const supabase = await createClient();
 
-  const subscriptionId = typeof invoice.subscription === 'string'
-    ? invoice.subscription
-    : invoice.subscription?.id;
+  const invoiceData = invoice as any;
+  const subscriptionId = typeof invoiceData.subscription === 'string'
+    ? invoiceData.subscription
+    : invoiceData.subscription?.id;
 
   if (!subscriptionId) {
     console.log('Invoice not associated with a subscription, skipping');
@@ -285,14 +287,14 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void
     .insert({
       organization_id: subscription.organization_id,
       subscription_id: subscription.plan_id,
-      amount: invoice.amount_due / 100,
+      amount: invoiceData.amount_due / 100,
       currency: 'SEK',
       status: 'failed',
       payment_method: 'stripe',
-      stripe_payment_intent_id: typeof invoice.payment_intent === 'string'
-        ? invoice.payment_intent
-        : invoice.payment_intent?.id,
-      stripe_invoice_id: invoice.id,
+      stripe_payment_intent_id: typeof invoiceData.payment_intent === 'string'
+        ? invoiceData.payment_intent
+        : invoiceData.payment_intent?.id,
+      stripe_invoice_id: invoiceData.id,
       created_at: now,
       updated_at: now,
     });

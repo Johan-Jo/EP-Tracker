@@ -15,11 +15,11 @@ export const pricingPlanSchema = z.object({
   name: z.string().min(1, 'Plan name is required').max(100),
   price_sek: z.number().min(0, 'Price must be positive'),
   billing_cycle: z.enum(['monthly', 'annual'], {
-    errorMap: () => ({ message: 'Billing cycle must be monthly or annual' }),
+    message: 'Billing cycle must be monthly or annual',
   }),
   max_users: z.number().int().min(1, 'Must allow at least 1 user'),
   max_storage_gb: z.number().int().min(1, 'Must allow at least 1 GB'),
-  features: z.record(z.any()).optional(),
+  features: z.record(z.string(), z.any()).optional(),
   is_active: z.boolean().default(true),
 });
 

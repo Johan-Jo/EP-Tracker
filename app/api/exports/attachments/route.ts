@@ -91,10 +91,11 @@ export async function GET(request: NextRequest) {
 					if (expense.receipt_url) {
 						try {
 							const imageData = await downloadImage(expense.receipt_url);
-							const fileName = getFileName(
-								expense.receipt_url,
-								`kvitto_${expense.project?.project_number || 'unknown'}_${expense.description}`
-							);
+						const expenseProject = Array.isArray(expense.project) ? expense.project[0] : expense.project;
+						const fileName = getFileName(
+							expense.receipt_url,
+							`kvitto_${expenseProject?.project_number || 'unknown'}_${expense.description}`
+						);
 							expenseFolder.file(fileName, imageData);
 							totalFiles++;
 						} catch (error) {
@@ -218,7 +219,7 @@ export async function GET(request: NextRequest) {
 
 		// Return ZIP file
 		const fileName = `bilagor_${startDate}_${endDate}.zip`;
-		return new NextResponse(zipBuffer, {
+		return new NextResponse(zipBuffer as unknown as BodyInit, {
 			headers: {
 				'Content-Type': 'application/zip',
 				'Content-Disposition': `attachment; filename="${fileName}"`,

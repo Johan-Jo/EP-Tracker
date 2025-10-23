@@ -195,6 +195,7 @@ export type AssignmentWithRelations = Assignment & {
 		project_number: string | null;
 		color: string;
 		client_name: string | null;
+		daily_capacity_need: number;
 	};
 	user: {
 		id: string;

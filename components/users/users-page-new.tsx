@@ -230,11 +230,18 @@ export function UsersPageNew({ members, canInvite }: UsersPageNewProps) {
 				</div>
 			</main>
 
-			{/* Dialogs */}
-			<InviteUserDialog open={showInviteDialog} onClose={() => setShowInviteDialog(false)} />
-			{editingUser && (
-				<EditUserDialog member={editingUser} open={!!editingUser} onClose={() => setEditingUser(null)} />
-			)}
+		{/* Dialogs */}
+		<InviteUserDialog onSuccess={() => setShowInviteDialog(false)} />
+		{editingUser && (
+			<EditUserDialog 
+				userId={editingUser.profiles.id} 
+				currentRole={editingUser.role} 
+				currentHourlyRate={editingUser.hourly_rate_sek} 
+				userName={editingUser.profiles.full_name} 
+				userEmail={editingUser.profiles.email} 
+				onSuccess={() => setEditingUser(null)} 
+			/>
+		)}
 		</div>
 	);
 }

@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSuperAdmin } from '@/lib/auth/super-admin';
+import { requireSuperAdmin, requireSuperAdminWithDetails } from '@/lib/auth/super-admin';
 import { getFeatureFlags, createFeatureFlag } from '@/lib/super-admin/feature-flags';
 import { z } from 'zod';
 
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
 	try {
-		const superAdmin = await requireSuperAdmin();
+		const superAdmin = await requireSuperAdminWithDetails();
 
 		const body = await request.json();
 		const validated = createFlagSchema.parse(body);
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 		
 		if (error instanceof z.ZodError) {
 			return NextResponse.json(
-				{ error: 'Valideringsfel', details: error.errors },
+				{ error: 'Valideringsfel', details: error.issues },
 				{ status: 400 }
 			);
 		}

@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSuperAdmin } from '@/lib/auth/super-admin';
+import { requireSuperAdminWithDetails } from '@/lib/auth/super-admin';
 import { enableMaintenanceMode } from '@/lib/super-admin/maintenance';
 import { z } from 'zod';
 
@@ -17,7 +17,7 @@ const enableSchema = z.object({
 
 export async function POST(request: NextRequest) {
 	try {
-		const superAdmin = await requireSuperAdmin();
+		const superAdmin = await requireSuperAdminWithDetails();
 
 		const body = await request.json();
 		const validated = enableSchema.parse(body);
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
 		if (error instanceof z.ZodError) {
 			return NextResponse.json(
-				{ error: 'Valideringsfel', details: error.errors },
+				{ error: 'Valideringsfel', details: error.issues },
 				{ status: 400 }
 			);
 		}

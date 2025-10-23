@@ -10,12 +10,17 @@ import { rateLimit, RateLimitPresets, getRateLimitHeaders } from '@/lib/rate-lim
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireSuperAdmin();
+    await requireSuperAdmin();
+    
+    // Get user details for rate limiting
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
 
     // Rate limit: 20 emails per hour (to prevent spam)
     const rateLimitResult = rateLimit({
       ...RateLimitPresets.EMAIL,
-      identifier: `email:${user.user_id}`,
+      identifier: `email:${authUser?.id || 'unknown'}`,
     });
 
     if (!rateLimitResult.success) {
@@ -54,7 +59,7 @@ export async function POST(request: NextRequest) {
       message,
       ctaText,
       ctaUrl,
-      user.id
+      authUser?.id
     );
 
     return NextResponse.json({

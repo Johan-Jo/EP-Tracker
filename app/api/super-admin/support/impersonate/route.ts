@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSuperAdmin } from '@/lib/auth/super-admin';
+import { requireSuperAdminWithDetails } from '@/lib/auth/super-admin';
 import { startImpersonation } from '@/lib/super-admin/impersonation';
 import { rateLimit, RateLimitPresets, getRateLimitHeaders } from '@/lib/rate-limit';
 import { validateWithSwedish, validationErrorResponse } from '@/lib/validation/server-validation';
@@ -17,7 +17,7 @@ const impersonateSchema = z.object({
 
 export async function POST(request: NextRequest) {
 	try {
-		const superAdmin = await requireSuperAdmin();
+		const superAdmin = await requireSuperAdminWithDetails();
 
 		// Rate limit: 5 impersonations per 5 minutes
 		const rateLimitResult = rateLimit({

@@ -5,13 +5,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSuperAdmin } from '@/lib/auth/super-admin';
+import { requireSuperAdminWithDetails } from '@/lib/auth/super-admin';
 import { globalSearch } from '@/lib/super-admin/search';
 import { rateLimit, RateLimitPresets, getRateLimitHeaders } from '@/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
 	try {
-		const superAdmin = await requireSuperAdmin();
+		const superAdmin = await requireSuperAdminWithDetails();
 
 		// Rate limit: 30 searches per minute
 		const rateLimitResult = rateLimit({
