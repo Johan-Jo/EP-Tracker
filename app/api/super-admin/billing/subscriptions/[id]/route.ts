@@ -9,9 +9,10 @@ import { calculateNextPeriod } from '@/lib/billing/subscriptions';
  * PATCH /api/super-admin/billing/subscriptions/[id]
  */
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+	request: NextRequest,
+	{ params }: { params: Promise<{ id: string }> }
 ) {
+	const { id } = await params;
   try {
     await requireSuperAdmin();
     
@@ -33,7 +34,7 @@ export async function PATCH(
     const { data: subscription, error: subError } = await supabase
       .from('subscriptions')
       .select('*, plan:pricing_plans(billing_cycle)')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
     
     if (subError || !subscription) {
@@ -73,7 +74,7 @@ export async function PATCH(
     const { data: updatedSub, error: updateError } = await supabase
       .from('subscriptions')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
     

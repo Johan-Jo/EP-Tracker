@@ -8,9 +8,10 @@ import { cancelSubscriptionSchema } from '@/lib/schemas/billing';
  * POST /api/super-admin/billing/subscriptions/[id]/cancel
  */
 export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+	request: NextRequest,
+	{ params }: { params: Promise<{ id: string }> }
 ) {
+	const { id } = await params;
   try {
     await requireSuperAdmin();
     
@@ -74,7 +75,7 @@ export async function POST(
     await supabase
       .from('subscription_history')
       .insert({
-        subscription_id: params.id,
+        subscription_id: id,
         action: immediate ? 'canceled_immediately' : 'scheduled_cancellation',
         notes: reason || null,
       });

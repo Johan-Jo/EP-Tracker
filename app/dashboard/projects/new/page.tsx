@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { ProjectForm } from '@/components/projects/project-form';
 import { ProjectFormData } from '@/lib/schemas/project';
 import { revalidatePath } from 'next/cache';
@@ -77,18 +78,18 @@ export default async function NewProjectPage() {
 		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
 			<div className='px-4 md:px-8 py-6'>
 				<div className='max-w-4xl mx-auto space-y-6'>
-					{/* Breadcrumb */}
-					<nav className='flex items-center gap-2 text-sm text-muted-foreground mb-4'>
-						<a href='/dashboard' className='hover:text-foreground transition-colors'>
-							Dashboard
-						</a>
-						<span>/</span>
-						<a href='/dashboard/projects' className='hover:text-foreground transition-colors'>
-							Projekt
-						</a>
-						<span>/</span>
-						<span className='text-foreground font-medium'>Skapa nytt</span>
-					</nav>
+				{/* Breadcrumb */}
+				<nav className='flex items-center gap-2 text-sm text-muted-foreground mb-4'>
+					<Link href='/dashboard' className='hover:text-foreground transition-colors'>
+						Dashboard
+					</Link>
+					<span>/</span>
+					<Link href='/dashboard/projects' className='hover:text-foreground transition-colors'>
+						Projekt
+					</Link>
+					<span>/</span>
+					<span className='text-foreground font-medium'>Skapa nytt</span>
+				</nav>
 
 					{/* Header */}
 					<div className='bg-gradient-to-r from-orange-50 to-orange-100/50 border border-orange-200 rounded-xl p-6'>
