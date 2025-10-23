@@ -310,12 +310,19 @@ export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourPro
 
 /**
  * Calculate tooltip position relative to target element
+ * with viewport boundary checks to keep tooltip on screen
  */
 function calculatePosition(
 	targetRect: DOMRect,
 	position: 'top' | 'bottom' | 'left' | 'right' | 'center'
 ): { top: number; left: number } {
 	const offset = 16; // Gap between target and tooltip
+	const tooltipWidth = 448; // max-w-md = 28rem = 448px
+	const tooltipHeight = 200; // Approximate height
+	const padding = 16; // Padding from viewport edges
+
+	let top = 0;
+	let left = 0;
 
 	switch (position) {
 		case 'center':
@@ -325,30 +332,51 @@ function calculatePosition(
 				left: window.innerWidth / 2,
 			};
 		case 'top':
-			return {
-				top: targetRect.top - offset,
-				left: targetRect.left + targetRect.width / 2,
-			};
+			top = targetRect.top - offset;
+			left = targetRect.left + targetRect.width / 2;
+			break;
 		case 'bottom':
-			return {
-				top: targetRect.bottom + offset,
-				left: targetRect.left + targetRect.width / 2,
-			};
+			top = targetRect.bottom + offset;
+			left = targetRect.left + targetRect.width / 2;
+			break;
 		case 'left':
-			return {
-				top: targetRect.top + targetRect.height / 2,
-				left: targetRect.left - offset,
-			};
+			top = targetRect.top + targetRect.height / 2;
+			left = targetRect.left - offset;
+			break;
 		case 'right':
-			return {
-				top: targetRect.top + targetRect.height / 2,
-				left: targetRect.right + offset,
-			};
+			top = targetRect.top + targetRect.height / 2;
+			left = targetRect.right + offset;
+			break;
 		default:
-			return {
-				top: targetRect.bottom + offset,
-				left: targetRect.left + targetRect.width / 2,
-			};
+			top = targetRect.bottom + offset;
+			left = targetRect.left + targetRect.width / 2;
 	}
+
+	// Adjust horizontal position to keep tooltip on screen
+	// tooltip uses transform: translate(-50%, 0) so we need to account for that
+	const halfWidth = tooltipWidth / 2;
+	
+	// Check right boundary
+	if (left + halfWidth > window.innerWidth - padding) {
+		left = window.innerWidth - halfWidth - padding;
+	}
+	
+	// Check left boundary
+	if (left - halfWidth < padding) {
+		left = halfWidth + padding;
+	}
+
+	// Adjust vertical position to keep tooltip on screen
+	// Check bottom boundary
+	if (top + tooltipHeight > window.innerHeight - padding) {
+		top = window.innerHeight - tooltipHeight - padding;
+	}
+	
+	// Check top boundary
+	if (top < padding) {
+		top = padding;
+	}
+
+	return { top, left };
 }
 
