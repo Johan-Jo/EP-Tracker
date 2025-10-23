@@ -138,7 +138,7 @@ export function AddAssignmentDialog({
 				<form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
 					{/* Project Selection */}
 					<div className="space-y-2">
-						<Label htmlFor="project_id">Projekt *</Label>
+						<Label>Projekt *</Label>
 						<Select 
 							value={watch('project_id')} 
 							onValueChange={(value) => setValue('project_id', value)}
@@ -167,7 +167,7 @@ export function AddAssignmentDialog({
 
 					{/* User Selection (Multi-select placeholder - simplified for now) */}
 					<div className="space-y-2">
-						<Label htmlFor="user_ids">Personal *</Label>
+						<Label>Personal *</Label>
 						<Select 
 							value={watch('user_ids')?.[0] || ''} 
 							onValueChange={(value) => setValue('user_ids', [value])}
@@ -227,6 +227,7 @@ export function AddAssignmentDialog({
 							<div className="space-y-2">
 								<Label htmlFor="start_time">Starttid</Label>
 								<Input
+									id="start_time"
 									type="time"
 									{...register('start_time')}
 								/>
@@ -234,6 +235,7 @@ export function AddAssignmentDialog({
 							<div className="space-y-2">
 								<Label htmlFor="end_time">Sluttid</Label>
 								<Input
+									id="end_time"
 									type="time"
 									{...register('end_time')}
 								/>
@@ -245,6 +247,7 @@ export function AddAssignmentDialog({
 					<div className="space-y-2">
 						<Label htmlFor="address">Adress</Label>
 						<Input
+							id="address"
 							{...register('address')}
 							placeholder="T.ex. Storgatan 123"
 						/>
@@ -254,6 +257,7 @@ export function AddAssignmentDialog({
 					<div className="space-y-2">
 						<Label htmlFor="note">Anteckning</Label>
 						<Textarea
+							id="note"
 							{...register('note')}
 							placeholder="Lägg till anteckningar..."
 							rows={3}
