@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { X, ArrowRight, ArrowLeft, Lightbulb } from 'lucide-react';
+import { X, ArrowRight, ArrowLeft, Lightbulb, CheckCircle2 } from 'lucide-react';
 
 interface TourStep {
 	id: string;
@@ -23,15 +23,33 @@ interface FeatureTourProps {
 	autoStart?: boolean;
 }
 
+// Define tour sequence
+const tourSequence = [
+	{ id: 'dashboard', title: 'Översikt', page: '/dashboard' },
+	{ id: 'projects', title: 'Projekt', page: '/dashboard/projects' },
+	{ id: 'time', title: 'Tidrapportering', page: '/dashboard/time' },
+	{ id: 'materials', title: 'Material & Utlägg', page: '/dashboard/materials' },
+	{ id: 'planning', title: 'Planering', page: '/dashboard/planning' },
+	{ id: 'planning-today', title: 'Dagens uppdrag', page: '/dashboard/planning/today' },
+	{ id: 'approvals', title: 'Godkännanden', page: '/dashboard/approvals' },
+];
+
 export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourProps) {
 	const [isActive, setIsActive] = useState(false);
 	const [currentStep, setCurrentStep] = useState(0);
 	const [targetElement, setTargetElement] = useState<HTMLElement | null>(null);
 	const [position, setPosition] = useState({ top: 0, left: 0 });
+	const [showCompletion, setShowCompletion] = useState(false);
 
 	const step = steps[currentStep];
 	const isFirstStep = currentStep === 0;
 	const isLastStep = currentStep === steps.length - 1;
+
+	// Find next tour in sequence
+	const currentIndex = tourSequence.findIndex(t => t.id === tourId);
+	const nextTour = currentIndex >= 0 && currentIndex < tourSequence.length - 1 
+		? tourSequence[currentIndex + 1] 
+		: null;
 
 	// Check if user has completed this tour
 	useEffect(() => {
@@ -103,7 +121,8 @@ export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourPro
 
 	const handleNext = useCallback(() => {
 		if (isLastStep) {
-			handleComplete();
+			// Show completion screen instead of closing immediately
+			setShowCompletion(true);
 		} else {
 			setCurrentStep(currentStep + 1);
 		}
@@ -117,6 +136,7 @@ export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourPro
 
 	const handleComplete = useCallback(() => {
 		setIsActive(false);
+		setShowCompletion(false);
 		localStorage.setItem(`tour-${tourId}-completed`, 'true');
 	}, [tourId]);
 
@@ -124,8 +144,70 @@ export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourPro
 		handleComplete();
 	}, [handleComplete]);
 
+	const handleNextTour = useCallback(() => {
+		if (nextTour) {
+			// Mark current tour as complete
+			localStorage.setItem(`tour-${tourId}-completed`, 'true');
+			// Remove completed flag for next tour
+			localStorage.removeItem(`tour-${nextTour.id}-completed`);
+			// Navigate to next tour
+			window.location.href = `${nextTour.page}?tour=${nextTour.id}`;
+		}
+	}, [tourId, nextTour]);
+
 	if (!isActive) {
 		return null;
+	}
+
+	// Show completion screen
+	if (showCompletion) {
+		return (
+			<>
+				{/* Overlay */}
+				<div className="fixed inset-0 bg-black/50 z-[1000]" />
+
+				{/* Completion Card */}
+				<Card
+					className="fixed z-[9999] max-w-md shadow-xl border-2 border-green-500 bg-white dark:bg-gray-950"
+					style={{
+						top: '50%',
+						left: '50%',
+						transform: 'translate(-50%, -50%)',
+					}}
+				>
+					<div className="p-6 text-center">
+						<div className="flex justify-center mb-4">
+							<div className="bg-green-100 p-3 rounded-full">
+								<CheckCircle2 className="h-8 w-8 text-green-600" />
+							</div>
+						</div>
+						<h3 className="font-bold text-xl mb-2">Bra jobbat!</h3>
+						<p className="text-sm text-muted-foreground mb-6">
+							Du har slutfört guiden. {nextTour ? 'Vill du fortsätta till nästa?' : 'Alla guider är nu genomgångna!'}
+						</p>
+
+						<div className="flex flex-col gap-2">
+							{nextTour && (
+								<Button 
+									onClick={handleNextTour}
+									className="w-full bg-orange-500 hover:bg-orange-600"
+								>
+									Fortsätt till: {nextTour.title}
+									<ArrowRight className="h-4 w-4 ml-2" />
+								</Button>
+							)}
+							<Button 
+								variant={nextTour ? "outline" : "default"}
+								onClick={handleComplete}
+								className="w-full"
+							>
+								{nextTour ? 'Stäng' : 'Stäng och slutför'}
+							</Button>
+						</div>
+					</div>
+				</Card>
+			</>
+		);
 	}
 
 	return (
