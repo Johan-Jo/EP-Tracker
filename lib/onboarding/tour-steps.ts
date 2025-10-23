@@ -12,28 +12,20 @@ export const dashboardTourSteps = [
 		position: 'bottom' as const,
 	},
 	{
+		id: 'time-slider',
+		title: 'Checka in/ut med slidern',
+		description:
+			'Dra slidern för att snabbt checka in eller ut från ett projekt. Den fortsätter räkna tid även när du navigerar mellan sidor!',
+		target: '[data-tour="time-slider"]',
+		position: 'bottom' as const,
+	},
+	{
 		id: 'quick-actions',
 		title: 'Snabbåtgärder',
 		description:
 			'Använd dessa knappar för att snabbt komma åt de vanligaste funktionerna utan att navigera i menyn.',
 		target: '[data-tour="quick-actions"]',
 		position: 'bottom' as const,
-	},
-	{
-		id: 'timer-widget',
-		title: 'Timer-widget',
-		description:
-			'Timern är alltid synlig i nedre högra hörnet. Klicka för att starta tidrapportering - den fortsätter räkna även när du navigerar mellan sidor!',
-		target: '[data-tour="timer-widget"]',
-		position: 'top' as const,
-	},
-	{
-		id: 'stats',
-		title: 'Dina statistik',
-		description:
-			'Se snabbt hur många projekt du har, hur många tidrapporter du loggat denna vecka, och ditt material.',
-		target: '[data-tour="stats"]',
-		position: 'top' as const,
 	},
 ];
 

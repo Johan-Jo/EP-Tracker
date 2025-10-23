@@ -89,7 +89,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
       </div>
 
       {/* Time Check-in/Check-out Slider */}
-      <div className="mb-6 bg-gradient-to-r from-orange-50 to-orange-100/50 border-2 border-orange-200 rounded-xl p-4">
+      <div className="mb-6 bg-gradient-to-r from-orange-50 to-orange-100/50 border-2 border-orange-200 rounded-xl p-4" data-tour="time-slider">
         <div className="flex items-center gap-2 mb-3">
           <div className="h-8 w-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
