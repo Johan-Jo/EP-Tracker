@@ -50,27 +50,19 @@ export const projectsTourSteps = [
 
 export const timeTourSteps = [
 	{
+		id: 'time-form',
+		title: 'Lägg till tid',
+		description:
+			'Fyll i formuläret för att rapportera tid. Välj projekt, datum, start- och sluttid. Du kan också använda slidern på översiktssidan för att checka in/ut.',
+		target: '[data-tour="time-form"]',
+		position: 'bottom' as const,
+	},
+	{
 		id: 'time-entries',
 		title: 'Dina tidrapporter',
 		description:
-			'Här ser du alla dina tidrapporter. Du kan redigera eller ta bort gamla rapporter, eller lägga till nya.',
+			'Här ser du alla dina tidrapporter. Du kan klicka på "Ändra" för att redigera en rapport.',
 		target: '[data-tour="time-entries"]',
-		position: 'bottom' as const,
-	},
-	{
-		id: 'add-time',
-		title: 'Lägg till tid',
-		description:
-			'Klicka här för att rapportera tid manuellt. Du kan välja start- och sluttid, eller använda timern i nedre högra hörnet.',
-		target: '[data-tour="add-time"]',
-		position: 'bottom' as const,
-	},
-	{
-		id: 'timer',
-		title: 'Eller använd timern',
-		description:
-			'Klicka på timer-widgeten, välj projekt och tryck "Starta tid". Perfekt för kontinuerligt arbete!',
-		target: '[data-tour="timer-widget"]',
 		position: 'top' as const,
 	},
 ];

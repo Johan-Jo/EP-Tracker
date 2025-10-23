@@ -231,7 +231,7 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 			{/* Main Content */}
 			<main className='px-4 md:px-8 py-6 max-w-5xl mx-auto'>
 				{/* Manual Entry Form */}
-				<div className='bg-card border-2 border-border rounded-xl p-6 mb-6 shadow-lg'>
+				<div className='bg-card border-2 border-border rounded-xl p-6 mb-6 shadow-lg' data-tour="time-form">
 					<h3 className='text-xl font-semibold mb-6'>Lägg till arbetstid</h3>
 
 					<form onSubmit={handleSubmit(onSubmit)} className='space-y-4'>
@@ -401,7 +401,7 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 				</div>
 
 				{/* Recent Entries */}
-				<div>
+				<div data-tour="time-entries">
 					<div className='flex items-center justify-between mb-4'>
 						<h3 className='text-xl font-semibold'>Senaste registreringar</h3>
 						<Button variant='outline' size='sm'>

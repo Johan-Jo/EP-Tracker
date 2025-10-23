@@ -109,6 +109,7 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
               <Button 
                 onClick={() => router.push('/dashboard/projects/new')}
                 className="shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:scale-105 transition-all duration-200 bg-orange-500 hover:bg-orange-600"
+                data-tour="create-project"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 <span className="hidden md:inline">Nytt projekt</span>
@@ -162,7 +163,7 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
       {/* Main Content */}
       <main className="px-4 md:px-8 py-6 max-w-7xl">
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" data-tour="projects-list">
           <div className="bg-card border-2 border-border rounded-xl p-4 hover:border-orange-500/30 hover:shadow-md transition-all duration-200">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-orange-100">

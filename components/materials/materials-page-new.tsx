@@ -178,14 +178,15 @@ export function MaterialsPageNew({ orgId }: MaterialsPageNewProps) {
 								Hantera material och projektutgifter
 							</p>
 						</div>
-						<Button
-							onClick={() => setShowAddDialog(true)}
-							className='bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:scale-105 transition-all duration-200'
-						>
-							<Plus className='w-4 h-4 mr-2' />
-							<span className='hidden md:inline'>Lägg till</span>
-							<span className='md:hidden'>Nytt</span>
-						</Button>
+					<Button
+						onClick={() => setShowAddDialog(true)}
+						className='bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:scale-105 transition-all duration-200'
+						data-tour="add-material"
+					>
+						<Plus className='w-4 h-4 mr-2' />
+						<span className='hidden md:inline'>Lägg till</span>
+						<span className='md:hidden'>Nytt</span>
+					</Button>
 					</div>
 
 					{/* Search */}
@@ -203,7 +204,7 @@ export function MaterialsPageNew({ orgId }: MaterialsPageNewProps) {
 				</div>
 
 				{/* Project Tabs */}
-				<div className='border-b border-border px-4 md:px-8 overflow-x-auto'>
+				<div className='border-b border-border px-4 md:px-8 overflow-x-auto' data-tour="materials-tabs">
 					<div className='flex gap-1 min-w-max'>
 						<button
 							onClick={() => setSelectedProject('all')}

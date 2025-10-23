@@ -532,14 +532,14 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 							Granska och godkänn tidrapporter och kostnader
 						</p>
 
-						{/* Desktop layout */}
-						<div className='hidden md:flex items-center justify-between gap-4'>
-							<Button
-								variant='outline'
-								size='sm'
-								onClick={handlePreviousWeek}
-								disabled={selectedWeek <= 1}
-							>
+					{/* Desktop layout */}
+					<div className='hidden md:flex items-center justify-between gap-4' data-tour="week-selector">
+						<Button
+							variant='outline'
+							size='sm'
+							onClick={handlePreviousWeek}
+							disabled={selectedWeek <= 1}
+						>
 								<ChevronLeft className='w-4 h-4 mr-1' />
 								Föregående vecka
 							</Button>
@@ -662,7 +662,7 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 				</div>
 
 				{/* Tabs */}
-				<Tabs value={activeTab} onValueChange={setActiveTab} className='space-y-4'>
+				<Tabs value={activeTab} onValueChange={setActiveTab} className='space-y-4' data-tour="approvals-tabs">
 
 					{/* Time Reports Tab */}
 					<TabsContent value='time' className='space-y-4'>
@@ -902,11 +902,11 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 					</TabsContent>
 				</Tabs>
 
-				{/* Export Data */}
-				<div className='mt-8 bg-card border-2 border-border rounded-xl p-6 hover:border-orange-300 hover:shadow-md transition-all duration-200'>
-					<h3 className='text-xl font-semibold mb-2'>Exportera data</h3>
-					<p className='text-sm text-muted-foreground mb-4'>Generera CSV-filer för lön och fakturering</p>
-					<div className='flex flex-wrap gap-2'>
+			{/* Export Data */}
+			<div className='mt-8 bg-card border-2 border-border rounded-xl p-6 hover:border-orange-300 hover:shadow-md transition-all duration-200' data-tour="export-buttons">
+				<h3 className='text-xl font-semibold mb-2'>Exportera data</h3>
+				<p className='text-sm text-muted-foreground mb-4'>Generera CSV-filer för lön och fakturering</p>
+				<div className='flex flex-wrap gap-2'>
 						<Button variant='outline' className='gap-2' onClick={handleExportSalary}>
 							<Download className='w-4 h-4' />
 							Löner-CSV
