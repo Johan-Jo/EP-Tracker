@@ -8,7 +8,9 @@ import {
 	projectsTourSteps, 
 	timeTourSteps, 
 	materialsTourSteps, 
-	approvalsTourSteps 
+	approvalsTourSteps,
+	planningTourSteps,
+	planningTodayTourSteps
 } from '@/lib/onboarding/tour-steps';
 
 const tourMap = {
@@ -17,6 +19,8 @@ const tourMap = {
 	'time': timeTourSteps,
 	'materials': materialsTourSteps,
 	'approvals': approvalsTourSteps,
+	'planning': planningTourSteps,
+	'planning-today': planningTodayTourSteps,
 };
 
 interface PageTourTriggerProps {

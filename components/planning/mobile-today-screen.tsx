@@ -6,6 +6,7 @@ import { Loader2, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
+import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 
 export function MobileTodayScreen() {
 	const queryClient = useQueryClient();
@@ -160,6 +161,7 @@ export function MobileTodayScreen() {
 					</div>
 				)}
 			</div>
+			<PageTourTrigger tourId="planning-today" />
 		</div>
 	);
 }

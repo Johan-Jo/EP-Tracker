@@ -129,3 +129,65 @@ export const approvalsTourSteps = [
 	},
 ];
 
+export const planningTourSteps = [
+	{
+		id: 'planning-welcome',
+		title: 'Välkommen till planeringen!',
+		description:
+			'Här kan du schemalägga uppdrag för hela veckan. Dra och släpp uppdrag mellan datum, eller klicka på ett datum för att skapa nytt uppdrag.',
+		target: 'body',
+		position: 'center' as const,
+	},
+	{
+		id: 'planning-week',
+		title: 'Veckonavigering',
+		description:
+			'Byt vecka med pilknapparna. Kalendern visar måndag till söndag med alla resurser och deras uppdrag.',
+		target: '[data-tour="week-navigation"]',
+		position: 'bottom' as const,
+	},
+	{
+		id: 'planning-projects',
+		title: 'Filtrera på projekt',
+		description:
+			'Klicka på projekt-chips för att visa endast uppdrag från specifika projekt. Färgerna matchar uppdragens färger i kalendern.',
+		target: '[data-tour="project-chips"]',
+		position: 'bottom' as const,
+	},
+	{
+		id: 'planning-grid',
+		title: 'Schemalägg uppdrag',
+		description:
+			'Dra ett uppdrag till ett nytt datum för att flytta det. Dubbel-klicka på ett uppdrag för att redigera detaljer.',
+		target: '[data-tour="schedule-grid"]',
+		position: 'top' as const,
+	},
+];
+
+export const planningTodayTourSteps = [
+	{
+		id: 'today-welcome',
+		title: 'Dagens uppdrag',
+		description:
+			'Här ser du alla dina uppdrag för idag. Checka in när du börjar arbetet och checka ut när du är klar.',
+		target: 'body',
+		position: 'center' as const,
+	},
+	{
+		id: 'today-checkin',
+		title: 'Checka in/ut',
+		description:
+			'Klicka "Checka in" när du börjar arbeta på ett uppdrag. Status uppdateras direkt och synkas även om du är offline.',
+		target: '[data-tour="job-cards"]',
+		position: 'top' as const,
+	},
+	{
+		id: 'today-navigate',
+		title: 'Navigera till arbetsplatsen',
+		description:
+			'Klicka "Navigera" för att öppna Google Maps med adressen. Perfekt för att hitta till nya arbetsplatser!',
+		target: '[data-tour="job-cards"]',
+		position: 'top' as const,
+	},
+];
+

@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { WeekPlanningData } from '@/lib/schemas/planning';
 import { format, startOfWeek } from 'date-fns';
+import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 
 export function PlanningPageClient() {
 	const queryClient = useQueryClient();
@@ -212,16 +213,19 @@ export function PlanningPageClient() {
 	}
 
 	return (
-		<WeekScheduleView
-			data={data}
-			onAddAssignment={handleAddAssignment}
-			onDragDropUpdate={dragDropMutation.mutate}
-			onRefresh={async () => {
-				queryClient.invalidateQueries({ queryKey: ['planning'] });
-				await new Promise(resolve => setTimeout(resolve, 100));
-				await refetch();
-			}}
-		/>
+		<>
+			<PageTourTrigger tourId="planning" />
+			<WeekScheduleView
+				data={data}
+				onAddAssignment={handleAddAssignment}
+				onDragDropUpdate={dragDropMutation.mutate}
+				onRefresh={async () => {
+					queryClient.invalidateQueries({ queryKey: ['planning'] });
+					await new Promise(resolve => setTimeout(resolve, 100));
+					await refetch();
+				}}
+			/>
+		</>
 	);
 }
 
