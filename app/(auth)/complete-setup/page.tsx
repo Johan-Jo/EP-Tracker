@@ -31,17 +31,18 @@ export default function CompleteSetupPage() {
 			}
 			setUserId(user.id);
 
-			// Check if user already has an organization
+			// Check if user already has an organization (invited users)
 			const { data: membership } = await supabase
 				.from('memberships')
-				.select('id')
+				.select('id, role')
 				.eq('user_id', user.id)
 				.eq('is_active', true)
 				.single();
 
 			if (membership) {
-				// User already has organization, redirect to dashboard
-				router.push('/dashboard');
+				// User was invited and already has organization, redirect to welcome
+				router.push('/welcome');
+				return;
 			}
 		};
 
