@@ -14,6 +14,7 @@ export default function CompleteSetupPage() {
 	const [postalCode, setPostalCode] = useState('');
 	const [city, setCity] = useState('');
 	const [loading, setLoading] = useState(false);
+	const [checking, setChecking] = useState(true);
 	const [error, setError] = useState('');
 	const [userId, setUserId] = useState('');
 	const router = useRouter();
@@ -22,27 +23,32 @@ export default function CompleteSetupPage() {
 	useEffect(() => {
 		// Check if user is logged in
 		const checkUser = async () => {
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-			if (!user) {
-				router.push('/sign-in');
-				return;
-			}
-			setUserId(user.id);
+			try {
+				const {
+					data: { user },
+				} = await supabase.auth.getUser();
+				
+				if (!user) {
+					router.push('/sign-in');
+					return;
+				}
+				setUserId(user.id);
 
-			// Check if user already has an organization (invited users)
-			const { data: membership } = await supabase
-				.from('memberships')
-				.select('id, role')
-				.eq('user_id', user.id)
-				.eq('is_active', true)
-				.single();
+				// Check if user already has an organization (invited users)
+				const { data: membership } = await supabase
+					.from('memberships')
+					.select('id, role')
+					.eq('user_id', user.id)
+					.eq('is_active', true)
+					.single();
 
-			if (membership) {
-				// User was invited and already has organization, redirect to welcome
-				router.push('/welcome');
-				return;
+				if (membership) {
+					// User was invited and already has organization, redirect to welcome
+					router.push('/welcome');
+					return;
+				}
+			} finally {
+				setChecking(false);
 			}
 		};
 
@@ -100,6 +106,18 @@ export default function CompleteSetupPage() {
 			setLoading(false);
 		}
 	};
+
+	// Show loading while checking membership status
+	if (checking) {
+		return (
+			<div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50 flex items-center justify-center">
+				<div className="text-center">
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+					<p className="text-gray-600">Kontrollerar ditt konto...</p>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50 relative overflow-hidden flex items-center justify-center px-4 py-12">
