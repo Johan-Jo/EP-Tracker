@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 
 const inviteUserSchema = z.object({
 	email: z.string().email({ message: 'Ogiltig e-postadress' }),
@@ -70,16 +71,19 @@ export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
 				throw new Error(error.error || 'Failed to send invitation');
 			}
 
-			// Success!
-			reset();
-			setOpen(false);
-			onSuccess?.();
-
-			// Show success message
-			alert('Inbjudan skickad! Användaren kommer att få ett e-postmeddelande med en länk för att aktivera sitt konto.');
-		} catch (error) {
-			console.error('Error inviting user:', error);
-			alert(error instanceof Error ? error.message : 'Misslyckades att skicka inbjudan');
+		// Success!
+		reset();
+		setOpen(false);
+		toast.success('Inbjudan skickad!', {
+			description: 'Användaren kommer att få ett e-postmeddelande med en länk för att aktivera sitt konto.',
+			duration: 5000,
+		});
+		onSuccess?.();
+	} catch (error) {
+		console.error('Error inviting user:', error);
+		toast.error('Misslyckades att skicka inbjudan', {
+			description: error instanceof Error ? error.message : 'Något gick fel',
+		});
 		} finally {
 			setIsSubmitting(false);
 		}
