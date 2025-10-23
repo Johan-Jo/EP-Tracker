@@ -344,12 +344,13 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
 
   // Update subscription
   const now = new Date().toISOString();
+  const subscriptionAny = subscription as any; // Stripe types are complex
   await supabase
     .from('subscriptions')
     .update({
       status,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_start: new Date(subscriptionAny.current_period_start * 1000).toISOString(),
+      current_period_end: new Date(subscriptionAny.current_period_end * 1000).toISOString(),
       cancel_at_period_end: subscription.cancel_at_period_end,
       stripe_price_id: subscription.items.data[0]?.price.id,
       stripe_latest_invoice_id: typeof subscription.latest_invoice === 'string'

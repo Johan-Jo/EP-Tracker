@@ -297,8 +297,9 @@ export async function getOrganizationsByPlan(): Promise<{ plan: string; count: n
   
   const planCounts: Record<string, number> = {};
   
-  (orgs || []).forEach((org) => {
-    const planName = org.plan?.name || 'No Plan';
+  (orgs || []).forEach((org: any) => {
+    const plan = Array.isArray(org.plan) ? org.plan[0] : org.plan;
+    const planName = plan?.name || 'No Plan';
     planCounts[planName] = (planCounts[planName] || 0) + 1;
   });
   

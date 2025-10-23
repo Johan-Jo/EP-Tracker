@@ -21,6 +21,9 @@ const nextConfig = {
 	},
 	reactStrictMode: true,
 	
+	// Fix workspace root detection (multiple lockfiles warning)
+	outputFileTracingRoot: import.meta.dirname,
+	
 	// Performance optimizations
 	experimental: {
 		optimizePackageImports: [
