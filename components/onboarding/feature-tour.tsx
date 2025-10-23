@@ -36,9 +36,14 @@ export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourPro
 	// Check if user has completed this tour
 	useEffect(() => {
 		const completed = localStorage.getItem(`tour-${tourId}-completed`);
+		console.log('[FeatureTour] Tour:', tourId, 'Completed:', completed, 'AutoStart:', autoStart);
 		if (!completed && autoStart) {
+			console.log('[FeatureTour] Starting tour in 1000ms...');
 			// Auto-start after a delay
-			setTimeout(() => setIsActive(true), 1000);
+			setTimeout(() => {
+				console.log('[FeatureTour] Setting isActive to true');
+				setIsActive(true);
+			}, 1000);
 		}
 	}, [tourId, autoStart]);
 

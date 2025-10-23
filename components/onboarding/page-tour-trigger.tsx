@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FeatureTour } from './feature-tour';
 import { 
@@ -27,16 +27,21 @@ interface PageTourTriggerProps {
 	tourId: keyof typeof tourMap;
 }
 
-export function PageTourTrigger({ tourId }: PageTourTriggerProps) {
+function PageTourTriggerInner({ tourId }: PageTourTriggerProps) {
 	const searchParams = useSearchParams();
 	const [shouldShowTour, setShouldShowTour] = useState(false);
 
 	useEffect(() => {
 		// Check if tour parameter matches this page's tour
 		const tourParam = searchParams.get('tour');
+		console.log('[PageTourTrigger] Tour param:', tourParam, 'Expected:', tourId);
 		if (tourParam === tourId) {
+			console.log('[PageTourTrigger] Match! Starting tour in 500ms...');
 			// Small delay to ensure page is rendered
-			setTimeout(() => setShouldShowTour(true), 500);
+			setTimeout(() => {
+				console.log('[PageTourTrigger] Setting shouldShowTour to true');
+				setShouldShowTour(true);
+			}, 500);
 		}
 	}, [searchParams, tourId]);
 
@@ -45,6 +50,7 @@ export function PageTourTrigger({ tourId }: PageTourTriggerProps) {
 	}
 
 	const steps = tourMap[tourId];
+	console.log('[PageTourTrigger] Rendering FeatureTour with', steps.length, 'steps');
 
 	return (
 		<FeatureTour
@@ -52,6 +58,14 @@ export function PageTourTrigger({ tourId }: PageTourTriggerProps) {
 			steps={steps}
 			autoStart={true}
 		/>
+	);
+}
+
+export function PageTourTrigger(props: PageTourTriggerProps) {
+	return (
+		<Suspense fallback={null}>
+			<PageTourTriggerInner {...props} />
+		</Suspense>
 	);
 }
 
