@@ -79,7 +79,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
   return (
     <div className="p-4 sm:p-6">
       {/* Welcome */}
-      <div className="mb-6">
+      <div className="mb-6" data-tour="dashboard-header">
         <h1 className="text-2xl font-bold text-gray-900">
           Välkommen, {userName}! <span className="align-middle">👋</span>
         </h1>
@@ -159,7 +159,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
       </div>
 
       {/* Quick actions */}
-      <div className="mt-6">
+      <div className="mt-6" data-tour="quick-actions">
         <h2 className="text-lg font-semibold text-gray-900 mb-2">Snabbåtgärder</h2>
         <p className="text-sm text-gray-600 mb-4">Vanliga uppgifter för att komma igång snabbt</p>
         <div className="grid md:grid-cols-3 gap-4">

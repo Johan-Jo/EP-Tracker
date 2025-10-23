@@ -82,6 +82,14 @@ export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourPro
 			element.style.zIndex = '1001';
 			element.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.5)';
 			element.style.borderRadius = '8px';
+		} else {
+			// Element not found - center the tooltip as fallback
+			console.warn('[FeatureTour] Target element not found:', step.target);
+			setTargetElement(null);
+			setPosition({
+				top: window.innerHeight / 2,
+				left: window.innerWidth / 2,
+			});
 		}
 
 		return () => {
