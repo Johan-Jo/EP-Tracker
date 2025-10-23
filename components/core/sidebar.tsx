@@ -15,6 +15,7 @@ import {
 	BookOpen,
 	HelpCircle,
 	Plus,
+	Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -48,6 +49,12 @@ const navItems: NavItem[] = [
 				roles: ['admin', 'foreman'],
 			},
 		],
+	},
+	{
+		label: 'Planering',
+		href: '/dashboard/planning',
+		icon: Calendar,
+		roles: ['admin', 'foreman', 'finance'],
 	},
 	{
 		label: 'Tid',

@@ -1,0 +1,231 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { createAssignmentSchema, type Conflict } from '@/lib/schemas/planning';
+
+// GET /api/assignments - List assignments with filters
+export async function GET(request: NextRequest) {
+	try {
+		const supabase = await createClient();
+		const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+		if (authError || !user) {
+			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		// Get user's organization
+		const { data: membership } = await supabase
+			.from('memberships')
+			.select('org_id, role')
+			.eq('user_id', user.id)
+			.eq('is_active', true)
+			.single();
+
+		if (!membership) {
+			return NextResponse.json({ error: 'No active organization membership' }, { status: 403 });
+		}
+
+		// Parse query parameters
+		const searchParams = request.nextUrl.searchParams;
+		const project_id = searchParams.get('project_id');
+		const user_id = searchParams.get('user_id');
+		const status = searchParams.get('status');
+		const start_date = searchParams.get('start_date');
+		const end_date = searchParams.get('end_date');
+
+		// Build query
+		let query = supabase
+			.from('assignments')
+			.select(`
+				*,
+				project:projects(id, name, project_number, color, client_name),
+				user:profiles!assignments_user_id_fkey(id, full_name, email),
+				mobile_notes(*)
+			`)
+			.eq('org_id', membership.org_id)
+			.order('start_ts', { ascending: false });
+
+		// Apply filters
+		if (project_id) query = query.eq('project_id', project_id);
+		if (user_id) query = query.eq('user_id', user_id);
+		if (status) query = query.eq('status', status);
+		if (start_date) query = query.gte('start_ts', start_date);
+		if (end_date) query = query.lte('start_ts', end_date);
+
+		const { data: assignments, error } = await query;
+
+		if (error) {
+			console.error('Error fetching assignments:', error);
+			return NextResponse.json({ error: error.message }, { status: 500 });
+		}
+
+		return NextResponse.json({ assignments }, { status: 200 });
+	} catch (error) {
+		console.error('Error in GET /api/assignments:', error);
+		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+	}
+}
+
+// POST /api/assignments - Create new assignment(s) with multi-assign support
+export async function POST(request: NextRequest) {
+	try {
+		const supabase = await createClient();
+		const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+		if (authError || !user) {
+			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		// Get user's organization
+		const { data: membership } = await supabase
+			.from('memberships')
+			.select('org_id, role')
+			.eq('user_id', user.id)
+			.eq('is_active', true)
+			.single();
+
+		if (!membership) {
+			return NextResponse.json({ error: 'No active organization membership' }, { status: 403 });
+		}
+
+		// Check permissions (admin/foreman only)
+		if (!['admin', 'foreman', 'finance'].includes(membership.role)) {
+			return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+		}
+
+		// Parse and validate request body
+		const body = await request.json();
+		const validation = createAssignmentSchema.safeParse(body);
+
+		if (!validation.success) {
+			return NextResponse.json({ 
+				error: 'Validation error', 
+				details: validation.error.format() 
+			}, { status: 400 });
+		}
+
+		const data = validation.data;
+
+		// Verify project belongs to user's organization
+		const { data: project, error: projectError } = await supabase
+			.from('projects')
+			.select('id')
+			.eq('id', data.project_id)
+			.eq('org_id', membership.org_id)
+			.single();
+
+		if (projectError || !project) {
+			return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
+		}
+
+		// Check for conflicts unless force override
+		const conflicts: Conflict[] = [];
+		
+		if (!data.force) {
+			for (const userId of data.user_ids) {
+				// Check for overlapping assignments
+				const { data: overlapping } = await supabase
+					.from('assignments')
+					.select('id, project:projects(name)')
+					.eq('user_id', userId)
+					.eq('org_id', membership.org_id)
+					.neq('status', 'cancelled')
+					.or(`and(start_ts.lte.${data.end_ts},end_ts.gte.${data.start_ts})`);
+
+				if (overlapping && overlapping.length > 0) {
+					const projectNames = overlapping.map((a: any) => a.project?.name || 'Okänt projekt').join(', ');
+					conflicts.push({
+						user_id: userId,
+						type: 'overlap',
+						details: `Användaren har redan uppdrag: ${projectNames}`,
+					});
+				}
+
+				// Check for absences
+				const { data: absences } = await supabase
+					.from('absences')
+					.select('id, type')
+					.eq('user_id', userId)
+					.eq('org_id', membership.org_id)
+					.or(`and(start_ts.lte.${data.end_ts},end_ts.gte.${data.start_ts})`);
+
+				if (absences && absences.length > 0) {
+					const absenceTypes = absences.map(a => {
+						switch (a.type) {
+							case 'vacation': return 'Semester';
+							case 'sick': return 'Sjuk';
+							case 'training': return 'Utbildning';
+							default: return a.type;
+						}
+					}).join(', ');
+					conflicts.push({
+						user_id: userId,
+						type: 'absence',
+						details: `Användaren är frånvarande: ${absenceTypes}`,
+					});
+				}
+			}
+
+			// If conflicts exist, return 409
+			if (conflicts.length > 0) {
+				return NextResponse.json({ 
+					created: [], 
+					conflicts 
+				}, { status: 409 });
+			}
+		}
+
+		// Create assignments (one per user)
+		const createdIds: string[] = [];
+		const assignmentsToInsert = data.user_ids.map(userId => ({
+			org_id: membership.org_id,
+			project_id: data.project_id,
+			user_id: userId,
+			start_ts: data.start_ts,
+			end_ts: data.end_ts,
+			all_day: data.all_day,
+			address: data.address,
+			note: data.note,
+			sync_to_mobile: data.sync_to_mobile,
+			status: 'planned',
+			created_by: user.id,
+		}));
+
+		const { data: created, error: insertError } = await supabase
+			.from('assignments')
+			.insert(assignmentsToInsert)
+			.select('id');
+
+		if (insertError) {
+			console.error('Error creating assignments:', insertError);
+			return NextResponse.json({ error: insertError.message }, { status: 500 });
+		}
+
+		createdIds.push(...(created?.map(a => a.id) || []));
+
+		// Log override if forced
+		if (data.force && data.override_comment) {
+			await supabase
+				.from('audit_log')
+				.insert({
+					org_id: membership.org_id,
+					user_id: user.id,
+					action: 'assignment_conflict_override',
+					entity_type: 'assignments',
+					entity_id: createdIds[0], // Reference first assignment
+					new_data: {
+						comment: data.override_comment,
+						conflicts: conflicts,
+					},
+				});
+		}
+
+		return NextResponse.json({ 
+			created: createdIds, 
+			conflicts: [] 
+		}, { status: 201 });
+	} catch (error) {
+		console.error('Error in POST /api/assignments:', error);
+		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+	}
+}
+

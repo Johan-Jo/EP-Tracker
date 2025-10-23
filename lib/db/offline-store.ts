@@ -68,15 +68,33 @@ interface SyncQueue {
 	last_error?: string;
 }
 
+interface MobileCheckin {
+	id?: number;
+	assignment_id: string;
+	event: 'check_in' | 'check_out';
+	ts: string;
+	synced: boolean;
+	created_at: string;
+}
+
+interface PlanningToday {
+	id: string;
+	assignment_data: unknown;
+	cached_at: string;
+}
+
 const db = new Dexie('EPTrackerDB') as Dexie & {
 	time_entries: EntityTable<TimeEntry, 'id'>;
 	materials: EntityTable<Material, 'id'>;
 	expenses: EntityTable<Expense, 'id'>;
 	projects: EntityTable<Project, 'id'>;
 	sync_queue: EntityTable<SyncQueue, 'id'>;
+	mobile_checkins: EntityTable<MobileCheckin, 'id'>;
+	planning_today: EntityTable<PlanningToday, 'id'>;
 };
 
 // Schema declaration
+// Version 1: Original tables (time_entries, materials, expenses, projects, sync_queue)
 db.version(1).stores({
 	time_entries: 'id, org_id, project_id, user_id, status, synced, created_at',
 	materials: 'id, org_id, project_id, user_id, synced, created_at',
@@ -85,6 +103,17 @@ db.version(1).stores({
 	sync_queue: '++id, action, entity, entity_id, created_at, retry_count',
 });
 
+// Version 2: Added planning system tables
+db.version(2).stores({
+	time_entries: 'id, org_id, project_id, user_id, status, synced, created_at',
+	materials: 'id, org_id, project_id, user_id, synced, created_at',
+	expenses: 'id, org_id, project_id, user_id, synced, created_at',
+	projects: 'id, org_id, created_at',
+	sync_queue: '++id, action, entity, entity_id, created_at, retry_count',
+	mobile_checkins: '++id, assignment_id, synced, created_at',
+	planning_today: 'id, cached_at',
+});
+
 export { db };
-export type { TimeEntry, Material, Expense, Project, SyncQueue };
+export type { TimeEntry, Material, Expense, Project, SyncQueue, MobileCheckin, PlanningToday };
 
