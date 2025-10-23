@@ -45,7 +45,7 @@ export default async function AllUsersPage() {
               role: member.role,
               organization: member.organization
             }],
-            last_activity: user.last_sign_in_at,
+            last_activity: user.last_sign_in_at || null,
           });
         }
       } catch (err) {

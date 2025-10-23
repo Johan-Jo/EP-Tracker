@@ -53,10 +53,11 @@ export async function GET(request: NextRequest) {
 					if (material.photo_url) {
 						try {
 							const imageData = await downloadImage(material.photo_url);
-							const fileName = getFileName(
-								material.photo_url,
-								`${material.project?.project_number || 'unknown'}_${material.description}`
-							);
+						const project = Array.isArray(material.project) ? material.project[0] : material.project;
+						const fileName = getFileName(
+							material.photo_url,
+							`${project?.project_number || 'unknown'}_${material.description}`
+						);
 							materialFolder.file(fileName, imageData);
 							totalFiles++;
 						} catch (error) {

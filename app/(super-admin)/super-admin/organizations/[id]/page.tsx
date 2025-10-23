@@ -484,11 +484,6 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
                   <p className="text-sm text-blue-800 dark:text-blue-300">
                     <strong>Billing Contact:</strong> {customerEmail}
                   </p>
-                  {organization.stripe_customer_id && (
-                    <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
-                      Stripe Customer ID: {organization.stripe_customer_id}
-                    </p>
-                  )}
                 </div>
                 
                 <div className="space-y-4">

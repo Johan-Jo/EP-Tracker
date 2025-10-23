@@ -131,7 +131,11 @@ export default async function OrganizationsPage() {
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
               {organizations.map((org) => {
-                const plan = org.plan;
+                const plan = org.plan ? { 
+                  ...org.plan, 
+                  billing_cycle: (org.plan.billing_cycle as 'monthly' | 'annual'),
+                  is_active: true 
+                } : null;
                 const monthlyMRR = plan ? getMonthlyEquivalent(plan) : 0;
                 const statusColor = getOrganizationStatusColor(org.status);
                 const storagePercent = plan ? getStorageUsagePercentage(org.storage_used_bytes || 0, plan.max_storage_gb) : 0;
