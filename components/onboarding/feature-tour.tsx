@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X, ArrowRight, ArrowLeft, Lightbulb, CheckCircle2 } from 'lucide-react';
@@ -35,6 +36,7 @@ const tourSequence = [
 ];
 
 export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourProps) {
+	const router = useRouter();
 	const [isActive, setIsActive] = useState(false);
 	const [currentStep, setCurrentStep] = useState(0);
 	const [targetElement, setTargetElement] = useState<HTMLElement | null>(null);
@@ -50,6 +52,14 @@ export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourPro
 	const nextTour = currentIndex >= 0 && currentIndex < tourSequence.length - 1 
 		? tourSequence[currentIndex + 1] 
 		: null;
+
+	// Prefetch next tour page when completion screen is shown
+	useEffect(() => {
+		if (showCompletion && nextTour) {
+			console.log('[FeatureTour] Prefetching next tour:', nextTour.page);
+			router.prefetch(nextTour.page);
+		}
+	}, [showCompletion, nextTour, router]);
 
 	// Check if user has completed this tour
 	useEffect(() => {
@@ -150,10 +160,10 @@ export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourPro
 			localStorage.setItem(`tour-${tourId}-completed`, 'true');
 			// Remove completed flag for next tour
 			localStorage.removeItem(`tour-${nextTour.id}-completed`);
-			// Navigate to next tour
-			window.location.href = `${nextTour.page}?tour=${nextTour.id}`;
+			// Use Next.js router for instant client-side navigation (no full page reload!)
+			router.push(`${nextTour.page}?tour=${nextTour.id}`);
 		}
-	}, [tourId, nextTour]);
+	}, [tourId, nextTour, router]);
 
 	if (!isActive) {
 		return null;
