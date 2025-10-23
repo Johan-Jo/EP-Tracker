@@ -147,7 +147,7 @@ export function MobileTodayScreen() {
 						</p>
 					</div>
 				) : (
-					<div className="space-y-4">
+					<div className="space-y-4" data-tour="job-cards">
 						{assignments.map((assignment: any) => (
 							<MobileJobCard
 								key={assignment.id}

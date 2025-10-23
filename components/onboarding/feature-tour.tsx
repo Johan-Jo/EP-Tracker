@@ -10,7 +10,7 @@ interface TourStep {
 	title: string;
 	description: string;
 	target?: string; // CSS selector for element to highlight
-	position?: 'top' | 'bottom' | 'left' | 'right';
+	position?: 'top' | 'bottom' | 'left' | 'right' | 'center';
 	action?: {
 		label: string;
 		onClick: () => void;
@@ -44,8 +44,19 @@ export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourPro
 
 	// Update target element and position when step changes
 	useEffect(() => {
-		if (!isActive || !step.target) {
+		if (!isActive) {
 			setTargetElement(null);
+			return;
+		}
+
+		// Handle center position (no specific target)
+		if (!step.target || step.position === 'center') {
+			setTargetElement(null);
+			// Center on screen
+			setPosition({
+				top: window.innerHeight / 2,
+				left: window.innerWidth / 2,
+			});
 			return;
 		}
 
@@ -118,7 +129,7 @@ export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourPro
 				style={{
 					top: `${position.top}px`,
 					left: `${position.left}px`,
-					transform: 'translate(-50%, 0)',
+					transform: step.position === 'center' ? 'translate(-50%, -50%)' : 'translate(-50%, 0)',
 				}}
 			>
 				<div className="p-4">
@@ -197,11 +208,17 @@ export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourPro
  */
 function calculatePosition(
 	targetRect: DOMRect,
-	position: 'top' | 'bottom' | 'left' | 'right'
+	position: 'top' | 'bottom' | 'left' | 'right' | 'center'
 ): { top: number; left: number } {
 	const offset = 16; // Gap between target and tooltip
 
 	switch (position) {
+		case 'center':
+			// Center on screen
+			return {
+				top: window.innerHeight / 2,
+				left: window.innerWidth / 2,
+			};
 		case 'top':
 			return {
 				top: targetRect.top - offset,

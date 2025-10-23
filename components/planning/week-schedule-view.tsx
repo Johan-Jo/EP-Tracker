@@ -301,7 +301,7 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 					</div>
 
 					{/* Project Filter Chips */}
-					<div className="mb-4">
+					<div className="mb-4" data-tour="project-chips">
 						<ProjectChips
 							projects={data.projects}
 							selectedProjects={selectedProjects}
@@ -330,7 +330,7 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 
 			{/* Week Navigation & Capacity */}
 			<div className="px-6 py-3 bg-accent/50 border-b border-border">
-				<div className="flex items-center gap-4 mb-3">
+				<div className="flex items-center gap-4 mb-3" data-tour="week-navigation">
 					<Button variant="outline" size="sm" onClick={handlePreviousWeek}>
 						<ChevronLeft className="w-4 h-4" />
 					</Button>
@@ -358,7 +358,7 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 			</div>
 
 			{/* Schedule Grid */}
-			<div className="flex-1 overflow-auto">
+			<div className="flex-1 overflow-auto" data-tour="schedule-grid">
 				<div className="min-w-[1200px]">
 					{/* Header Row */}
 					<div className="sticky top-0 z-10 bg-background border-b border-border grid grid-cols-[200px_repeat(7,1fr)]">
