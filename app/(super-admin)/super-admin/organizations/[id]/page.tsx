@@ -83,7 +83,15 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
     }
   }
   
-  const plan = organization.plan;
+  const plan = organization.plan ? {
+    id: organization.plan.id,
+    name: organization.plan.name,
+    price_sek: organization.plan.price_sek,
+    billing_cycle: (organization.plan.billing_cycle || 'monthly') as 'monthly' | 'annual',
+    max_users: organization.plan.max_users,
+    max_storage_gb: organization.plan.max_storage_gb,
+    is_active: true, // Default to true since it's from active subscription
+  } : null;
   const subscription = organization.subscription;
   
   // Fetch pricing plans for plan selector
@@ -423,7 +431,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
                   Manage subscription and payment information via Stripe Customer Portal
                 </p>
               </div>
-              {organization.stripe_customer_id && subscription && (
+              {subscription && (
                 <ManageBillingButton organizationId={organization.id} />
               )}
             </div>
@@ -454,7 +462,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
                       Current Period
                     </div>
                     <div className="mt-2 text-sm text-gray-900 dark:text-white">
-                      {new Date(subscription.current_period_start).toLocaleDateString()} - {new Date(subscription.current_period_end).toLocaleDateString()}
+                      {new Date(subscription.current_period_end).toLocaleDateString()}
                     </div>
                   </div>
                   
