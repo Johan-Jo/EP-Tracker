@@ -268,6 +268,7 @@ export type WeekPlanningData = {
 		color: string;
 		daily_capacity_need: number;
 		status: string;
+		site_address: string | null;
 	}>;
 	assignments: AssignmentWithRelations[];
 	absences: AbsenceWithUser[];

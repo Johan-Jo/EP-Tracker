@@ -95,12 +95,12 @@ export async function GET(request: NextRequest) {
 				is_active: r.is_active,
 			})) || [];
 
-		// Fetch projects
-		let projectsQuery = supabase
-			.from('projects')
-			.select('id, name, project_number, client_name, color, daily_capacity_need, status')
-			.eq('org_id', membership.org_id)
-			.in('status', ['active', 'paused']);
+	// Fetch projects
+	let projectsQuery = supabase
+		.from('projects')
+		.select('id, name, project_number, client_name, color, daily_capacity_need, status, site_address')
+		.eq('org_id', membership.org_id)
+		.in('status', ['active', 'paused']);
 
 		if (project_id) {
 			projectsQuery = projectsQuery.eq('id', project_id);

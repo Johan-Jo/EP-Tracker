@@ -36,7 +36,7 @@ interface AddAssignmentDialogProps {
 	person?: string;
 	assignment?: any; // Full assignment object for edit mode
 	onSubmit: (data: AssignmentFormData) => Promise<void>;
-	projects?: Array<{ id: string; name: string; color: string }>;
+	projects?: Array<{ id: string; name: string; color: string; site_address?: string }>;
 	users?: Array<{ id: string; name: string }>;
 }
 
@@ -94,6 +94,7 @@ export function AddAssignmentDialog({
 
 	const allDay = watch('all_day');
 	const currentDate = watch('date');
+	const selectedProjectId = watch('project_id');
 
 	// Reset form when dialog opens (only on open, not on assignment change)
 	useEffect(() => {
@@ -101,6 +102,16 @@ export function AddAssignmentDialog({
 			reset(getDefaultValues());
 		}
 	}, [open]);
+
+	// Auto-fill address when project is selected (only in create mode)
+	useEffect(() => {
+		if (!isEditMode && selectedProjectId) {
+			const selectedProject = projects.find((p) => p.id === selectedProjectId);
+			if (selectedProject?.site_address) {
+				setValue('address', selectedProject.site_address);
+			}
+		}
+	}, [selectedProjectId, projects, isEditMode, setValue]);
 
 	const handleFormSubmit = async (data: AssignmentFormData) => {
 		setIsSubmitting(true);
