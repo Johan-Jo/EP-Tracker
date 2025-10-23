@@ -2,6 +2,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { TimeSlider } from '@/components/core/time-slider';
+import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 
 interface DashboardClientProps {
   userName: string;
@@ -379,6 +380,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
           </div>
         </div>
       )}
+      <PageTourTrigger tourId="dashboard" />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/lib/supabase/client';
 import { AddMaterialDialog } from '@/components/materials/add-material-dialog';
 import { MaterialDetailModal } from '@/components/materials/material-detail-modal';
+import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 
 interface MaterialsPageNewProps {
 	orgId: string;
@@ -451,6 +452,7 @@ export function MaterialsPageNew({ orgId }: MaterialsPageNewProps) {
 					}}
 				/>
 			)}
+			<PageTourTrigger tourId="materials" />
 		</div>
 	);
 }

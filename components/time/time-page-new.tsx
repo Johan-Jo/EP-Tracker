@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createTimeEntrySchema, type CreateTimeEntryInput } from '@/lib/schemas/time-entry';
+import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 
 interface TimePageNewProps {
 	orgId: string;
@@ -489,6 +490,7 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 					</div>
 				</div>
 			</main>
+			<PageTourTrigger tourId="time" />
 		</div>
 	);
 }

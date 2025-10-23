@@ -26,6 +26,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
+import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 
 interface ApprovalsPageNewProps {
 	orgId: string;
@@ -1105,6 +1106,7 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+			<PageTourTrigger tourId="approvals" />
 		</div>
 	);
 }

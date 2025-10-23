@@ -4,6 +4,7 @@ import { Plus, Search, FolderKanban, Clock, Calendar, MapPin } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 
 interface Project {
   id: string;
@@ -381,6 +382,7 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
           </div>
         )}
       </main>
+      <PageTourTrigger tourId="projects" />
     </div>
   );
 }
