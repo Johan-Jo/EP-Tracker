@@ -15,12 +15,13 @@
 | EPIC 3: Core UI & Projects Management | ✅ Complete | 100% |
 | EPIC 4: Time Tracking & Crew Management | ✅ Complete | 100% |
 | EPIC 5: Materials, Expenses & Mileage | ✅ Complete | 100% |
-| EPIC 6: ÄTA, Diary & Checklists | ⏳ Pending | 0% |
-| EPIC 7: Approvals & CSV Exports | ⏳ Pending | 0% |
-| EPIC 8: Offline-First & PWA Features | ⏳ Pending | 0% |
-| EPIC 9: Polish & Pilot Prep | ⏳ Pending | 0% |
+| EPIC 6-21: Phase 1 & Super Admin (All EPICs) | ✅ Complete | 100% |
+| EPIC 22: Planning System Foundation | ✅ Complete | 100% |
+| EPIC 23: Planning UI (Week Grid) | ✅ Complete | 100% |
+| EPIC 24: Mobile Today (Field Worker) | ✅ Complete | 100% |
 
-**Overall Progress:** 56% (EPIC 1-5 of 9 complete)
+**Overall Progress:** 100% (All EPICs 1-24 complete)
+**Status:** Production Ready + Planning System Complete
 
 ---
 
@@ -207,7 +208,30 @@ See [EPIC-5-COMPLETE.md](./EPIC-5-COMPLETE.md) for full details.
 
 ---
 
-## 🎯 Next Steps: EPIC 6 - ÄTA, Diary & Checklists
+## ✅ EPIC 22-24: Planning System - COMPLETE
+
+**See:** `docs/PLANNING-SYSTEM-STATUS.md` for full details
+
+### Summary
+- ✅ **EPIC 22:** Database schema, API routes, TypeScript types (~1,520 LOC)
+- ✅ **EPIC 23:** Week grid UI with drag-and-drop, assignment management (~1,415 LOC)
+- ✅ **EPIC 24:** Mobile today list with check-in/out (~349 LOC)
+
+**Total:** ~3,280 lines, 23 new files, ~6 hours implementation
+
+### Key Features
+- ✅ Week planning grid (desktop)
+- ✅ Drag-and-drop assignments
+- ✅ Project filtering & capacity bars
+- ✅ Mobile job list (field workers)
+- ✅ Check-in/check-out functionality
+- ✅ Optimistic updates for instant UX
+- ✅ Conflict detection
+- ✅ Multi-assign support
+
+---
+
+## 🎯 All Phase 1 & 2 EPICs Complete
 
 ### Prerequisites
 

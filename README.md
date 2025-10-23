@@ -63,6 +63,7 @@ ep-tracker/
 │   ├── diary/             # Daily diary
 │   ├── checklists/        # Checklists
 │   ├── approvals/         # Approval workflows
+│   ├── planning/          # Planning system (week grid, mobile today)
 │   └── core/              # Shared UI components
 ├── lib/                   # Library code
 │   ├── supabase/          # Supabase client & auth
@@ -84,8 +85,9 @@ ep-tracker/
 
 ```
 
-## Features (Phase 1)
+## Features (Phase 1 + Planning System)
 
+### Core Time Tracking & Project Management
 - ✅ Projects & Work Orders management
 - ✅ Time tracking (start/stop/switch/crew clock-ins)
 - ✅ Materials, expenses, mileage tracking
@@ -96,13 +98,43 @@ ep-tracker/
 - ✅ Offline-first operation
 - ✅ PWA installation
 
-## Out of Scope (Phase 1)
+### Planning System (Phase 2.1 - EPIC 22-24)
+- ✅ **Week Planning Grid** (desktop, `/dashboard/planning`)
+  - Drag-and-drop assignment scheduling
+  - Multi-user assignment support
+  - Project filtering by color chips
+  - Capacity indicators (needed vs. assigned)
+  - Conflict detection (overlaps, absences)
+  - Edit/delete assignments in-place
+- ✅ **Mobile Today List** (field workers, `/dashboard/planning/today`)
+  - Daily job list with details
+  - Check-in/check-out functionality
+  - Navigation to job sites
+  - Status tracking (planned → in progress → done)
+  - Optimistic updates for instant UX
 
-- Geo-fences and location reminders (Phase 2)
-- Fortnox/Visma integrations (Phase 2)
-- Overtime/OB rules engine (Phase 2)
-- Manual budgets and burn tracking (Phase 3)
-- EstimatePro integration (Phase 4)
+### Super Admin Panel
+- ✅ User management (invite, roles, permissions)
+- ✅ Organization settings
+- ✅ Billing & subscription management (Stripe)
+- ✅ System monitoring & audit logs
+
+## Roadmap / Future Enhancements
+
+### Phase 2.2
+- Geo-fences and location reminders
+- Enhanced offline queue for mobile check-ins
+- Push notifications for assignments
+- Photo capture from mobile today
+
+### Phase 3
+- Fortnox/Visma integrations
+- Overtime/OB rules engine
+- Manual budgets and burn tracking
+
+### Phase 4
+- EstimatePro integration
+- Advanced analytics & reporting
 
 ## License
 
