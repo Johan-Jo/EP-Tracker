@@ -11,7 +11,9 @@ import {
     BookOpen, 
     AlertCircle,
     PlayCircle,
-    Lightbulb
+    Lightbulb,
+    Calendar,
+    CalendarCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TourLauncher } from '@/components/onboarding/tour-launcher';
@@ -106,6 +108,63 @@ export function HelpPageClient({ userRole }: HelpPageClientProps) {
                                     <li>Ange belopp</li>
                                     <li>Ta foto på kvitto</li>
                                     <li>Spara</li>
+                                </ol>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <Calendar className="w-8 h-8 text-primary mb-2" />
+                            <CardTitle>Planering</CardTitle>
+                            <CardDescription>Schemalägg uppdrag för veckan</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <div className="text-sm space-y-2">
+                                <h4 className="font-medium">Skapa uppdrag:</h4>
+                                <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                                    <li>Gå till &quot;Planering&quot;</li>
+                                    <li>Klicka på ett datum i kalendern</li>
+                                    <li>Välj projekt och personal</li>
+                                    <li>Ange tid och anteckningar</li>
+                                    <li>Spara uppdraget</li>
+                                </ol>
+                            </div>
+                            <div className="text-sm space-y-2">
+                                <h4 className="font-medium">Flytta uppdrag:</h4>
+                                <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                                    <li>Dra ett uppdrag till nytt datum</li>
+                                    <li>Släpp för att flytta</li>
+                                    <li>Ändringar sparas direkt</li>
+                                    <li>Dubbel-klicka för att redigera</li>
+                                </ol>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CalendarCheck className="w-8 h-8 text-primary mb-2" />
+                            <CardTitle>Dagens uppdrag (Mobil)</CardTitle>
+                            <CardDescription>Checklista för fältarbetare</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <div className="text-sm space-y-2">
+                                <h4 className="font-medium">Dagens jobb:</h4>
+                                <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                                    <li>Gå till &quot;Planering → Idag&quot;</li>
+                                    <li>Se alla dina uppdrag för dagen</li>
+                                    <li>Checka in när du börjar</li>
+                                    <li>Navigera till arbetsplatsen</li>
+                                    <li>Checka ut när du är klar</li>
+                                </ol>
+                            </div>
+                            <div className="text-sm space-y-2">
+                                <h4 className="font-medium">Snabbnavigering:</h4>
+                                <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                                    <li>Klicka &quot;Navigera&quot; på ett uppdrag</li>
+                                    <li>Google Maps öppnas automatiskt</li>
+                                    <li>Kör till arbetsplatsen</li>
                                 </ol>
                             </div>
                         </CardContent>
@@ -234,6 +293,33 @@ export function HelpPageClient({ userRole }: HelpPageClientProps) {
                         </CardHeader>
                         <CardContent className="text-sm text-muted-foreground">
                             <p>När du är offline sparas all data lokalt på din enhet. När du får internetanslutning igen synkroniseras automatiskt alla dina ändringar till servern. Du ser en synkroniseringsstatus längst upp i appen.</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base">Hur flyttar jag ett uppdrag till ett annat datum?</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-sm text-muted-foreground">
+                            <p>Gå till Planering-sidan, dra uppdraget från ett datum och släpp det på det nya datumet. Ändringar sparas automatiskt. Du kan också dubbel-klicka på uppdraget för att redigera datum manuellt.</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base">Var hittar jag mina dagliga uppdrag?</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-sm text-muted-foreground">
+                            <p>Gå till &quot;Planering → Idag&quot; för att se alla dina uppdrag för dagen. Här kan du checka in/ut, navigera till arbetsplatser och se anteckningar för varje jobb.</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base">Vad betyder färgerna på projekten?</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-sm text-muted-foreground">
+                            <p>Varje projekt har en unik färg som visas i kalendern och på uppdragskort. Detta gör det lätt att snabbt se vilka projekt som är schemalagda och filtrera vyn efter specifika projekt.</p>
                         </CardContent>
                     </Card>
 

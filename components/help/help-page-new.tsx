@@ -14,6 +14,8 @@ import {
 	PlayCircle,
 	RotateCcw,
 	ChevronDown,
+	Calendar,
+	CalendarCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -84,6 +86,57 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 						'Ange belopp',
 						'Ta foto på kvitto',
 						'Spara',
+					],
+				},
+			],
+		},
+		{
+			title: 'Planering',
+			description: 'Schemalägg uppdrag för veckan',
+			icon: Calendar,
+			sections: [
+				{
+					title: 'Skapa uppdrag',
+					items: [
+						'Gå till "Planering"',
+						'Klicka på ett datum i kalendern',
+						'Välj projekt och personal',
+						'Ange tid och anteckningar',
+						'Spara uppdraget',
+					],
+				},
+				{
+					title: 'Flytta uppdrag',
+					items: [
+						'Dra ett uppdrag till nytt datum',
+						'Släpp för att flytta',
+						'Ändringar sparas direkt',
+						'Dubbel-klicka för att redigera',
+					],
+				},
+			],
+		},
+		{
+			title: 'Dagens uppdrag (Mobil)',
+			description: 'Checklista för fältarbetare',
+			icon: CalendarCheck,
+			sections: [
+				{
+					title: 'Dagens jobb',
+					items: [
+						'Gå till "Planering → Idag"',
+						'Se alla dina uppdrag för dagen',
+						'Checka in när du börjar',
+						'Navigera till arbetsplatsen',
+						'Checka ut när du är klar',
+					],
+				},
+				{
+					title: 'Snabbnavigering',
+					items: [
+						'Klicka "Navigera" på ett uppdrag',
+						'Google Maps öppnas automatiskt',
+						'Kör till arbetsplatsen',
 					],
 				},
 			],
@@ -176,6 +229,18 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			icon: Package,
 		},
 		{
+			id: 'planning',
+			title: 'Planering',
+			description: 'Schemalägg uppdrag och tilldela personal',
+			icon: Calendar,
+		},
+		{
+			id: 'today',
+			title: 'Dagens uppdrag',
+			description: 'Checka in/ut och navigera till arbetsplatser',
+			icon: CalendarCheck,
+		},
+		{
 			id: 'approval',
 			title: 'Godkännanden',
 			description: 'Granska och godkänn tidrapporter, exportera till lön',
@@ -219,6 +284,30 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			question: 'Var hittar jag tidigare exporter?',
 			answer:
 				'Klicka på "Historik"-knappen på godkännandesidan. Där ser du alla tidigare CSV-exporter med information om period, antal poster och vem som skapade exporten.',
+		},
+		{
+			id: 'faq-7',
+			question: 'Hur flyttar jag ett uppdrag till ett annat datum?',
+			answer:
+				'Gå till Planering-sidan, dra uppdraget från ett datum och släpp det på det nya datumet. Ändringar sparas automatiskt. Du kan också dubbel-klicka på uppdraget för att redigera datum manuellt.',
+		},
+		{
+			id: 'faq-8',
+			question: 'Var hittar jag mina dagliga uppdrag?',
+			answer:
+				'Gå till "Planering → Idag" för att se alla dina uppdrag för dagen. Här kan du checka in/ut, navigera till arbetsplatser och se anteckningar för varje jobb.',
+		},
+		{
+			id: 'faq-9',
+			question: 'Vad betyder färgerna på projekten?',
+			answer:
+				'Varje projekt har en unik färg som visas i kalendern och på uppdragskort. Detta gör det lätt att snabbt se vilka projekt som är schemalagda och filtrera vyn efter specifika projekt.',
+		},
+		{
+			id: 'faq-10',
+			question: 'Kan jag checka in utan internetanslutning?',
+			answer:
+				'Ja! Check-in/out fungerar offline. Händelserna sparas lokalt och synkroniseras automatiskt när du får internetanslutning igen. Du ser din status uppdateras direkt.',
 		},
 	];
 
