@@ -3,6 +3,9 @@ import { SuperAdminBanner } from '@/components/super-admin/super-admin-banner';
 import { SuperAdminNav } from '@/components/super-admin/super-admin-nav';
 import { GlobalSearch } from '@/components/super-admin/support/global-search';
 
+// Force dynamic rendering for all super-admin pages (requires authentication)
+export const dynamic = 'force-dynamic';
+
 /**
  * Super Admin Layout
  * 
