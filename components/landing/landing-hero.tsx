@@ -67,7 +67,7 @@ export function LandingHero() {
                             src="/images/MatteZipp.webp"
                             alt="Byggnadsarbetare använder EP-Tracker på byggarbetsplats"
                             fill
-                            className="object-cover object-top"
+                            className="object-cover object-[50%_30%]"
                             priority
                         />
                         {/* Gradient overlay for better contrast */}
