@@ -64,7 +64,7 @@ export function LandingHero() {
                 <div className="mx-auto mt-16 max-w-5xl sm:mt-20">
                     <div className="relative overflow-hidden rounded-3xl shadow-2xl h-[300px] sm:h-[450px] lg:h-[500px]">
                         <Image
-                            src="/images/hero-construction.jpg"
+                            src="/images/MatteZipp.webp"
                             alt="Byggnadsarbetare använder EP-Tracker på byggarbetsplats"
                             fill
                             className="object-cover"
