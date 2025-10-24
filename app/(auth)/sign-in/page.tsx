@@ -1,17 +1,28 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Clock, Mail, Shield, Zap } from 'lucide-react';
 
-export default function SignInPage() {
+function SignInContent() {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
 	const [message, setMessage] = useState('');
 	const router = useRouter();
+	const searchParams = useSearchParams();
+
+	// Check for error messages from URL
+	useEffect(() => {
+		const errorParam = searchParams.get('error');
+		if (errorParam === 'link_expired') {
+			setError('Verifieringslänken har gått ut eller redan använts. Vänligen logga in eller begär en ny länk.');
+		} else if (errorParam === 'auth_callback_error') {
+			setError('Ett fel uppstod vid verifiering. Vänligen försök logga in.');
+		}
+	}, [searchParams]);
 
 	const handleSignIn = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -243,6 +254,23 @@ export default function SignInPage() {
 				</div>
 			</div>
 		</div>
+	);
+}
+
+export default function SignInPage() {
+	return (
+		<Suspense
+			fallback={
+				<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-blue-50">
+					<div className="text-center">
+						<Clock className="w-8 h-8 text-orange-500 animate-spin mx-auto mb-4" />
+						<p className="text-gray-600">Laddar...</p>
+					</div>
+				</div>
+			}
+		>
+			<SignInContent />
+		</Suspense>
 	);
 }
 
