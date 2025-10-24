@@ -343,7 +343,7 @@ export function UsersPageNew({ members, canInvite, currentUserId }: UsersPageNew
 									</li>
 									<li className='flex items-start gap-2'>
 										<span className='mt-0.5'>•</span>
-										<span>Inaktivera användare (klicka på pennikonen och sedan "Inaktivera")</span>
+										<span>Inaktivera användare (klicka på pennikonen och sedan &quot;Inaktivera&quot;)</span>
 									</li>
 								</ul>
 							</div>

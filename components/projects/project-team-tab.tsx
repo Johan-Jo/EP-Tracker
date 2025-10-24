@@ -133,7 +133,7 @@ export function ProjectTeamTab({ projectId, projectName, canEdit }: ProjectTeamT
 									</p>
 									{canEdit && (
 										<p className="text-xs text-muted-foreground mt-1">
-											Klicka på "Hantera team" för att lägga till användare
+											Klicka på &quot;Hantera team&quot; för att lägga till användare
 										</p>
 									)}
 								</div>
@@ -186,7 +186,7 @@ export function ProjectTeamTab({ projectId, projectName, canEdit }: ProjectTeamT
 							<ul className="text-sm text-blue-800 space-y-1">
 								<li>• <strong>Arbetare</strong> kan bara se projekt de är tilldelade</li>
 								<li>• <strong>Arbetsledare & Admins</strong> ser alla projekt automatiskt</li>
-								<li>• Använd "Hantera team" för att lägga till arbetare i projektet</li>
+								<li>• Använd &quot;Hantera team&quot; för att lägga till arbetare i projektet</li>
 							</ul>
 						</div>
 
