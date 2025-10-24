@@ -22,11 +22,15 @@ const inviteUserSchema = z.object({
 type InviteUserFormData = z.infer<typeof inviteUserSchema>;
 
 interface InviteUserDialogProps {
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 	onSuccess?: () => void;
 }
 
-export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
-	const [open, setOpen] = useState(false);
+export function InviteUserDialog({ open: controlledOpen, onOpenChange, onSuccess }: InviteUserDialogProps) {
+	const [internalOpen, setInternalOpen] = useState(false);
+	const open = controlledOpen ?? internalOpen;
+	const setOpen = onOpenChange ?? setInternalOpen;
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const {
@@ -79,6 +83,7 @@ export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
 			duration: 5000,
 		});
 		onSuccess?.();
+		window.location.reload(); // Refresh to show invited user
 	} catch (error) {
 		console.error('Error inviting user:', error);
 		toast.error('Misslyckades att skicka inbjudan', {
@@ -91,12 +96,6 @@ export function InviteUserDialog({ onSuccess }: InviteUserDialogProps) {
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger asChild>
-				<Button>
-					<Mail className="w-4 h-4 mr-2" />
-					Bjud in användare
-				</Button>
-			</DialogTrigger>
 			<DialogContent className="sm:max-w-[500px]">
 				<form onSubmit={handleSubmit(onSubmit)}>
 					<DialogHeader>

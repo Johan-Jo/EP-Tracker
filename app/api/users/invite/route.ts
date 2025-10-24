@@ -84,25 +84,29 @@ export async function POST(request: NextRequest) {
 						return NextResponse.json(
 							{ error: 'Failed to reactivate user' },
 							{ status: 500 }
-						);
-					}
+					);
+				}
 
-				// Send magic link email
-				const { error: emailError } = await adminClient.auth.admin.inviteUserByEmail(
-					validatedData.email,
-					{
-						redirectTo: `${request.nextUrl.origin}/dashboard`,
-					}
-				);
+			// Send invitation email with redirect to invite callback page
+			const { error: emailError } = await adminClient.auth.admin.inviteUserByEmail(
+				validatedData.email,
+				{
+					redirectTo: `${request.nextUrl.origin}/invite-callback`,
+					data: {
+						full_name: validatedData.full_name,
+						email: validatedData.email,
+					},
+				}
+			);
 
-					if (emailError) {
-						console.error('Error sending invite email:', emailError);
-					}
+				if (emailError) {
+					console.error('Error sending invite email:', emailError);
+				}
 
-					return NextResponse.json({
-						message: 'User reactivated and invitation sent',
-						user_id: existingProfile.id,
-					});
+				return NextResponse.json({
+					message: 'User reactivated and invitation sent',
+					user_id: existingProfile.id,
+				});
 				}
 			}
 
@@ -120,11 +124,15 @@ export async function POST(request: NextRequest) {
 				return NextResponse.json({ error: 'Failed to add user to organization' }, { status: 500 });
 			}
 
-				// Send magic link email
+				// Send invitation email with redirect to invite callback page
 				const { error: emailError } = await adminClient.auth.admin.inviteUserByEmail(
 					validatedData.email,
 					{
-						redirectTo: `${request.nextUrl.origin}/dashboard`,
+						redirectTo: `${request.nextUrl.origin}/invite-callback`,
+						data: {
+							full_name: validatedData.full_name,
+							email: validatedData.email,
+						},
 					}
 				);
 
@@ -140,10 +148,11 @@ export async function POST(request: NextRequest) {
 
 		// User doesn't exist - create invitation
 		// Note: With Supabase, we use inviteUserByEmail which creates the user and sends an invite
+		// The user will receive an email to set their password, then redirect to invite callback page
 		const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
 			validatedData.email,
 			{
-				redirectTo: `${request.nextUrl.origin}/dashboard`,
+				redirectTo: `${request.nextUrl.origin}/invite-callback`,
 				data: {
 					full_name: validatedData.full_name,
 					email: validatedData.email,

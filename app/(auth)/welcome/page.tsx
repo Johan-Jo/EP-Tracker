@@ -1,10 +1,7 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Check, Clock, Briefcase, FileText, Users, Calendar, ClipboardCheck } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { Check, Briefcase, FileText, Users, Calendar, ClipboardCheck, Clock } from 'lucide-react';
 
 type UserRole = 'admin' | 'foreman' | 'worker' | 'finance';
 
@@ -12,7 +9,7 @@ interface RoleContent {
 	title: string;
 	description: string;
 	steps: Array<{
-		icon: typeof Briefcase;
+		iconName: string;
 		title: string;
 		description: string;
 	}>;
@@ -24,17 +21,17 @@ const roleContents: Record<UserRole, RoleContent> = {
 		description: 'Din organisation har skapats och du är nu inloggad som administratör. Dags att sätta igång med ditt första projekt!',
 		steps: [
 			{
-				icon: Briefcase,
+				iconName: 'Briefcase',
 				title: 'Skapa ditt första projekt',
 				description: 'Lägg till projekt och börja hantera dina entreprenader',
 			},
 			{
-				icon: Users,
+				iconName: 'Users',
 				title: 'Bjud in ditt team',
 				description: 'Lägg till arbetsledare och arbetare till din organisation',
 			},
 			{
-				icon: FileText,
+				iconName: 'FileText',
 				title: 'Börja tidrapportera',
 				description: 'Registrera tid och material direkt i appen',
 			},
@@ -45,17 +42,17 @@ const roleContents: Record<UserRole, RoleContent> = {
 		description: 'Du är nu inloggad som arbetsledare. Du kan skapa projekt, tilldela uppdrag och godkänna tidrapporter.',
 		steps: [
 			{
-				icon: Calendar,
+				iconName: 'Calendar',
 				title: 'Utforska planeringsvyn',
 				description: 'Schemalägg uppdrag och tilldela personal för veckan',
 			},
 			{
-				icon: FileText,
+				iconName: 'FileText',
 				title: 'Granska tidrapporter',
 				description: 'Godkänn tid, material och utgifter från ditt team',
 			},
 			{
-				icon: Briefcase,
+				iconName: 'Briefcase',
 				title: 'Hantera projekt',
 				description: 'Skapa nya projekt och följ upp arbetsordern',
 			},
@@ -66,17 +63,17 @@ const roleContents: Record<UserRole, RoleContent> = {
 		description: 'Du är nu inloggad som medarbetare. Börja rapportera din arbetstid och material direkt i appen.',
 		steps: [
 			{
-				icon: Clock,
+				iconName: 'Clock',
 				title: 'Starta tidrapportering',
 				description: 'Checka in på dina uppdrag och registrera arbetstid',
 			},
 			{
-				icon: Calendar,
+				iconName: 'Calendar',
 				title: 'Se dina uppdrag',
 				description: 'Kontrollera dagens och kommande veckans uppdrag',
 			},
 			{
-				icon: FileText,
+				iconName: 'FileText',
 				title: 'Rapportera material',
 				description: 'Fotografera kvitton och registrera material enkelt',
 			},
@@ -87,17 +84,17 @@ const roleContents: Record<UserRole, RoleContent> = {
 		description: 'Du är nu inloggad med ekonomiroll. Du har tillgång till godkännanden och exportfunktioner.',
 		steps: [
 			{
-				icon: ClipboardCheck,
+				iconName: 'ClipboardCheck',
 				title: 'Granska godkännanden',
 				description: 'Se och godkänn tidrapporter, material och utgifter',
 			},
 			{
-				icon: FileText,
+				iconName: 'FileText',
 				title: 'Exportera till lön',
 				description: 'Exportera godkända tidrapporter till ditt lönesystem',
 			},
 			{
-				icon: Briefcase,
+				iconName: 'Briefcase',
 				title: 'Följ upp projekt',
 				description: 'Se kostnader och status för alla projekt',
 			},
@@ -105,57 +102,40 @@ const roleContents: Record<UserRole, RoleContent> = {
 	},
 };
 
-export default function WelcomePage() {
-	const [role, setRole] = useState<UserRole | null>(null);
-	const [loading, setLoading] = useState(true);
-	const router = useRouter();
-	const supabase = createClient();
+const iconMap = {
+	Briefcase,
+	FileText,
+	Users,
+	Calendar,
+	ClipboardCheck,
+	Clock,
+};
 
-	useEffect(() => {
-		const checkUserRole = async () => {
-			try {
-				const {
-					data: { user },
-				} = await supabase.auth.getUser();
+export default async function WelcomePage() {
+	const supabase = await createClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
 
-				if (!user) {
-					router.push('/sign-in');
-					return;
-				}
-
-				// Get user's role from membership
-				const { data: membership } = await supabase
-					.from('memberships')
-					.select('role')
-					.eq('user_id', user.id)
-					.eq('is_active', true)
-					.single();
-
-				if (membership) {
-					setRole(membership.role as UserRole);
-				} else {
-					// No membership, redirect to complete setup
-					router.push('/complete-setup');
-				}
-			} catch (error) {
-				console.error('Error checking user role:', error);
-				router.push('/sign-in');
-			} finally {
-				setLoading(false);
-			}
-		};
-
-		checkUserRole();
-	}, [router, supabase]);
-
-	if (loading || !role) {
-		return (
-			<div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50 flex items-center justify-center">
-				<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
-			</div>
-		);
+	if (!user) {
+		redirect('/sign-in');
 	}
 
+	// Get user's role from membership
+	const { data: membership } = await supabase
+		.from('memberships')
+		.select('role')
+		.eq('user_id', user.id)
+		.eq('is_active', true)
+		.single();
+
+	if (!membership) {
+		// No membership, redirect to complete setup
+		redirect('/complete-setup');
+	}
+
+	const role = membership.role as UserRole;
+	
 	const content = roleContents[role];
 
 	return (
@@ -186,7 +166,7 @@ export default function WelcomePage() {
 						</h2>
 						<div className="space-y-4">
 							{content.steps.map((step, index) => {
-								const Icon = step.icon;
+								const Icon = iconMap[step.iconName as keyof typeof iconMap];
 								return (
 									<div key={index} className="flex items-start gap-3">
 										<Icon className="h-6 w-6 text-orange-600 flex-shrink-0 mt-0.5" />

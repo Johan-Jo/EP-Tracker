@@ -1,16 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Edit, Info, Mail, Phone, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Edit, Info, Mail, Phone, Loader2, RefreshCw, UserCheck, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { InviteUserDialog } from '@/components/users/invite-user-dialog';
 import { EditUserDialog } from '@/components/users/edit-user-dialog';
+import { toast } from 'sonner';
 
 interface Member {
 	id: string;
+	user_id: string;
 	role: 'admin' | 'foreman' | 'finance' | 'worker';
 	hourly_rate_sek: number | null;
+	created_at: string;
 	profiles: {
 		id: string;
 		full_name: string;
@@ -22,11 +25,39 @@ interface Member {
 interface UsersPageNewProps {
 	members: Member[];
 	canInvite: boolean;
+	currentUserId: string;
 }
 
-export function UsersPageNew({ members, canInvite }: UsersPageNewProps) {
+export function UsersPageNew({ members, canInvite, currentUserId }: UsersPageNewProps) {
 	const [showInviteDialog, setShowInviteDialog] = useState(false);
 	const [editingUser, setEditingUser] = useState<Member | null>(null);
+	const [userStatuses, setUserStatuses] = useState<Record<string, { confirmed: boolean }>>({});
+	const [loadingStatuses, setLoadingStatuses] = useState(true);
+	const [resendingInvite, setResendingInvite] = useState<string | null>(null);
+
+	// Fetch user confirmation statuses
+	useEffect(() => {
+		async function fetchStatuses() {
+			try {
+				console.log('Fetching user statuses...');
+				const response = await fetch('/api/users/status');
+				console.log('Response status:', response.status);
+				if (response.ok) {
+					const data = await response.json();
+					console.log('User statuses:', data.statuses);
+					setUserStatuses(data.statuses || {});
+				} else {
+					console.error('Failed to fetch statuses:', await response.text());
+				}
+			} catch (error) {
+				console.error('Error fetching user statuses:', error);
+			} finally {
+				setLoadingStatuses(false);
+			}
+		}
+
+		fetchStatuses();
+	}, []);
 
 	const getRoleName = (role: string) => {
 		switch (role) {
@@ -67,6 +98,50 @@ export function UsersPageNew({ members, canInvite }: UsersPageNewProps) {
 			.slice(0, 2);
 	};
 
+	const handleResendInvite = async (userId: string, userEmail: string) => {
+		setResendingInvite(userId);
+		
+		try {
+			console.log('🔄 Resending invitation for:', userId, userEmail);
+			const response = await fetch('/api/users/resend-invite', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ user_id: userId }),
+			});
+
+			console.log('📡 Response status:', response.status);
+			const data = await response.json();
+			console.log('📦 Response data:', data);
+
+			if (!response.ok) {
+				throw new Error(data.error || 'Failed to resend invitation');
+			}
+
+			console.log('✅ Success! Showing toast...');
+			toast.success('Inbjudan skickad!', {
+				description: `En ny inbjudan har skickats till ${userEmail}`,
+				duration: 5000,
+			});
+		} catch (error) {
+			console.error('❌ Error resending invitation:', error);
+			toast.error('Misslyckades att skicka inbjudan', {
+				description: error instanceof Error ? error.message : 'Något gick fel',
+				duration: 5000,
+			});
+		} finally {
+			console.log('🔚 Resending complete, resetting state');
+			setResendingInvite(null);
+		}
+	};
+
+	const getUserStatus = (userId: string) => {
+		if (loadingStatuses) return 'loading';
+		const status = userStatuses[userId];
+		const result = status?.confirmed ? 'active' : 'pending';
+		console.log(`User ${userId} status:`, result, 'confirmed:', status?.confirmed);
+		return result;
+	};
+
 	return (
 		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
 			{/* Header */}
@@ -97,12 +172,16 @@ export function UsersPageNew({ members, canInvite }: UsersPageNewProps) {
 					{/* Team Members List */}
 					<div>
 						<div className='mb-4'>
-							<h3 className='text-lg font-semibold mb-1'>Teammedlemmar ({members.length})</h3>
+							<h3 className='text-lg font-semibold mb-1'>
+								Teammedlemmar ({members.length})
+							</h3>
 							<p className='text-sm text-muted-foreground'>Alla användare i din organisation</p>
 						</div>
 
 						<div className='space-y-3'>
-							{members.map((member) => (
+							{members.map((member) => {
+								console.log('Rendering member:', member.profiles.full_name, 'user_id:', member.user_id);
+								return (
 								<div
 									key={member.id}
 									className='bg-card border-2 border-border rounded-xl p-4 md:p-5 hover:border-primary/30 hover:shadow-lg transition-all duration-200'
@@ -117,7 +196,21 @@ export function UsersPageNew({ members, canInvite }: UsersPageNewProps) {
 
 										{/* User Info */}
 										<div className='flex-1 min-w-0'>
-											<h4 className='font-semibold mb-1'>{member.profiles.full_name}</h4>
+											<div className='flex items-center gap-2 mb-1'>
+												<h4 className='font-semibold'>{member.profiles.full_name}</h4>
+												{!loadingStatuses && getUserStatus(member.user_id) === 'pending' && (
+													<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200'>
+														<Clock className='w-3 h-3' />
+														Väntar på registrering
+													</span>
+												)}
+												{!loadingStatuses && getUserStatus(member.user_id) === 'active' && (
+													<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200'>
+														<UserCheck className='w-3 h-3' />
+														Aktiv
+													</span>
+												)}
+											</div>
 											<div className='flex flex-col gap-1'>
 												<p className='text-sm text-muted-foreground flex items-center gap-1.5'>
 													<Mail className='w-3.5 h-3.5' />
@@ -140,18 +233,43 @@ export function UsersPageNew({ members, canInvite }: UsersPageNewProps) {
 											<span className='text-sm font-medium px-3 py-1.5 bg-accent rounded-lg'>
 												{member.hourly_rate_sek || 0} kr/tim
 											</span>
+											
+											{/* Resend Invite Button for Pending Users */}
+											{!loadingStatuses && getUserStatus(member.user_id) === 'pending' && (
+												<Button
+													variant='outline'
+													size='sm'
+													onClick={() => handleResendInvite(member.user_id, member.profiles.email)}
+													disabled={resendingInvite === member.user_id}
+													className='border-amber-200 text-amber-700 hover:bg-amber-50'
+												>
+													{resendingInvite === member.user_id ? (
+														<>
+															<Loader2 className='w-4 h-4 mr-2 animate-spin' />
+															Skickar...
+														</>
+													) : (
+														<>
+															<RefreshCw className='w-4 h-4 mr-2' />
+															Skicka ny inbjudan
+														</>
+													)}
+												</Button>
+											)}
+											
 											<Button
 												variant='ghost'
 												size='sm'
 												onClick={() => setEditingUser(member)}
 												className='hover:bg-accent hover:text-accent-foreground'
+												title='Redigera användare'
 											>
 												<Edit className='w-4 h-4' />
 											</Button>
 										</div>
 									</div>
 								</div>
-							))}
+							)})}
 						</div>
 					</div>
 
@@ -213,6 +331,10 @@ export function UsersPageNew({ members, canInvite }: UsersPageNewProps) {
 									</li>
 									<li className='flex items-start gap-2'>
 										<span className='mt-0.5'>•</span>
+										<span>Skicka ny inbjudan till användare som inte registrerat sig än</span>
+									</li>
+									<li className='flex items-start gap-2'>
+										<span className='mt-0.5'>•</span>
 										<span>Sätt roller och timtaxor</span>
 									</li>
 									<li className='flex items-start gap-2'>
@@ -221,7 +343,34 @@ export function UsersPageNew({ members, canInvite }: UsersPageNewProps) {
 									</li>
 									<li className='flex items-start gap-2'>
 										<span className='mt-0.5'>•</span>
-										<span>Inaktivera användare</span>
+										<span>Inaktivera användare (klicka på pennikonen och sedan "Inaktivera")</span>
+									</li>
+								</ul>
+							</div>
+							
+							{/* Status Badges */}
+							<div>
+								<h4 className='font-semibold mb-3'>Statusbadges</h4>
+								<ul className='space-y-2.5 text-sm text-muted-foreground'>
+									<li className='flex items-start gap-2'>
+										<span className='mt-0.5'>•</span>
+										<span>
+											<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200 mr-1'>
+												<UserCheck className='w-3 h-3' />
+												Aktiv
+											</span>
+											- Användaren har slutfört registreringen
+										</span>
+									</li>
+									<li className='flex items-start gap-2'>
+										<span className='mt-0.5'>•</span>
+										<span>
+											<span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200 mr-1'>
+												<Clock className='w-3 h-3' />
+												Väntar på registrering
+											</span>
+											- Inbjudan skickad, väntar på att användaren ska sätta lösenord
+										</span>
 									</li>
 								</ul>
 							</div>
@@ -231,15 +380,22 @@ export function UsersPageNew({ members, canInvite }: UsersPageNewProps) {
 			</main>
 
 		{/* Dialogs */}
-		<InviteUserDialog onSuccess={() => setShowInviteDialog(false)} />
+		<InviteUserDialog open={showInviteDialog} onOpenChange={setShowInviteDialog} onSuccess={() => setShowInviteDialog(false)} />
 		{editingUser && (
 			<EditUserDialog 
 				userId={editingUser.profiles.id} 
 				currentRole={editingUser.role} 
 				currentHourlyRate={editingUser.hourly_rate_sek} 
 				userName={editingUser.profiles.full_name} 
-				userEmail={editingUser.profiles.email} 
-				onSuccess={() => setEditingUser(null)} 
+				userEmail={editingUser.profiles.email}
+				open={!!editingUser}
+				onOpenChange={(open) => {
+					if (!open) setEditingUser(null);
+				}}
+				onSuccess={() => {
+					setEditingUser(null);
+					window.location.reload(); // Refresh to show updated data
+				}} 
 			/>
 		)}
 		</div>

@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS super_admins (
   UNIQUE(user_id)
 );
 
-CREATE INDEX idx_super_admins_user_id ON super_admins(user_id);
-CREATE INDEX idx_super_admins_revoked ON super_admins(revoked_at) WHERE revoked_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_super_admins_user_id ON super_admins(user_id);
+CREATE INDEX IF NOT EXISTS idx_super_admins_revoked ON super_admins(revoked_at) WHERE revoked_at IS NULL;
 
 COMMENT ON TABLE super_admins IS 'Platform super administrators (site owners)';
 COMMENT ON COLUMN super_admins.user_id IS 'Reference to auth.users - the super admin account';
@@ -37,8 +37,8 @@ CREATE TABLE IF NOT EXISTS pricing_plans (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_pricing_plans_active ON pricing_plans(is_active) WHERE is_active = true;
-CREATE INDEX idx_pricing_plans_price ON pricing_plans(price_sek);
+CREATE INDEX IF NOT EXISTS idx_pricing_plans_active ON pricing_plans(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_pricing_plans_price ON pricing_plans(price_sek);
 
 COMMENT ON TABLE pricing_plans IS 'SaaS pricing tiers (Free Trial, Basic, Pro, Enterprise)';
 COMMENT ON COLUMN pricing_plans.price_sek IS 'Monthly price in Swedish Kronor (SEK)';
@@ -51,7 +51,7 @@ COMMENT ON COLUMN pricing_plans.features IS 'JSON object with feature flags for 
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS subscriptions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   plan_id UUID NOT NULL REFERENCES pricing_plans(id),
   status TEXT NOT NULL CHECK (status IN ('trial', 'active', 'past_due', 'canceled', 'suspended')) DEFAULT 'trial',
   trial_ends_at TIMESTAMPTZ,
@@ -62,14 +62,14 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   canceled_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(org_id)
+  UNIQUE(organization_id)
 );
 
-CREATE INDEX idx_subscriptions_org ON subscriptions(org_id);
-CREATE INDEX idx_subscriptions_plan ON subscriptions(plan_id);
-CREATE INDEX idx_subscriptions_status ON subscriptions(status);
-CREATE INDEX idx_subscriptions_trial_ends ON subscriptions(trial_ends_at) WHERE status = 'trial';
-CREATE INDEX idx_subscriptions_stripe_sub ON subscriptions(stripe_subscription_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_org ON subscriptions(organization_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_plan ON subscriptions(plan_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_trial_ends ON subscriptions(trial_ends_at) WHERE status = 'trial';
+CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_sub ON subscriptions(stripe_subscription_id);
 
 COMMENT ON TABLE subscriptions IS 'Organization subscriptions to pricing plans';
 COMMENT ON COLUMN subscriptions.status IS 'Subscription status: trial, active, past_due, canceled, suspended';
@@ -82,7 +82,7 @@ COMMENT ON COLUMN subscriptions.stripe_customer_id IS 'Stripe customer ID';
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS payments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   subscription_id UUID REFERENCES subscriptions(id) ON DELETE SET NULL,
   amount_sek DECIMAL(10,2) NOT NULL,
   currency TEXT DEFAULT 'SEK',
@@ -97,11 +97,11 @@ CREATE TABLE IF NOT EXISTS payments (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_payments_org ON payments(org_id);
-CREATE INDEX idx_payments_subscription ON payments(subscription_id);
-CREATE INDEX idx_payments_status ON payments(status);
-CREATE INDEX idx_payments_paid_at ON payments(paid_at);
-CREATE INDEX idx_payments_stripe_intent ON payments(stripe_payment_intent_id);
+CREATE INDEX IF NOT EXISTS idx_payments_org ON payments(organization_id);
+CREATE INDEX IF NOT EXISTS idx_payments_subscription ON payments(subscription_id);
+CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
+CREATE INDEX IF NOT EXISTS idx_payments_paid_at ON payments(paid_at);
+CREATE INDEX IF NOT EXISTS idx_payments_stripe_intent ON payments(stripe_payment_intent_id);
 
 COMMENT ON TABLE payments IS 'Payment transactions for subscriptions';
 COMMENT ON COLUMN payments.amount_sek IS 'Payment amount in SEK';
@@ -125,10 +125,10 @@ CREATE TABLE IF NOT EXISTS super_admin_audit_log (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_audit_super_admin ON super_admin_audit_log(super_admin_id);
-CREATE INDEX idx_audit_action ON super_admin_audit_log(action);
-CREATE INDEX idx_audit_target ON super_admin_audit_log(target_type, target_id);
-CREATE INDEX idx_audit_created ON super_admin_audit_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_super_admin ON super_admin_audit_log(super_admin_id);
+CREATE INDEX IF NOT EXISTS idx_audit_action ON super_admin_audit_log(action);
+CREATE INDEX IF NOT EXISTS idx_audit_target ON super_admin_audit_log(target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON super_admin_audit_log(created_at DESC);
 
 COMMENT ON TABLE super_admin_audit_log IS 'Audit trail of all super admin actions';
 COMMENT ON COLUMN super_admin_audit_log.action IS 'Action performed: impersonate, suspend_org, delete_org, etc.';
@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS feature_flags (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_feature_flags_enabled ON feature_flags(is_enabled) WHERE is_enabled = true;
+CREATE INDEX IF NOT EXISTS idx_feature_flags_enabled ON feature_flags(is_enabled) WHERE is_enabled = true;
 
 COMMENT ON TABLE feature_flags IS 'Global feature toggles for the platform';
 COMMENT ON COLUMN feature_flags.flag_name IS 'Unique feature flag identifier (e.g. "beta_analytics")';
@@ -300,7 +300,7 @@ BEGIN
   -- Get current user count
   SELECT COUNT(*) INTO v_current_users
   FROM memberships
-  WHERE org_id = org_uuid;
+  WHERE organization_id = org_uuid;
   
   -- Get plan limits
   SELECT pp.max_users, pp.max_storage_gb
@@ -373,7 +373,7 @@ CREATE POLICY "Org admins can view own subscription"
   USING (
     EXISTS (
       SELECT 1 FROM memberships
-      WHERE memberships.org_id = subscriptions.org_id
+      WHERE memberships.organization_id = subscriptions.organization_id
       AND memberships.user_id = auth.uid()
       AND memberships.role IN ('admin', 'finance')
     )
@@ -396,7 +396,7 @@ CREATE POLICY "Org admins can view own payments"
   USING (
     EXISTS (
       SELECT 1 FROM memberships
-      WHERE memberships.org_id = payments.org_id
+      WHERE memberships.organization_id = payments.organization_id
       AND memberships.user_id = auth.uid()
       AND memberships.role IN ('admin', 'finance')
     )

@@ -1,0 +1,31 @@
+<h2>Välkommen till EP-Tracker!</h2>
+
+<p>Hej!</p>
+
+<p>Du har blivit inbjuden att gå med i <strong>{{ .SiteURL }}</strong> som {{ .Data.role }}.</p>
+
+<p>För att acceptera inbjudan och sätta ditt lösenord, klicka på knappen nedan:</p>
+
+<p>
+  <a href="{{ .ConfirmationURL }}" 
+     style="display: inline-block; padding: 12px 24px; background-color: #f97316; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+    Acceptera inbjudan och sätt lösenord
+  </a>
+</p>
+
+<p>Eller kopiera och klistra in denna URL i din webbläsare:</p>
+<p style="color: #666; font-size: 12px; word-break: break-all;">{{ .ConfirmationURL }}</p>
+
+<hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
+
+<p style="color: #666; font-size: 12px;">
+  Om du inte förväntade dig detta mail, kan du ignorera det. Ingen åtgärd krävs.
+</p>
+
+<p style="color: #666; font-size: 12px;">
+  Länken är giltig i 24 timmar.
+</p>
+
+
+
+

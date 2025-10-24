@@ -133,7 +133,7 @@ ALTER TABLE export_batches ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Organizations can view their subscriptions"
 ON subscriptions FOR SELECT TO authenticated
-USING (organization_id IN (SELECT organization_id FROM organization_members WHERE user_id = auth.uid()));
+USING (organization_id IN (SELECT organization_id FROM memberships WHERE user_id = auth.uid()));
 
 CREATE POLICY "Super admins can manage subscriptions"
 ON subscriptions FOR ALL TO authenticated
@@ -141,7 +141,7 @@ USING (EXISTS (SELECT 1 FROM super_admins sa WHERE sa.user_id = auth.uid() AND s
 
 CREATE POLICY "Organizations can view their payments"
 ON payment_transactions FOR SELECT TO authenticated
-USING (organization_id IN (SELECT organization_id FROM organization_members WHERE user_id = auth.uid()));
+USING (organization_id IN (SELECT organization_id FROM memberships WHERE user_id = auth.uid()));
 
 CREATE POLICY "Super admins can manage payments"
 ON payment_transactions FOR ALL TO authenticated
@@ -149,7 +149,7 @@ USING (EXISTS (SELECT 1 FROM super_admins sa WHERE sa.user_id = auth.uid() AND s
 
 CREATE POLICY "Organizations can view their invoices"
 ON subscription_invoices FOR SELECT TO authenticated
-USING (subscription_id IN (SELECT id FROM subscriptions WHERE organization_id IN (SELECT organization_id FROM organization_members WHERE user_id = auth.uid())));
+USING (subscription_id IN (SELECT id FROM subscriptions WHERE organization_id IN (SELECT organization_id FROM memberships WHERE user_id = auth.uid())));
 
 CREATE POLICY "Super admins can manage invoices"
 ON subscription_invoices FOR ALL TO authenticated

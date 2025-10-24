@@ -44,7 +44,7 @@ export async function middleware(request: NextRequest) {
 
 	// Protected routes
 	const protectedRoutes = ['/dashboard', '/projects', '/time', '/approvals', '/settings'];
-	const authRoutes = ['/sign-in', '/sign-up', '/verify-email'];
+	const authRoutes = ['/sign-in', '/sign-up', '/verify-email', '/invite-callback', '/set-password'];
 	const superAdminRoutes = ['/super-admin'];
 
 	const isProtectedRoute = protectedRoutes.some((route) =>
@@ -110,8 +110,14 @@ export async function middleware(request: NextRequest) {
 	}
 
 	// Redirect to home if accessing auth routes while authenticated
-	// (except verify-email which should be accessible)
-	if (isAuthRoute && user && !request.nextUrl.pathname.startsWith('/verify-email')) {
+	// (except verify-email, invite-callback, and set-password which should be accessible)
+	if (
+		isAuthRoute && 
+		user && 
+		!request.nextUrl.pathname.startsWith('/verify-email') &&
+		!request.nextUrl.pathname.startsWith('/invite-callback') &&
+		!request.nextUrl.pathname.startsWith('/set-password')
+	) {
 		const url = request.nextUrl.clone();
 		url.pathname = '/';
 		return NextResponse.redirect(url);

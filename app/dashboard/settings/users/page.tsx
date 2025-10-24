@@ -31,7 +31,9 @@ export default async function UsersSettingsPage() {
 		.select(
 			`
 			*,
-			profiles (*)
+			profiles (
+				*
+			)
 		`
 		)
 		.eq('org_id', membership.org_id)
@@ -40,12 +42,17 @@ export default async function UsersSettingsPage() {
 
 	const canInvite = membership.role === 'admin';
 
+	// Get auth users to check confirmed status
+	const memberUserIds = members?.map((m: any) => m.user_id) || [];
+	
 	// Transform members data for client component
 	const transformedMembers =
 		members?.map((member: any) => ({
 			id: member.id,
+			user_id: member.user_id,
 			role: member.role,
 			hourly_rate_sek: member.hourly_rate_sek,
+			created_at: member.created_at,
 			profiles: {
 				id: member.profiles.id,
 				full_name: member.profiles.full_name,
@@ -54,6 +61,6 @@ export default async function UsersSettingsPage() {
 			},
 		})) || [];
 
-	return <UsersPageNew members={transformedMembers} canInvite={canInvite} />;
+	return <UsersPageNew members={transformedMembers} canInvite={canInvite} currentUserId={user.id} />;
 }
 

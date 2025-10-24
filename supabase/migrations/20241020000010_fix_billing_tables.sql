@@ -65,63 +65,80 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
 
 DO $$ 
 BEGIN
-  -- Add organization_id if missing
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='payment_transactions' AND column_name='organization_id') THEN
-    ALTER TABLE payment_transactions ADD COLUMN organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE;
-  END IF;
+  -- Check if table exists
+  IF EXISTS (SELECT 1 FROM information_schema.tables 
+             WHERE table_name='payment_transactions') THEN
+    -- Add organization_id if missing
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='payment_transactions' AND column_name='organization_id') THEN
+      ALTER TABLE payment_transactions ADD COLUMN organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE;
+    END IF;
 
-  -- Add subscription_id if missing
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='payment_transactions' AND column_name='subscription_id') THEN
-    ALTER TABLE payment_transactions ADD COLUMN subscription_id UUID REFERENCES subscriptions(id);
-  END IF;
+    -- Add subscription_id if missing
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='payment_transactions' AND column_name='subscription_id') THEN
+      ALTER TABLE payment_transactions ADD COLUMN subscription_id UUID REFERENCES subscriptions(id);
+    END IF;
 
-  -- Add amount if missing
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='payment_transactions' AND column_name='amount') THEN
-    ALTER TABLE payment_transactions ADD COLUMN amount DECIMAL(10, 2) NOT NULL DEFAULT 0;
-  END IF;
+    -- Add amount if missing
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='payment_transactions' AND column_name='amount') THEN
+      ALTER TABLE payment_transactions ADD COLUMN amount DECIMAL(10, 2) NOT NULL DEFAULT 0;
+    END IF;
 
-  -- Add currency if missing
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='payment_transactions' AND column_name='currency') THEN
-    ALTER TABLE payment_transactions ADD COLUMN currency VARCHAR(3) DEFAULT 'SEK';
-  END IF;
+    -- Add currency if missing
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='payment_transactions' AND column_name='currency') THEN
+      ALTER TABLE payment_transactions ADD COLUMN currency VARCHAR(3) DEFAULT 'SEK';
+    END IF;
 
-  -- Add status if missing
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='payment_transactions' AND column_name='status') THEN
-    ALTER TABLE payment_transactions ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('successful', 'failed', 'pending', 'refunded'));
-  END IF;
+    -- Add status if missing
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='payment_transactions' AND column_name='status') THEN
+      ALTER TABLE payment_transactions ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('successful', 'failed', 'pending', 'refunded'));
+    END IF;
 
-  -- Add payment_method if missing
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='payment_transactions' AND column_name='payment_method') THEN
-    ALTER TABLE payment_transactions ADD COLUMN payment_method VARCHAR(50);
-  END IF;
+    -- Add payment_method if missing
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='payment_transactions' AND column_name='payment_method') THEN
+      ALTER TABLE payment_transactions ADD COLUMN payment_method VARCHAR(50);
+    END IF;
 
-  -- Add transaction_date if missing
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='payment_transactions' AND column_name='transaction_date') THEN
-    ALTER TABLE payment_transactions ADD COLUMN transaction_date TIMESTAMPTZ DEFAULT now();
-  END IF;
+    -- Add transaction_date if missing
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='payment_transactions' AND column_name='transaction_date') THEN
+      ALTER TABLE payment_transactions ADD COLUMN transaction_date TIMESTAMPTZ DEFAULT now();
+    END IF;
 
-  RAISE NOTICE '✅ Payment transactions table columns updated';
+    RAISE NOTICE '✅ Payment transactions table columns updated';
+  ELSE
+    RAISE NOTICE '⚠ Payment transactions table does not exist, skipping';
+  END IF;
 END $$;
 
--- Add indexes
-CREATE INDEX IF NOT EXISTS idx_payment_transactions_organization ON payment_transactions(organization_id);
-CREATE INDEX IF NOT EXISTS idx_payment_transactions_subscription ON payment_transactions(subscription_id);
-CREATE INDEX IF NOT EXISTS idx_payment_transactions_status ON payment_transactions(status);
-CREATE INDEX IF NOT EXISTS idx_payment_transactions_date ON payment_transactions(transaction_date DESC);
+-- Add indexes (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='payment_transactions') THEN
+    CREATE INDEX IF NOT EXISTS idx_payment_transactions_organization ON payment_transactions(organization_id);
+    CREATE INDEX IF NOT EXISTS idx_payment_transactions_subscription ON payment_transactions(subscription_id);
+    CREATE INDEX IF NOT EXISTS idx_payment_transactions_status ON payment_transactions(status);
+    CREATE INDEX IF NOT EXISTS idx_payment_transactions_date ON payment_transactions(transaction_date DESC);
+  END IF;
+END $$;
 
 -- =============================================
 -- ENABLE RLS
 -- =============================================
 
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='payment_transactions') THEN
+    ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
 
 -- =============================================
 -- RLS POLICIES
@@ -134,7 +151,7 @@ ON subscriptions FOR SELECT
 TO authenticated
 USING (
   organization_id IN (
-    SELECT organization_id FROM organization_members
+    SELECT organization_id FROM memberships
     WHERE user_id = auth.uid()
   )
 );
@@ -161,39 +178,44 @@ USING (
   )
 );
 
--- Payment Transactions policies
-DROP POLICY IF EXISTS "Organizations can view their payments" ON payment_transactions;
-CREATE POLICY "Organizations can view their payments"
-ON payment_transactions FOR SELECT
-TO authenticated
-USING (
-  organization_id IN (
-    SELECT organization_id FROM organization_members
-    WHERE user_id = auth.uid()
-  )
-);
+-- Payment Transactions policies (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='payment_transactions') THEN
+    DROP POLICY IF EXISTS "Organizations can view their payments" ON payment_transactions;
+    CREATE POLICY "Organizations can view their payments"
+    ON payment_transactions FOR SELECT
+    TO authenticated
+    USING (
+      organization_id IN (
+        SELECT organization_id FROM memberships
+        WHERE user_id = auth.uid()
+      )
+    );
 
-DROP POLICY IF EXISTS "Super admins can view all payments" ON payment_transactions;
-CREATE POLICY "Super admins can view all payments"
-ON payment_transactions FOR SELECT
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM super_admins sa
-    WHERE sa.user_id = auth.uid() AND sa.revoked_at IS NULL
-  )
-);
+    DROP POLICY IF EXISTS "Super admins can view all payments" ON payment_transactions;
+    CREATE POLICY "Super admins can view all payments"
+    ON payment_transactions FOR SELECT
+    TO authenticated
+    USING (
+      EXISTS (
+        SELECT 1 FROM super_admins sa
+        WHERE sa.user_id = auth.uid() AND sa.revoked_at IS NULL
+      )
+    );
 
-DROP POLICY IF EXISTS "Super admins can manage payments" ON payment_transactions;
-CREATE POLICY "Super admins can manage payments"
-ON payment_transactions FOR ALL
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM super_admins sa
-    WHERE sa.user_id = auth.uid() AND sa.revoked_at IS NULL
-  )
-);
+    DROP POLICY IF EXISTS "Super admins can manage payments" ON payment_transactions;
+    CREATE POLICY "Super admins can manage payments"
+    ON payment_transactions FOR ALL
+    TO authenticated
+    USING (
+      EXISTS (
+        SELECT 1 FROM super_admins sa
+        WHERE sa.user_id = auth.uid() AND sa.revoked_at IS NULL
+      )
+    );
+  END IF;
+END $$;
 
 -- =============================================
 -- MIGRATION COMPLETE

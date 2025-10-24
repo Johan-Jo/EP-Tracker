@@ -24,6 +24,8 @@ interface EditUserDialogProps {
 	currentHourlyRate?: number | null;
 	userName: string;
 	userEmail: string;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 	onSuccess?: () => void;
 }
 
@@ -33,9 +35,13 @@ export function EditUserDialog({
 	currentHourlyRate,
 	userName,
 	userEmail,
+	open: controlledOpen,
+	onOpenChange,
 	onSuccess,
 }: EditUserDialogProps) {
-	const [open, setOpen] = useState(false);
+	const [internalOpen, setInternalOpen] = useState(false);
+	const open = controlledOpen ?? internalOpen;
+	const setOpen = onOpenChange ?? setInternalOpen;
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isDeactivating, setIsDeactivating] = useState(false);
 
@@ -133,11 +139,6 @@ export function EditUserDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger asChild>
-				<Button size="sm" variant="ghost">
-					<Pencil className="w-4 h-4" />
-				</Button>
-			</DialogTrigger>
 			<DialogContent className="sm:max-w-[500px]">
 				<form onSubmit={handleSubmit(onSubmit)}>
 					<DialogHeader>

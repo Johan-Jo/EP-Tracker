@@ -9,17 +9,25 @@ import { LandingFooter } from '@/components/landing/landing-footer';
 
 export default async function Home() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   // If authenticated, check onboarding status
-  if (user) {
+  if (user && !authError) {
     // Check if user has an organization membership
-    const { data: membership } = await supabase
+    const { data: membership, error: membershipError } = await supabase
       .from('memberships')
       .select('id, role, created_at')
       .eq('user_id', user.id)
       .eq('is_active', true)
       .single();
+
+    // If RLS error or auth error, log out the user (stale/invalid session)
+    if (membershipError && membershipError.code !== 'PGRST116') {
+      // PGRST116 = no rows returned (expected when no membership)
+      // Any other error means RLS issue or invalid session
+      console.error('[Root] Membership query error:', membershipError);
+      redirect('/sign-in');
+    }
 
     if (!membership) {
       // No membership - user needs to complete organization setup

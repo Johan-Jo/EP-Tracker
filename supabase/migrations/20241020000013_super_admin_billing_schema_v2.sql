@@ -233,7 +233,7 @@ ON subscriptions FOR SELECT
 TO authenticated
 USING (
   organization_id IN (
-    SELECT organization_id FROM organization_members
+    SELECT organization_id FROM memberships
     WHERE user_id = auth.uid()
   )
 );
@@ -267,7 +267,7 @@ ON payment_transactions FOR SELECT
 TO authenticated
 USING (
   organization_id IN (
-    SELECT organization_id FROM organization_members
+    SELECT organization_id FROM memberships
     WHERE user_id = auth.uid()
   )
 );
@@ -302,7 +302,7 @@ TO authenticated
 USING (
   subscription_id IN (
     SELECT id FROM subscriptions WHERE organization_id IN (
-      SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
+      SELECT organization_id FROM memberships WHERE user_id = auth.uid()
     )
   )
 );
