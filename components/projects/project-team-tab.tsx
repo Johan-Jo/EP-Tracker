@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Plus, Loader2, UserCheck, Mail } from 'lucide-react';
+import { Users, Plus, Loader2, UserCheck, Mail, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ManageTeamDialog } from '@/components/projects/manage-team-dialog';
+import { toast } from 'sonner';
 
 interface ProjectMember {
 	id: string;
@@ -28,6 +29,7 @@ export function ProjectTeamTab({ projectId, projectName, canEdit }: ProjectTeamT
 	const [showTeamDialog, setShowTeamDialog] = useState(false);
 	const [members, setMembers] = useState<ProjectMember[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [removing, setRemoving] = useState<string | null>(null);
 
 	useEffect(() => {
 		fetchMembers();
@@ -52,6 +54,32 @@ export function ProjectTeamTab({ projectId, projectName, canEdit }: ProjectTeamT
 		if (!open) {
 			// Refresh members when dialog closes
 			fetchMembers();
+		}
+	};
+
+	const handleRemoveMember = async (userId: string, userName: string) => {
+		if (!confirm(`Är du säker på att du vill ta bort ${userName} från projektet?`)) {
+			return;
+		}
+
+		setRemoving(userId);
+		try {
+			const response = await fetch(`/api/projects/${projectId}/members?user_id=${userId}`, {
+				method: 'DELETE',
+			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Failed to remove member');
+			}
+
+			setMembers(members.filter((m) => m.user_id !== userId));
+			toast.success(`${userName} borttagen från projektet`);
+		} catch (error) {
+			console.error('Error removing member:', error);
+			toast.error('Misslyckades att ta bort medlem');
+		} finally {
+			setRemoving(null);
 		}
 	};
 
@@ -130,6 +158,22 @@ export function ProjectTeamTab({ projectId, projectName, canEdit }: ProjectTeamT
 													{member.profiles.email}
 												</p>
 											</div>
+											{canEdit && (
+												<Button
+													variant="ghost"
+													size="sm"
+													onClick={() => handleRemoveMember(member.user_id, member.profiles.full_name)}
+													disabled={removing === member.user_id}
+													className="shrink-0 h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+													title={`Ta bort ${member.profiles.full_name} från projektet`}
+												>
+													{removing === member.user_id ? (
+														<Loader2 className="w-4 h-4 animate-spin" />
+													) : (
+														<X className="w-4 h-4" />
+													)}
+												</Button>
+											)}
 										</div>
 									))}
 								</div>
