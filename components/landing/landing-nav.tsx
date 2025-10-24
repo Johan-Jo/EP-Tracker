@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 
 export function LandingNav() {
@@ -9,8 +10,15 @@ export function LandingNav() {
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="flex h-20 items-center justify-between">
                     <div className="flex items-center">
-                        <Link href="/" className="text-3xl font-bold tracking-tight text-orange-500">
-                            EP-Tracker
+                        <Link href="/" className="flex items-center">
+                            <Image
+                                src="/images/eptrackerfront.png"
+                                alt="EP-Tracker"
+                                width={200}
+                                height={50}
+                                className="h-auto w-auto"
+                                priority
+                            />
                         </Link>
                     </div>
 
