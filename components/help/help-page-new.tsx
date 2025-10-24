@@ -143,6 +143,15 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 						'Dubbel-klicka för att redigera',
 					],
 				},
+				{
+					title: 'Automatisk projektmedlemskap',
+					items: [
+						'Dra uppdrag till en användare som inte är medlem',
+						'En dialogruta frågar om du vill lägga till användaren',
+						'Klicka "Ja" för att automatiskt lägga till i teamet',
+						'Uppdraget flyttas och användaren får åtkomst direkt',
+					],
+				},
 			],
 		},
 		{
@@ -434,6 +443,13 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			answer:
 				'Ja! Hitta användaren med "Väntar på registrering"-status i användarhanteringen och klicka "Skicka ny inbjudan". Ett nytt e-postmeddelande skickas till användaren.',
 			roles: ['admin'],
+		},
+		{
+			id: 'faq-16',
+			question: 'Vad händer om jag drar ett uppdrag till någon som inte är medlem i projektet?',
+			answer:
+				'Systemet upptäcker automatiskt om personen inte är medlem och visar en dialogruta. Du kan välja att lägga till personen i projektet direkt, och uppdraget flyttas automatiskt efteråt. Detta sparar tid och förhindrar fel.',
+			roles: ['admin', 'foreman'],
 		},
 	];
 
