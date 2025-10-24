@@ -182,7 +182,7 @@ export default async function WelcomePage() {
 
 					{/* CTA Button */}
 					<Link
-						href="/dashboard"
+						href="/dashboard?tour=dashboard"
 						className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl"
 					>
 						Gå till Dashboard
