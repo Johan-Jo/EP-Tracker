@@ -10,6 +10,7 @@ import { CapacityIndicator } from './capacity-indicator';
 import { ProjectChips } from './project-chips';
 import { AddAssignmentDialog } from './add-assignment-dialog';
 import { DroppableCell } from './droppable-cell';
+import { AddToProjectDialog } from './add-to-project-dialog';
 import type { WeekPlanningData, PersonStatus } from '@/lib/schemas/planning';
 import { format, addWeeks, subWeeks, startOfWeek, endOfWeek } from 'date-fns';
 import { sv } from 'date-fns/locale';
@@ -33,6 +34,15 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 	const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [activeId, setActiveId] = useState<string | null>(null);
+	const [showAddToProjectDialog, setShowAddToProjectDialog] = useState(false);
+	const [pendingDrop, setPendingDrop] = useState<{
+		assignmentId: string;
+		projectId: string;
+		projectName: string;
+		userId: string;
+		userName: string;
+		payload: any;
+	} | null>(null);
 
 	// Configure drag sensors
 	const sensors = useSensors(
@@ -243,6 +253,38 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 			start_ts: startDate.toISOString(),
 			end_ts: endDate.toISOString(),
 		};
+
+		// Check if user is being assigned to a different person
+		if (assignment.user_id !== userId) {
+			// Check if the new user is a member of the project
+			try {
+				const response = await fetch(`/api/projects/${assignment.project_id}/members`);
+				if (response.ok) {
+					const { members } = await response.json();
+					const isMember = members.some((m: any) => m.user_id === userId);
+					
+					if (!isMember) {
+						// User is not a member - show confirmation dialog
+						const targetUser = data.resources.find(r => r.id === userId);
+						if (targetUser) {
+							setPendingDrop({
+								assignmentId: assignment.id,
+								projectId: assignment.project_id,
+								projectName: assignment.project.name,
+								userId: userId,
+								userName: targetUser.full_name || targetUser.email,
+								payload,
+							});
+							setShowAddToProjectDialog(true);
+							return; // Don't proceed with update yet
+						}
+					}
+				}
+			} catch (error) {
+				console.error('Error checking project membership:', error);
+				// Continue with assignment update even if check fails
+			}
+		}
 		
 		// Use optimistic mutation - UI updates instantly!
 		onDragDropUpdate({
@@ -253,6 +295,40 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 
 	const handleDragCancel = () => {
 		setActiveId(null);
+	};
+
+	const handleConfirmAddToProject = async () => {
+		if (!pendingDrop) return;
+
+		try {
+			// Add user to project
+			const response = await fetch(`/api/projects/${pendingDrop.projectId}/members`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					userIds: [pendingDrop.userId],
+				}),
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to add user to project');
+			}
+
+			toast.success(`${pendingDrop.userName.split(' ')[0]} har lagts till i ${pendingDrop.projectName}`);
+
+			// Now proceed with the assignment update
+			onDragDropUpdate({
+				assignmentId: pendingDrop.assignmentId,
+				payload: pendingDrop.payload,
+			});
+
+			// Close dialog and clear pending
+			setShowAddToProjectDialog(false);
+			setPendingDrop(null);
+		} catch (error) {
+			console.error('Error adding user to project:', error);
+			toast.error('Kunde inte lägga till användaren i projektet');
+		}
 	};
 
 	// Find active assignment for drag overlay and format it
@@ -431,6 +507,20 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 				onSubmit={onAddAssignment}
 				projects={data.projects.map(p => ({ ...p, site_address: p.site_address || undefined }))}
 				users={data.resources.map(r => ({ id: r.id, name: r.full_name || r.email }))}
+			/>
+
+			{/* Add to Project Confirmation Dialog */}
+			<AddToProjectDialog
+				open={showAddToProjectDialog}
+				onOpenChange={(open) => {
+					setShowAddToProjectDialog(open);
+					if (!open) {
+						setPendingDrop(null);
+					}
+				}}
+				onConfirm={handleConfirmAddToProject}
+				userName={pendingDrop?.userName || ''}
+				projectName={pendingDrop?.projectName || ''}
 			/>
 		</div>
 
