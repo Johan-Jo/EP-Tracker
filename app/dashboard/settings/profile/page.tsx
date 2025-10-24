@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { revalidatePath } from 'next/cache';
+import { ChangePasswordForm } from '@/components/settings/change-password-form';
 
 export default async function ProfilePage() {
 	const supabase = await createClient();
@@ -161,6 +162,9 @@ export default async function ProfilePage() {
 				</div>
 				</CardContent>
 			</Card>
+
+			{/* Change Password Form */}
+			<ChangePasswordForm />
 		</div>
 	);
 }
