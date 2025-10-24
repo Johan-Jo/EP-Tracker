@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MapPin, Edit, Calendar, Users, Building2, Clock, DollarSign, TrendingUp, FolderKanban, FileText } from 'lucide-react';
 import { PhasesList } from '@/components/projects/phases-list';
 import { WorkOrdersList } from '@/components/projects/work-orders-list';
+import { ProjectTeamTab } from '@/components/projects/project-team-tab';
 
 interface PageProps {
 	params: Promise<{ id: string }>;
@@ -299,22 +300,11 @@ export default async function ProjectDetailPage(props: PageProps) {
 				</TabsContent>
 
 				<TabsContent value='team' className='space-y-4'>
-					<Card>
-						<CardHeader>
-							<CardTitle className='flex items-center gap-2'>
-								<Users className='w-5 h-5' />
-								Projektteam
-							</CardTitle>
-							<CardDescription>
-								Hantera teammedlemmar kommer i en senare version
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<p className='text-muted-foreground text-sm'>
-								Funktionalitet för att lägga till och hantera teammedlemmar kommer snart.
-							</p>
-						</CardContent>
-					</Card>
+					<ProjectTeamTab 
+						projectId={project.id} 
+						projectName={project.name}
+						canEdit={canEdit}
+					/>
 				</TabsContent>
 			</Tabs>
 			</div>
