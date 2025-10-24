@@ -173,6 +173,60 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			],
 		},
 		{
+			title: 'Projektmedlemmar',
+			description: 'Hantera teammedlemmar och projektåtkomst',
+			icon: Users,
+			roles: ['admin', 'foreman'],
+			sections: [
+				{
+					title: 'Lägga till medlemmar',
+					items: [
+						'Öppna ett projekt',
+						'Gå till "Team"-fliken',
+						'Klicka "Hantera team"',
+						'Välj vilka användare som ska ha åtkomst',
+						'Klicka "Lägg till" eller "Ta bort"',
+					],
+				},
+				{
+					title: 'Åtkomstkontroll',
+					items: [
+						'Användare ser bara projekt de är tilldelade till',
+						'All tid, material och dokument är projektspecifik',
+						'Admins och arbetsledare kan tilldela medlemmar',
+						'Workers rapporterar bara på sina tilldelade projekt',
+					],
+				},
+			],
+		},
+		{
+			title: 'Bjud in användare',
+			description: 'Lägg till nya teammedlemmar',
+			icon: Users,
+			roles: ['admin'],
+			sections: [
+				{
+					title: 'Skicka inbjudan',
+					items: [
+						'Gå till "Inställningar → Användare"',
+						'Klicka "Bjud in användare"',
+						'Fyll i namn, e-post och roll',
+						'Ange timtaxa (valfritt)',
+						'Användaren får ett e-postmeddelande',
+					],
+				},
+				{
+					title: 'Skicka om inbjudan',
+					items: [
+						'Hitta användare med "Väntar på registrering"-status',
+						'Klicka "Skicka ny inbjudan"',
+						'Ett nytt e-postmeddelande skickas',
+						'Status uppdateras när användaren registrerar sig',
+					],
+				},
+			],
+		},
+		{
 			title: 'CSV Export',
 			description: 'Exportera data för lön och fakturering',
 			icon: FileText,
@@ -345,6 +399,41 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			answer:
 				'Klicka på "Historik"-knappen på godkännandesidan. Där ser du alla tidigare CSV-exporter med information om period, antal poster och vem som skapade exporten.',
 			roles: ['admin', 'foreman', 'finance'],
+		},
+		{
+			id: 'faq-11',
+			question: 'Varför ser jag inte alla projekt?',
+			answer:
+				'Användare ser bara projekt de är tilldelade till. Om du är admin eller arbetsledare, gå till projektets "Team"-flik och lägg till dig själv som medlem. Workers behöver bli tillagda av en admin eller arbetsledare.',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
+		},
+		{
+			id: 'faq-12',
+			question: 'Hur lägger jag till någon i ett projekt?',
+			answer:
+				'Öppna projektet, gå till "Team"-fliken och klicka "Hantera team". Välj användare från listan och klicka "Lägg till". Endast admins och arbetsledare kan hantera projektmedlemmar.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-13',
+			question: 'Vad händer när jag tar bort en medlem från ett projekt?',
+			answer:
+				'Användaren förlorar omedelbart åtkomst till projektet och kan inte längre se eller rapportera på det. Befintlig data (tid, material) som användaren skapat förblir kvar i projektet.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-14',
+			question: 'Hur vet jag att en inbjuden användare har registrerat sig?',
+			answer:
+				'Gå till "Inställningar → Användare". Användare som väntar på registrering har en gul badge "Väntar på registrering". När de registrerar sig ändras statusen till grön "Aktiv".',
+			roles: ['admin'],
+		},
+		{
+			id: 'faq-15',
+			question: 'Kan jag skicka om en inbjudan?',
+			answer:
+				'Ja! Hitta användaren med "Väntar på registrering"-status i användarhanteringen och klicka "Skicka ny inbjudan". Ett nytt e-postmeddelande skickas till användaren.',
+			roles: ['admin'],
 		},
 	];
 

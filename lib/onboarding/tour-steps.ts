@@ -12,6 +12,14 @@ export const dashboardTourSteps = [
 		position: 'bottom' as const,
 	},
 	{
+		id: 'access-control',
+		title: 'Projektåtkomst',
+		description:
+			'Du ser bara data från projekt där du är tillagd som medlem. Din chef eller admin kan lägga till dig i projekt via projektets "Team"-flik.',
+		target: '[data-tour="dashboard-header"]',
+		position: 'bottom' as const,
+	},
+	{
 		id: 'time-slider',
 		title: 'Checka in/ut med slidern',
 		description:
@@ -32,9 +40,9 @@ export const dashboardTourSteps = [
 export const projectsTourSteps = [
 	{
 		id: 'projects-list',
-		title: 'Dina projekt',
+		title: 'Dina tilldelade projekt',
 		description:
-			'Här ser du alla dina projekt. Klicka på ett projekt för att se detaljer, eller skapa ett nytt projekt.',
+			'Här ser du alla projekt du har åtkomst till. Du ser bara de projekt där du är tillagd som medlem. Klicka på ett projekt för att se detaljer.',
 		target: '[data-tour="projects-list"]',
 		position: 'bottom' as const,
 	},
@@ -42,8 +50,16 @@ export const projectsTourSteps = [
 		id: 'create-project',
 		title: 'Skapa nytt projekt',
 		description:
-			'Klicka här för att skapa ditt första projekt. Du behöver projektnamn, kund och adress.',
+			'Klicka här för att skapa ditt första projekt. Du behöver projektnamn, kund och adress. När du skapar ett projekt blir du automatiskt medlem.',
 		target: '[data-tour="create-project"]',
+		position: 'bottom' as const,
+	},
+	{
+		id: 'project-access',
+		title: 'Projektåtkomst',
+		description:
+			'Kom ihåg att lägga till teammedlemmar i projektet via "Team"-fliken efter att du skapat det. Endast medlemmar kan se och rapportera på projektet.',
+		target: '[data-tour="projects-list"]',
 		position: 'bottom' as const,
 	},
 ];
