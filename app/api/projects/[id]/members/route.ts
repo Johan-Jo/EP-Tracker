@@ -5,9 +5,10 @@ import { z } from 'zod';
 // Get project members
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
+		const { id } = await params;
 		const supabase = await createClient();
 
 		const {
@@ -33,7 +34,7 @@ export async function GET(
 					phone
 				)
 			`)
-			.eq('project_id', params.id)
+			.eq('project_id', id)
 			.order('created_at', { ascending: false });
 
 		if (error) {
@@ -55,9 +56,10 @@ const addMemberSchema = z.object({
 // Add member to project
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
+		const { id } = await params;
 		const supabase = await createClient();
 
 		const {
@@ -72,7 +74,7 @@ export async function POST(
 		const { data: project } = await supabase
 			.from('projects')
 			.select('org_id')
-			.eq('id', params.id)
+			.eq('id', id)
 			.single();
 
 		if (!project) {
@@ -118,7 +120,7 @@ export async function POST(
 		const { data: newMember, error: insertError } = await supabase
 			.from('project_members')
 			.insert({
-				project_id: params.id,
+				project_id: id,
 				user_id: validatedData.user_id,
 				assigned_by: user.id,
 			})
@@ -159,8 +161,9 @@ export async function POST(
 }
 
 // Remove member from project
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
 	try {
+		const { id } = await params;
 		const supabase = await createClient();
 
 		const {
@@ -183,7 +186,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 		const { data: project } = await supabase
 			.from('projects')
 			.select('org_id')
-			.eq('id', params.id)
+			.eq('id', id)
 			.single();
 
 		if (!project) {
@@ -209,7 +212,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 		const { error: deleteError } = await supabase
 			.from('project_members')
 			.delete()
-			.eq('project_id', params.id)
+			.eq('project_id', id)
 			.eq('user_id', userId);
 
 		if (deleteError) {

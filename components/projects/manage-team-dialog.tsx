@@ -36,15 +36,24 @@ interface ManageTeamDialogProps {
 	projectName: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	canEdit?: boolean;
 }
 
-export function ManageTeamDialog({ projectId, projectName, open, onOpenChange }: ManageTeamDialogProps) {
+export function ManageTeamDialog({ projectId, projectName, open, onOpenChange, canEdit = true }: ManageTeamDialogProps) {
 	const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
 	const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [adding, setAdding] = useState(false);
 	const [removing, setRemoving] = useState<string | null>(null);
 	const [selectedUserId, setSelectedUserId] = useState<string>('');
+
+	// If user doesn't have edit permissions, close dialog immediately
+	useEffect(() => {
+		if (open && !canEdit) {
+			toast.error('Du har inte behörighet att hantera projektmedlemmar');
+			onOpenChange(false);
+		}
+	}, [open, canEdit, onOpenChange]);
 
 	useEffect(() => {
 		if (open) {

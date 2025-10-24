@@ -160,6 +160,7 @@ export function ProjectTeamTab({ projectId, projectName, canEdit }: ProjectTeamT
 				projectName={projectName}
 				open={showTeamDialog}
 				onOpenChange={handleDialogClose}
+				canEdit={canEdit}
 			/>
 		</>
 	);
