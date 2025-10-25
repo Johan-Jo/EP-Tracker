@@ -23,6 +23,7 @@ interface TimePageNewProps {
 export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 	const [selectedProject, setSelectedProject] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [editingEntry, setEditingEntry] = useState<any | null>(null);
 	const supabase = createClient();
 	const queryClient = useQueryClient();
 
@@ -48,6 +49,27 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 	useEffect(() => {
 		setValue('start_at', `${currentDate}T${startTime}`);
 	}, [currentDate, startTime, setValue]);
+
+	// Populate form when editing
+	useEffect(() => {
+		if (editingEntry) {
+			const startDate = new Date(editingEntry.start_at);
+			const stopDate = editingEntry.stop_at ? new Date(editingEntry.stop_at) : null;
+			
+			const date = startDate.toISOString().split('T')[0];
+			const start = startDate.toTimeString().slice(0, 5);
+			const stop = stopDate ? stopDate.toTimeString().slice(0, 5) : '';
+			
+			setCurrentDate(date);
+			setStartTime(start);
+			setEndTime(stop);
+			setValue('project_id', editingEntry.project_id);
+			setValue('start_at', editingEntry.start_at);
+			setValue('stop_at', editingEntry.stop_at);
+			setValue('notes', editingEntry.notes || '');
+			setSelectedProject(editingEntry.project_id);
+		}
+	}, [editingEntry, setValue]);
 
 	// Fetch active projects
 	const { data: projects, isLoading: projectsLoading } = useQuery({
@@ -147,22 +169,26 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 		setIsSubmitting(true);
 
 		try {
-			const response = await fetch('/api/time/entries', {
-				method: 'POST',
+			const isEditing = editingEntry !== null;
+			const url = isEditing ? `/api/time/entries/${editingEntry.id}` : '/api/time/entries';
+			const method = isEditing ? 'PUT' : 'POST';
+
+			const response = await fetch(url, {
+				method,
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(data),
 			});
 
 			if (!response.ok) {
 				const error = await response.json();
-				throw new Error(error.error || 'Failed to create time entry');
+				throw new Error(error.error || `Failed to ${isEditing ? 'update' : 'create'} time entry`);
 			}
 
 			// Invalidate cache and refetch
 			queryClient.invalidateQueries({ queryKey: ['time-entries-stats', orgId, userId] });
 			refetch();
 
-			// Reset form
+			// Reset form and editing state
 			const today = new Date().toISOString().split('T')[0];
 			setCurrentDate(today);
 			setStartTime('08:00');
@@ -177,8 +203,9 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 				notes: '',
 			});
 			setSelectedProject('');
+			setEditingEntry(null);
 		} catch (error) {
-			console.error('Error creating time entry:', error);
+			console.error('Error saving time entry:', error);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -232,7 +259,36 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 			<main className='px-4 md:px-8 py-6 max-w-5xl mx-auto'>
 				{/* Manual Entry Form */}
 				<div className='bg-card border-2 border-border rounded-xl p-6 mb-6 shadow-lg' data-tour="time-form">
-					<h3 className='text-xl font-semibold mb-6'>Lägg till arbetstid</h3>
+					<div className='flex items-center justify-between mb-6'>
+						<h3 className='text-xl font-semibold'>
+							{editingEntry ? 'Redigera arbetstid' : 'Lägg till arbetstid'}
+						</h3>
+						{editingEntry && (
+							<Button
+								type='button'
+								variant='outline'
+								onClick={() => {
+									setEditingEntry(null);
+									const today = new Date().toISOString().split('T')[0];
+									setCurrentDate(today);
+									setStartTime('08:00');
+									setEndTime('');
+									reset({
+										project_id: '',
+										phase_id: null,
+										work_order_id: null,
+										task_label: '',
+										start_at: today + 'T08:00',
+										stop_at: null,
+										notes: '',
+									});
+									setSelectedProject('');
+								}}
+							>
+								Avbryt
+							</Button>
+						)}
+					</div>
 
 					<form onSubmit={handleSubmit(onSubmit)} className='space-y-4'>
 						{/* Project */}
@@ -359,24 +415,24 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 							/>
 						</div>
 
-						{/* Save Button */}
-						<Button
-							type='submit'
-							disabled={isSubmitting}
-							className='w-full h-12 bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-200'
-						>
-							{isSubmitting ? (
-								<>
-									<Loader2 className='w-4 h-4 mr-2 animate-spin' />
-									Sparar...
-								</>
-							) : (
-								<>
-									<Save className='w-4 h-4 mr-2' />
-									Spara tidsrapport
-								</>
-							)}
-						</Button>
+					{/* Save Button */}
+					<Button
+						type='submit'
+						disabled={isSubmitting}
+						className='w-full h-12 bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-200'
+					>
+						{isSubmitting ? (
+							<>
+								<Loader2 className='w-4 h-4 mr-2 animate-spin' />
+								{editingEntry ? 'Uppdaterar...' : 'Sparar...'}
+							</>
+						) : (
+							<>
+								<Save className='w-4 h-4 mr-2' />
+								{editingEntry ? 'Uppdatera tidsrapport' : 'Spara tidsrapport'}
+							</>
+						)}
+					</Button>
 					</form>
 				</div>
 
@@ -475,13 +531,19 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 											>
 												{getStatusText(entry.status)}
 											</span>
-											<Button
-												variant='outline'
-												size='sm'
-												className='hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 transition-all duration-200'
-											>
-												Ändra
-											</Button>
+											{entry.status === 'draft' && (
+												<Button
+													variant='outline'
+													size='sm'
+													className='hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 transition-all duration-200'
+													onClick={() => {
+														setEditingEntry(entry);
+														window.scrollTo({ top: 0, behavior: 'smooth' });
+													}}
+												>
+													Ändra
+												</Button>
+											)}
 										</div>
 									</div>
 								</div>
