@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-	title: 'EP Time Tracker',
+	title: 'EP Tracker',
 	description: 'Time tracking and site reporting for Swedish contractors',
 	manifest: '/manifest.json',
 	icons: {
