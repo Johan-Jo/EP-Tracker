@@ -14,17 +14,16 @@ export function LandingHero() {
 
             <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="mx-auto max-w-4xl text-center">
-                    {/* Hero Image */}
-                    <div className="mb-12 flex justify-center">
-                        <Image
-                            src="/images/eptrackerinside.png"
-                            alt="EP-Tracker - Spåra tid, Få betalt snabbare"
-                            width={800}
-                            height={200}
-                            className="h-auto w-full max-w-3xl"
-                            priority
-                        />
-                    </div>
+                    {/* Headline */}
+                    <h1 className="mb-6 text-5xl font-bold leading-tight tracking-tight text-gray-900 sm:text-6xl lg:text-7xl">
+                        Spåra tid. Få betalt snabbare.
+                    </h1>
+
+                    {/* Ingress */}
+                    <p className="mx-auto mb-12 max-w-2xl text-xl leading-relaxed text-gray-700 sm:text-2xl">
+                        EP-Tracker samlar timmar, material och projektstatus från fält – och gör
+                        fakturaunderlag på sekunder.
+                    </p>
 
                     {/* CTA Button */}
                     <div className="flex flex-col items-center justify-center">

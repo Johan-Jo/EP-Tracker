@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
 	LayoutDashboard,
@@ -138,10 +139,16 @@ export function Sidebar({ userRole }: SidebarProps) {
 			<div className='flex flex-col flex-1 min-h-0'>
 				{/* Header - matches TopNav height (h-16) */}
 				<div className="h-16 px-6 flex items-center border-b border-gray-200">
-					<div className="flex flex-col">
-						<span className="text-lg font-semibold text-gray-900">EP Tracker</span>
-						<span className="text-sm text-gray-500">Tidsrapportering</span>
-					</div>
+					<Link href="/dashboard" className="flex items-center w-full">
+						<Image
+							src="/images/eptrackerinside.png"
+							alt="EP Tracker"
+							width={180}
+							height={50}
+							className="h-auto w-auto max-h-12"
+							priority
+						/>
+					</Link>
 				</div>
 
 				<nav className='flex-1 px-4 py-4 space-y-1 overflow-y-auto'>
