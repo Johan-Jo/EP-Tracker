@@ -364,8 +364,32 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                   const details = getActivityDetails();
                   if (!details) return null;
 
+                  // Determine where to navigate based on activity type
+                  const getNavigationPath = () => {
+                    switch (activity.type) {
+                      case 'time':
+                        return '/dashboard/time';
+                      case 'material':
+                        return '/dashboard/materials';
+                      case 'expense':
+                        return '/dashboard/materials';
+                      case 'ata':
+                        return '/dashboard/ata';
+                      case 'diary':
+                        return '/dashboard/diary';
+                      default:
+                        return null;
+                    }
+                  };
+
+                  const navigationPath = getNavigationPath();
+
                   return (
-                    <div key={activity.id} className="p-4 hover:bg-gray-50 transition-colors">
+                    <div 
+                      key={activity.id} 
+                      onClick={() => navigationPath && router.push(navigationPath)}
+                      className={`p-4 transition-colors ${navigationPath ? 'hover:bg-gray-50 cursor-pointer' : ''}`}
+                    >
                       <div className="flex items-start gap-3">
                         <div className={`h-9 w-9 rounded-lg ${details.iconBg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
                           {details.icon}
