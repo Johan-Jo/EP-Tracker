@@ -9,11 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { createClient } from '@/lib/supabase/client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createTimeEntrySchema, type CreateTimeEntryInput } from '@/lib/schemas/time-entry';
 import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
+import { toast } from 'react-hot-toast';
 
 interface TimePageNewProps {
 	orgId: string;
@@ -24,6 +26,8 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 	const [selectedProject, setSelectedProject] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [editingEntry, setEditingEntry] = useState<any | null>(null);
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+	const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
 	const supabase = createClient();
 	const queryClient = useQueryClient();
 
@@ -161,13 +165,16 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 		return `${hours}h ${minutes}min`;
 	};
 
-	const handleDelete = async (entryId: string) => {
-		if (!confirm('Är du säker på att du vill ta bort denna tidrapport?')) {
-			return;
-		}
+	const handleDelete = (entryId: string) => {
+		setEntryToDelete(entryId);
+		setDeleteDialogOpen(true);
+	};
+
+	const confirmDelete = async () => {
+		if (!entryToDelete) return;
 
 		try {
-			const response = await fetch(`/api/time/entries/${entryId}`, {
+			const response = await fetch(`/api/time/entries/${entryToDelete}`, {
 				method: 'DELETE',
 			});
 
@@ -177,7 +184,7 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 			}
 
 			// If we were editing this entry, clear the editing state
-			if (editingEntry?.id === entryId) {
+			if (editingEntry?.id === entryToDelete) {
 				setEditingEntry(null);
 				const today = new Date().toISOString().split('T')[0];
 				setCurrentDate(today);
@@ -198,9 +205,14 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 			// Invalidate cache and refetch
 			queryClient.invalidateQueries({ queryKey: ['time-entries-stats', orgId, userId] });
 			refetch();
+			
+			toast.success('Tidrapport borttagen');
 		} catch (error) {
 			console.error('Error deleting time entry:', error);
-			alert('Misslyckades att ta bort tidrapport');
+			toast.error('Misslyckades att ta bort tidrapport');
+		} finally {
+			setDeleteDialogOpen(false);
+			setEntryToDelete(null);
 		}
 	};
 
@@ -606,6 +618,27 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 				</div>
 			</main>
 			<PageTourTrigger tourId="time" />
+			
+			{/* Delete Confirmation Dialog */}
+			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Ta bort tidrapport?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Är du säker på att du vill ta bort denna tidrapport? Denna åtgärd kan inte ångras.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Avbryt</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={confirmDelete}
+							className='bg-red-600 hover:bg-red-700 focus:ring-red-600'
+						>
+							Ta bort
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }
