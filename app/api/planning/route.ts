@@ -1,28 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth/get-session';
 import { startOfWeek, endOfWeek, parseISO } from 'date-fns';
 
 // GET /api/planning - Fetch week planning data
+// EPIC 26.6: Optimized with parallel queries and session caching
 export async function GET(request: NextRequest) {
 	try {
-		const supabase = await createClient();
-		const { data: { user }, error: authError } = await supabase.auth.getUser();
+		// EPIC 26: Use cached session (saves 2 queries!)
+		const { user, membership } = await getSession();
 
-		if (authError || !user) {
+		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		// Get user's organization
-		const { data: membership } = await supabase
-			.from('memberships')
-			.select('org_id, role')
-			.eq('user_id', user.id)
-			.eq('is_active', true)
-			.single();
-
-		if (!membership) {
-			return NextResponse.json({ error: 'No active organization membership' }, { status: 403 });
-		}
+		const supabase = await createClient();
 
 		// Parse query parameters
 		const searchParams = request.nextUrl.searchParams;
@@ -59,119 +51,110 @@ export async function GET(request: NextRequest) {
 			weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 		}
 
-		// Set to start/end of day in UTC
-		weekStart.setHours(0, 0, 0, 0);
-		weekEnd.setHours(23, 59, 59, 999);
+	// Set to start/end of day in UTC
+	weekStart.setHours(0, 0, 0, 0);
+	weekEnd.setHours(23, 59, 59, 999);
 
-		// Fetch resources (users with memberships)
-		const { data: resources, error: resourcesError } = await supabase
-			.from('memberships')
-			.select(`
-				user_id,
-				role,
-				is_active,
-				profiles:user_id (
-					id,
-					full_name,
-					email
-				)
-			`)
-			.eq('org_id', membership.org_id)
-			.eq('is_active', true);
+	// EPIC 26.6: Build queries (don't execute yet)
+	const resourcesQuery = supabase
+		.from('memberships')
+		.select(`
+			user_id,
+			role,
+			is_active,
+			profiles:user_id (
+				id,
+				full_name,
+				email
+			)
+		`)
+		.eq('org_id', membership.org_id)
+		.eq('is_active', true);
 
-		if (resourcesError) {
-			console.error('Error fetching resources:', resourcesError);
-			return NextResponse.json({ error: resourcesError.message }, { status: 500 });
-		}
-
-		// Transform resources data
-		const resourcesList = resources
-			?.filter(r => r.profiles)
-			.map(r => ({
-				id: r.user_id,
-				full_name: (r.profiles as any)?.full_name || null,
-				email: (r.profiles as any)?.email || '',
-				role: r.role,
-				is_active: r.is_active,
-			})) || [];
-
-	// Fetch projects
 	let projectsQuery = supabase
 		.from('projects')
 		.select('id, name, project_number, client_name, color, daily_capacity_need, status, site_address')
 		.eq('org_id', membership.org_id)
 		.in('status', ['active', 'paused']);
 
-		if (project_id) {
-			projectsQuery = projectsQuery.eq('id', project_id);
-		}
+	if (project_id) {
+		projectsQuery = projectsQuery.eq('id', project_id);
+	}
 
-		const { data: projects, error: projectsError } = await projectsQuery;
+	// EPIC 26.6: Remove JOINs - client already has projects/users!
+	let assignmentsQuery = supabase
+		.from('assignments')
+		.select('*')
+		.eq('org_id', membership.org_id)
+		.gte('start_ts', weekStart.toISOString())
+		.lte('start_ts', weekEnd.toISOString())
+		.neq('status', 'cancelled');
 
-		if (projectsError) {
-			console.error('Error fetching projects:', projectsError);
-			return NextResponse.json({ error: projectsError.message }, { status: 500 });
-		}
+	if (project_id) {
+		assignmentsQuery = assignmentsQuery.eq('project_id', project_id);
+	}
+	if (user_id_filter) {
+		assignmentsQuery = assignmentsQuery.eq('user_id', user_id_filter);
+	}
 
-		// Fetch assignments for the week
-		let assignmentsQuery = supabase
-			.from('assignments')
-			.select(`
-				*,
-				project:projects(id, name, project_number, color, client_name),
-				user:profiles!assignments_user_id_fkey(id, full_name, email),
-				mobile_notes(*)
-			`)
-			.eq('org_id', membership.org_id)
-			.gte('start_ts', weekStart.toISOString())
-			.lte('start_ts', weekEnd.toISOString())
-			.neq('status', 'cancelled');
+	// EPIC 26.6: Remove JOINs - client already has users!
+	let absencesQuery = supabase
+		.from('absences')
+		.select('*')
+		.eq('org_id', membership.org_id)
+		.or(`start_ts.lte.${weekEnd.toISOString()},end_ts.gte.${weekStart.toISOString()}`);
 
-		if (project_id) {
-			assignmentsQuery = assignmentsQuery.eq('project_id', project_id);
-		}
-		if (user_id_filter) {
-			assignmentsQuery = assignmentsQuery.eq('user_id', user_id_filter);
-		}
+	if (user_id_filter) {
+		absencesQuery = absencesQuery.eq('user_id', user_id_filter);
+	}
 
-		const { data: assignments, error: assignmentsError } = await assignmentsQuery;
+	// EPIC 26.6: Execute ALL queries in parallel! ⚡
+	const [resourcesResult, projectsResult, assignmentsResult, absencesResult] = await Promise.all([
+		resourcesQuery,
+		projectsQuery,
+		assignmentsQuery,
+		absencesQuery,
+	]);
 
-		if (assignmentsError) {
-			console.error('Error fetching assignments:', assignmentsError);
-			return NextResponse.json({ error: assignmentsError.message }, { status: 500 });
-		}
+	// Check for errors
+	if (resourcesResult.error) {
+		console.error('Error fetching resources:', resourcesResult.error);
+		return NextResponse.json({ error: resourcesResult.error.message }, { status: 500 });
+	}
+	if (projectsResult.error) {
+		console.error('Error fetching projects:', projectsResult.error);
+		return NextResponse.json({ error: projectsResult.error.message }, { status: 500 });
+	}
+	if (assignmentsResult.error) {
+		console.error('Error fetching assignments:', assignmentsResult.error);
+		return NextResponse.json({ error: assignmentsResult.error.message }, { status: 500 });
+	}
+	if (absencesResult.error) {
+		console.error('Error fetching absences:', absencesResult.error);
+		return NextResponse.json({ error: absencesResult.error.message }, { status: 500 });
+	}
 
-		// Fetch absences for the week
-		let absencesQuery = supabase
-			.from('absences')
-			.select(`
-				*,
-				user:profiles!absences_user_id_fkey(id, full_name, email)
-			`)
-			.eq('org_id', membership.org_id)
-			.or(`start_ts.lte.${weekEnd.toISOString()},end_ts.gte.${weekStart.toISOString()}`);
+	// Transform resources data
+	const resourcesList = resourcesResult.data
+		?.filter(r => r.profiles)
+		.map(r => ({
+			id: r.user_id,
+			full_name: (r.profiles as any)?.full_name || null,
+			email: (r.profiles as any)?.email || '',
+			role: r.role,
+			is_active: r.is_active,
+		})) || [];
 
-		if (user_id_filter) {
-			absencesQuery = absencesQuery.eq('user_id', user_id_filter);
-		}
-
-		const { data: absences, error: absencesError } = await absencesQuery;
-
-		if (absencesError) {
-			console.error('Error fetching absences:', absencesError);
-			return NextResponse.json({ error: absencesError.message }, { status: 500 });
-		}
-
-		return NextResponse.json({
-			resources: resourcesList,
-			projects: projects || [],
-			assignments: assignments || [],
-			absences: absences || [],
-			week: {
-				start: weekStart.toISOString(),
-				end: weekEnd.toISOString(),
-			},
-		}, { status: 200 });
+	return NextResponse.json({
+		resources: resourcesList,
+		projects: projectsResult.data || [],
+		assignments: assignmentsResult.data || [],
+		absences: absencesResult.data || [],
+		week: {
+			start: weekStart.toISOString(),
+			end: weekEnd.toISOString(),
+		},
+	}, { status: 200 });
 	} catch (error) {
 		console.error('Error in GET /api/planning:', error);
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -87,11 +87,18 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 		return 'available';
 	};
 
+	// EPIC 26.6: Create project lookup map for fast access
+	const projectsMap = new Map(data.projects.map(p => [p.id, p]));
+	
 	// Group assignments by user and day
 	const assignmentsByUserDay: { [key: string]: { [day: number]: any[] } } = {};
 	data.assignments.forEach(assignment => {
 		const assignmentDate = new Date(assignment.start_ts);
 		const dayIndex = Math.floor((assignmentDate.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24));
+		
+		// EPIC 26.6: Map project_id to project object
+		const project = projectsMap.get(assignment.project_id);
+		if (!project) return; // Skip if project not found
 		
 		if (dayIndex >= 0 && dayIndex < 7) {
 			if (!assignmentsByUserDay[assignment.user_id]) {
@@ -102,11 +109,11 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 			}
 			assignmentsByUserDay[assignment.user_id][dayIndex].push({
 				id: assignment.id,
-				project: assignment.project.name,
-				projectColor: assignment.project.color,
+				project: project.name,
+				projectColor: project.color,
 				startTime: assignment.all_day ? 'Heldag' : format(new Date(assignment.start_ts), 'HH:mm'),
 				endTime: assignment.all_day ? '' : format(new Date(assignment.end_ts), 'HH:mm'),
-				address: assignment.address || assignment.project.client_name,
+				address: assignment.address || project.client_name,
 			});
 		}
 	});
@@ -127,7 +134,9 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 			const assignmentDate = new Date(assignment.start_ts);
 			const assignmentDayIndex = Math.floor((assignmentDate.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24));
 			if (assignmentDayIndex === dayIndex) {
-				needed += assignment.project.daily_capacity_need || 0;
+				// EPIC 26.6: Map project_id to project object
+				const project = projectsMap.get(assignment.project_id);
+				needed += project?.daily_capacity_need || 0;
 			}
 		});
 

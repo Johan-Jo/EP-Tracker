@@ -16,17 +16,12 @@ export function PlanningPageClient() {
 		return startOfWeek(now, { weekStartsOn: 1 });
 	});
 
-	// Fetch planning data
+	// Fetch planning data - EPIC 26.6: Enable caching!
 	const { data, isLoading, error, refetch } = useQuery<WeekPlanningData>({
 		queryKey: ['planning', format(currentWeek, 'yyyy-MM-dd')],
 		queryFn: async () => {
 			const weekParam = format(currentWeek, 'yyyy-MM-dd');
-			const response = await fetch(`/api/planning?week=${weekParam}`, {
-				cache: 'no-store', // Never cache at HTTP level
-				headers: {
-					'Cache-Control': 'no-cache',
-				},
-			});
+			const response = await fetch(`/api/planning?week=${weekParam}`);
 			
 			if (!response.ok) {
 				throw new Error('Failed to fetch planning data');
@@ -40,9 +35,10 @@ export function PlanningPageClient() {
 				absences: json.absences || [],
 			};
 		},
-		staleTime: 0, // Always consider data stale
-		gcTime: 0, // Don't keep old data in cache
-		refetchOnMount: 'always', // Always refetch when component mounts
+		// EPIC 26.6: Enable smart caching for planning data!
+		staleTime: 30 * 1000, // 30 seconds - planning data can be cached briefly
+		gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache for quick nav
+		refetchOnMount: true, // Refetch when component mounts if data is stale
 	});
 
 	// Drag-and-drop mutation with optimistic updates
