@@ -143,7 +143,7 @@ export function Sidebar({ userRole }: SidebarProps) {
 						<img
 							src="/images/EP-Flat.png"
 							alt="EP Tracker"
-							style={{ width: '100%', height: 'auto', maxWidth: '240px', display: 'block' }}
+							style={{ width: '100%', height: 'auto', maxWidth: '216px', display: 'block' }}
 						/>
 					</Link>
 				</div>
