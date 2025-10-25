@@ -97,7 +97,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
   };
 
   // EPIC 26: Optimistic check-out - INSTANT UI, background sync!
-  const handleCheckOut = () => {
+  const handleCheckOut = async () => {
     if (!optimisticTimeEntry) return;
 
     const entryIdToStop = optimisticTimeEntry.id;
