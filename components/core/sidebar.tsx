@@ -141,7 +141,7 @@ export function Sidebar({ userRole }: SidebarProps) {
 				<div className="px-3 py-2 flex items-center justify-start border-b border-gray-200 bg-white">
 					<Link href="/dashboard" className="flex items-center justify-start">
 						<img
-							src="/images/EPLogoInside.png?v=150"
+							src="/images/EP3.png"
 							alt="EP Tracker"
 							style={{ height: '150px', width: 'auto', minHeight: '150px', maxHeight: '150px', display: 'block' }}
 						/>
