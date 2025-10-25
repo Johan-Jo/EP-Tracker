@@ -2,6 +2,7 @@
 
 import { Bell, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -59,13 +60,22 @@ export function TopNav({ userEmail, userName }: TopNavProps) {
 	return (
 		<header className='sticky top-0 z-40 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950'>
 			<div className='flex items-center justify-between h-16 px-4 md:px-6'>
-				{/* Mobile menu button + Logo */}
-				<div className='flex items-center gap-4'>
-					<Button variant='ghost' size='icon' className='md:hidden'>
-						<Menu className='w-5 h-5' />
-					</Button>
-					<h1 className='text-lg font-bold md:hidden'>EP Tracker</h1>
+			{/* Mobile menu button + Logo */}
+			<div className='flex items-center gap-4'>
+				<Button variant='ghost' size='icon' className='md:hidden'>
+					<Menu className='w-5 h-5' />
+				</Button>
+				<div className='md:hidden'>
+					<Image
+						src="/images/EP-Flat.png"
+						alt="EP Tracker"
+						width={120}
+						height={40}
+						style={{ width: 'auto', height: '32px' }}
+						priority
+					/>
 				</div>
+			</div>
 
 				{/* Right side - Sync Status, Notifications & User menu */}
 				<div className='flex items-center gap-3'>
