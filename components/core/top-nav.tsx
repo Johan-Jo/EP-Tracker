@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Menu } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import {
@@ -60,11 +60,8 @@ export function TopNav({ userEmail, userName }: TopNavProps) {
 	return (
 		<header className='sticky top-0 z-40 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950'>
 			<div className='flex items-center justify-between h-16 px-4 md:px-6'>
-			{/* Mobile menu button + Logo */}
+			{/* Logo */}
 			<div className='flex items-center gap-4'>
-				<Button variant='ghost' size='icon' className='md:hidden'>
-					<Menu className='w-5 h-5' />
-				</Button>
 				<div className='md:hidden'>
 					<Image
 						src="/images/EP-Flat.png"
