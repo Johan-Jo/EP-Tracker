@@ -143,9 +143,9 @@ export function Sidebar({ userRole }: SidebarProps) {
 						<Image
 							src="/images/eptrackerinside.png"
 							alt="EP Tracker"
-							width={150}
-							height={45}
-							className="h-auto w-auto max-h-10"
+							width={180}
+							height={55}
+							className="h-auto w-auto max-h-12"
 							priority
 						/>
 					</Link>
