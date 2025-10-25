@@ -113,7 +113,7 @@ export default async function DashboardPage() {
 
 	// Combine all activities into a unified feed
 	const activities = [
-		...(recentTimeEntries.data || []).map(item => ({
+		...(recentTimeEntries.data || []).map((item: any) => ({
 			id: item.id,
 			type: 'time' as const,
 			created_at: item.created_at,
@@ -121,7 +121,7 @@ export default async function DashboardPage() {
 			user_name: Array.isArray(item.profiles) ? item.profiles[0]?.full_name : item.profiles?.full_name,
 			data: item,
 		})),
-		...(recentMaterials.data || []).map(item => ({
+		...(recentMaterials.data || []).map((item: any) => ({
 			id: item.id,
 			type: 'material' as const,
 			created_at: item.created_at,
@@ -129,7 +129,7 @@ export default async function DashboardPage() {
 			user_name: Array.isArray(item.profiles) ? item.profiles[0]?.full_name : item.profiles?.full_name,
 			data: item,
 		})),
-		...(recentExpenses.data || []).map(item => ({
+		...(recentExpenses.data || []).map((item: any) => ({
 			id: item.id,
 			type: 'expense' as const,
 			created_at: item.created_at,
@@ -137,7 +137,7 @@ export default async function DashboardPage() {
 			user_name: Array.isArray(item.profiles) ? item.profiles[0]?.full_name : item.profiles?.full_name,
 			data: item,
 		})),
-		...(recentAta.data || []).map(item => ({
+		...(recentAta.data || []).map((item: any) => ({
 			id: item.id,
 			type: 'ata' as const,
 			created_at: item.created_at,
@@ -145,7 +145,7 @@ export default async function DashboardPage() {
 			user_name: Array.isArray(item.profiles) ? item.profiles[0]?.full_name : item.profiles?.full_name,
 			data: item,
 		})),
-		...(recentDiary.data || []).map(item => ({
+		...(recentDiary.data || []).map((item: any) => ({
 			id: item.id,
 			type: 'diary' as const,
 			created_at: item.created_at,
