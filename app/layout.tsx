@@ -14,6 +14,11 @@ export const metadata: Metadata = {
 	title: 'EP Time Tracker',
 	description: 'Time tracking and site reporting for Swedish contractors',
 	manifest: '/manifest.json',
+	icons: {
+		icon: '/images/faviconEP.png',
+		shortcut: '/images/faviconEP.png',
+		apple: '/images/faviconEP.png',
+	},
 	appleWebApp: {
 		capable: true,
 		statusBarStyle: 'default',
