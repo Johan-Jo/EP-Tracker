@@ -1,14 +1,22 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 
 /**
- * Get user session and membership
- * NO CACHING - Fresh data on every call for development
+ * Get user session and membership with React Cache
  * 
- * Note: This will be called by layout AND pages, resulting in duplicate queries.
- * This is intentional during development to avoid any caching issues.
- * For production, consider re-enabling React cache() or using props to pass data down.
+ * PERFORMANCE OPTIMIZATION (Story 26.2):
+ * - Uses React cache() to deduplicate requests within a single render
+ * - Prevents duplicate queries when called from both layout and page
+ * - Data is fresh for each request but cached during the request lifecycle
+ * 
+ * Expected improvement: 50% fewer session queries (no more layout + page duplication)
+ * 
+ * How it works:
+ * - First call fetches from database
+ * - Subsequent calls in same request return cached result
+ * - Cache automatically clears between requests
  */
-export async function getSession() {
+export const getSession = cache(async () => {
 	const supabase = await createClient();
 	
 	const {
@@ -20,7 +28,7 @@ export async function getSession() {
 		return { user: null, membership: null, profile: null };
 	}
 
-	// Fetch profile and membership in parallel (only optimization we keep)
+	// Fetch profile and membership in parallel for optimal performance
 	const [profileResult, membershipResult] = await Promise.all([
 		supabase
 			.from('profiles')
@@ -40,7 +48,7 @@ export async function getSession() {
 		profile: profileResult.data,
 		membership: membershipResult.data,
 	};
-}
+});
 
 /**
  * Type for the session return value

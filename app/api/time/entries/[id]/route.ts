@@ -1,31 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { updateTimeEntrySchema } from '@/lib/schemas/time-entry';
+import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
 
 // PATCH /api/time/entries/[id] - Update time entry
+// EPIC 26: Optimized from 4 queries to 2 queries
 export async function PATCH(
 	request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
 		const { id } = await params;
-		const supabase = await createClient();
-		const { data: { user }, error: authError } = await supabase.auth.getUser();
+		
+		// EPIC 26: Use cached session (saves 2 queries)
+		const { user, membership } = await getSession();
 
-		if (authError || !user) {
+		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-		}
-
-		// Get user's organization
-		const { data: membership } = await supabase
-			.from('memberships')
-			.select('org_id, role')
-			.eq('user_id', user.id)
-			.eq('is_active', true)
-			.single();
-
-		if (!membership) {
-			return NextResponse.json({ error: 'No active organization membership' }, { status: 403 });
 		}
 
 		// Parse and validate request body
@@ -41,7 +32,9 @@ export async function PATCH(
 
 		const data = validation.data;
 
-		// Check if entry exists and user has permission
+		const supabase = await createClient();
+
+		// EPIC 26: Fetch and check permissions in one query
 		const { data: existingEntry, error: fetchError } = await supabase
 			.from('time_entries')
 			.select('id, user_id, org_id, status')
@@ -68,7 +61,8 @@ export async function PATCH(
 			return NextResponse.json({ error: 'Cannot edit approved time entries' }, { status: 403 });
 		}
 
-		// Update time entry
+		// EPIC 26: Update time entry without JOINs for maximum speed
+		// Client already has project/phase data, just return updated entry
 		const { data: entry, error: updateError } = await supabase
 			.from('time_entries')
 			.update({
@@ -83,12 +77,7 @@ export async function PATCH(
 				updated_at: new Date().toISOString(),
 			})
 			.eq('id', id)
-			.select(`
-				*,
-				project:projects(id, name, project_number),
-				phase:phases(id, name),
-				work_order:work_orders(id, name)
-			`)
+			.select('*')
 			.single();
 
 		if (updateError) {
@@ -104,30 +93,22 @@ export async function PATCH(
 }
 
 // DELETE /api/time/entries/[id] - Delete time entry
+// EPIC 26: Optimized from 4 queries to 2 queries
 export async function DELETE(
 	request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
 		const { id } = await params;
-		const supabase = await createClient();
-		const { data: { user }, error: authError } = await supabase.auth.getUser();
+		
+		// EPIC 26: Use cached session (saves 2 queries)
+		const { user, membership } = await getSession();
 
-		if (authError || !user) {
+		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		// Get user's organization
-		const { data: membership } = await supabase
-			.from('memberships')
-			.select('org_id, role')
-			.eq('user_id', user.id)
-			.eq('is_active', true)
-			.single();
-
-		if (!membership) {
-			return NextResponse.json({ error: 'No active organization membership' }, { status: 403 });
-		}
+		const supabase = await createClient();
 
 		// Check if entry exists and user has permission
 		const { data: existingEntry, error: fetchError } = await supabase

@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Play, RotateCcw } from 'lucide-react';
@@ -57,15 +58,19 @@ const availableTours: TourInfo[] = [
 ];
 
 export function TourLauncher() {
+	const router = useRouter(); // PERFORMANCE OPTIMIZATION (Story 26.3)
+
+	// PERFORMANCE OPTIMIZATION (Story 26.3): Use router for instant navigation
 	function handleResetTour(tourId: string) {
 		localStorage.removeItem(`tour-${tourId}-completed`);
 		// Navigate to the appropriate page with tour trigger
 		const tour = availableTours.find(t => t.id === tourId);
 		if (tour) {
-			window.location.href = `${tour.page}?tour=${tourId}`;
+			router.push(`${tour.page}?tour=${tourId}`);
 		}
 	}
 
+	// PERFORMANCE OPTIMIZATION (Story 26.3): Use router for instant navigation
 	function handleResetAll() {
 		// Reset all tours
 		availableTours.forEach((tour) => {
@@ -75,7 +80,7 @@ export function TourLauncher() {
 		localStorage.removeItem('quick-start-dismissed');
 		localStorage.removeItem('quick-start-checklist');
 		// Redirect to dashboard
-		window.location.href = '/dashboard';
+		router.push('/dashboard');
 	}
 
 	return (

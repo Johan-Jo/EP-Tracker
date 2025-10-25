@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
 	Lightbulb,
 	BookOpen,
@@ -28,6 +29,7 @@ interface HelpPageNewProps {
 }
 
 export function HelpPageNew({ userRole }: HelpPageNewProps) {
+	const router = useRouter(); // PERFORMANCE OPTIMIZATION (Story 26.3)
 	const [activeTab, setActiveTab] = useState('guides');
 	const [openFaqs, setOpenFaqs] = useState<string[]>([]);
 
@@ -457,13 +459,14 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 	// Filter FAQs based on user role
 	const faqs = allFaqs.filter((faq) => faq.roles.includes(userRole));
 
+	// PERFORMANCE OPTIMIZATION (Story 26.3): Use router for instant navigation
 	const handleStartGuide = (guideId: string) => {
 		// Remove completed flag
 		localStorage.removeItem(`tour-${guideId}-completed`);
 		// Find guide and navigate with tour parameter
 		const guide = interactiveGuides.find((g) => g.id === guideId);
 		if (guide) {
-			window.location.href = `${guide.page}?tour=${guideId}`;
+			router.push(`${guide.page}?tour=${guideId}`);
 		}
 	};
 

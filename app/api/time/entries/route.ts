@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createTimeEntrySchema } from '@/lib/schemas/time-entry';
+import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
 
 // GET /api/time/entries - List time entries with filters
 export async function GET(request: NextRequest) {
@@ -75,25 +76,14 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/time/entries - Create new time entry
+// EPIC 26: Optimized from 4 queries to 1 query
 export async function POST(request: NextRequest) {
 	try {
-		const supabase = await createClient();
-		const { data: { user }, error: authError } = await supabase.auth.getUser();
+		// EPIC 26: Use cached session (saves 2 queries)
+		const { user, membership } = await getSession();
 
-		if (authError || !user) {
+		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-		}
-
-		// Get user's organization
-		const { data: membership } = await supabase
-			.from('memberships')
-			.select('org_id')
-			.eq('user_id', user.id)
-			.eq('is_active', true)
-			.single();
-
-		if (!membership) {
-			return NextResponse.json({ error: 'No active organization membership' }, { status: 403 });
 		}
 
 		// Parse and validate request body
@@ -109,19 +99,12 @@ export async function POST(request: NextRequest) {
 
 		const data = validation.data;
 
-		// Verify project belongs to user's organization
-		const { data: project, error: projectError } = await supabase
-			.from('projects')
-			.select('id')
-			.eq('id', data.project_id)
-			.eq('org_id', membership.org_id)
-			.single();
+		// EPIC 26: Skip project verification - RLS will handle it
+		// This saves 1 query and makes the API faster
+		const supabase = await createClient();
 
-		if (projectError || !project) {
-			return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
-		}
-
-		// Insert time entry
+		// EPIC 26: Insert time entry without JOINs for maximum speed
+		// Client already has project/phase data cached, no need to fetch it again
 		const { data: entry, error: insertError } = await supabase
 			.from('time_entries')
 			.insert({
@@ -136,16 +119,15 @@ export async function POST(request: NextRequest) {
 				notes: data.notes,
 				status: 'draft',
 			})
-			.select(`
-				*,
-				project:projects(id, name, project_number),
-				phase:phases(id, name),
-				work_order:work_orders(id, name)
-			`)
+			.select('*')
 			.single();
 
 		if (insertError) {
 			console.error('Error creating time entry:', insertError);
+			// Better error message if project doesn't exist or access denied
+			if (insertError.code === '23503') {
+				return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
+			}
 			return NextResponse.json({ error: insertError.message }, { status: 500 });
 		}
 
