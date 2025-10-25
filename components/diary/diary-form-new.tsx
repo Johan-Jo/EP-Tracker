@@ -94,12 +94,11 @@ export function DiaryFormNew({ orgId, userId }: DiaryFormNewProps) {
 		setIsSubmitting(true);
 
 		try {
-			// Create diary entry
-			const { data: entry, error: entryError } = await supabase
-				.from('diary_entries')
-				.insert({
-					org_id: orgId,
-					user_id: userId,
+			// Create diary entry via API
+			const response = await fetch('/api/diary', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
 					project_id: project,
 					date,
 					crew_count: staffCount ? parseInt(staffCount) : null,
@@ -112,11 +111,15 @@ export function DiaryFormNew({ orgId, userId }: DiaryFormNewProps) {
 					visitors: visitors || null,
 					signed_by_name: signature,
 					signed_at: new Date().toISOString(),
-				})
-				.select()
-				.single();
+				}),
+			});
 
-			if (entryError) throw entryError;
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || 'Failed to create diary entry');
+			}
+
+			const { diary: entry } = await response.json();
 
 			// Upload photos if any
 			if (photos.length > 0) {
