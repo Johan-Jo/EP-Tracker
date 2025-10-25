@@ -78,7 +78,7 @@ export default async function DashboardPage() {
 		// Fetch recent materials with user info
 		supabase
 			.from('materials')
-			.select('id, description, quantity, unit, created_at, user_id, projects(id, name), profiles!materials_user_id_fkey(full_name)')
+			.select('id, description, qty, unit, created_at, user_id, projects(id, name), profiles!materials_user_id_fkey(full_name)')
 			.eq('org_id', membership.org_id)
 			.order('created_at', { ascending: false })
 			.limit(10),
@@ -92,14 +92,14 @@ export default async function DashboardPage() {
 		// Fetch recent ATA with user info
 		supabase
 			.from('ata')
-			.select('id, title, created_at, user_id, projects(id, name), profiles!ata_user_id_fkey(full_name)')
+			.select('id, title, created_at, created_by, projects(id, name), profiles!ata_created_by_fkey(full_name)')
 			.eq('org_id', membership.org_id)
 			.order('created_at', { ascending: false })
 			.limit(10),
 		// Fetch recent diary entries with user info
 		supabase
 			.from('diary_entries')
-			.select('id, title, created_at, user_id, projects(id, name), profiles!diary_entries_user_id_fkey(full_name)')
+			.select('id, date, work_performed, created_at, created_by, projects(id, name), profiles!diary_entries_created_by_fkey(full_name)')
 			.eq('org_id', membership.org_id)
 			.order('created_at', { ascending: false })
 			.limit(10),

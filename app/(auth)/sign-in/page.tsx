@@ -17,10 +17,14 @@ function SignInContent() {
 	// Check for error messages from URL
 	useEffect(() => {
 		const errorParam = searchParams.get('error');
+		const errorMessage = searchParams.get('message');
+		
 		if (errorParam === 'link_expired') {
 			setError('Verifieringslänken har gått ut eller redan använts. Vänligen logga in eller begär en ny länk.');
 		} else if (errorParam === 'auth_callback_error') {
 			setError('Ett fel uppstod vid verifiering. Vänligen försök logga in.');
+		} else if (errorParam === 'auth_error') {
+			setError(errorMessage ? decodeURIComponent(errorMessage) : 'Ett autentiseringsfel uppstod. Vänligen försök igen.');
 		}
 	}, [searchParams]);
 

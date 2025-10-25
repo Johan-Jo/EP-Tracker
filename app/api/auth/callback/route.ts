@@ -5,17 +5,37 @@ export async function GET(request: Request) {
 	const requestUrl = new URL(request.url);
 	const code = requestUrl.searchParams.get('code');
 	const next = requestUrl.searchParams.get('next') || '/dashboard';
+	const error_description = requestUrl.searchParams.get('error_description');
+	const error_code = requestUrl.searchParams.get('error');
 
-	console.log('[AUTH CALLBACK] Starting with code:', code ? 'present' : 'missing');
+	console.log('=== AUTH CALLBACK START ===');
+	console.log('[AUTH CALLBACK] Full URL:', requestUrl.toString());
+	console.log('[AUTH CALLBACK] Origin:', requestUrl.origin);
+	console.log('[AUTH CALLBACK] Code present:', !!code);
+	console.log('[AUTH CALLBACK] Code length:', code?.length);
+	console.log('[AUTH CALLBACK] Error from URL:', error_code, error_description);
+	console.log('[AUTH CALLBACK] Headers:', JSON.stringify(Object.fromEntries(request.headers.entries()), null, 2));
+
+	// Check for error in URL params (from Supabase)
+	if (error_code) {
+		console.error('[AUTH CALLBACK] Supabase error:', error_code, error_description);
+		return NextResponse.redirect(
+			new URL(`/sign-in?error=auth_error&message=${encodeURIComponent(error_description || error_code)}`, request.url)
+		);
+	}
 
 	if (code) {
 		const supabase = await createClient();
+		
+		console.log('[AUTH CALLBACK] Attempting to exchange code for session...');
 		const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
 		console.log('[AUTH CALLBACK] Exchange result:', { 
 			hasSession: !!data.session, 
 			hasUser: !!data.user, 
-			error: error?.message 
+			userId: data.user?.id,
+			error: error?.message,
+			errorDetails: error ? JSON.stringify(error, null, 2) : null
 		});
 
 		if (!error && data.session) {
@@ -40,7 +60,12 @@ export async function GET(request: Request) {
 				// If membership exists, go to dashboard. Otherwise, go to complete-setup
 				const redirectUrl = membership ? '/dashboard' : '/complete-setup';
 				console.log('[AUTH CALLBACK] Redirecting to:', redirectUrl);
-				return NextResponse.redirect(new URL(redirectUrl, request.url));
+				console.log('[AUTH CALLBACK] Full redirect URL:', new URL(redirectUrl, request.url).toString());
+				console.log('=== AUTH CALLBACK SUCCESS ===');
+				
+				const response = NextResponse.redirect(new URL(redirectUrl, request.url));
+				console.log('[AUTH CALLBACK] Response cookies:', response.cookies.getAll());
+				return response;
 			}
 
 			// Default redirect if user exists but something weird happened

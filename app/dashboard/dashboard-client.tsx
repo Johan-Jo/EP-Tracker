@@ -337,7 +337,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           ),
                           iconBg: 'bg-blue-100 text-blue-600',
                           title: 'Material',
-                          description: `${activity.data.description} - ${activity.data.quantity} ${activity.data.unit}`,
+                          description: `${activity.data.description} - ${activity.data.qty} ${activity.data.unit}`,
                           badge: null,
                           badgeColor: '',
                         };
@@ -368,7 +368,11 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           badge: null,
                           badgeColor: '',
                         };
-                      case 'diary':
+                      case 'diary': {
+                        const diaryDate = new Date(activity.data.date);
+                        const formattedDate = isClient 
+                          ? diaryDate.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : activity.data.date;
                         return {
                           icon: (
                             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -378,10 +382,11 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           ),
                           iconBg: 'bg-indigo-100 text-indigo-600',
                           title: 'Dagbok',
-                          description: activity.data.title,
+                          description: `${formattedDate}${activity.data.work_performed ? ` - ${activity.data.work_performed.substring(0, 50)}${activity.data.work_performed.length > 50 ? '...' : ''}` : ''}`,
                           badge: null,
                           badgeColor: '',
                         };
+                      }
                       default:
                         return null;
                     }

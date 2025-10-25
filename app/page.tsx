@@ -7,7 +7,39 @@ import { LandingPricing } from '@/components/landing/landing-pricing';
 import { LandingFAQ } from '@/components/landing/landing-faq';
 import { LandingFooter } from '@/components/landing/landing-footer';
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
+  const code = params.code as string | undefined;
+  const error = params.error as string | undefined;
+  const errorCode = params.error_code as string | undefined;
+  const errorDescription = params.error_description as string | undefined;
+
+  // If there's an auth code, redirect to callback to exchange it for a session
+  if (code) {
+    console.log('[Landing] Auth code detected, redirecting to callback');
+    // Preserve the code and any other params
+    const callbackUrl = new URL('/api/auth/callback', 'https://eptracker.app');
+    callbackUrl.searchParams.set('code', code);
+    redirect(callbackUrl.toString());
+  }
+
+  // If there's an auth error from magic link, redirect to sign-in with error
+  if (error && errorCode) {
+    console.error('[Landing] Auth error detected:', { error, errorCode, errorDescription });
+    
+    // Handle magic link errors
+    if (errorCode === 'otp_expired') {
+      redirect(`/sign-in?error=link_expired&message=${encodeURIComponent('Inloggningslänken har gått ut eller redan använts. Begär en ny länk.')}`);
+    }
+    
+    // Generic auth errors
+    redirect(`/sign-in?error=auth_error&message=${encodeURIComponent(errorDescription || error)}`);
+  }
+
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
