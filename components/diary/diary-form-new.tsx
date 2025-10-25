@@ -99,6 +99,7 @@ export function DiaryFormNew({ orgId, userId }: DiaryFormNewProps) {
 				.from('diary_entries')
 				.insert({
 					org_id: orgId,
+					user_id: userId,
 					project_id: project,
 					date,
 					crew_count: staffCount ? parseInt(staffCount) : null,
