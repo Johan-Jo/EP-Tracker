@@ -148,7 +148,7 @@ export function Sidebar({ userRole }: SidebarProps) {
 					</Link>
 				</div>
 
-				<nav className='flex-1 px-4 pt-4 sm:pt-6 pb-4 space-y-1 overflow-y-auto'>
+				<nav className='flex-1 px-4 pt-[18px] sm:pt-6 pb-4 space-y-1 overflow-y-auto'>
 					{visibleNavItems.map((item) => {
 						// For dashboard, exact match. For others, check if pathname starts with href
 						const isActive = item.href === '/dashboard' 
