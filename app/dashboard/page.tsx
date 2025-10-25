@@ -68,39 +68,39 @@ export default async function DashboardPage() {
 			.eq('org_id', membership.org_id)
 			.eq('status', 'active')
 			.order('name', { ascending: true }),
-		// Fetch recent time entries
+		// Fetch recent time entries with user info
 		supabase
 			.from('time_entries')
-			.select('id, start_at, stop_at, created_at, projects(id, name)')
-			.eq('user_id', user.id)
+			.select('id, start_at, stop_at, created_at, user_id, projects(id, name), profiles!time_entries_user_id_fkey(full_name)')
+			.eq('org_id', membership.org_id)
 			.order('created_at', { ascending: false })
 			.limit(10),
-		// Fetch recent materials
+		// Fetch recent materials with user info
 		supabase
 			.from('materials')
-			.select('id, description, quantity, unit, created_at, projects(id, name)')
-			.eq('user_id', user.id)
+			.select('id, description, quantity, unit, created_at, user_id, projects(id, name), profiles!materials_user_id_fkey(full_name)')
+			.eq('org_id', membership.org_id)
 			.order('created_at', { ascending: false })
 			.limit(10),
-		// Fetch recent expenses
+		// Fetch recent expenses with user info
 		supabase
 			.from('expenses')
-			.select('id, description, amount_sek, created_at, projects(id, name)')
-			.eq('user_id', user.id)
+			.select('id, description, amount_sek, created_at, user_id, projects(id, name), profiles!expenses_user_id_fkey(full_name)')
+			.eq('org_id', membership.org_id)
 			.order('created_at', { ascending: false })
 			.limit(10),
-		// Fetch recent ATA
+		// Fetch recent ATA with user info
 		supabase
 			.from('ata')
-			.select('id, title, created_at, projects(id, name)')
-			.eq('user_id', user.id)
+			.select('id, title, created_at, user_id, projects(id, name), profiles!ata_user_id_fkey(full_name)')
+			.eq('org_id', membership.org_id)
 			.order('created_at', { ascending: false })
 			.limit(10),
-		// Fetch recent diary entries
+		// Fetch recent diary entries with user info
 		supabase
 			.from('diary_entries')
-			.select('id, title, created_at, projects(id, name)')
-			.eq('user_id', user.id)
+			.select('id, title, created_at, user_id, projects(id, name), profiles!diary_entries_user_id_fkey(full_name)')
+			.eq('org_id', membership.org_id)
 			.order('created_at', { ascending: false })
 			.limit(10),
 	]);
@@ -118,6 +118,7 @@ export default async function DashboardPage() {
 			type: 'time' as const,
 			created_at: item.created_at,
 			project: Array.isArray(item.projects) ? item.projects[0] || null : item.projects,
+			user_name: Array.isArray(item.profiles) ? item.profiles[0]?.full_name : item.profiles?.full_name,
 			data: item,
 		})),
 		...(recentMaterials.data || []).map(item => ({
@@ -125,6 +126,7 @@ export default async function DashboardPage() {
 			type: 'material' as const,
 			created_at: item.created_at,
 			project: Array.isArray(item.projects) ? item.projects[0] || null : item.projects,
+			user_name: Array.isArray(item.profiles) ? item.profiles[0]?.full_name : item.profiles?.full_name,
 			data: item,
 		})),
 		...(recentExpenses.data || []).map(item => ({
@@ -132,6 +134,7 @@ export default async function DashboardPage() {
 			type: 'expense' as const,
 			created_at: item.created_at,
 			project: Array.isArray(item.projects) ? item.projects[0] || null : item.projects,
+			user_name: Array.isArray(item.profiles) ? item.profiles[0]?.full_name : item.profiles?.full_name,
 			data: item,
 		})),
 		...(recentAta.data || []).map(item => ({
@@ -139,6 +142,7 @@ export default async function DashboardPage() {
 			type: 'ata' as const,
 			created_at: item.created_at,
 			project: Array.isArray(item.projects) ? item.projects[0] || null : item.projects,
+			user_name: Array.isArray(item.profiles) ? item.profiles[0]?.full_name : item.profiles?.full_name,
 			data: item,
 		})),
 		...(recentDiary.data || []).map(item => ({
@@ -146,6 +150,7 @@ export default async function DashboardPage() {
 			type: 'diary' as const,
 			created_at: item.created_at,
 			project: Array.isArray(item.projects) ? item.projects[0] || null : item.projects,
+			user_name: Array.isArray(item.profiles) ? item.profiles[0]?.full_name : item.profiles?.full_name,
 			data: item,
 		})),
 	].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())

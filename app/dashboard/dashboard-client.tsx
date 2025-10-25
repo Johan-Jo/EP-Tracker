@@ -29,6 +29,7 @@ interface DashboardClientProps {
     type: 'time' | 'material' | 'expense' | 'ata' | 'diary';
     created_at: string;
     project: { id: string; name: string } | null;
+    user_name?: string;
     data: any;
   }>;
   userId: string;
@@ -397,8 +398,14 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-xs font-medium text-gray-500 uppercase">{details.title}</span>
+                                {activity.user_name && (
+                                  <>
+                                    <span className="text-gray-300">•</span>
+                                    <span className="text-sm font-medium text-gray-900">{activity.user_name}</span>
+                                  </>
+                                )}
                                 {activity.project && (
                                   <>
                                     <span className="text-gray-300">•</span>
