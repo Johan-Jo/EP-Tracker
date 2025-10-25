@@ -37,7 +37,6 @@ interface DashboardClientProps {
 
 export default function DashboardClient({ userName, stats, activeTimeEntry, recentProject, allProjects, recentActivities, userId }: DashboardClientProps) {
   const router = useRouter();
-  const [showQuickStart, setShowQuickStart] = useState(false);
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [isClient, setIsClient] = useState(false);
   
@@ -167,10 +166,10 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
             </div>
           </div>
           <button 
-            onClick={() => setShowQuickStart(true)}
+            onClick={() => router.push('/dashboard?tour=dashboard')}
             className="inline-flex items-center justify-center h-9 px-4 rounded-lg border border-blue-300 bg-white text-blue-600 text-sm font-medium hover:bg-blue-50"
           >
-            Visa guide
+            Starta interaktiv guide
           </button>
         </div>
       </div>
@@ -478,119 +477,6 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
 
       <div className="h-10" />
 
-      {/* Quick Start Modal */}
-      {showQuickStart && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Snabbstart</h2>
-                <p className="text-sm text-gray-600 mt-1">Kom igång med EP Tracker på några minuter</p>
-              </div>
-              <button
-                onClick={() => setShowQuickStart(false)}
-                className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-6 space-y-4">
-              {/* Step 1: Create Project */}
-              <div className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 hover:border-orange-300 transition-colors">
-                <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                  <svg className="h-6 w-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900">Skapa ditt första projekt</h3>
-                  <p className="text-sm text-gray-600 mt-1">Alla tidsrapporter kopplas till ett projekt</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowQuickStart(false);
-                    router.push('/dashboard/projects/new');
-                  }}
-                  className="px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 transition-colors flex-shrink-0"
-                >
-                  Skapa projekt
-                </button>
-              </div>
-
-              {/* Step 2: Log Time */}
-              <div className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 hover:border-orange-300 transition-colors">
-                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900">Logga din första tid</h3>
-                  <p className="text-sm text-gray-600 mt-1">Starta timern eller lägg till manuell</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowQuickStart(false);
-                    router.push('/dashboard/time');
-                  }}
-                  className="px-4 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 transition-colors flex-shrink-0"
-                >
-                  Rapportera tid
-                </button>
-              </div>
-
-              {/* Step 3: Invite Team */}
-              <div className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 hover:border-orange-300 transition-colors">
-                <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                  <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900">Bjud in ditt team</h3>
-                  <p className="text-sm text-gray-600 mt-1">Lägg till kollegor i din organisation</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowQuickStart(false);
-                    router.push('/dashboard/settings/users');
-                  }}
-                  className="px-4 py-2 rounded-lg bg-green-500 text-white text-sm font-medium hover:bg-green-600 transition-colors flex-shrink-0"
-                >
-                  Hantera användare
-                </button>
-              </div>
-
-              {/* Step 4: Approve Week */}
-              <div className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 hover:border-orange-300 transition-colors">
-                <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                  <svg className="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900">Godkänn första veckan</h3>
-                  <p className="text-sm text-gray-600 mt-1">Granska och godkänn tidsrapporter för support</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowQuickStart(false);
-                    router.push('/dashboard/approvals');
-                  }}
-                  className="px-4 py-2 rounded-lg bg-purple-500 text-white text-sm font-medium hover:bg-purple-600 transition-colors flex-shrink-0"
-                >
-                  Gå till godkännanden
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       <PageTourTrigger tourId="dashboard" />
     </div>
   );
