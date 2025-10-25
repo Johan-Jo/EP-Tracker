@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Calendar, Clock, Save, Filter, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Save, Filter, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -159,6 +159,49 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 		const hours = Math.floor(totalMinutes / 60);
 		const minutes = totalMinutes % 60;
 		return `${hours}h ${minutes}min`;
+	};
+
+	const handleDelete = async (entryId: string) => {
+		if (!confirm('Är du säker på att du vill ta bort denna tidrapport?')) {
+			return;
+		}
+
+		try {
+			const response = await fetch(`/api/time/entries/${entryId}`, {
+				method: 'DELETE',
+			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Failed to delete time entry');
+			}
+
+			// If we were editing this entry, clear the editing state
+			if (editingEntry?.id === entryId) {
+				setEditingEntry(null);
+				const today = new Date().toISOString().split('T')[0];
+				setCurrentDate(today);
+				setStartTime('08:00');
+				setEndTime('');
+				reset({
+					project_id: '',
+					phase_id: null,
+					work_order_id: null,
+					task_label: '',
+					start_at: today + 'T08:00',
+					stop_at: null,
+					notes: '',
+				});
+				setSelectedProject('');
+			}
+
+			// Invalidate cache and refetch
+			queryClient.invalidateQueries({ queryKey: ['time-entries-stats', orgId, userId] });
+			refetch();
+		} catch (error) {
+			console.error('Error deleting time entry:', error);
+			alert('Misslyckades att ta bort tidrapport');
+		}
 	};
 
 	const onSubmit = async (data: CreateTimeEntryInput) => {
@@ -415,24 +458,24 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 							/>
 						</div>
 
-					{/* Save Button */}
-					<Button
-						type='submit'
-						disabled={isSubmitting}
-						className='w-full h-12 bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-200'
-					>
-						{isSubmitting ? (
-							<>
-								<Loader2 className='w-4 h-4 mr-2 animate-spin' />
+						{/* Save Button */}
+						<Button
+							type='submit'
+							disabled={isSubmitting}
+							className='w-full h-12 bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-200'
+						>
+							{isSubmitting ? (
+								<>
+									<Loader2 className='w-4 h-4 mr-2 animate-spin' />
 								{editingEntry ? 'Uppdaterar...' : 'Sparar...'}
-							</>
-						) : (
-							<>
-								<Save className='w-4 h-4 mr-2' />
+								</>
+							) : (
+								<>
+									<Save className='w-4 h-4 mr-2' />
 								{editingEntry ? 'Uppdatera tidsrapport' : 'Spara tidsrapport'}
-							</>
-						)}
-					</Button>
+								</>
+							)}
+						</Button>
 					</form>
 				</div>
 
@@ -532,17 +575,27 @@ export function TimePageNew({ orgId, userId }: TimePageNewProps) {
 												{getStatusText(entry.status)}
 											</span>
 											{entry.status === 'draft' && (
-												<Button
-													variant='outline'
-													size='sm'
-													className='hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 transition-all duration-200'
-													onClick={() => {
-														setEditingEntry(entry);
-														window.scrollTo({ top: 0, behavior: 'smooth' });
-													}}
-												>
-													Ändra
-												</Button>
+												<>
+													<Button
+														variant='outline'
+														size='sm'
+														className='hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 transition-all duration-200'
+														onClick={() => {
+															setEditingEntry(entry);
+															window.scrollTo({ top: 0, behavior: 'smooth' });
+														}}
+													>
+														Ändra
+													</Button>
+													<Button
+														variant='outline'
+														size='sm'
+														className='hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-all duration-200'
+														onClick={() => handleDelete(entry.id)}
+													>
+														<Trash2 className='w-4 h-4' />
+													</Button>
+												</>
 											)}
 										</div>
 									</div>
