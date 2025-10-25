@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TimeSlider } from '@/components/core/time-slider';
 import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 
@@ -39,8 +39,14 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
   const router = useRouter();
   const [showQuickStart, setShowQuickStart] = useState(false);
   const [showAllActivities, setShowAllActivities] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   
   const displayedActivities = showAllActivities ? recentActivities : recentActivities.slice(0, 5);
+
+  // Prevent hydration mismatch for date formatting
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleCheckIn = async (projectId: string) => {
     try {
@@ -288,6 +294,25 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                         const duration = activity.data.stop_at 
                           ? Math.round((new Date(activity.data.stop_at).getTime() - startDate.getTime()) / (1000 * 60 * 60) * 10) / 10
                           : null;
+                        
+                        // Format date consistently for server and client
+                        const formatDate = (date: Date) => {
+                          if (!isClient) {
+                            // Server-side: use simple format
+                            const d = date.toISOString().split('T')[0];
+                            const t = date.toISOString().split('T')[1].slice(0, 5);
+                            return { date: d, time: t };
+                          }
+                          // Client-side: use locale format
+                          return {
+                            date: date.toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' }),
+                            time: date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
+                          };
+                        };
+                        
+                        const formattedStart = formatDate(startDate);
+                        const formattedStop = activity.data.stop_at ? formatDate(new Date(activity.data.stop_at)) : null;
+                        
                         return {
                           icon: (
                             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -297,7 +322,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           ),
                           iconBg: 'bg-orange-100 text-orange-600',
                           title: 'Tidsrapport',
-                          description: `${startDate.toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })} kl ${startDate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}${activity.data.stop_at ? ` - ${new Date(activity.data.stop_at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}` : ''}`,
+                          description: `${formattedStart.date} kl ${formattedStart.time}${formattedStop ? ` - ${formattedStop.time}` : ''}`,
                           badge: duration !== null ? `${duration}h` : 'Pågår',
                           badgeColor: duration !== null ? 'text-orange-600' : 'text-green-600 bg-green-50 px-2 py-1 rounded-full',
                         };
