@@ -138,14 +138,14 @@ export function Sidebar({ userRole }: SidebarProps) {
 		<aside className='hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-white dark:bg-gray-950'>
 			<div className='flex flex-col flex-1 min-h-0'>
 				{/* Header - matches TopNav height (h-16) */}
-				<div className="h-16 px-3 flex items-center justify-center border-b border-gray-200">
-					<Link href="/dashboard" className="flex items-center w-full">
+				<div className="h-16 px-4 flex items-center border-b border-gray-200">
+					<Link href="/dashboard" className="flex items-center">
 						<Image
 							src="/images/eptrackerinside.png"
 							alt="EP Tracker"
-							width={240}
-							height={65}
-							className="h-auto w-full object-contain"
+							width={150}
+							height={45}
+							className="h-auto w-auto max-h-10"
 							priority
 						/>
 					</Link>
