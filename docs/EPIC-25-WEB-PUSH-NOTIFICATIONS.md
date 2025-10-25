@@ -32,6 +32,8 @@ Web Push Notifications ger realtidsuppdateringar direkt till användarens enhet:
 
 ## User Stories
 
+**Total: 9 user stories**
+
 ### US-25.1: Som användare vill jag få pushnotiser när appen är installerad
 
 **Acceptance Criteria:**
@@ -132,6 +134,72 @@ Web Push Notifications ger realtidsuppdateringar direkt till användarens enhet:
 - And varje notis ska visa typ, titel, meddelande, och tidpunkt
 - And jag ska kunna klicka på en notis för att gå till relaterat innehåll
 - And gamla notiser (>30 dagar) ska rensas automatiskt
+
+### US-25.8: Som admin/arbetsledare vill jag sätta projekt-specifika alerts
+
+**Acceptance Criteria:**
+- Given jag skapar eller redigerar ett projekt
+- When jag är admin eller foreman
+- Then ska jag se en "Alert-inställningar" sektion
+- And jag ska kunna definiera arbetsdagens start-tid (ex: 07:00)
+- And jag ska kunna definiera arbetsdagens slut-tid (ex: 16:00)
+- And jag ska kunna aktivera "Check-in påminnelse" med tid (ex: 15 min efter start)
+- And jag ska kunna aktivera "Check-out påminnelse" med tid (ex: 15 min före slut)
+- And jag ska kunna aktivera "Sen check-in varning" (arbetare inte checkat in efter starttid)
+- And jag ska kunna aktivera "Glömt check-out varning" (30 min efter sluttid)
+- And alla som har projekt-access ska få relevanta alerts
+- And settings ska sparas per projekt
+
+**Alert-typer:**
+1. **Check-in påminnelse** - "Dags att checka in på [Projekt]" (kl 06:45 om start är 07:00)
+2. **Sen check-in varning (till foreman)** - "[Namn] har inte checkat in på [Projekt]" (kl 07:15 om start är 07:00)
+3. **Check-out påminnelse** - "Glöm inte checka ut från [Projekt]" (kl 15:45 om slut är 16:00)
+4. **Glömt check-out varning (till foreman)** - "[Namn] har inte checkat ut från [Projekt]" (kl 16:30 om slut är 16:00)
+
+**Database schema addition:**
+```sql
+ALTER TABLE projects ADD COLUMN alert_settings JSONB DEFAULT '{
+  "work_day_start": "07:00",
+  "work_day_end": "16:00",
+  "checkin_reminder_enabled": true,
+  "checkin_reminder_minutes_before": 15,
+  "checkout_reminder_enabled": true,
+  "checkout_reminder_minutes_before": 15,
+  "late_checkin_alert_enabled": true,
+  "late_checkin_alert_minutes_after": 15,
+  "forgotten_checkout_alert_enabled": true,
+  "forgotten_checkout_alert_minutes_after": 30,
+  "alert_recipients": ["foreman", "admin"]
+}'::jsonb;
+```
+
+### US-25.9: Som ny användare vill jag lära mig om pushnotiser via hjälp och tour
+
+**Acceptance Criteria:**
+- Given jag är ny användare
+- When jag går till Hjälp-sidan
+- Then ska jag se en sektion "Pushnotiser & Påminnelser"
+- And sektionen ska förklara:
+  - Vad är pushnotiser
+  - Hur man aktiverar dem (iOS vs Android)
+  - Vilka typer av notiser som finns
+  - Hur man anpassar inställningar
+  - Hur man felsöker om notiser inte fungerar
+- And det ska finnas screenshots för iOS och Android
+- And det ska finnas en video-guide (valfritt)
+
+**Interactive Tour:**
+- Given jag besöker Inställningar → Notiser för första gången
+- When sidan laddas
+- Then ska en interaktiv tour starta (om användaren vill)
+- And touren ska highlighta:
+  1. "Aktivera notiser" knappen
+  2. Olika notis-typer och deras toggles
+  3. Quiet hours inställning
+  4. Test-notis knappen
+  5. Notishistorik länken
+- And touren ska kunna hoppas över
+- And touren ska inte visas igen efter första gången
 
 ---
 
@@ -670,6 +738,322 @@ Web Push Notifications ger realtidsuppdateringar direkt till användarens enhet:
   // Send grouped notification to admins/foremen
   ```
 
+#### Project-Specific Alerts
+- [ ] Update `projects` table schema med `alert_settings` kolumn
+  ```sql
+  ALTER TABLE projects ADD COLUMN alert_settings JSONB DEFAULT '{
+    "work_day_start": "07:00",
+    "work_day_end": "16:00",
+    "checkin_reminder_enabled": true,
+    "checkin_reminder_minutes_before": 15,
+    "checkout_reminder_enabled": true,
+    "checkout_reminder_minutes_before": 15,
+    "late_checkin_alert_enabled": true,
+    "late_checkin_alert_minutes_after": 15,
+    "forgotten_checkout_alert_enabled": true,
+    "forgotten_checkout_alert_minutes_after": 30,
+    "alert_recipients": ["foreman", "admin"]
+  }'::jsonb;
+  ```
+
+- [ ] Skapa `components/projects/project-alert-settings.tsx`
+  ```tsx
+  export function ProjectAlertSettings({ projectId, settings, onSave }) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Alert-inställningar</CardTitle>
+          <CardDescription>
+            Konfigurera påminnelser och varningar för detta projekt
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Work Day Times */}
+          <div className="grid grid-cols-2 gap-4">
+            <TimeInput
+              label="Arbetsdagens start"
+              value={settings.work_day_start}
+              onChange={(val) => onChange('work_day_start', val)}
+            />
+            <TimeInput
+              label="Arbetsdagens slut"
+              value={settings.work_day_end}
+              onChange={(val) => onChange('work_day_end', val)}
+            />
+          </div>
+          
+          {/* Check-in Reminder */}
+          <AlertToggle
+            label="Check-in påminnelse"
+            description="Påminn arbetare att checka in"
+            enabled={settings.checkin_reminder_enabled}
+            minutesBefore={settings.checkin_reminder_minutes_before}
+            onToggle={(val) => onChange('checkin_reminder_enabled', val)}
+            onMinutesChange={(val) => onChange('checkin_reminder_minutes_before', val)}
+          />
+          
+          {/* Late Check-in Alert */}
+          <AlertToggle
+            label="Sen check-in varning"
+            description="Varna arbetsledare om sen check-in"
+            enabled={settings.late_checkin_alert_enabled}
+            minutesAfter={settings.late_checkin_alert_minutes_after}
+            onToggle={(val) => onChange('late_checkin_alert_enabled', val)}
+            onMinutesChange={(val) => onChange('late_checkin_alert_minutes_after', val)}
+          />
+          
+          {/* Check-out Reminder */}
+          <AlertToggle
+            label="Check-out påminnelse"
+            description="Påminn arbetare att checka ut"
+            enabled={settings.checkout_reminder_enabled}
+            minutesBefore={settings.checkout_reminder_minutes_before}
+            onToggle={(val) => onChange('checkout_reminder_enabled', val)}
+            onMinutesChange={(val) => onChange('checkout_reminder_minutes_before', val)}
+          />
+          
+          {/* Forgotten Check-out Alert */}
+          <AlertToggle
+            label="Glömt check-out varning"
+            description="Varna arbetsledare om glömt check-out"
+            enabled={settings.forgotten_checkout_alert_enabled}
+            minutesAfter={settings.forgotten_checkout_alert_minutes_after}
+            onToggle={(val) => onChange('forgotten_checkout_alert_enabled', val)}
+            onMinutesChange={(val) => onChange('forgotten_checkout_alert_minutes_after', val)}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+  ```
+
+- [ ] Integrera i `app/dashboard/projects/[id]/edit/page.tsx`
+  - [ ] Visa ProjectAlertSettings komponent
+  - [ ] Endast för admin/foreman
+  - [ ] Spara till projects.alert_settings kolumn
+
+- [ ] Integrera i `app/dashboard/projects/new/page.tsx`
+  - [ ] Visa ProjectAlertSettings med default värden
+  - [ ] Spara med projektet vid create
+
+- [ ] Skapa `lib/notifications/project-alerts.ts`
+  ```typescript
+  export async function sendProjectCheckInReminder(projectId: string) {
+    // 1. Hämta projekt alert_settings
+    // 2. Beräkna reminder tid baserat på work_day_start och minutes_before
+    // 3. Hämta alla project members
+    // 4. Skicka notis till varje member som har enabled checkin_reminders
+  }
+  
+  export async function sendLateCheckInAlert(projectId: string) {
+    // 1. Hämta projekt alert_settings och work_day_start
+    // 2. Hitta members som inte checkat in efter start + minutes_after
+    // 3. Skicka notis till foremen/admins som har project access
+  }
+  
+  export async function sendProjectCheckOutReminder(projectId: string) {
+    // Similar logic
+  }
+  
+  export async function sendForgottenCheckOutAlert(projectId: string) {
+    // Similar logic
+  }
+  ```
+
+- [ ] Skapa cron jobs för projekt-alerts
+  - [ ] `app/api/cron/project-checkin-reminders/route.ts` - Körs varje timme, kollar projekt settings
+  - [ ] `app/api/cron/project-late-checkins/route.ts` - Körs varje 15 min, kollar sena check-ins
+  - [ ] `app/api/cron/project-checkout-reminders/route.ts` - Körs varje timme
+  - [ ] `app/api/cron/project-forgotten-checkouts/route.ts` - Körs varje 15 min
+
+#### Help Documentation
+- [ ] Skapa `components/help/notifications-help.tsx`
+  ```tsx
+  export function NotificationsHelp() {
+    return (
+      <div className="space-y-6">
+        <Section title="Vad är pushnotiser?">
+          <p>
+            Pushnotiser är realtidsmeddelanden som visas på din enhet även 
+            när EP-Tracker inte är öppen. De håller dig informerad om 
+            viktiga händelser som check-ins, godkännanden och påminnelser.
+          </p>
+        </Section>
+        
+        <Section title="Hur aktiverar jag notiser?">
+          <Tabs>
+            <Tab label="Android">
+              <ol>
+                1. Öppna EP-Tracker i Chrome eller Firefox
+                2. Gå till Inställningar → Notiser
+                3. Klicka "Aktivera notiser"
+                4. Godkänn när browsern frågar
+                5. Klart! Du får nu notiser även när browsern är stängd
+              </ol>
+              <Image src="/help/android-notifications.png" />
+            </Tab>
+            
+            <Tab label="iPhone/iPad">
+              <ol>
+                1. Öppna EP-Tracker i Safari
+                2. Klicka på "Dela"-knappen
+                3. Välj "Lägg till på hemskärmen"
+                4. Öppna appen från hemskärmen (VIKTIGT!)
+                5. Gå till Inställningar → Notiser
+                6. Klicka "Aktivera notiser"
+                7. Godkänn när iOS frågar
+              </ol>
+              <Alert>
+                OBS: Notiser fungerar bara om appen är installerad på 
+                hemskärmen och öppnas därifrån!
+              </Alert>
+              <Image src="/help/ios-pwa-install.png" />
+              <Image src="/help/ios-notifications.png" />
+            </Tab>
+          </Tabs>
+        </Section>
+        
+        <Section title="Vilka notiser kan jag få?">
+          <NotificationTypesList>
+            <NotificationType
+              icon="⏰"
+              title="Check-out påminnelser"
+              description="Påminnelse att checka ut i slutet av arbetsdagen"
+              availableFor="Alla"
+            />
+            <NotificationType
+              icon="👷"
+              title="Team check-ins"
+              description="Se när ditt team checkar in och ut"
+              availableFor="Arbetsledare, Admins"
+            />
+            {/* ... more types ... */}
+          </NotificationTypesList>
+        </Section>
+        
+        <Section title="Felsökning">
+          <Accordion>
+            <AccordionItem title="Jag får inga notiser på iPhone">
+              <p>
+                Kontrollera att:
+                1. Appen är installerad på hemskärmen
+                2. Du öppnar appen från hemskärmen (inte Safari)
+                3. Du har iOS 16.4 eller senare
+                4. Du har godkänt notiser i iOS-inställningarna
+              </p>
+            </AccordionItem>
+            
+            <AccordionItem title="Notiserna kommer inte i tid">
+              <p>
+                Pushnotiser kan försenas om enheten är i energisparläge eller 
+                har dålig internetuppkoppling. Kontrollera din anslutning.
+              </p>
+            </AccordionItem>
+            
+            <AccordionItem title="Hur stänger jag av notiser?">
+              <p>
+                Gå till Inställningar → Notiser och inaktivera de typer du 
+                inte vill ha, eller klicka "Inaktivera alla notiser".
+              </p>
+            </AccordionItem>
+          </Accordion>
+        </Section>
+      </div>
+    );
+  }
+  ```
+
+- [ ] Integrera i `app/dashboard/help/page.tsx`
+  - [ ] Lägg till "Pushnotiser & Påminnelser" sektion
+  - [ ] Använd NotificationsHelp komponent
+  - [ ] Lägg till i innehållsförteckningen
+
+- [ ] Skapa screenshots:
+  - [ ] `/public/help/android-notifications.png`
+  - [ ] `/public/help/ios-pwa-install.png`
+  - [ ] `/public/help/ios-notifications.png`
+
+#### Interactive Tour
+- [ ] Lägg till notification tour steps i `lib/onboarding/tour-steps.ts`
+  ```typescript
+  export const notificationsTourSteps: TourStep[] = [
+    {
+      target: '[data-tour="enable-notifications"]',
+      title: 'Aktivera pushnotiser',
+      content: 'Klicka här för att aktivera pushnotiser och få realtidsuppdateringar',
+      placement: 'bottom',
+    },
+    {
+      target: '[data-tour="notification-types"]',
+      title: 'Välj notis-typer',
+      content: 'Här kan du välja vilka typer av notiser du vill få. Aktivera eller inaktivera varje typ efter behov.',
+      placement: 'right',
+    },
+    {
+      target: '[data-tour="quiet-hours"]',
+      title: 'Tyst läge',
+      content: 'Konfigurera när du INTE vill få notiser, till exempel på natten.',
+      placement: 'left',
+    },
+    {
+      target: '[data-tour="test-notification"]',
+      title: 'Testa notiser',
+      content: 'Klicka här för att skicka en testnotis och verifiera att allt fungerar.',
+      placement: 'top',
+    },
+    {
+      target: '[data-tour="notification-history"]',
+      title: 'Notishistorik',
+      content: 'Se alla notiser du fått de senaste 30 dagarna.',
+      placement: 'top',
+    },
+  ];
+  ```
+
+- [ ] Uppdatera `components/onboarding/page-tour-trigger.tsx`
+  ```typescript
+  const tourMap = {
+    'dashboard': dashboardTourSteps,
+    'projects': projectsTourSteps,
+    'time': timeTourSteps,
+    'materials': materialsTourSteps,
+    'approvals': approvalsTourSteps,
+    'planning': planningTourSteps,
+    'planning-today': planningTodayTourSteps,
+    'notifications': notificationsTourSteps, // NEW
+  };
+  ```
+
+- [ ] Lägg till tour trigger i `app/dashboard/settings/notifications/page.tsx`
+  ```tsx
+  export default function NotificationsPage() {
+    return (
+      <>
+        <NotificationSettings />
+        <PageTourTrigger tourId="notifications" />
+      </>
+    );
+  }
+  ```
+
+- [ ] Lägg till tour-data-attribut i NotificationSettings komponenter
+  - `data-tour="enable-notifications"` på aktivera-knapp
+  - `data-tour="notification-types"` på toggles container
+  - `data-tour="quiet-hours"` på quiet hours picker
+  - `data-tour="test-notification"` på test-knapp
+  - `data-tour="notification-history"` på historik-länk
+
+- [ ] Lägg till "Starta guided tour" knapp i notifications settings
+  ```tsx
+  <Button
+    variant="outline"
+    onClick={() => router.push('/dashboard/settings/notifications?tour=notifications')}
+  >
+    <HelpCircle className="w-4 h-4 mr-2" />
+    Starta guided tour
+  </Button>
+  ```
+
 ### Phase 5: Testing & Polish (Dag 4)
 
 #### Unit Tests
@@ -715,10 +1099,13 @@ Web Push Notifications ger realtidsuppdateringar direkt till användarens enhet:
 
 - [ ] Service Worker registrerad och fungerande
 - [ ] Firebase integration komplett
-- [ ] Database schema deployd
+- [ ] Database schema deployd (inkl. projects.alert_settings kolumn)
 - [ ] Alla API routes implementerade och testade
 - [ ] UI för aktivering och inställningar komplett
-- [ ] Alla 7 user stories uppfyllda
+- [ ] Projekt-alerts UI implementerad i projekt create/edit
+- [ ] Hjälpdokumentation skriven och publicerad (med screenshots)
+- [ ] Interaktiv tour för notiser implementerad
+- [ ] Alla 9 user stories uppfyllda
 - [ ] Check-out reminder cron fungerande
 - [ ] Team check-in notiser fungerande
 - [ ] Approval notiser fungerande
