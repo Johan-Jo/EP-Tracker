@@ -24,10 +24,17 @@ interface DashboardClientProps {
     id: string;
     name: string;
   }>;
+  recentActivities: Array<{
+    id: string;
+    start_at: string;
+    stop_at: string | null;
+    created_at: string;
+    projects: { id: string; name: string } | null;
+  }>;
   userId: string;
 }
 
-export default function DashboardClient({ userName, stats, activeTimeEntry, recentProject, allProjects, userId }: DashboardClientProps) {
+export default function DashboardClient({ userName, stats, activeTimeEntry, recentProject, allProjects, recentActivities, userId }: DashboardClientProps) {
   const router = useRouter();
   const [showQuickStart, setShowQuickStart] = useState(false);
 
@@ -250,18 +257,75 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
       <div className="mt-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Senaste aktivitet</h2>
         <div className="bg-white rounded-2xl border border-gray-200">
-          <div className="p-10 sm:p-14 flex flex-col items-center justify-center text-center">
-            <div className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center">
-              <svg viewBox="0 0 24 24" className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 7v5l3 2" />
-              </svg>
+          {recentActivities.length === 0 ? (
+            <div className="p-10 sm:p-14 flex flex-col items-center justify-center text-center">
+              <div className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center">
+                <svg viewBox="0 0 24 24" className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+              </div>
+              <div className="mt-4 text-[15px] font-medium">Ingen aktivitet ännu</div>
+              <div className="mt-1 text-sm text-gray-600 max-w-md">
+                Börja logga tid eller skapa ett projekt för att se din aktivitet här
+              </div>
             </div>
-            <div className="mt-4 text-[15px] font-medium">Ingen aktivitet ännu</div>
-            <div className="mt-1 text-sm text-gray-600 max-w-md">
-              Börja logga tid eller skapa ett projekt för att se din aktivitet här
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {recentActivities.map((activity) => {
+                const startDate = new Date(activity.start_at);
+                const duration = activity.stop_at 
+                  ? Math.round((new Date(activity.stop_at).getTime() - startDate.getTime()) / (1000 * 60 * 60) * 10) / 10
+                  : null;
+                
+                return (
+                  <div key={activity.id} className="p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="9" />
+                          <path d="M12 7v5l3 2" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-medium text-gray-900">
+                              {activity.projects?.name || 'Utan projekt'}
+                            </div>
+                            <div className="text-sm text-gray-600 mt-0.5">
+                              {startDate.toLocaleDateString('sv-SE', { 
+                                weekday: 'short', 
+                                day: 'numeric', 
+                                month: 'short'
+                              })} kl {startDate.toLocaleTimeString('sv-SE', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })}
+                              {activity.stop_at && ` - ${new Date(activity.stop_at).toLocaleTimeString('sv-SE', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })}`}
+                            </div>
+                          </div>
+                          {duration !== null && (
+                            <div className="text-sm font-semibold text-orange-600 whitespace-nowrap">
+                              {duration}h
+                            </div>
+                          )}
+                          {duration === null && (
+                            <div className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full whitespace-nowrap">
+                              Pågår
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          )}
         </div>
       </div>
 

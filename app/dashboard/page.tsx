@@ -23,7 +23,7 @@ export default async function DashboardPage() {
 	startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
 	startOfWeek.setHours(0, 0, 0, 0);
 
-	const [projectsResult, timeEntriesResult, materialsResult, expensesResult, activeTimeEntry, recentProject, allProjects] = await Promise.all([
+	const [projectsResult, timeEntriesResult, materialsResult, expensesResult, activeTimeEntry, recentProject, allProjects, recentActivities] = await Promise.all([
 		supabase
 			.from('projects')
 			.select('*', { count: 'exact', head: true })
@@ -68,6 +68,13 @@ export default async function DashboardPage() {
 			.eq('org_id', membership.org_id)
 			.eq('status', 'active')
 			.order('name', { ascending: true }),
+		// Fetch recent time entries for activity feed
+		supabase
+			.from('time_entries')
+			.select('id, start_at, stop_at, created_at, projects(id, name)')
+			.eq('user_id', user.id)
+			.order('created_at', { ascending: false })
+			.limit(10),
 	]);
 
 	const stats = {
@@ -83,6 +90,7 @@ export default async function DashboardPage() {
 			activeTimeEntry={activeTimeEntry.data}
 			recentProject={recentProject.data}
 			allProjects={allProjects.data || []}
+			recentActivities={recentActivities.data || []}
 			userId={user.id}
 		/>
 	);
