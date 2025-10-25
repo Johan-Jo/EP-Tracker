@@ -14,6 +14,7 @@ import {
 	FileEdit,
 	BookOpen,
 	HelpCircle,
+	Calendar,
 	X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -57,6 +58,12 @@ const mainNavItems: NavItem[] = [
 
 // Secondary navigation items (shown in menu modal)
 const menuItems: NavItem[] = [
+	{
+		label: 'Planering',
+		href: '/dashboard/planning',
+		icon: Calendar,
+		roles: ['admin', 'foreman', 'finance'],
+	},
 	{
 		label: 'ÄTA',
 		href: '/dashboard/ata',
