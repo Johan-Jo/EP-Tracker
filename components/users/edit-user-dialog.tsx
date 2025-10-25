@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Pencil, Loader2, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,6 +45,7 @@ export function EditUserDialog({
 	const setOpen = onOpenChange ?? setInternalOpen;
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isDeactivating, setIsDeactivating] = useState(false);
+	const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
 
 	const {
 		register,
@@ -109,12 +111,13 @@ export function EditUserDialog({
 		}
 	};
 
-	const handleDeactivate = async () => {
-		if (!confirm(`Är du säker på att du vill inaktivera ${userName}? De kommer inte längre ha åtkomst till organisationen.`)) {
-			return;
-		}
+	const handleDeactivate = () => {
+		setShowDeactivateDialog(true);
+	};
 
+	const confirmDeactivate = async () => {
 		setIsDeactivating(true);
+		setShowDeactivateDialog(false);
 
 		try {
 			const response = await fetch(`/api/users/${userId}`, {
@@ -138,6 +141,7 @@ export function EditUserDialog({
 	};
 
 	return (
+		<>
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogContent className="sm:max-w-[500px]">
 				<form onSubmit={handleSubmit(onSubmit)}>
@@ -252,6 +256,30 @@ export function EditUserDialog({
 				</form>
 			</DialogContent>
 		</Dialog>
+
+		{/* Deactivate Confirmation Dialog */}
+		<AlertDialog open={showDeactivateDialog} onOpenChange={setShowDeactivateDialog}>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>Inaktivera användare?</AlertDialogTitle>
+					<AlertDialogDescription>
+						Är du säker på att du vill inaktivera <strong>{userName}</strong>? De kommer inte längre ha åtkomst till organisationen.
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel disabled={isDeactivating}>Avbryt</AlertDialogCancel>
+					<AlertDialogAction
+						onClick={confirmDeactivate}
+						disabled={isDeactivating}
+						className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+					>
+						{isDeactivating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+						Inaktivera
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
+	</>
 	);
 }
 
