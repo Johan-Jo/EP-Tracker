@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createTimeEntrySchema } from '@/lib/schemas/time-entry';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
+import { sendTeamCheckInNotification } from '@/lib/notifications'; // EPIC 25: Push notifications
 
 // GET /api/time/entries - List time entries with filters
 export async function GET(request: NextRequest) {
@@ -129,6 +130,20 @@ export async function POST(request: NextRequest) {
 				return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
 			}
 			return NextResponse.json({ error: insertError.message }, { status: 500 });
+		}
+
+		// EPIC 25: Send team check-in notification
+		// Don't await - fire and forget to keep API fast
+		if (entry) {
+			sendTeamCheckInNotification({
+				userId: user.id,
+				userName: user.user_metadata?.full_name || user.email || 'Unknown',
+				projectId: entry.project_id,
+				action: entry.stop_at ? 'checkout' : 'checkin',
+				timestamp: entry.stop_at || entry.start_at,
+			}).catch((err) => {
+				console.error('[Time Entry] Failed to send team notification:', err);
+			});
 		}
 
 		return NextResponse.json({ entry }, { status: 201 });

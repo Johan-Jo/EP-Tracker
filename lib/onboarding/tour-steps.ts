@@ -191,3 +191,46 @@ export const planningTodayTourSteps = [
 	},
 ];
 
+export const notificationsTourSteps = [
+	{
+		id: 'notifications-welcome',
+		title: 'Push-notiser',
+		description:
+			'Aktivera pushnotiser för att få realtidsuppdateringar om check-ins, godkännanden och mer. Fungerar på både iOS och Android!',
+		target: 'body',
+		position: 'center' as const,
+	},
+	{
+		id: 'enable-notifications',
+		title: 'Aktivera notiser',
+		description:
+			'Klicka för att aktivera pushnotiser. Du kommer bli ombedd att ge behörighet i webbläsaren.',
+		target: '[data-tour="enable-notifications"]',
+		position: 'bottom' as const,
+	},
+	{
+		id: 'notification-types',
+		title: 'Anpassa notis-typer',
+		description:
+			'Välj vilka typer av notiser du vill ta emot. Du kan aktivera eller inaktivera varje typ individuellt.',
+		target: '[data-tour="notification-types"]',
+		position: 'top' as const,
+	},
+	{
+		id: 'quiet-hours',
+		title: 'Tyst läge',
+		description:
+			'Ställ in tider när du inte vill bli störd av notiser, t.ex. nattetid (22:00-07:00).',
+		target: '[data-tour="quiet-hours"]',
+		position: 'top' as const,
+	},
+	{
+		id: 'test-notification',
+		title: 'Testa notiser',
+		description:
+			'Skicka en testnotis för att verifiera att allt fungerar. Du kan också se historik över alla notiser du fått.',
+		target: '[data-tour="test-notification"]',
+		position: 'top' as const,
+	},
+];
+

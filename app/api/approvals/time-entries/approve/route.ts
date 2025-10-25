@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
+import { sendApprovalConfirmedNotification } from '@/lib/notifications'; // EPIC 25: Push notifications
 
 export async function POST(request: Request) {
 	try {
@@ -41,6 +42,24 @@ export async function POST(request: Request) {
 		if (error) {
 			console.error('Error approving time entries:', error);
 			return NextResponse.json({ error: error.message }, { status: 500 });
+		}
+
+		// EPIC 25: Send approval confirmation notifications
+		// Don't await - fire and forget
+		if (data && data.length > 0) {
+			// Group by user_id
+			const userIds = [...new Set(data.map(entry => entry.user_id))];
+			
+			for (const userId of userIds) {
+				const userEntries = data.filter(e => e.user_id === userId);
+				sendApprovalConfirmedNotification({
+					userId,
+					approverName: user.user_metadata?.full_name || user.email || 'Admin',
+					entryCount: userEntries.length,
+				}).catch((err) => {
+					console.error('[Approval] Failed to send notification:', err);
+				});
+			}
 		}
 
 		return NextResponse.json({ 
