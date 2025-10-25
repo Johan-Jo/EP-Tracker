@@ -55,101 +55,27 @@ export async function GET(request: NextRequest) {
 	weekStart.setHours(0, 0, 0, 0);
 	weekEnd.setHours(23, 59, 59, 999);
 
-	// EPIC 26.6: Build queries (don't execute yet)
-	const resourcesQuery = supabase
-		.from('memberships')
-		.select(`
-			user_id,
-			role,
-			is_active,
-			profiles:user_id (
-				id,
-				full_name,
-				email
-			)
-		`)
-		.eq('org_id', membership.org_id)
-		.eq('is_active', true);
+	// EPIC 26.6 Part 2: Use database function for maximum speed! ⚡
+	// This consolidates 4 queries into 1 optimized database-side query
+	const { data: planningData, error: planningError } = await supabase
+		.rpc('get_planning_data', {
+			p_org_id: membership.org_id,
+			p_week_start: weekStart.toISOString(),
+			p_week_end: weekEnd.toISOString(),
+			p_project_id: project_id || null,
+			p_user_id_filter: user_id_filter || null,
+		});
 
-	let projectsQuery = supabase
-		.from('projects')
-		.select('id, name, project_number, client_name, color, daily_capacity_need, status, site_address')
-		.eq('org_id', membership.org_id)
-		.in('status', ['active', 'paused']);
-
-	if (project_id) {
-		projectsQuery = projectsQuery.eq('id', project_id);
+	if (planningError) {
+		console.error('Error fetching planning data:', planningError);
+		return NextResponse.json({ error: planningError.message }, { status: 500 });
 	}
-
-	// EPIC 26.6: Remove JOINs - client already has projects/users!
-	let assignmentsQuery = supabase
-		.from('assignments')
-		.select('*')
-		.eq('org_id', membership.org_id)
-		.gte('start_ts', weekStart.toISOString())
-		.lte('start_ts', weekEnd.toISOString())
-		.neq('status', 'cancelled');
-
-	if (project_id) {
-		assignmentsQuery = assignmentsQuery.eq('project_id', project_id);
-	}
-	if (user_id_filter) {
-		assignmentsQuery = assignmentsQuery.eq('user_id', user_id_filter);
-	}
-
-	// EPIC 26.6: Remove JOINs - client already has users!
-	let absencesQuery = supabase
-		.from('absences')
-		.select('*')
-		.eq('org_id', membership.org_id)
-		.or(`start_ts.lte.${weekEnd.toISOString()},end_ts.gte.${weekStart.toISOString()}`);
-
-	if (user_id_filter) {
-		absencesQuery = absencesQuery.eq('user_id', user_id_filter);
-	}
-
-	// EPIC 26.6: Execute ALL queries in parallel! ⚡
-	const [resourcesResult, projectsResult, assignmentsResult, absencesResult] = await Promise.all([
-		resourcesQuery,
-		projectsQuery,
-		assignmentsQuery,
-		absencesQuery,
-	]);
-
-	// Check for errors
-	if (resourcesResult.error) {
-		console.error('Error fetching resources:', resourcesResult.error);
-		return NextResponse.json({ error: resourcesResult.error.message }, { status: 500 });
-	}
-	if (projectsResult.error) {
-		console.error('Error fetching projects:', projectsResult.error);
-		return NextResponse.json({ error: projectsResult.error.message }, { status: 500 });
-	}
-	if (assignmentsResult.error) {
-		console.error('Error fetching assignments:', assignmentsResult.error);
-		return NextResponse.json({ error: assignmentsResult.error.message }, { status: 500 });
-	}
-	if (absencesResult.error) {
-		console.error('Error fetching absences:', absencesResult.error);
-		return NextResponse.json({ error: absencesResult.error.message }, { status: 500 });
-	}
-
-	// Transform resources data
-	const resourcesList = resourcesResult.data
-		?.filter(r => r.profiles)
-		.map(r => ({
-			id: r.user_id,
-			full_name: (r.profiles as any)?.full_name || null,
-			email: (r.profiles as any)?.email || '',
-			role: r.role,
-			is_active: r.is_active,
-		})) || [];
 
 	return NextResponse.json({
-		resources: resourcesList,
-		projects: projectsResult.data || [],
-		assignments: assignmentsResult.data || [],
-		absences: absencesResult.data || [],
+		resources: planningData?.resources || [],
+		projects: planningData?.projects || [],
+		assignments: planningData?.assignments || [],
+		absences: planningData?.absences || [],
 		week: {
 			start: weekStart.toISOString(),
 			end: weekEnd.toISOString(),
