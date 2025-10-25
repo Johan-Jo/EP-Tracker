@@ -26,10 +26,10 @@ interface DashboardClientProps {
   }>;
   recentActivities: Array<{
     id: string;
-    start_at: string;
-    stop_at: string | null;
+    type: 'time' | 'material' | 'expense' | 'ata' | 'diary';
     created_at: string;
-    projects: { id: string; name: string } | null;
+    project: { id: string; name: string } | null;
+    data: any;
   }>;
   userId: string;
 }
@@ -37,6 +37,9 @@ interface DashboardClientProps {
 export default function DashboardClient({ userName, stats, activeTimeEntry, recentProject, allProjects, recentActivities, userId }: DashboardClientProps) {
   const router = useRouter();
   const [showQuickStart, setShowQuickStart] = useState(false);
+  const [showAllActivities, setShowAllActivities] = useState(false);
+  
+  const displayedActivities = showAllActivities ? recentActivities : recentActivities.slice(0, 5);
 
   const handleCheckIn = async (projectId: string) => {
     try {
@@ -271,60 +274,143 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
               </div>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
-              {recentActivities.map((activity) => {
-                const startDate = new Date(activity.start_at);
-                const duration = activity.stop_at 
-                  ? Math.round((new Date(activity.stop_at).getTime() - startDate.getTime()) / (1000 * 60 * 60) * 10) / 10
-                  : null;
-                
-                return (
-                  <div key={activity.id} className="p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-start gap-3">
-                      <div className="h-9 w-9 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="12" cy="12" r="9" />
-                          <path d="M12 7v5l3 2" />
-                        </svg>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {activity.projects?.name || 'Utan projekt'}
+            <>
+              <div className="divide-y divide-gray-100">
+                {displayedActivities.map((activity) => {
+                  const createdDate = new Date(activity.created_at);
+                  
+                  // Render based on activity type
+                  const getActivityDetails = () => {
+                    switch (activity.type) {
+                      case 'time': {
+                        const startDate = new Date(activity.data.start_at);
+                        const duration = activity.data.stop_at 
+                          ? Math.round((new Date(activity.data.stop_at).getTime() - startDate.getTime()) / (1000 * 60 * 60) * 10) / 10
+                          : null;
+                        return {
+                          icon: (
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="12" cy="12" r="9" />
+                              <path d="M12 7v5l3 2" />
+                            </svg>
+                          ),
+                          iconBg: 'bg-orange-100 text-orange-600',
+                          title: 'Tidsrapport',
+                          description: `${startDate.toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })} kl ${startDate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}${activity.data.stop_at ? ` - ${new Date(activity.data.stop_at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}` : ''}`,
+                          badge: duration !== null ? `${duration}h` : 'Pågår',
+                          badgeColor: duration !== null ? 'text-orange-600' : 'text-green-600 bg-green-50 px-2 py-1 rounded-full',
+                        };
+                      }
+                      case 'material':
+                        return {
+                          icon: (
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M12 2 3 7l9 5 9-5-9-5Z" />
+                              <path d="M3 7v10l9 5 9-5V7" />
+                            </svg>
+                          ),
+                          iconBg: 'bg-blue-100 text-blue-600',
+                          title: 'Material',
+                          description: `${activity.data.description} - ${activity.data.quantity} ${activity.data.unit}`,
+                          badge: null,
+                          badgeColor: '',
+                        };
+                      case 'expense':
+                        return {
+                          icon: (
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                            </svg>
+                          ),
+                          iconBg: 'bg-green-100 text-green-600',
+                          title: 'Utgift',
+                          description: activity.data.description,
+                          badge: `${activity.data.amount_sek} kr`,
+                          badgeColor: 'text-green-600',
+                        };
+                      case 'ata':
+                        return {
+                          icon: (
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                          ),
+                          iconBg: 'bg-purple-100 text-purple-600',
+                          title: 'ÄTA',
+                          description: activity.data.title,
+                          badge: null,
+                          badgeColor: '',
+                        };
+                      case 'diary':
+                        return {
+                          icon: (
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                            </svg>
+                          ),
+                          iconBg: 'bg-indigo-100 text-indigo-600',
+                          title: 'Dagbok',
+                          description: activity.data.title,
+                          badge: null,
+                          badgeColor: '',
+                        };
+                      default:
+                        return null;
+                    }
+                  };
+
+                  const details = getActivityDetails();
+                  if (!details) return null;
+
+                  return (
+                    <div key={activity.id} className="p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className={`h-9 w-9 rounded-lg ${details.iconBg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                          {details.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium text-gray-500 uppercase">{details.title}</span>
+                                {activity.project && (
+                                  <>
+                                    <span className="text-gray-300">•</span>
+                                    <span className="text-sm text-gray-600">{activity.project.name}</span>
+                                  </>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-900 mt-0.5">
+                                {details.description}
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-600 mt-0.5">
-                              {startDate.toLocaleDateString('sv-SE', { 
-                                weekday: 'short', 
-                                day: 'numeric', 
-                                month: 'short'
-                              })} kl {startDate.toLocaleTimeString('sv-SE', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}
-                              {activity.stop_at && ` - ${new Date(activity.stop_at).toLocaleTimeString('sv-SE', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}`}
-                            </div>
+                            {details.badge && (
+                              <div className={`text-sm font-semibold whitespace-nowrap ${details.badgeColor}`}>
+                                {details.badge}
+                              </div>
+                            )}
                           </div>
-                          {duration !== null && (
-                            <div className="text-sm font-semibold text-orange-600 whitespace-nowrap">
-                              {duration}h
-                            </div>
-                          )}
-                          {duration === null && (
-                            <div className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full whitespace-nowrap">
-                              Pågår
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+              
+              {/* Show More button */}
+              {recentActivities.length > 5 && (
+                <div className="p-4 border-t border-gray-100">
+                  <button
+                    onClick={() => setShowAllActivities(!showAllActivities)}
+                    className="w-full text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors"
+                  >
+                    {showAllActivities ? 'Visa färre' : `Visa fler (${recentActivities.length - 5} till)`}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

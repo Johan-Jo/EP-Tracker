@@ -23,7 +23,7 @@ export default async function DashboardPage() {
 	startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
 	startOfWeek.setHours(0, 0, 0, 0);
 
-	const [projectsResult, timeEntriesResult, materialsResult, expensesResult, activeTimeEntry, recentProject, allProjects, recentActivities] = await Promise.all([
+	const [projectsResult, timeEntriesResult, materialsResult, expensesResult, activeTimeEntry, recentProject, allProjects, recentTimeEntries, recentMaterials, recentExpenses, recentAta, recentDiary] = await Promise.all([
 		supabase
 			.from('projects')
 			.select('*', { count: 'exact', head: true })
@@ -68,10 +68,38 @@ export default async function DashboardPage() {
 			.eq('org_id', membership.org_id)
 			.eq('status', 'active')
 			.order('name', { ascending: true }),
-		// Fetch recent time entries for activity feed
+		// Fetch recent time entries
 		supabase
 			.from('time_entries')
 			.select('id, start_at, stop_at, created_at, projects(id, name)')
+			.eq('user_id', user.id)
+			.order('created_at', { ascending: false })
+			.limit(10),
+		// Fetch recent materials
+		supabase
+			.from('materials')
+			.select('id, description, quantity, unit, created_at, projects(id, name)')
+			.eq('user_id', user.id)
+			.order('created_at', { ascending: false })
+			.limit(10),
+		// Fetch recent expenses
+		supabase
+			.from('expenses')
+			.select('id, description, amount_sek, created_at, projects(id, name)')
+			.eq('user_id', user.id)
+			.order('created_at', { ascending: false })
+			.limit(10),
+		// Fetch recent ATA
+		supabase
+			.from('ata')
+			.select('id, title, created_at, projects(id, name)')
+			.eq('user_id', user.id)
+			.order('created_at', { ascending: false })
+			.limit(10),
+		// Fetch recent diary entries
+		supabase
+			.from('diary_entries')
+			.select('id, title, created_at, projects(id, name)')
 			.eq('user_id', user.id)
 			.order('created_at', { ascending: false })
 			.limit(10),
@@ -83,6 +111,46 @@ export default async function DashboardPage() {
 		materialsCount: (materialsResult.count || 0) + (expensesResult.count || 0),
 	};
 
+	// Combine all activities into a unified feed
+	const activities = [
+		...(recentTimeEntries.data || []).map(item => ({
+			id: item.id,
+			type: 'time' as const,
+			created_at: item.created_at,
+			project: item.projects,
+			data: item,
+		})),
+		...(recentMaterials.data || []).map(item => ({
+			id: item.id,
+			type: 'material' as const,
+			created_at: item.created_at,
+			project: item.projects,
+			data: item,
+		})),
+		...(recentExpenses.data || []).map(item => ({
+			id: item.id,
+			type: 'expense' as const,
+			created_at: item.created_at,
+			project: item.projects,
+			data: item,
+		})),
+		...(recentAta.data || []).map(item => ({
+			id: item.id,
+			type: 'ata' as const,
+			created_at: item.created_at,
+			project: item.projects,
+			data: item,
+		})),
+		...(recentDiary.data || []).map(item => ({
+			id: item.id,
+			type: 'diary' as const,
+			created_at: item.created_at,
+			project: item.projects,
+			data: item,
+		})),
+	].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+		.slice(0, 15); // Show latest 15 activities
+
 	return (
 		<DashboardClient 
 			userName={profile?.full_name || 'användare'} 
@@ -90,7 +158,7 @@ export default async function DashboardPage() {
 			activeTimeEntry={activeTimeEntry.data}
 			recentProject={recentProject.data}
 			allProjects={allProjects.data || []}
-			recentActivities={recentActivities.data || []}
+			recentActivities={activities}
 			userId={user.id}
 		/>
 	);
