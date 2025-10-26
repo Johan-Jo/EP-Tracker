@@ -4,26 +4,17 @@ import Link from 'next/link';
 import { ProjectForm } from '@/components/projects/project-form';
 import { ProjectFormData } from '@/lib/schemas/project';
 import { revalidatePath } from 'next/cache';
+import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
 
 export default async function NewProjectPage() {
-	const supabase = await createClient();
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
+	// EPIC 26: Use cached session to avoid duplicate queries
+	const { user, membership } = await getSession();
 
 	if (!user) {
 		redirect('/sign-in');
 	}
 
-	// Get user's organization and role (first one for now)
-	const { data: memberships } = await supabase
-		.from('memberships')
-		.select('org_id, role')
-		.eq('user_id', user.id)
-		.eq('is_active', true)
-		.limit(1);
-
-	if (!memberships || memberships.length === 0) {
+	if (!membership) {
 		return (
 			<div className='p-4 md:p-8'>
 				<div className='max-w-2xl mx-auto'>
@@ -36,8 +27,8 @@ export default async function NewProjectPage() {
 		);
 	}
 
-	const orgId = memberships[0].org_id;
-	const userRole = memberships[0].role;
+	const orgId = membership.org_id;
+	const userRole = membership.role;
 
 	// Only admin and foreman can create projects - redirect others
 	if (userRole !== 'admin' && userRole !== 'foreman') {
@@ -47,19 +38,18 @@ export default async function NewProjectPage() {
 	async function createProject(data: ProjectFormData) {
 		'use server';
 		
-		const supabase = await createClient();
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
+		// EPIC 26: Use cached session in server action
+		const { user, membership } = await getSession();
 
-		if (!user) {
+		if (!user || !membership) {
 			throw new Error('Inte autentiserad');
 		}
 
+		const supabase = await createClient();
 		const { data: project, error } = await supabase
 			.from('projects')
 			.insert({
-				org_id: orgId,
+				org_id: membership.org_id,
 				created_by: user.id,
 				...data,
 			})
@@ -67,6 +57,7 @@ export default async function NewProjectPage() {
 			.single();
 
 		if (error) {
+			console.error('Error creating project:', error);
 			throw new Error(error.message);
 		}
 

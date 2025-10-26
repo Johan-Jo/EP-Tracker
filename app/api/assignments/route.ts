@@ -1,28 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAssignmentSchema, type Conflict } from '@/lib/schemas/planning';
+import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
 
 // GET /api/assignments - List assignments with filters
+// EPIC 26: Optimized from 2 queries to 1 cached query
 export async function GET(request: NextRequest) {
 	try {
-		const supabase = await createClient();
-		const { data: { user }, error: authError } = await supabase.auth.getUser();
+		// EPIC 26: Use cached session (saves 1 query)
+		const { user, membership } = await getSession();
 
-		if (authError || !user) {
+		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		// Get user's organization
-		const { data: membership } = await supabase
-			.from('memberships')
-			.select('org_id, role')
-			.eq('user_id', user.id)
-			.eq('is_active', true)
-			.single();
-
-		if (!membership) {
-			return NextResponse.json({ error: 'No active organization membership' }, { status: 403 });
-		}
+		const supabase = await createClient();
 
 		// Parse query parameters
 		const searchParams = request.nextUrl.searchParams;
@@ -66,26 +58,17 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/assignments - Create new assignment(s) with multi-assign support
+// EPIC 26: Optimized from 2 queries to 1 cached query
 export async function POST(request: NextRequest) {
 	try {
-		const supabase = await createClient();
-		const { data: { user }, error: authError } = await supabase.auth.getUser();
+		// EPIC 26: Use cached session (saves 1 query)
+		const { user, membership } = await getSession();
 
-		if (authError || !user) {
+		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		// Get user's organization
-		const { data: membership } = await supabase
-			.from('memberships')
-			.select('org_id, role')
-			.eq('user_id', user.id)
-			.eq('is_active', true)
-			.single();
-
-		if (!membership) {
-			return NextResponse.json({ error: 'No active organization membership' }, { status: 403 });
-		}
+		const supabase = await createClient();
 
 		// Check permissions (admin/foreman only)
 		if (!['admin', 'foreman', 'finance'].includes(membership.role)) {
