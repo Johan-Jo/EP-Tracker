@@ -38,14 +38,26 @@ export default async function NewProjectPage() {
 	async function createProject(data: ProjectFormData) {
 		'use server';
 		
-		// EPIC 26: Use cached session in server action
-		const { user, membership } = await getSession();
+		// Server actions need fresh auth check (can't use cached getSession)
+		const supabase = await createClient();
+		const { data: { user } } = await supabase.auth.getUser();
 
-		if (!user || !membership) {
+		if (!user) {
 			throw new Error('Inte autentiserad');
 		}
 
-		const supabase = await createClient();
+		// Get membership for org_id
+		const { data: membership } = await supabase
+			.from('memberships')
+			.select('org_id')
+			.eq('user_id', user.id)
+			.eq('is_active', true)
+			.single();
+
+		if (!membership) {
+			throw new Error('Ingen aktiv organisation');
+		}
+
 		const { data: project, error } = await supabase
 			.from('projects')
 			.insert({
