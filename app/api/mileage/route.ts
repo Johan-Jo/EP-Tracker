@@ -1,27 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createMileageSchema } from '@/lib/schemas/mileage';
+import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
 
 // GET /api/mileage - List mileage with filters
+// EPIC 26: Optimized from 2 queries to 1 cached query
 export async function GET(request: NextRequest) {
 	try {
-		const supabase = await createClient();
-		const { data: { user }, error: authError } = await supabase.auth.getUser();
+		// EPIC 26: Use cached session (saves 1 query)
+		const { user, membership } = await getSession();
 
-		if (authError || !user) {
+		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const { data: membership } = await supabase
-			.from('memberships')
-			.select('org_id, role')
-			.eq('user_id', user.id)
-			.eq('is_active', true)
-			.single();
-
-		if (!membership) {
-			return NextResponse.json({ error: 'No active organization membership' }, { status: 403 });
-		}
+		const supabase = await createClient();
 
 		const searchParams = request.nextUrl.searchParams;
 		const project_id = searchParams.get('project_id');
@@ -68,24 +61,14 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/mileage - Create new mileage
+// EPIC 26: Optimized from 3 queries to 1 query
 export async function POST(request: NextRequest) {
 	try {
-		const supabase = await createClient();
-		const { data: { user }, error: authError } = await supabase.auth.getUser();
+		// EPIC 26: Use cached session (saves 2 queries)
+		const { user, membership } = await getSession();
 
-		if (authError || !user) {
+		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-		}
-
-		const { data: membership } = await supabase
-			.from('memberships')
-			.select('org_id')
-			.eq('user_id', user.id)
-			.eq('is_active', true)
-			.single();
-
-		if (!membership) {
-			return NextResponse.json({ error: 'No active organization membership' }, { status: 403 });
 		}
 
 		const body = await request.json();
@@ -100,17 +83,10 @@ export async function POST(request: NextRequest) {
 
 		const data = validation.data;
 
-		const { data: project, error: projectError } = await supabase
-			.from('projects')
-			.select('id')
-			.eq('id', data.project_id)
-			.eq('org_id', membership.org_id)
-			.single();
+		// EPIC 26: Skip project verification - RLS will handle it (saves 1 query)
+		const supabase = await createClient();
 
-		if (projectError || !project) {
-			return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
-		}
-
+		// EPIC 26: Insert mileage without JOINs for maximum speed
 		const { data: mileage, error: insertError } = await supabase
 			.from('mileage')
 			.insert({
@@ -125,14 +101,14 @@ export async function POST(request: NextRequest) {
 				notes: data.notes,
 				status: 'draft',
 			})
-			.select(`
-				*,
-				project:projects(id, name, project_number)
-			`)
+			.select('*')
 			.single();
 
 		if (insertError) {
 			console.error('Error creating mileage:', insertError);
+			if (insertError.code === '23503') {
+				return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
+			}
 			return NextResponse.json({ error: insertError.message }, { status: 500 });
 		}
 

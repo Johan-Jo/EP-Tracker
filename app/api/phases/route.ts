@@ -1,16 +1,22 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { phaseSchema } from '@/lib/schemas/project';
+import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
 
+// POST /api/phases - Create new phase
+// EPIC 26: Optimized from 3 queries to 1 query
 export async function POST(request: NextRequest) {
 	try {
-		const supabase = await createClient();
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
+		// EPIC 26: Use cached session (saves 2 queries)
+		const { user, membership } = await getSession();
 
-		if (!user) {
+		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		// Only admin and foreman can create phases
+		if (!['admin', 'foreman'].includes(membership.role)) {
+			return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 		}
 
 		const body = await request.json();
@@ -20,28 +26,8 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: 'Project ID required' }, { status: 400 });
 		}
 
-		// Verify user has access to project
-		const { data: project } = await supabase
-			.from('projects')
-			.select('org_id')
-			.eq('id', projectId)
-			.single();
-
-		if (!project) {
-			return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-		}
-
-		const { data: membership } = await supabase
-			.from('memberships')
-			.select('role')
-			.eq('user_id', user.id)
-			.eq('org_id', project.org_id)
-			.eq('is_active', true)
-			.single();
-
-		if (!membership || !['admin', 'foreman'].includes(membership.role)) {
-			return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-		}
+		// EPIC 26: Skip project verification - RLS will handle it (saves 1 query)
+		const supabase = await createClient();
 
 		// Validate phase data
 		const validatedData = phaseSchema.parse(phaseData);

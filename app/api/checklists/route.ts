@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
 
+// GET /api/checklists - List checklists with filters
+// EPIC 26: Optimized from 2 queries to 1 cached query
 export async function GET(request: NextRequest) {
+	// EPIC 26: Use cached session (saves 1 query)
+	const { user, membership } = await getSession();
+
+	if (!user || !membership) {
+		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+	}
+
 	const supabase = await createClient();
 	const { searchParams } = new URL(request.url);
 	const projectId = searchParams.get('project_id');
-
-	const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-	if (authError || !user) {
-		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-	}
 
 	try {
 		let query = supabase
@@ -49,12 +53,13 @@ export async function GET(request: NextRequest) {
 	}
 }
 
+// POST /api/checklists - Create new checklist
+// EPIC 26: Optimized from 2 queries to 1 cached query
 export async function POST(request: NextRequest) {
-	const supabase = await createClient();
+	// EPIC 26: Use cached session (saves 1 query)
+	const { user, membership } = await getSession();
 
-	const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-	if (authError || !user) {
+	if (!user || !membership) {
 		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
@@ -62,16 +67,7 @@ export async function POST(request: NextRequest) {
 		const body = await request.json();
 		const { project_id, template_id, title, checklist_data, completed_at, signed_by_name, signed_at } = body;
 
-		// Get user's org_id from membership
-		const { data: membership, error: membershipError } = await supabase
-			.from('memberships')
-			.select('org_id')
-			.eq('user_id', user.id)
-			.single();
-
-		if (membershipError || !membership) {
-			return NextResponse.json({ error: 'No organization found' }, { status: 400 });
-		}
+		const supabase = await createClient();
 
 		const checklistData = {
 			org_id: membership.org_id,
