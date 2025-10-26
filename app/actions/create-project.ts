@@ -2,7 +2,6 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { ProjectFormData } from '@/lib/schemas/project';
 
 /**
@@ -60,6 +59,11 @@ export async function createProject(data: ProjectFormData) {
 	}
 
 	revalidatePath('/dashboard/projects');
-	redirect(`/dashboard/projects/${project.id}`);
+	
+	// Return project instead of redirecting to avoid NEXT_REDIRECT error in UI
+	return {
+		success: true,
+		project,
+	};
 }
 

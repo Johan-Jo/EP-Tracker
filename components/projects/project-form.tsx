@@ -22,7 +22,7 @@ import { Loader2 } from 'lucide-react';
 interface ProjectFormProps {
 	project?: ProjectFormData & { id?: string };
 	orgId: string;
-	onSubmit: (data: ProjectFormData) => Promise<void>;
+	onSubmit: (data: ProjectFormData) => Promise<{ success: boolean; project: any }>;
 }
 
 export function ProjectForm({ project, orgId, onSubmit }: ProjectFormProps) {
@@ -61,10 +61,14 @@ export function ProjectForm({ project, orgId, onSubmit }: ProjectFormProps) {
 		setError(null);
 
 		try {
-			await onSubmit(data as ProjectFormData);
+			const result = await onSubmit(data as ProjectFormData);
+			
+			// Client-side redirect to avoid NEXT_REDIRECT error
+			if (result.success && result.project?.id) {
+				router.push(`/dashboard/projects/${result.project.id}`);
+			}
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Ett fel uppstod');
-		} finally {
 			setIsSubmitting(false);
 		}
 	};
