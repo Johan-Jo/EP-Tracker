@@ -10,6 +10,9 @@ import { getSession } from '@/lib/auth/get-session';
 import { getImpersonationSession } from '@/lib/super-admin/impersonation';
 import { ImpersonationBanner } from '@/components/super-admin/support/impersonation-banner';
 
+// EPIC 26.7: Enable Edge Runtime for faster TTFB
+export const runtime = 'edge';
+
 export default async function DashboardLayout({
 	children,
 }: {

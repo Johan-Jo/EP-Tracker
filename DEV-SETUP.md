@@ -50,12 +50,9 @@
 
 ### Step 5: Setup Environment Variables (3 min)
 
-1. Copy `.env.local.template` to `.env.local`:
-   ```bash
-   cp .env.local.template .env.local
-   ```
+1. Open your existing `.env.local` file (or create it if it doesn't exist)
 
-2. Fill in the Firebase values from Steps 2-4:
+2. Add these Firebase values from Steps 2-4:
 
    **From firebaseConfig (Step 3):**
    ```env
@@ -219,4 +216,3 @@ Before considering dev setup complete:
 ---
 **Estimated setup time:** 15-20 minutes  
 **Once setup is done, testing should be straightforward!**
-
