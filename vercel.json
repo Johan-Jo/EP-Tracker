@@ -3,7 +3,17 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["arn1"],
+  "regions": ["arn1", "fra1"],
+  "functions": {
+    "app/dashboard/**/*.{ts,tsx}": {
+      "maxDuration": 10,
+      "memory": 1024
+    },
+    "app/api/**/*.ts": {
+      "maxDuration": 10,
+      "memory": 512
+    }
+  },
   "headers": [
     {
       "source": "/sw.js",
