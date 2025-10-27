@@ -273,12 +273,15 @@ ORDER BY tablename, indexname;
 
 -- Check index sizes
 SELECT 
-  tablename,
-  indexname,
+  relname as table_name,
+  indexrelname as index_name,
   pg_size_pretty(pg_relation_size(indexrelid)) as index_size
 FROM pg_stat_user_indexes
 WHERE schemaname = 'public'
-  AND indexrelname LIKE '%recent%' 
-  OR indexrelname LIKE '%cover%'
+  AND (
+    indexrelname LIKE '%cover%'
+    OR indexrelname LIKE '%org_status%'
+    OR indexrelname LIKE '%project_user%'
+  )
 ORDER BY pg_relation_size(indexrelid) DESC;
 
