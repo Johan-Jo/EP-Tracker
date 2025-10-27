@@ -30,7 +30,7 @@ COMMENT ON INDEX idx_projects_org_status_active IS
 -- Allows index-only scans = no table lookup needed
 CREATE INDEX IF NOT EXISTS idx_materials_org_created_cover 
   ON materials(org_id, created_at DESC) 
-  INCLUDE (id, material_name, quantity, unit, user_id);
+  INCLUDE (id, description, qty, unit, user_id);
 
 COMMENT ON INDEX idx_materials_org_created_cover IS 
   'EPIC 26.9: Covering index for materials with included columns';
@@ -38,7 +38,7 @@ COMMENT ON INDEX idx_materials_org_created_cover IS
 -- Covering index for expenses
 CREATE INDEX IF NOT EXISTS idx_expenses_org_created_cover 
   ON expenses(org_id, created_at DESC) 
-  INCLUDE (id, description, amount, category, user_id);
+  INCLUDE (id, description, amount_sek, category, user_id);
 
 COMMENT ON INDEX idx_expenses_org_created_cover IS 
   'EPIC 26.9: Covering index for expenses with included columns';
@@ -46,7 +46,7 @@ COMMENT ON INDEX idx_expenses_org_created_cover IS
 -- Covering index for time entries (for activity queries)
 CREATE INDEX IF NOT EXISTS idx_time_entries_org_created_cover 
   ON time_entries(org_id, created_at DESC) 
-  INCLUDE (id, user_id, project_id, hours, description);
+  INCLUDE (id, user_id, project_id, duration_min, task_label);
 
 COMMENT ON INDEX idx_time_entries_org_created_cover IS 
   'EPIC 26.9: Covering index for time entries with included columns';
