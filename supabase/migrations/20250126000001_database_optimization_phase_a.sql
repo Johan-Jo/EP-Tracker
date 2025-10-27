@@ -18,30 +18,9 @@ CREATE INDEX IF NOT EXISTS idx_projects_org_status_active
 COMMENT ON INDEX idx_projects_org_status_active IS 
   'EPIC 26.9: Partial index for active projects count';
 
--- Index for recent time entries (last 30 days)
--- Most dashboard queries only look at recent data
-CREATE INDEX IF NOT EXISTS idx_time_entries_recent 
-  ON time_entries(user_id, start_at DESC)
-  WHERE start_at >= (CURRENT_DATE - INTERVAL '30 days');
-
-COMMENT ON INDEX idx_time_entries_recent IS 
-  'EPIC 26.9: Partial index for recent time entries';
-
--- Index for recent materials (last 30 days)
-CREATE INDEX IF NOT EXISTS idx_materials_recent 
-  ON materials(user_id, created_at DESC)
-  WHERE created_at >= (CURRENT_DATE - INTERVAL '30 days');
-
-COMMENT ON INDEX idx_materials_recent IS 
-  'EPIC 26.9: Partial index for recent materials';
-
--- Index for recent expenses (last 30 days)
-CREATE INDEX IF NOT EXISTS idx_expenses_recent 
-  ON expenses(user_id, created_at DESC)
-  WHERE created_at >= (CURRENT_DATE - INTERVAL '30 days');
-
-COMMENT ON INDEX idx_expenses_recent IS 
-  'EPIC 26.9: Partial index for recent expenses';
+-- Note: Cannot use date-based partial indexes with CURRENT_DATE 
+-- because CURRENT_DATE is not IMMUTABLE in Supabase.
+-- Instead, we rely on the covering indexes below which are still very fast.
 
 -- =====================================================
 -- PART 2: Covering Indexes (Include columns)
