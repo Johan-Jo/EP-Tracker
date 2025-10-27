@@ -27,11 +27,12 @@ interface DashboardClientProps {
   }>;
   recentActivities: Array<{
     id: string;
-    type: 'time' | 'material' | 'expense' | 'ata' | 'diary';
+    type: 'time_entry' | 'material' | 'expense' | 'ata' | 'diary_entry' | 'mileage';
     created_at: string;
     project: { id: string; name: string } | null;
     user_name?: string;
     data: any;
+    description: string;
   }>;
   userId: string;
 }
@@ -324,7 +325,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                   // Render based on activity type
                   const getActivityDetails = () => {
                     switch (activity.type) {
-                      case 'time': {
+                      case 'time_entry': {
                         const startDate = new Date(activity.data.start_at);
                         const duration = activity.data.stop_at 
                           ? Math.round((new Date(activity.data.stop_at).getTime() - startDate.getTime()) / (1000 * 60 * 60) * 10) / 10
@@ -403,7 +404,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           badge: null,
                           badgeColor: '',
                         };
-                      case 'diary': {
+                      case 'diary_entry': {
                         const diaryDate = new Date(activity.data.date);
                         const formattedDate = isClient 
                           ? diaryDate.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -422,6 +423,22 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           badgeColor: '',
                         };
                       }
+                      case 'mileage':
+                        return {
+                          icon: (
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+                              <circle cx="7" cy="17" r="2" />
+                              <path d="M9 17h6" />
+                              <circle cx="17" cy="17" r="2" />
+                            </svg>
+                          ),
+                          iconBg: 'bg-teal-100 text-teal-600',
+                          title: 'Milersättning',
+                          description: `${activity.data.distance_km || 0} km`,
+                          badge: `${activity.data.amount_sek || 0} kr`,
+                          badgeColor: 'text-teal-600',
+                        };
                       default:
                         return null;
                     }
@@ -433,15 +450,17 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                   // Determine where to navigate based on activity type
                   const getNavigationPath = () => {
                     switch (activity.type) {
-                      case 'time':
+                      case 'time_entry':
                         return '/dashboard/time';
                       case 'material':
                         return '/dashboard/materials';
                       case 'expense':
                         return '/dashboard/materials';
+                      case 'mileage':
+                        return '/dashboard/materials';
                       case 'ata':
                         return '/dashboard/ata';
-                      case 'diary':
+                      case 'diary_entry':
                         return '/dashboard/diary';
                       default:
                         return null;
