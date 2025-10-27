@@ -39,7 +39,7 @@ export interface PreloadStats {
  * @throws Error if operation times out (60 seconds) or fails
  */
 export async function preloadUserData(options: PreloadOptions): Promise<PreloadStats> {
-	const db = getDB();
+	const db = await getDB();
 	if (!db) {
 		throw new Error('Database not available (server-side)');
 	}
@@ -61,6 +61,21 @@ async function preloadUserDataInternal(options: PreloadOptions): Promise<Preload
 	console.log(`📥 Starting data preload for last ${daysBack} days...`);
 
 	const supabase = createClient();
+	const db = await getDB();
+	
+	// If no DB (server-side), skip preloading
+	if (!db) {
+		console.log('⚠️ Skipping preload (server-side or DB unavailable)');
+		return {
+			projects: 0,
+			timeEntries: 0,
+			materials: 0,
+			expenses: 0,
+			mileage: 0,
+			duration: 0,
+		};
+	}
+	
 	const cutoffDate = new Date();
 	cutoffDate.setDate(cutoffDate.getDate() - daysBack);
 	const cutoffISO = cutoffDate.toISOString();
@@ -172,7 +187,7 @@ async function preloadUserDataInternal(options: PreloadOptions): Promise<Preload
  * Clear all cached offline data (useful for logout or switching orgs)
  */
 export async function clearOfflineData(): Promise<void> {
-	const db = getDB();
+	const db = await getDB();
 	if (!db) return;
 	console.log('🗑️ Clearing offline data...');
 
@@ -202,7 +217,7 @@ export async function getOfflineStats(): Promise<{
 	expenses: number;
 	pendingSync: number;
 }> {
-	const db = getDB();
+	const db = await getDB();
 	if (!db) {
 		return { projects: 0, timeEntries: 0, materials: 0, expenses: 0, pendingSync: 0 };
 	}
