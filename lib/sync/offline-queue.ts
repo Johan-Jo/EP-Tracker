@@ -37,8 +37,14 @@ export class OfflineQueueManager {
 	 * Add an item to the sync queue
 	 */
 	async enqueue(item: QueueItem): Promise<void> {
+		const database = db();
+		if (!database) {
+			console.warn('Database not available (server-side), skipping queue');
+			return;
+		}
+		
 		try {
-			await db.sync_queue.add({
+			await database.sync_queue.add({
 				action: item.action,
 				entity: item.entity,
 				entity_id: item.entity_id,
@@ -63,6 +69,9 @@ export class OfflineQueueManager {
 	 * Process all pending items in the sync queue
 	 */
 	async processSyncQueue(): Promise<void> {
+		const database = db();
+		if (!database) return;
+		
 		if (this.syncInProgress) {
 			console.log('⏳ Sync already in progress, skipping...');
 			return;
@@ -76,7 +85,7 @@ export class OfflineQueueManager {
 		this.syncInProgress = true;
 
 		try {
-			const queue = await db.sync_queue.orderBy('created_at').toArray();
+			const queue = await database.sync_queue.orderBy('created_at').toArray();
 
 			if (queue.length === 0) {
 				console.log('✨ Sync queue is empty');
@@ -89,7 +98,7 @@ export class OfflineQueueManager {
 				try {
 					await this.syncItem(item);
 					// Remove from queue after successful sync
-					await db.sync_queue.delete(item.id!);
+					await database.sync_queue.delete(item.id!);
 					console.log(`✅ Synced and removed: ${item.entity} ${item.entity_id}`);
 				} catch (error) {
 					console.error(`❌ Failed to sync item:`, error);
@@ -100,10 +109,10 @@ export class OfflineQueueManager {
 					if (newRetryCount >= MAX_RETRIES) {
 						console.error(`⚠️ Max retries reached for ${item.entity} ${item.entity_id}`);
 						// TODO: Move to failed queue or notify user
-						await db.sync_queue.delete(item.id!);
+						await database.sync_queue.delete(item.id!);
 					} else {
 						// Update retry count and error message
-						await db.sync_queue.update(item.id!, {
+						await database.sync_queue.update(item.id!, {
 							retry_count: newRetryCount,
 							last_error: error instanceof Error ? error.message : 'Unknown error',
 						});
@@ -181,7 +190,9 @@ export class OfflineQueueManager {
 	 * Get count of pending sync items
 	 */
 	async getPendingCount(): Promise<number> {
-		return await db.sync_queue.count();
+		const database = db();
+		if (!database) return 0;
+		return await database.sync_queue.count();
 	}
 
 	/**
@@ -205,7 +216,9 @@ export class OfflineQueueManager {
 	 * Clear all pending items (use with caution)
 	 */
 	async clearQueue(): Promise<void> {
-		await db.sync_queue.clear();
+		const database = db();
+		if (!database) return;
+		await database.sync_queue.clear();
 		console.log('🗑️ Sync queue cleared');
 	}
 }

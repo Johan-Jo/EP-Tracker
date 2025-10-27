@@ -3,7 +3,7 @@
  * Caches critical data in IndexedDB on login for offline access
  */
 
-import { db } from '@/lib/db/offline-store';
+import { db as getDB } from '@/lib/db/offline-store';
 import { createClient } from '@/lib/supabase/client';
 
 /**
@@ -39,6 +39,10 @@ export interface PreloadStats {
  * @throws Error if operation times out (60 seconds) or fails
  */
 export async function preloadUserData(options: PreloadOptions): Promise<PreloadStats> {
+	const db = getDB();
+	if (!db) {
+		throw new Error('Database not available (server-side)');
+	}
 	// Wrap entire preload operation with 60 second timeout
 	return withTimeout(
 		preloadUserDataInternal(options),
@@ -168,6 +172,8 @@ async function preloadUserDataInternal(options: PreloadOptions): Promise<Preload
  * Clear all cached offline data (useful for logout or switching orgs)
  */
 export async function clearOfflineData(): Promise<void> {
+	const db = getDB();
+	if (!db) return;
 	console.log('🗑️ Clearing offline data...');
 
 	try {
@@ -196,6 +202,10 @@ export async function getOfflineStats(): Promise<{
 	expenses: number;
 	pendingSync: number;
 }> {
+	const db = getDB();
+	if (!db) {
+		return { projects: 0, timeEntries: 0, materials: 0, expenses: 0, pendingSync: 0 };
+	}
 	const [projects, timeEntries, materials, expenses, pendingSync] = await Promise.all([
 		db.projects.count(),
 		db.time_entries.count(),

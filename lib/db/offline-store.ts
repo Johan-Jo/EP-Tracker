@@ -1,4 +1,12 @@
-import Dexie, { type EntityTable } from 'dexie';
+// Only import Dexie on client-side
+let Dexie: any;
+let EntityTable: any;
+
+if (typeof window !== 'undefined') {
+  const dexieModule = require('dexie');
+  Dexie = dexieModule.default;
+  EntityTable = dexieModule.EntityTable;
+}
 
 interface TimeEntry {
 	id: string;
@@ -83,37 +91,51 @@ interface PlanningToday {
 	cached_at: string;
 }
 
-const db = new Dexie('EPTrackerDB') as Dexie & {
-	time_entries: EntityTable<TimeEntry, 'id'>;
-	materials: EntityTable<Material, 'id'>;
-	expenses: EntityTable<Expense, 'id'>;
-	projects: EntityTable<Project, 'id'>;
-	sync_queue: EntityTable<SyncQueue, 'id'>;
-	mobile_checkins: EntityTable<MobileCheckin, 'id'>;
-	planning_today: EntityTable<PlanningToday, 'id'>;
-};
+// Initialize database only on client-side
+let db: any = null;
 
-// Schema declaration
-// Version 1: Original tables (time_entries, materials, expenses, projects, sync_queue)
-db.version(1).stores({
-	time_entries: 'id, org_id, project_id, user_id, status, synced, created_at',
-	materials: 'id, org_id, project_id, user_id, synced, created_at',
-	expenses: 'id, org_id, project_id, user_id, synced, created_at',
-	projects: 'id, org_id, created_at',
-	sync_queue: '++id, action, entity, entity_id, created_at, retry_count',
-});
+function getDB() {
+	if (typeof window === 'undefined') {
+		// Return a mock object on server-side
+		return null;
+	}
+	
+	if (!db && Dexie) {
+		db = new Dexie('EPTrackerDB') as Dexie & {
+			time_entries: EntityTable<TimeEntry, 'id'>;
+			materials: EntityTable<Material, 'id'>;
+			expenses: EntityTable<Expense, 'id'>;
+			projects: EntityTable<Project, 'id'>;
+			sync_queue: EntityTable<SyncQueue, 'id'>;
+			mobile_checkins: EntityTable<MobileCheckin, 'id'>;
+			planning_today: EntityTable<PlanningToday, 'id'>;
+		};
 
-// Version 2: Added planning system tables
-db.version(2).stores({
-	time_entries: 'id, org_id, project_id, user_id, status, synced, created_at',
-	materials: 'id, org_id, project_id, user_id, synced, created_at',
-	expenses: 'id, org_id, project_id, user_id, synced, created_at',
-	projects: 'id, org_id, created_at',
-	sync_queue: '++id, action, entity, entity_id, created_at, retry_count',
-	mobile_checkins: '++id, assignment_id, synced, created_at',
-	planning_today: 'id, cached_at',
-});
+		// Schema declaration
+		// Version 1: Original tables (time_entries, materials, expenses, projects, sync_queue)
+		db.version(1).stores({
+			time_entries: 'id, org_id, project_id, user_id, status, synced, created_at',
+			materials: 'id, org_id, project_id, user_id, synced, created_at',
+			expenses: 'id, org_id, project_id, user_id, synced, created_at',
+			projects: 'id, org_id, created_at',
+			sync_queue: '++id, action, entity, entity_id, created_at, retry_count',
+		});
 
-export { db };
+		// Version 2: Added planning system tables
+		db.version(2).stores({
+			time_entries: 'id, org_id, project_id, user_id, status, synced, created_at',
+			materials: 'id, org_id, project_id, user_id, synced, created_at',
+			expenses: 'id, org_id, project_id, user_id, synced, created_at',
+			projects: 'id, org_id, created_at',
+			sync_queue: '++id, action, entity, entity_id, created_at, retry_count',
+			mobile_checkins: '++id, assignment_id, synced, created_at',
+			planning_today: 'id, cached_at',
+		});
+	}
+	
+	return db;
+}
+
+export { getDB as db };
 export type { TimeEntry, Material, Expense, Project, SyncQueue, MobileCheckin, PlanningToday };
 

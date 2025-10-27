@@ -1,24 +1,10 @@
+import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { Suspense } from 'react';
 import { getSession } from '@/lib/auth/get-session';
 import DashboardClient from './dashboard-client';
-// EPIC 26.4: Use optimized database functions
-import {
-	getActiveTimeEntry,
-	getActiveProjects,
-	getRecentProject,
-} from '@/lib/db/dashboard';
-// EPIC 26.7: Server components for streaming SSR
-import { DashboardStatsServer } from './dashboard-stats-server';
-import { DashboardActivitiesServer } from './dashboard-activities-server';
-import { DashboardStatsSkeleton } from '@/components/dashboard/dashboard-stats-skeleton';
-import { DashboardActivitiesSkeleton } from '@/components/dashboard/dashboard-activities-skeleton';
-
-// EPIC 26.7: Enable Edge Runtime for faster TTFB
-export const runtime = 'edge';
 
 export default async function DashboardPage() {
-	// EPIC 26.2: Use cached session
+	// Use cached session
 	const { user, profile, membership } = await getSession();
 
 	if (!user) {
@@ -30,62 +16,155 @@ export default async function DashboardPage() {
 		redirect('/complete-setup');
 	}
 
-	// EPIC 26.7: Streaming SSR Implementation
-	// BEFORE (Phase 1): Server waits for ALL data before sending HTML
-	//  - TTFB: 1.4s (user sees nothing)
-	//  - FCP: 1.64s
-	//
-	// AFTER (Phase 2): Server streams HTML progressively
-	//  1. Shell (layout + header) streams immediately (0.3s)
-	//  2. Stats stream in (parallel)
-	//  3. Activities stream in (parallel)
-	//  - TTFB: 0.3s (user sees layout immediately!)
-	//  - FCP: 0.8s (50% snabbare!)
-	
-	// Fetch only critical, fast data for initial render
-	const [activeTimeEntry, recentProject, allProjects] = await Promise.all([
-		// Critical: Needed for timer widget
-		getActiveTimeEntry(user.id),
-		
-		// Fast: Single row lookup
-		getRecentProject(membership.org_id),
-		
-		// Fast: Simple active projects list
-		getActiveProjects(membership.org_id),
+	const supabase = await createClient();
+
+	// Fetch stats in parallel for better performance
+	const startOfWeek = new Date();
+	startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+	startOfWeek.setHours(0, 0, 0, 0);
+
+	const [projectsResult, timeEntriesResult, materialsResult, expensesResult, activeTimeEntry, recentProject, allProjects, recentTimeEntries, recentMaterials, recentExpenses, recentAta, recentDiary] = await Promise.all([
+		supabase
+			.from('projects')
+			.select('*', { count: 'exact', head: true })
+			.eq('org_id', membership.org_id),
+		supabase
+			.from('time_entries')
+			.select('*', { count: 'exact', head: true })
+			.eq('user_id', user.id)
+			.gte('start_at', startOfWeek.toISOString()),
+		supabase
+			.from('materials')
+			.select('*', { count: 'exact', head: true })
+			.eq('user_id', user.id)
+			.gte('created_at', startOfWeek.toISOString()),
+		supabase
+			.from('expenses')
+			.select('*', { count: 'exact', head: true })
+			.eq('user_id', user.id)
+			.gte('created_at', startOfWeek.toISOString()),
+		// Fetch active time entry (where stop_at is null)
+		supabase
+			.from('time_entries')
+			.select('*, projects(id, name)')
+			.eq('user_id', user.id)
+			.is('stop_at', null)
+			.order('start_at', { ascending: false })
+			.limit(1)
+			.maybeSingle(),
+		// Fetch most recent project
+		supabase
+			.from('projects')
+			.select('id, name')
+			.eq('org_id', membership.org_id)
+			.eq('status', 'active')
+			.order('created_at', { ascending: false })
+			.limit(1)
+			.maybeSingle(),
+		// Fetch all active projects for dropdown
+		supabase
+			.from('projects')
+			.select('id, name')
+			.eq('org_id', membership.org_id)
+			.eq('status', 'active')
+			.order('name', { ascending: true }),
+		// Fetch recent time entries with user info
+		supabase
+			.from('time_entries')
+			.select('id, start_at, stop_at, created_at, user_id, projects(id, name), profiles!time_entries_user_id_fkey(full_name)')
+			.eq('org_id', membership.org_id)
+			.order('created_at', { ascending: false })
+			.limit(10),
+		// Fetch recent materials with user info
+		supabase
+			.from('materials')
+			.select('id, description, qty, unit, created_at, user_id, projects(id, name), profiles!materials_user_id_fkey(full_name)')
+			.eq('org_id', membership.org_id)
+			.order('created_at', { ascending: false })
+			.limit(10),
+		// Fetch recent expenses with user info
+		supabase
+			.from('expenses')
+			.select('id, description, amount_sek, created_at, user_id, projects(id, name), profiles!expenses_user_id_fkey(full_name)')
+			.eq('org_id', membership.org_id)
+			.order('created_at', { ascending: false })
+			.limit(10),
+		// Fetch recent ATA with user info
+		supabase
+			.from('ata')
+			.select('id, title, created_at, created_by, projects(id, name), profiles!ata_created_by_fkey(full_name)')
+			.eq('org_id', membership.org_id)
+			.order('created_at', { ascending: false })
+			.limit(10),
+		// Fetch recent diary entries with user info
+		supabase
+			.from('diary_entries')
+			.select('id, date, work_performed, created_at, created_by, projects(id, name), profiles!diary_entries_created_by_fkey(full_name)')
+			.eq('org_id', membership.org_id)
+			.order('created_at', { ascending: false })
+			.limit(10),
 	]);
 
+	const stats = {
+		projectsCount: projectsResult.count || 0,
+		timeEntriesCount: timeEntriesResult.count || 0,
+		materialsCount: (materialsResult.count || 0) + (expensesResult.count || 0),
+	};
+
+	// Combine all activities into a unified feed
+	const activities = [
+		...(recentTimeEntries.data || []).map((item: any) => ({
+			id: item.id,
+			type: 'time' as const,
+			created_at: item.created_at,
+			project: Array.isArray(item.projects) ? item.projects[0] || null : item.projects,
+			user_name: Array.isArray(item.profiles) ? item.profiles[0]?.full_name : item.profiles?.full_name,
+			data: item,
+		})),
+		...(recentMaterials.data || []).map((item: any) => ({
+			id: item.id,
+			type: 'material' as const,
+			created_at: item.created_at,
+			project: Array.isArray(item.projects) ? item.projects[0] || null : item.projects,
+			user_name: Array.isArray(item.profiles) ? item.profiles[0]?.full_name : item.profiles?.full_name,
+			data: item,
+		})),
+		...(recentExpenses.data || []).map((item: any) => ({
+			id: item.id,
+			type: 'expense' as const,
+			created_at: item.created_at,
+			project: Array.isArray(item.projects) ? item.projects[0] || null : item.projects,
+			user_name: Array.isArray(item.profiles) ? item.profiles[0]?.full_name : item.profiles?.full_name,
+			data: item,
+		})),
+		...(recentAta.data || []).map((item: any) => ({
+			id: item.id,
+			type: 'ata' as const,
+			created_at: item.created_at,
+			project: Array.isArray(item.projects) ? item.projects[0] || null : item.projects,
+			user_name: Array.isArray(item.profiles) ? item.profiles[0]?.full_name : item.profiles?.full_name,
+			data: item,
+		})),
+		...(recentDiary.data || []).map((item: any) => ({
+			id: item.id,
+			type: 'diary' as const,
+			created_at: item.created_at,
+			project: Array.isArray(item.projects) ? item.projects[0] || null : item.projects,
+			user_name: Array.isArray(item.profiles) ? item.profiles[0]?.full_name : item.profiles?.full_name,
+			data: item,
+		})),
+	].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+		.slice(0, 15); // Show latest 15 activities
+
 	return (
-		<div className="px-4 md:px-8 py-6 space-y-6">
-			{/* Header - streams immediately */}
-			<div className="bg-gradient-to-r from-orange-50 to-orange-100/50 border border-orange-200 rounded-xl p-6">
-				<h1 className="text-3xl font-bold tracking-tight text-gray-900">
-					Välkommen, {profile?.full_name || 'användare'}! 👋
-				</h1>
-				<p className="text-gray-600 mt-2">
-					Här är en översikt av din aktivitet
-				</p>
-			</div>
-
-			{/* Timer Widget - streams immediately (critical for UX) */}
-			<DashboardClient 
-				userName={profile?.full_name || 'användare'} 
-				stats={{ active_projects: 0, total_hours_week: 0, total_materials_week: 0, total_time_entries_week: 0 }}
-				activeTimeEntry={activeTimeEntry}
-				recentProject={recentProject}
-				allProjects={allProjects}
-				recentActivities={[]}
-				userId={user.id}
-			/>
-
-			{/* Stats - streams in parallel (shows skeleton first) */}
-			<Suspense fallback={<DashboardStatsSkeleton />}>
-				<DashboardStatsServer />
-			</Suspense>
-
-			{/* Activities - streams in parallel (shows skeleton first) */}
-			<Suspense fallback={<DashboardActivitiesSkeleton />}>
-				<DashboardActivitiesServer />
-			</Suspense>
-		</div>
+		<DashboardClient 
+			userName={profile?.full_name || 'användare'} 
+			stats={stats}
+			activeTimeEntry={activeTimeEntry.data}
+			recentProject={recentProject.data}
+			allProjects={allProjects.data || []}
+			recentActivities={activities}
+			userId={user.id}
+		/>
 	);
 }
