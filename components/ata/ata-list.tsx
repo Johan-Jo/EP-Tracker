@@ -68,6 +68,8 @@ export function AtaList({ projectId, orgId, userRole }: AtaListProps) {
 			if (error) throw error;
 			return data as Ata[];
 		},
+		staleTime: 2 * 60 * 1000,  // 2 minutes (ÄTA entries don't change often)
+		gcTime: 5 * 60 * 1000,      // 5 minutes
 	});
 
 	if (isLoading) {

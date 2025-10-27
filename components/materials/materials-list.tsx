@@ -41,6 +41,8 @@ export function MaterialsList({ orgId, projectId, onEdit }: MaterialsListProps) 
 			const data = await response.json();
 			return data.materials as MaterialWithRelations[];
 		},
+		staleTime: 1 * 60 * 1000,  // 1 minute (materials change more frequently)
+		gcTime: 5 * 60 * 1000,      // 5 minutes
 	});
 
 	const { data: projects } = useQuery({

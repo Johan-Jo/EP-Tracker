@@ -51,6 +51,8 @@ export function ChecklistList({ projectId, orgId }: ChecklistListProps) {
 			const data = await response.json();
 			return data.checklists as Checklist[];
 		},
+		staleTime: 2 * 60 * 1000,  // 2 minutes (checklists don't change often)
+		gcTime: 5 * 60 * 1000,      // 5 minutes
 	});
 
 	if (isLoading) {

@@ -41,6 +41,8 @@ export function ExpensesList({ orgId, projectId, onEdit }: ExpensesListProps) {
 			const data = await response.json();
 			return data.expenses as ExpenseWithRelations[];
 		},
+		staleTime: 1 * 60 * 1000,  // 1 minute (expenses change more frequently)
+		gcTime: 5 * 60 * 1000,      // 5 minutes
 	});
 
 	const { data: projects } = useQuery({

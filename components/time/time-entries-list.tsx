@@ -35,6 +35,8 @@ export function TimeEntriesList({ orgId, userId, projectId, onEdit }: TimeEntrie
 			const data = await response.json();
 			return data.entries as TimeEntryWithRelations[];
 		},
+		staleTime: 30 * 1000,       // 30 seconds (time entries change frequently)
+		gcTime: 5 * 60 * 1000,       // 5 minutes
 	});
 
 	// Fetch projects for filter
