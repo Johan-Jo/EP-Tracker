@@ -113,21 +113,21 @@ BEGIN
     WHEN 'time_entries' THEN
       v_description := 'Tidrapport ' || v_action;
       v_data := jsonb_build_object(
-        'hours', COALESCE(NEW.hours, OLD.hours),
-        'description', COALESCE(NEW.description, OLD.description)
+        'duration_min', COALESCE(NEW.duration_min, OLD.duration_min),
+        'task_label', COALESCE(NEW.task_label, OLD.task_label)
       );
     
     WHEN 'materials' THEN
-      v_description := 'Material: ' || COALESCE(NEW.material_name, OLD.material_name);
+      v_description := 'Material: ' || COALESCE(NEW.description, OLD.description);
       v_data := jsonb_build_object(
-        'quantity', COALESCE(NEW.quantity, OLD.quantity),
+        'qty', COALESCE(NEW.qty, OLD.qty),
         'unit', COALESCE(NEW.unit, OLD.unit)
       );
     
     WHEN 'expenses' THEN
       v_description := 'Kostnad: ' || COALESCE(NEW.description, OLD.description);
       v_data := jsonb_build_object(
-        'amount', COALESCE(NEW.amount, OLD.amount),
+        'amount_sek', COALESCE(NEW.amount_sek, OLD.amount_sek),
         'category', COALESCE(NEW.category, OLD.category)
       );
     
@@ -294,7 +294,7 @@ SELECT
   'time_entry'::text,
   'created'::text,
   'Tidrapport created',
-  jsonb_build_object('hours', te.hours, 'description', te.description),
+  jsonb_build_object('duration_min', te.duration_min, 'task_label', te.task_label),
   te.created_at
 FROM time_entries te
 WHERE te.created_at >= CURRENT_DATE - INTERVAL '30 days'
@@ -308,8 +308,8 @@ SELECT
   m.project_id,
   'material'::text,
   'created'::text,
-  'Material: ' || m.material_name,
-  jsonb_build_object('quantity', m.quantity, 'unit', m.unit),
+  'Material: ' || m.description,
+  jsonb_build_object('qty', m.qty, 'unit', m.unit),
   m.created_at
 FROM materials m
 WHERE m.created_at >= CURRENT_DATE - INTERVAL '30 days'
@@ -324,7 +324,7 @@ SELECT
   'expense'::text,
   'created'::text,
   'Kostnad: ' || e.description,
-  jsonb_build_object('amount', e.amount, 'category', e.category),
+  jsonb_build_object('amount_sek', e.amount_sek, 'category', e.category),
   e.created_at
 FROM expenses e
 WHERE e.created_at >= CURRENT_DATE - INTERVAL '30 days'
