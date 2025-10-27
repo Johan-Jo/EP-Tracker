@@ -108,15 +108,8 @@ async function getDB() {
 	await loadDexie();
 	
 	if (!db && Dexie) {
-		db = new Dexie('EPTrackerDB') as Dexie & {
-			time_entries: EntityTable<TimeEntry, 'id'>;
-			materials: EntityTable<Material, 'id'>;
-			expenses: EntityTable<Expense, 'id'>;
-			projects: EntityTable<Project, 'id'>;
-			sync_queue: EntityTable<SyncQueue, 'id'>;
-			mobile_checkins: EntityTable<MobileCheckin, 'id'>;
-			planning_today: EntityTable<PlanningToday, 'id'>;
-		};
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		db = new Dexie('EPTrackerDB') as any;
 
 		// Schema declaration
 		// Version 1: Original tables (time_entries, materials, expenses, projects, sync_queue)
