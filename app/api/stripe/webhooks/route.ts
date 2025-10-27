@@ -16,6 +16,7 @@ import { verifyWebhookSignature, handleWebhookEvent } from '@/lib/stripe/webhook
 // Disable Next.js body parsing to get raw body
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const preferredRegion = 'arn1'; // Stockholm - single region
 
 export async function POST(request: NextRequest) {
   try {

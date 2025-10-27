@@ -3,7 +3,7 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["arn1", "fra1"],
+  "regions": ["arn1"],
   "functions": {
     "app/dashboard/**/*.{ts,tsx}": {
       "maxDuration": 10,

@@ -10,8 +10,9 @@ import { getSession } from '@/lib/auth/get-session';
 import { getImpersonationSession } from '@/lib/super-admin/impersonation';
 import { ImpersonationBanner } from '@/components/super-admin/support/impersonation-banner';
 
-// EPIC 26.7: Enable Edge Runtime for faster TTFB
-export const runtime = 'edge';
+// EPIC 26: Enforce single region (Stockholm) to avoid multi-region serverless error
+export const runtime = 'nodejs';
+export const preferredRegion = 'arn1'; // Stockholm
 
 export default async function DashboardLayout({
 	children,

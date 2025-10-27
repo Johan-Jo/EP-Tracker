@@ -139,5 +139,6 @@ export const config = {
 		 */
 		'/((?!_next/static|_next/image|_next/webpack-hmr|favicon.ico|sw.js|workbox-.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|json)$).*)',
 	],
+	regions: ['arn1'], // Stockholm - single region to avoid multi-region serverless error
 };
 
