@@ -446,7 +446,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                         return '/dashboard/materials';
                       case 'ata':
                         return '/dashboard/ata';
-                      case 'diary_entry':
+                      case 'diary':
                         return '/dashboard/diary';
                       default:
                         return null;
