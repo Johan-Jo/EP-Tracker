@@ -47,11 +47,13 @@ export function DiaryList({ projectId, orgId }: DiaryListProps) {
 	const { data: diaryEntries, isLoading } = useQuery({
 		queryKey: ['diary', orgId, projectId],
 		queryFn: async () => {
+			// Optimized: Single query with photo count aggregation
 			let query = supabase
 				.from('diary_entries')
 				.select(`
 					*,
-					project:projects(name, project_number)
+					project:projects(name, project_number),
+					diary_photos(id)
 				`)
 				.eq('org_id', orgId)
 				.order('date', { ascending: false });
@@ -64,23 +66,20 @@ export function DiaryList({ projectId, orgId }: DiaryListProps) {
 
 			if (error) throw error;
 
-			// Fetch photo counts for each entry
-			const entriesWithPhotos = await Promise.all(
-				(data || []).map(async (entry) => {
-					const { count } = await supabase
-						.from('diary_photos')
-						.select('*', { count: 'exact', head: true })
-						.eq('diary_entry_id', entry.id);
-					
-					return {
-						...entry,
-						_count: { photos: count || 0 },
-					};
-				})
-			);
+			// Count photos from the joined data (no extra queries!)
+			const entriesWithPhotos = (data || []).map((entry: any) => ({
+				...entry,
+				_count: { 
+					photos: entry.diary_photos?.length || 0 
+				},
+				// Remove the raw diary_photos array to clean up the response
+				diary_photos: undefined,
+			}));
 
 			return entriesWithPhotos as DiaryEntry[];
 		},
+		staleTime: 2 * 60 * 1000,  // 2 minutes (diary entries don't change often)
+		gcTime: 5 * 60 * 1000,      // 5 minutes
 	});
 
 	if (isLoading) {
