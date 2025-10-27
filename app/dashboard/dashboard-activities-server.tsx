@@ -5,6 +5,16 @@
 import { getRecentActivities } from '@/lib/db/dashboard';
 import { getSession } from '@/lib/auth/get-session';
 
+type Activity = {
+	id: string;
+	type: string;
+	created_at: string;
+	project: { id: string; name: string } | null;
+	user_name: string;
+	data: unknown;
+	description: string;
+};
+
 export async function DashboardActivitiesServer() {
 	const { membership } = await getSession();
 	
@@ -30,7 +40,7 @@ export async function DashboardActivitiesServer() {
 			</div>
 			<div className="p-6">
 				<div className="space-y-4">
-					{activities.map((activity, index) => (
+					{activities.map((activity: Activity, index: number) => (
 						<div key={index} className="flex items-start gap-4">
 							<div className="rounded-full bg-orange-100 p-2 flex-shrink-0">
 								{activity.type === 'time_entry' && (
