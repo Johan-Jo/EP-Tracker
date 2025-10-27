@@ -20,11 +20,11 @@ SELECT
   
   -- Time entry counts and sums (last 7 days)
   COUNT(DISTINCT te_week.id) as time_entries_week_count,
-  COALESCE(SUM(te_week.hours), 0) as total_hours_week,
+  COALESCE(SUM(te_week.duration_min) / 60.0, 0) as total_hours_week,
   
   -- Time entry counts (last 30 days)
   COUNT(DISTINCT te_month.id) as time_entries_month_count,
-  COALESCE(SUM(te_month.hours), 0) as total_hours_month,
+  COALESCE(SUM(te_month.duration_min) / 60.0, 0) as total_hours_month,
   
   -- Material counts (last 7 days)
   COUNT(DISTINCT mat_week.id) as materials_week_count,
@@ -34,7 +34,7 @@ SELECT
   
   -- Expense counts (last 7 days)
   COUNT(DISTINCT exp_week.id) as expenses_week_count,
-  COALESCE(SUM(exp_week.amount), 0) as expenses_week_total,
+  COALESCE(SUM(exp_week.amount_sek), 0) as expenses_week_total,
   
   -- Last refresh timestamp
   NOW() as last_refreshed_at
@@ -151,13 +151,13 @@ BEGIN
         COUNT(DISTINCT p.id) FILTER (WHERE p.status = 'active') as active_projects_count,
         COUNT(DISTINCT p.id) as total_projects_count,
         COUNT(DISTINCT te_week.id) as time_entries_week_count,
-        COALESCE(SUM(te_week.hours), 0) as total_hours_week,
+        COALESCE(SUM(te_week.duration_min) / 60.0, 0) as total_hours_week,
         COUNT(DISTINCT te_month.id) as time_entries_month_count,
-        COALESCE(SUM(te_month.hours), 0) as total_hours_month,
+        COALESCE(SUM(te_month.duration_min) / 60.0, 0) as total_hours_month,
         COUNT(DISTINCT mat_week.id) as materials_week_count,
         COUNT(DISTINCT mat_month.id) as materials_month_count,
         COUNT(DISTINCT exp_week.id) as expenses_week_count,
-        COALESCE(SUM(exp_week.amount), 0) as expenses_week_total,
+        COALESCE(SUM(exp_week.amount_sek), 0) as expenses_week_total,
         NOW() as last_refreshed_at
       FROM memberships m
       LEFT JOIN projects p ON p.org_id = m.org_id
@@ -177,8 +177,8 @@ BEGIN
       GROUP BY m.org_id, m.user_id
     ) stats;
   ELSE
-    -- Refresh all (use CONCURRENTLY for zero downtime)
-    REFRESH MATERIALIZED VIEW CONCURRENTLY dashboard_stats_cache;
+    -- Refresh all
+    REFRESH MATERIALIZED VIEW dashboard_stats_cache;
   END IF;
   
   RAISE NOTICE 'Dashboard stats cache refreshed';
@@ -268,10 +268,10 @@ SECURITY DEFINER
 AS $$
 BEGIN
   -- Refresh dashboard stats
-  REFRESH MATERIALIZED VIEW CONCURRENTLY dashboard_stats_cache;
+  REFRESH MATERIALIZED VIEW dashboard_stats_cache;
   
   -- Refresh permissions
-  REFRESH MATERIALIZED VIEW CONCURRENTLY user_permissions_cache;
+  REFRESH MATERIALIZED VIEW user_permissions_cache;
   
   RAISE NOTICE 'Scheduled cache refresh completed';
 END;
@@ -292,12 +292,13 @@ REFRESH MATERIALIZED VIEW user_permissions_cache;
 -- PART 8: Connection Pooling Configuration
 -- =====================================================
 
--- Update connection pool settings for better performance
-ALTER DATABASE postgres SET max_connections = 100;
-ALTER DATABASE postgres SET shared_buffers = '256MB';
-ALTER DATABASE postgres SET effective_cache_size = '1GB';
-ALTER DATABASE postgres SET work_mem = '16MB';
-ALTER DATABASE postgres SET maintenance_work_mem = '128MB';
+-- Note: Connection pool settings are managed by Supabase
+-- These settings are already optimized in Supabase's infrastructure:
+-- - max_connections: managed by pooler
+-- - shared_buffers: optimized per plan
+-- - effective_cache_size: auto-tuned
+-- - work_mem: optimized per query
+-- - maintenance_work_mem: auto-configured
 
 -- =====================================================
 -- VERIFICATION
