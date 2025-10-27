@@ -6,6 +6,16 @@
 -- Expected Impact: TTFB 1.05s → 0.7s (-33%)
 
 -- =====================================================
+-- PART 0: Drop Existing Functions (if they exist)
+-- =====================================================
+
+-- Drop old functions that we're replacing with optimized versions
+DROP FUNCTION IF EXISTS get_dashboard_stats(uuid, uuid, timestamptz);
+DROP FUNCTION IF EXISTS get_dashboard_stats(uuid, uuid);
+DROP FUNCTION IF EXISTS get_recent_activities(uuid, integer);
+DROP FUNCTION IF EXISTS get_recent_activities(uuid);
+
+-- =====================================================
 -- PART 1: Partial Indexes for Filtered Queries
 -- =====================================================
 
@@ -104,8 +114,8 @@ BEGIN
         AND status = 'active'
     ),
     'total_hours_week', (
-      -- Sum hours instead of count
-      SELECT COALESCE(SUM(hours), 0)
+      -- Sum duration in minutes, convert to hours
+      SELECT COALESCE(SUM(duration_min) / 60.0, 0)
       FROM time_entries
       WHERE user_id = p_user_id
         AND start_at >= v_start_date
@@ -176,8 +186,8 @@ BEGIN
       te.project_id,
       p.name as project_name,
       pr.full_name as user_name,
-      jsonb_build_object('hours', te.hours) as data,
-      COALESCE(te.description, 'Tidrapport') as description
+      jsonb_build_object('duration_min', te.duration_min) as data,
+      COALESCE(te.task_label, 'Tidrapport') as description
     FROM time_entries te
     INNER JOIN profiles pr ON pr.id = te.user_id
     LEFT JOIN projects p ON p.id = te.project_id
@@ -194,8 +204,8 @@ BEGIN
       m.project_id,
       p.name as project_name,
       pr.full_name as user_name,
-      jsonb_build_object('quantity', m.quantity, 'unit', m.unit) as data,
-      m.material_name as description
+      jsonb_build_object('qty', m.qty, 'unit', m.unit) as data,
+      m.description
     FROM materials m
     INNER JOIN profiles pr ON pr.id = m.user_id
     LEFT JOIN projects p ON p.id = m.project_id
@@ -212,7 +222,7 @@ BEGIN
       e.project_id,
       p.name as project_name,
       pr.full_name as user_name,
-      jsonb_build_object('amount', e.amount, 'category', e.category) as data,
+      jsonb_build_object('amount_sek', e.amount_sek, 'category', e.category) as data,
       e.description
     FROM expenses e
     INNER JOIN profiles pr ON pr.id = e.user_id
@@ -252,7 +262,13 @@ SELECT
   indexdef
 FROM pg_indexes 
 WHERE schemaname = 'public'
-  AND indexname LIKE '%epic%26%'
+  AND (
+    indexname LIKE 'idx_projects_org_status%'
+    OR indexname LIKE 'idx_materials%cover'
+    OR indexname LIKE 'idx_expenses%cover'
+    OR indexname LIKE 'idx_time_entries%cover'
+    OR indexname LIKE 'idx_time_entries_project_user%'
+  )
 ORDER BY tablename, indexname;
 
 -- Check index sizes
