@@ -37,7 +37,7 @@ export class OfflineQueueManager {
 	 * Add an item to the sync queue
 	 */
 	async enqueue(item: QueueItem): Promise<void> {
-		const database = db();
+		const database = await db();
 		if (!database) {
 			console.warn('Database not available (server-side), skipping queue');
 			return;
@@ -69,7 +69,7 @@ export class OfflineQueueManager {
 	 * Process all pending items in the sync queue
 	 */
 	async processSyncQueue(): Promise<void> {
-		const database = db();
+		const database = await db();
 		if (!database) return;
 		
 		if (this.syncInProgress) {
@@ -190,7 +190,7 @@ export class OfflineQueueManager {
 	 * Get count of pending sync items
 	 */
 	async getPendingCount(): Promise<number> {
-		const database = db();
+		const database = await db();
 		if (!database) return 0;
 		return await database.sync_queue.count();
 	}
@@ -216,7 +216,7 @@ export class OfflineQueueManager {
 	 * Clear all pending items (use with caution)
 	 */
 	async clearQueue(): Promise<void> {
-		const database = db();
+		const database = await db();
 		if (!database) return;
 		await database.sync_queue.clear();
 		console.log('🗑️ Sync queue cleared');

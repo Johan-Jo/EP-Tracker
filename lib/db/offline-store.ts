@@ -1,11 +1,17 @@
 // Only import Dexie on client-side
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Dexie: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let EntityTable: any;
+let dexieLoaded = false;
 
-if (typeof window !== 'undefined') {
-  const dexieModule = require('dexie');
-  Dexie = dexieModule.default;
-  EntityTable = dexieModule.EntityTable;
+// Load Dexie dynamically on client-side
+async function loadDexie() {
+	if (typeof window === 'undefined' || dexieLoaded) return;
+	const dexieModule = await import('dexie');
+	Dexie = dexieModule.default;
+	EntityTable = dexieModule.EntityTable;
+	dexieLoaded = true;
 }
 
 interface TimeEntry {
@@ -92,13 +98,17 @@ interface PlanningToday {
 }
 
 // Initialize database only on client-side
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let db: any = null;
 
-function getDB() {
+async function getDB() {
 	if (typeof window === 'undefined') {
 		// Return a mock object on server-side
 		return null;
 	}
+	
+	// Load Dexie first
+	await loadDexie();
 	
 	if (!db && Dexie) {
 		db = new Dexie('EPTrackerDB') as Dexie & {
