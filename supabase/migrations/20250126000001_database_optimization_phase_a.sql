@@ -11,7 +11,7 @@
 
 -- Index for active projects count (used in get_dashboard_stats)
 -- Partial index only includes active projects = faster & smaller
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_projects_org_status_active 
+CREATE INDEX IF NOT EXISTS idx_projects_org_status_active 
   ON projects(org_id, status) 
   WHERE status = 'active';
 
@@ -20,7 +20,7 @@ COMMENT ON INDEX idx_projects_org_status_active IS
 
 -- Index for recent time entries (last 30 days)
 -- Most dashboard queries only look at recent data
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_time_entries_recent 
+CREATE INDEX IF NOT EXISTS idx_time_entries_recent 
   ON time_entries(user_id, start_at DESC)
   WHERE start_at >= (CURRENT_DATE - INTERVAL '30 days');
 
@@ -28,7 +28,7 @@ COMMENT ON INDEX idx_time_entries_recent IS
   'EPIC 26.9: Partial index for recent time entries';
 
 -- Index for recent materials (last 30 days)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_materials_recent 
+CREATE INDEX IF NOT EXISTS idx_materials_recent 
   ON materials(user_id, created_at DESC)
   WHERE created_at >= (CURRENT_DATE - INTERVAL '30 days');
 
@@ -36,7 +36,7 @@ COMMENT ON INDEX idx_materials_recent IS
   'EPIC 26.9: Partial index for recent materials';
 
 -- Index for recent expenses (last 30 days)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_expenses_recent 
+CREATE INDEX IF NOT EXISTS idx_expenses_recent 
   ON expenses(user_id, created_at DESC)
   WHERE created_at >= (CURRENT_DATE - INTERVAL '30 days');
 
@@ -49,7 +49,7 @@ COMMENT ON INDEX idx_expenses_recent IS
 
 -- Covering index for materials (includes data columns)
 -- Allows index-only scans = no table lookup needed
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_materials_org_created_cover 
+CREATE INDEX IF NOT EXISTS idx_materials_org_created_cover 
   ON materials(org_id, created_at DESC) 
   INCLUDE (id, material_name, quantity, unit, user_id);
 
@@ -57,7 +57,7 @@ COMMENT ON INDEX idx_materials_org_created_cover IS
   'EPIC 26.9: Covering index for materials with included columns';
 
 -- Covering index for expenses
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_expenses_org_created_cover 
+CREATE INDEX IF NOT EXISTS idx_expenses_org_created_cover 
   ON expenses(org_id, created_at DESC) 
   INCLUDE (id, description, amount, category, user_id);
 
@@ -65,7 +65,7 @@ COMMENT ON INDEX idx_expenses_org_created_cover IS
   'EPIC 26.9: Covering index for expenses with included columns';
 
 -- Covering index for time entries (for activity queries)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_time_entries_org_created_cover 
+CREATE INDEX IF NOT EXISTS idx_time_entries_org_created_cover 
   ON time_entries(org_id, created_at DESC) 
   INCLUDE (id, user_id, project_id, hours, description);
 
@@ -77,14 +77,14 @@ COMMENT ON INDEX idx_time_entries_org_created_cover IS
 -- =====================================================
 
 -- Multi-column index for project + user queries
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_time_entries_project_user_date 
+CREATE INDEX IF NOT EXISTS idx_time_entries_project_user_date 
   ON time_entries(project_id, user_id, start_at DESC);
 
 COMMENT ON INDEX idx_time_entries_project_user_date IS 
   'EPIC 26.9: Composite index for project + user time queries';
 
 -- Multi-column index for org + status + date
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_projects_org_status_created 
+CREATE INDEX IF NOT EXISTS idx_projects_org_status_created 
   ON projects(org_id, status, created_at DESC);
 
 COMMENT ON INDEX idx_projects_org_status_created IS 
