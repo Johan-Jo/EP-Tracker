@@ -40,6 +40,9 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [isClient, setIsClient] = useState(false);
   
+  // EPIC 26: Optimistic UI state for instant feedback
+  const [optimisticTimeEntry, setOptimisticTimeEntry] = useState(activeTimeEntry);
+  
   const displayedActivities = showAllActivities ? recentActivities : recentActivities.slice(0, 5);
 
   // Prevent hydration mismatch for date formatting
@@ -47,49 +50,81 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
     setIsClient(true);
   }, []);
 
+  // EPIC 26: Sync optimistic state when server data changes
+  useEffect(() => {
+    setOptimisticTimeEntry(activeTimeEntry);
+  }, [activeTimeEntry]);
+
+  // EPIC 26: Optimistic check-in - INSTANT UI, background sync!
   const handleCheckIn = async (projectId: string) => {
-    try {
-      const response = await fetch('/api/time/entries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project_id: projectId,
-          start_at: new Date().toISOString(),
-        }),
+    const project = allProjects.find(p => p.id === projectId);
+    const tempId = `temp-${Date.now()}`;
+    const startTime = new Date().toISOString();
+    
+    // ⚡ INSTANT UI update! No waiting!
+    setOptimisticTimeEntry({
+      id: tempId,
+      start_at: startTime,
+      projects: project ? { id: project.id, name: project.name } : null,
+    });
+
+    // 🔄 Background sync - user doesn't wait for this!
+    fetch('/api/time/entries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_id: projectId,
+        start_at: startTime,
+      }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error('Failed to start time entry');
+        }
+        const data = await response.json();
+        // Update with real entry ID from server (silent background update)
+        setOptimisticTimeEntry({
+          id: data.entry.id,
+          start_at: data.entry.start_at,
+          projects: project ? { id: project.id, name: project.name } : null,
+        });
+      })
+      .catch((error) => {
+        console.error('Error starting time:', error);
+        // Rollback optimistic update on error
+        setOptimisticTimeEntry(activeTimeEntry);
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to start time entry');
-      }
-
-      router.refresh();
-    } catch (error) {
-      console.error('Error starting time:', error);
-      router.refresh();
-    }
   };
 
+  // EPIC 26: Optimistic check-out - INSTANT UI, background sync!
   const handleCheckOut = async () => {
-    if (!activeTimeEntry) return;
+    if (!optimisticTimeEntry) return;
 
-    try {
-      const response = await fetch(`/api/time/entries/${activeTimeEntry.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stop_at: new Date().toISOString(),
-        }),
+    const entryIdToStop = optimisticTimeEntry.id;
+    const previousEntry = optimisticTimeEntry;
+    
+    // ⚡ INSTANT UI update! Timer disappears immediately!
+    setOptimisticTimeEntry(null);
+
+    // 🔄 Background sync - user doesn't wait for this!
+    fetch(`/api/time/entries/${entryIdToStop}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stop_at: new Date().toISOString(),
+      }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to stop time entry');
+        }
+        // Success - timer already stopped in UI, no action needed
+      })
+      .catch((error) => {
+        console.error('Error stopping time:', error);
+        // Rollback optimistic update on error
+        setOptimisticTimeEntry(previousEntry);
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to stop time entry');
-      }
-
-      router.refresh();
-    } catch (error) {
-      console.error('Error stopping time:', error);
-      router.refresh();
-    }
   };
 
   return (
@@ -104,7 +139,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
         </p>
       </div>
 
-      {/* Time Check-in/Check-out Slider */}
+      {/* Time Check-in/Check-out Slider - EPIC 26: Uses optimistic state */}
       <div className="mb-6 bg-gradient-to-r from-orange-50 to-orange-100/50 border-2 border-orange-200 rounded-xl p-4" data-tour="time-slider">
         <div className="flex items-center gap-2 mb-3">
           <div className="h-8 w-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
@@ -114,34 +149,34 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
             </svg>
           </div>
           <div className="leading-tight flex-1 min-w-0">
-            <div className={activeTimeEntry ? "text-sm font-medium" : "text-base font-medium"}>
-              {activeTimeEntry ? 'Aktiv tid' : 'Ingen aktiv tid'}
+            <div className={optimisticTimeEntry ? "text-sm font-medium" : "text-base font-medium"}>
+              {optimisticTimeEntry ? 'Aktiv tid' : 'Ingen aktiv tid'}
             </div>
           </div>
         </div>
         
         {/* Centered check-in info above timer */}
-        {activeTimeEntry && activeTimeEntry.start_at && activeTimeEntry.projects?.name && (
+        {optimisticTimeEntry && optimisticTimeEntry.start_at && optimisticTimeEntry.projects?.name && (
           <div className="text-center text-sm text-gray-700 mb-2">
-            Du checkade in <span className="font-bold">{new Date(activeTimeEntry.start_at).toLocaleTimeString('sv-SE', {
+            Du checkade in <span className="font-bold">{new Date(optimisticTimeEntry.start_at).toLocaleTimeString('sv-SE', {
               hour: '2-digit',
               minute: '2-digit'
-            })}</span>, projekt: <span className="font-bold text-orange-600">{activeTimeEntry.projects.name}</span>
+            })}</span>, projekt: <span className="font-bold text-orange-600">{optimisticTimeEntry.projects.name}</span>
           </div>
         )}
         <TimeSlider
-          isActive={!!activeTimeEntry}
+          isActive={!!optimisticTimeEntry}
           projectName={
-            activeTimeEntry 
-              ? activeTimeEntry.projects?.name 
+            optimisticTimeEntry 
+              ? optimisticTimeEntry.projects?.name 
               : recentProject?.name
           }
           projectId={
-            activeTimeEntry 
-              ? activeTimeEntry.projects?.id 
+            optimisticTimeEntry 
+              ? optimisticTimeEntry.projects?.id 
               : recentProject?.id
           }
-          startTime={activeTimeEntry?.start_at}
+          startTime={optimisticTimeEntry?.start_at}
           availableProjects={allProjects}
           onCheckIn={handleCheckIn}
           onCheckOut={handleCheckOut}
