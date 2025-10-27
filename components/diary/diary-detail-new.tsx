@@ -258,10 +258,10 @@ export function DiaryDetailNew({ diaryId }: DiaryDetailNewProps) {
 					</Card>
 				)}
 
-				{/* Signature */}
-				{diary.signed_by_name && (
-					<Card className='border-2 border-green-200 bg-green-50/50 hover:shadow-md transition-all duration-200'>
-						<CardHeader className='pb-4'>
+			{/* Signature */}
+			{diary.signature_name && (
+				<Card className='border-2 border-green-200 bg-green-50/50 hover:shadow-md transition-all duration-200'>
+					<CardHeader className='pb-4'>
 							<CardTitle className='flex items-center gap-2 text-lg'>
 								<div className='p-2 rounded-lg bg-green-100'>
 									<CheckCircle className='w-5 h-5 text-green-600' />
@@ -270,12 +270,12 @@ export function DiaryDetailNew({ diaryId }: DiaryDetailNewProps) {
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className='space-y-2'>
-								<p className='text-base'>
-									<span className='font-medium'>Signerad av:</span> {diary.signed_by_name}
-								</p>
-								<p className='text-sm text-muted-foreground'>
-									{new Date(diary.signed_at!).toLocaleString('sv-SE', {
+						<div className='space-y-2'>
+							<p className='text-base'>
+								<span className='font-medium'>Signerad av:</span> {diary.signature_name}
+							</p>
+							<p className='text-sm text-muted-foreground'>
+								{new Date(diary.signature_timestamp!).toLocaleString('sv-SE', {
 										year: 'numeric',
 										month: 'long',
 										day: 'numeric',

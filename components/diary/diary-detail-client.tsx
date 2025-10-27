@@ -209,23 +209,23 @@ export function DiaryDetailClient({ diaryId }: DiaryDetailClientProps) {
 				</Card>
 			)}
 
-		{/* Signature */}
-		{diary.signed_by_name && (
-			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
-				<CardHeader>
+	{/* Signature */}
+	{diary.signature_name && (
+		<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+			<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							<CheckCircle className="h-5 w-5 text-primary" />
 							Signatur
 						</CardTitle>
 					</CardHeader>
-					<CardContent>
-						<p className="text-sm">
-							<strong>Signerad av:</strong> {diary.signed_by_name}
-						</p>
-						<p className="text-sm text-muted-foreground mt-1">
-							{new Date(diary.signed_at!).toLocaleString('sv-SE')}
-						</p>
-					</CardContent>
+				<CardContent>
+					<p className="text-sm">
+						<strong>Signerad av:</strong> {diary.signature_name}
+					</p>
+					<p className="text-sm text-muted-foreground mt-1">
+						{new Date(diary.signature_timestamp!).toLocaleString('sv-SE')}
+					</p>
+				</CardContent>
 				</Card>
 			)}
 

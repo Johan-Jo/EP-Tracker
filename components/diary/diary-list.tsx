@@ -15,8 +15,8 @@ interface DiaryEntry {
 	temperature_c: number | null;
 	crew_count: number | null;
 	work_performed: string | null;
-	signed_by_name: string | null;
-	signed_at: string | null;
+	signature_name: string | null;
+	signature_timestamp: string | null;
 	created_at: string;
 	project: {
 		name: string;
@@ -162,13 +162,13 @@ export function DiaryList({ projectId, orgId }: DiaryListProps) {
 						<div className="flex items-center justify-between text-sm">
 							<div className="space-y-1">
 								<p className="text-muted-foreground">
-									Projekt: {entry.project.project_number ? `${entry.project.project_number} - ` : ''}{entry.project.name}
+								Projekt: {entry.project.project_number ? `${entry.project.project_number} - ` : ''}{entry.project.name}
+							</p>
+							{entry.signature_name && (
+								<p className="text-xs text-muted-foreground">
+									Signerad av: {entry.signature_name} • {new Date(entry.signature_timestamp!).toLocaleString('sv-SE')}
 								</p>
-								{entry.signed_by_name && (
-									<p className="text-xs text-muted-foreground">
-										Signerad av: {entry.signed_by_name} • {new Date(entry.signed_at!).toLocaleString('sv-SE')}
-									</p>
-								)}
+							)}
 								<p className="text-xs text-muted-foreground">
 									Skapad: {new Date(entry.created_at).toLocaleDateString('sv-SE')}
 								</p>

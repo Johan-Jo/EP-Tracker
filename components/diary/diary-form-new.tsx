@@ -109,8 +109,8 @@ export function DiaryFormNew({ orgId, userId }: DiaryFormNewProps) {
 					safety_notes: safety || null,
 					deliveries: deliveries || null,
 					visitors: visitors || null,
-					signed_by_name: signature,
-					signed_at: new Date().toISOString(),
+					signature_name: signature,
+					signature_timestamp: new Date().toISOString(),
 				}),
 			});
 

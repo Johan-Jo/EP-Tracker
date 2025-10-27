@@ -294,14 +294,14 @@ export function DiaryPageNew({ orgId }: DiaryPageNewProps) {
 											</p>
 										</div>
 
-										{/* Footer */}
-										{entry.signed_by_name && (
-											<div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground pt-3 border-t border-border'>
-												<span>Signerad av: {entry.signed_by_name}</span>
-												<span>•</span>
-												<span>{new Date(entry.signed_at).toLocaleString('sv-SE')}</span>
-												<span>•</span>
-												<span>Skapad: {new Date(entry.created_at).toLocaleDateString('sv-SE')}</span>
+									{/* Footer */}
+									{entry.signature_name && (
+										<div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground pt-3 border-t border-border'>
+											<span>Signerad av: {entry.signature_name}</span>
+											<span>•</span>
+											<span>{new Date(entry.signature_timestamp).toLocaleString('sv-SE')}</span>
+											<span>•</span>
+											<span>Skapad: {new Date(entry.created_at).toLocaleDateString('sv-SE')}</span>
 											</div>
 										)}
 									</div>

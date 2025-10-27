@@ -92,12 +92,12 @@ export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 
 			// Add signature if provided
 			const diaryData = signature
-				? {
-						...cleanedData,
-						signed_by_name: signature.name,
-						signed_at: signature.timestamp,
-				  }
-				: cleanedData;
+			? {
+					...cleanedData,
+					signature_name: signature.name,
+					signature_timestamp: signature.timestamp,
+			  }
+			: cleanedData;
 
 			// Create diary entry
 			const response = await fetch('/api/diary', {
