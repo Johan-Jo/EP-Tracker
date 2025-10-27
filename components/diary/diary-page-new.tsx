@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
+import { formatPlainDate, formatSwedishFull } from '@/lib/utils/formatPlainDate';
 
 interface DiaryPageNewProps {
 	orgId: string;
@@ -19,6 +20,7 @@ export function DiaryPageNew({ orgId }: DiaryPageNewProps) {
 	// Fetch diary entries
 	const { data: diaryEntries = [], isLoading } = useQuery({
 		queryKey: ['diary', orgId],
+		refetchOnMount: 'always', // Always refetch when component mounts
 		queryFn: async () => {
 			const { data, error } = await supabase
 				.from('diary_entries')
@@ -94,9 +96,13 @@ export function DiaryPageNew({ orgId }: DiaryPageNewProps) {
 	// Calculate stats
 	const totalEntries = diaryEntries.length;
 	const thisWeekEntries = diaryEntries.filter((entry: any) => {
-		const entryDate = new Date(entry.date);
+		// Safe date comparison using T00:00:00 to avoid timezone issues
+		const entryDate = new Date(`${entry.date}T00:00:00`);
 		const now = new Date();
+		// Set to start of day for fair comparison
+		now.setHours(23, 59, 59, 999);
 		const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+		weekAgo.setHours(0, 0, 0, 0);
 		return entryDate >= weekAgo && entryDate <= now;
 	}).length;
 	
@@ -233,7 +239,7 @@ export function DiaryPageNew({ orgId }: DiaryPageNewProps) {
 										<div className='flex flex-wrap items-center gap-3 mb-3 pb-3 border-b border-border'>
 											<div className='flex items-center gap-2 px-3 py-1.5 bg-accent rounded-lg'>
 												<Calendar className='w-4 h-4 text-primary' />
-												<span className='text-sm'>{new Date(entry.date).toLocaleDateString('sv-SE')}</span>
+												<span className='text-sm'>{formatPlainDate(entry.date, 'sv-SE', 'medium')}</span>
 											</div>
 											
 											{entry.weather && (
@@ -277,12 +283,7 @@ export function DiaryPageNew({ orgId }: DiaryPageNewProps) {
 										{/* Content */}
 										<div className='mb-3'>
 											<h4 className='text-lg font-semibold mb-2'>
-												Dagbok - {new Date(entry.date).toLocaleDateString('sv-SE', { 
-													weekday: 'long', 
-													year: 'numeric', 
-													month: 'long', 
-													day: 'numeric' 
-												})}
+												Dagbok - {formatSwedishFull(entry.date)}
 											</h4>
 											{entry.work_performed && (
 												<p className='text-sm text-muted-foreground mb-2 line-clamp-2'>

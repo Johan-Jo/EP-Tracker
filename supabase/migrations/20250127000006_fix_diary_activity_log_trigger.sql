@@ -1,11 +1,8 @@
 -- =====================================================
--- FIX: Diary entries activity log trigger
+-- FIX: Activity Log Trigger for diary_entries
 -- =====================================================
--- Problem: log_activity() trigger tries to access NEW.user_id
--- but diary_entries table uses 'created_by' instead
--- 
--- This migration fixes the trigger function to handle
--- different user ID field names per table
+-- Problem: diary_entries uses 'created_by' not 'user_id'
+-- Solution: Handle diary_entries specially in log_activity()
 
 CREATE OR REPLACE FUNCTION log_activity()
 RETURNS TRIGGER
@@ -33,8 +30,8 @@ BEGIN
   v_org_id := COALESCE(NEW.org_id, OLD.org_id);
   v_project_id := COALESCE(NEW.project_id, OLD.project_id);
   
-  -- Handle different user_id field names per table
-  IF TG_TABLE_NAME = 'diary_entries' THEN
+  -- FIX: Handle tables using created_by instead of user_id
+  IF TG_TABLE_NAME IN ('diary_entries', 'ata') THEN
     v_user_id := COALESCE(NEW.created_by, OLD.created_by);
   ELSE
     v_user_id := COALESCE(NEW.user_id, OLD.user_id);
@@ -45,38 +42,35 @@ BEGIN
     WHEN 'time_entries' THEN
       v_description := 'Tidrapport ' || v_action;
       v_data := jsonb_build_object(
+        'duration_min', COALESCE(NEW.duration_min, OLD.duration_min),
+        'task_label', COALESCE(NEW.task_label, OLD.task_label),
         'start_at', COALESCE(NEW.start_at, OLD.start_at),
-        'stop_at', COALESCE(NEW.stop_at, OLD.stop_at),
-        'task_label', COALESCE(NEW.task_label, OLD.task_label)
+        'stop_at', COALESCE(NEW.stop_at, OLD.stop_at)
       );
     
     WHEN 'materials' THEN
       v_description := 'Material: ' || COALESCE(NEW.description, OLD.description);
       v_data := jsonb_build_object(
         'qty', COALESCE(NEW.qty, OLD.qty),
-        'unit', COALESCE(NEW.unit, OLD.unit),
-        'description', COALESCE(NEW.description, OLD.description)
+        'unit', COALESCE(NEW.unit, OLD.unit)
       );
     
     WHEN 'expenses' THEN
       v_description := 'Kostnad: ' || COALESCE(NEW.description, OLD.description);
       v_data := jsonb_build_object(
         'amount_sek', COALESCE(NEW.amount_sek, OLD.amount_sek),
-        'category', COALESCE(NEW.category, OLD.category),
-        'description', COALESCE(NEW.description, OLD.description)
+        'category', COALESCE(NEW.category, OLD.category)
       );
     
     WHEN 'mileage' THEN
       v_description := 'Milersättning: ' || COALESCE(NEW.from_location, OLD.from_location) || ' → ' || COALESCE(NEW.to_location, OLD.to_location);
       v_data := jsonb_build_object(
         'distance_km', COALESCE(NEW.distance_km, OLD.distance_km),
-        'amount_sek', COALESCE(NEW.amount_sek, OLD.amount_sek),
-        'from_location', COALESCE(NEW.from_location, OLD.from_location),
-        'to_location', COALESCE(NEW.to_location, OLD.to_location)
+        'rate', COALESCE(NEW.rate_per_km, OLD.rate_per_km)
       );
     
     WHEN 'diary_entries' THEN
-      v_description := 'Dagbok ' || v_action;
+      v_description := 'Dagbok: ' || COALESCE(TO_CHAR(NEW.date, 'YYYY-MM-DD'), TO_CHAR(OLD.date, 'YYYY-MM-DD'));
       v_data := jsonb_build_object(
         'date', COALESCE(NEW.date, OLD.date),
         'weather', COALESCE(NEW.weather, OLD.weather),
@@ -88,7 +82,9 @@ BEGIN
       v_description := 'ÄTA: ' || COALESCE(NEW.title, OLD.title);
       v_data := jsonb_build_object(
         'title', COALESCE(NEW.title, OLD.title),
-        'estimated_cost', COALESCE(NEW.estimated_cost, OLD.estimated_cost),
+        'qty', COALESCE(NEW.qty, OLD.qty),
+        'unit', COALESCE(NEW.unit, OLD.unit),
+        'unit_price_sek', COALESCE(NEW.unit_price_sek, OLD.unit_price_sek),
         'status', COALESCE(NEW.status, OLD.status)
       );
     
@@ -97,26 +93,29 @@ BEGIN
       v_data := '{}'::jsonb;
   END CASE;
 
-  -- Insert into activity log
+  -- Insert activity log
   INSERT INTO activity_log (
     org_id,
     user_id,
     project_id,
     type,
+    action,
     description,
-    data,
-    created_at
+    data
   ) VALUES (
     v_org_id,
     v_user_id,
     v_project_id,
     CASE TG_TABLE_NAME
-      WHEN 'diary_entries' THEN 'diary_entry'
+      WHEN 'diary_entries' THEN 'diary'
+      WHEN 'time_entries' THEN 'time_entry'
+      WHEN 'materials' THEN 'material'
+      WHEN 'expenses' THEN 'expense'
       ELSE TG_TABLE_NAME
     END,
+    v_action,
     v_description,
-    v_data,
-    NOW()
+    v_data
   );
 
   -- Return appropriate value
@@ -128,6 +127,5 @@ BEGIN
 END;
 $$;
 
--- Comment explaining the fix
-COMMENT ON FUNCTION log_activity() IS 'Activity logging trigger function. Handles different user_id field names: diary_entries uses created_by, others use user_id';
-
+-- Verify the function was updated
+SELECT 'log_activity() function updated successfully' AS status;

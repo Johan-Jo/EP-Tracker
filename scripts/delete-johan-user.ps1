@@ -19,3 +19,4 @@ Write-Host ""
 Write-Host "⚠️  Detta kommer att radera användaren johan@estimatepro.se och ALL relaterad data!" -ForegroundColor Yellow
 Write-Host ""
 
+

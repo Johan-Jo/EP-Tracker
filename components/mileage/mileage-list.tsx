@@ -153,7 +153,7 @@ export function MileageList({ orgId, projectId }: MileageListProps) {
 											<div>
 												<h4 className="font-medium">{entry.project.name}</h4>
 												<p className="text-sm text-muted-foreground">
-													{new Intl.DateTimeFormat('sv-SE', { dateStyle: 'long' }).format(new Date(entry.date))}
+													{entry.date}
 												</p>
 											</div>
 											{getStatusBadge(entry.status)}

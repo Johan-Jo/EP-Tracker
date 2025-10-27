@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,9 +20,18 @@ interface DiaryFormNewProps {
 export function DiaryFormNew({ orgId, userId }: DiaryFormNewProps) {
 	const router = useRouter();
 	const supabase = createClient();
+	const queryClient = useQueryClient();
 	
 	const [project, setProject] = useState('');
-	const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+	// Use local date to avoid timezone issues
+	const getLocalDateString = () => {
+		const now = new Date();
+		const year = now.getFullYear();
+		const month = String(now.getMonth() + 1).padStart(2, '0');
+		const day = String(now.getDate()).padStart(2, '0');
+		return `${year}-${month}-${day}`;
+	};
+	const [date, setDate] = useState(getLocalDateString());
 	const [staffCount, setStaffCount] = useState('');
 	const [weather, setWeather] = useState('');
 	const [temperature, setTemperature] = useState('');
@@ -95,12 +104,18 @@ export function DiaryFormNew({ orgId, userId }: DiaryFormNewProps) {
 
 		try {
 			// Create diary entry via API
+			// Ensure date is in YYYY-MM-DD format without timezone conversion
+			// PostgreSQL DATE type should be sent as pure date string (no time component)
+			const dateString = date.trim();
+			
+			console.log('[Diary Form] Submitting date:', dateString);
+			
 			const response = await fetch('/api/diary', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					project_id: project,
-					date,
+					date: dateString, // Pure YYYY-MM-DD string, PostgreSQL will treat as DATE
 					crew_count: staffCount ? parseInt(staffCount) : null,
 					weather: weather || null,
 					temperature_c: temperature ? parseFloat(temperature) : null,
@@ -147,11 +162,16 @@ export function DiaryFormNew({ orgId, userId }: DiaryFormNewProps) {
 				}
 			}
 
+			// Invalidate diary cache to show new entry immediately
+			await queryClient.invalidateQueries({ queryKey: ['diary', orgId] });
+			
 			toast.success('Dagbokspost sparad!');
 			router.push(`/dashboard/diary/${entry.id}`);
 		} catch (error) {
 			console.error('Error creating diary entry:', error);
-			toast.error('Kunde inte spara dagboksposten');
+			// Show the actual error message from the server
+			const errorMessage = error instanceof Error ? error.message : 'Kunde inte spara dagboksposten';
+			toast.error(errorMessage);
 		} finally {
 			setIsSubmitting(false);
 		}

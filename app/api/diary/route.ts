@@ -46,20 +46,38 @@ export async function POST(request: NextRequest) {
 	const supabase = await createClient();
 	const body = await request.json();
 
+	// Validate date format (YYYY-MM-DD string only)
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
+		return NextResponse.json({ error: 'Invalid date format. Must be YYYY-MM-DD' }, { status: 400 });
+	}
+
+	console.log('[Diary API] Received date (string):', body.date);
+
+	// Call RPC with typed DATE parameter - prevents timezone conversion
 	const { data, error } = await supabase
-		.from('diary_entries')
-		.insert({
-			...body,
-			org_id: membership.org_id,
-			created_by: user.id,
+		.rpc('insert_diary_entry', {
+			p_org_id: membership.org_id,
+			p_project_id: body.project_id,
+			p_created_by: user.id,
+			p_date: body.date, // String sent to DATE parameter (no tz conversion)
+			p_weather: body.weather || null,
+			p_temperature_c: body.temperature_c || null,
+			p_crew_count: body.crew_count || null,
+			p_work_performed: body.work_performed || null,
+			p_obstacles: body.obstacles || null,
+			p_safety_notes: body.safety_notes || null,
+			p_deliveries: body.deliveries || null,
+			p_visitors: body.visitors || null,
+			p_signature_name: body.signature_name || null,
+			p_signature_timestamp: body.signature_timestamp || null,
 		})
-		.select()
 		.single();
 
 	if (error) {
-		return NextResponse.json({ error: error.message }, { status: 500 });
+		// Surface exact error message (includes duplicate constraint message)
+		return NextResponse.json({ error: error.message }, { status: 400 });
 	}
 
-	return NextResponse.json({ diary: data });
+	return NextResponse.json({ diary: data }, { status: 201 });
 }
 

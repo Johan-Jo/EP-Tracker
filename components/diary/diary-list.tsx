@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { FileText, Eye, Calendar, Users, Cloud, Thermometer, ImageIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
+import { formatPlainDate, formatSwedishFull } from '@/lib/utils/formatPlainDate';
 
 interface DiaryEntry {
 	id: string;
@@ -111,7 +112,7 @@ export function DiaryList({ projectId, orgId }: DiaryListProps) {
 								<div className="flex items-center gap-2">
 									<Badge variant="outline" className="flex items-center gap-1">
 										<Calendar className="h-3 w-3" />
-										{new Date(entry.date).toLocaleDateString('sv-SE')}
+										{formatPlainDate(entry.date, 'sv-SE', 'medium')}
 									</Badge>
 									{entry.weather && (
 										<Badge variant="secondary">
@@ -138,12 +139,7 @@ export function DiaryList({ projectId, orgId }: DiaryListProps) {
 									)}
 								</div>
 								<CardTitle className="text-lg">
-									Dagbok - {new Date(entry.date).toLocaleDateString('sv-SE', { 
-										weekday: 'long', 
-										year: 'numeric', 
-										month: 'long', 
-										day: 'numeric' 
-									})}
+									Dagbok - {formatSwedishFull(entry.date)}
 								</CardTitle>
 								{entry.work_performed && (
 									<p className="text-sm text-muted-foreground line-clamp-2">

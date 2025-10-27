@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Users, Cloud, Thermometer, ImageIcon, CheckCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { GalleryViewer } from '@/components/shared/gallery-viewer';
+import { formatPlainDate, formatSwedishFull } from '@/lib/utils/formatPlainDate';
 
 interface DiaryDetailClientProps {
 	diaryId: string;
@@ -82,12 +83,7 @@ export function DiaryDetailClient({ diaryId }: DiaryDetailClientProps) {
 					<div className="flex items-start justify-between">
 						<div className="space-y-2">
 							<CardTitle className="text-2xl">
-								Dagbok - {new Date(diary.date).toLocaleDateString('sv-SE', { 
-									weekday: 'long', 
-									year: 'numeric', 
-									month: 'long', 
-									day: 'numeric' 
-								})}
+								Dagbok - {formatSwedishFull(diary.date)}
 							</CardTitle>
 							<p className="text-sm text-muted-foreground">
 								Projekt: {diary.project.project_number ? `${diary.project.project_number} - ` : ''}{diary.project.name}
@@ -97,7 +93,7 @@ export function DiaryDetailClient({ diaryId }: DiaryDetailClientProps) {
 					<div className="flex flex-wrap gap-2 mt-4">
 						<Badge variant="outline" className="flex items-center gap-1">
 							<Calendar className="h-3 w-3" />
-							{new Date(diary.date).toLocaleDateString('sv-SE')}
+							{formatPlainDate(diary.date, 'sv-SE', 'medium')}
 						</Badge>
 						{diary.weather && (
 							<Badge variant="secondary">

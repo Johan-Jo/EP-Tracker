@@ -90,3 +90,4 @@ BEGIN
     RAISE NOTICE 'Successfully deleted user johan@estimatepro.se';
 END $$;
 
+

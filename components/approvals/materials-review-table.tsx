@@ -348,7 +348,7 @@ export function MaterialsReviewTable({
                                         <TableCell>{expense.description}</TableCell>
                                         <TableCell>{expense.category || '-'}</TableCell>
                                         <TableCell className="font-medium">{expense.amount_sek} kr</TableCell>
-                                        <TableCell>{new Date(expense.date).toLocaleDateString('sv-SE')}</TableCell>
+                                        <TableCell>{expense.date}</TableCell>
                                     </TableRow>
                                 ))
                             )}
@@ -434,7 +434,7 @@ export function MaterialsReviewTable({
                                         <TableCell>{mileage.distance_km} km</TableCell>
                                         <TableCell>{mileage.rate_per_km} kr</TableCell>
                                         <TableCell className="font-medium">{mileage.total_sek} kr</TableCell>
-                                        <TableCell>{new Date(mileage.date).toLocaleDateString('sv-SE')}</TableCell>
+                                        <TableCell>{mileage.date}</TableCell>
                                     </TableRow>
                                 ))
                             )}

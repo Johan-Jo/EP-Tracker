@@ -25,15 +25,15 @@ interface DashboardClientProps {
     id: string;
     name: string;
   }>;
-  recentActivities: Array<{
-    id: string;
-    type: 'time_entry' | 'material' | 'expense' | 'ata' | 'diary_entry' | 'mileage';
-    created_at: string;
-    project: { id: string; name: string } | null;
-    user_name?: string;
-    data: any;
-    description: string;
-  }>;
+    recentActivities: Array<{
+      id: string;
+      type: 'time_entry' | 'material' | 'expense' | 'ata' | 'diary' | 'mileage';
+      created_at: string;
+      project: { id: string; name: string } | null;
+      user_name?: string;
+      data: any;
+      description: string;
+    }>;
   userId: string;
 }
 
@@ -326,40 +326,8 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                   const getActivityDetails = () => {
                     switch (activity.type) {
                       case 'time_entry': {
-                        // Validate start_at exists and is valid
-                        if (!activity.data.start_at) {
-                          return null; // Skip invalid time entries
-                        }
-                        
-                        const startDate = new Date(activity.data.start_at);
-                        
-                        // Check if date is valid
-                        if (isNaN(startDate.getTime())) {
-                          return null; // Skip invalid dates
-                        }
-                        
-                        const duration = activity.data.stop_at 
-                          ? Math.round((new Date(activity.data.stop_at).getTime() - startDate.getTime()) / (1000 * 60 * 60) * 10) / 10
-                          : null;
-                        
-                        // Format date consistently for server and client
-                        const formatDate = (date: Date) => {
-                          if (!isClient) {
-                            // Server-side: use simple format
-                            const d = date.toISOString().split('T')[0];
-                            const t = date.toISOString().split('T')[1].slice(0, 5);
-                            return { date: d, time: t };
-                          }
-                          // Client-side: use locale format
-                          return {
-                            date: date.toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' }),
-                            time: date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
-                          };
-                        };
-                        
-                        const formattedStart = formatDate(startDate);
-                        const formattedStop = activity.data.stop_at ? formatDate(new Date(activity.data.stop_at)) : null;
-                        
+                        // Use description from activity_log instead of trying to format dates
+                        // This avoids date validation issues
                         return {
                           icon: (
                             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -369,9 +337,9 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           ),
                           iconBg: 'bg-orange-100 text-orange-600',
                           title: 'Tidsrapport',
-                          description: `${formattedStart.date} kl ${formattedStart.time}${formattedStop ? ` - ${formattedStop.time}` : ''}`,
-                          badge: duration !== null ? `${duration}h` : 'Pågår',
-                          badgeColor: duration !== null ? 'text-orange-600' : 'text-green-600 bg-green-50 px-2 py-1 rounded-full',
+                          description: activity.description || 'Tidrapport skapad',
+                          badge: null,
+                          badgeColor: '',
                         };
                       }
                       case 'material':
@@ -384,8 +352,8 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           ),
                           iconBg: 'bg-blue-100 text-blue-600',
                           title: 'Material',
-                          description: `${activity.data.description} - ${activity.data.qty} ${activity.data.unit}`,
-                          badge: null,
+                          description: activity.description || 'Material tillagt',
+                          badge: activity.data?.qty && activity.data?.unit ? `${activity.data.qty} ${activity.data.unit}` : null,
                           badgeColor: '',
                         };
                       case 'expense':
@@ -397,53 +365,10 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           ),
                           iconBg: 'bg-green-100 text-green-600',
                           title: 'Utgift',
-                          description: activity.data.description,
-                          badge: `${activity.data.amount_sek} kr`,
+                          description: activity.description || 'Utgift registrerad',
+                          badge: activity.data?.amount_sek ? `${activity.data.amount_sek} kr` : null,
                           badgeColor: 'text-green-600',
                         };
-                      case 'ata':
-                        return {
-                          icon: (
-                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                              <polyline points="14 2 14 8 20 8" />
-                            </svg>
-                          ),
-                          iconBg: 'bg-purple-100 text-purple-600',
-                          title: 'ÄTA',
-                          description: activity.data.title,
-                          badge: null,
-                          badgeColor: '',
-                        };
-                      case 'diary_entry': {
-                        if (!activity.data.date) {
-                          return null; // Skip if no date
-                        }
-                        
-                        const diaryDate = new Date(activity.data.date);
-                        
-                        // Check if date is valid
-                        if (isNaN(diaryDate.getTime())) {
-                          return null; // Skip invalid dates
-                        }
-                        
-                        const formattedDate = isClient 
-                          ? diaryDate.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })
-                          : activity.data.date;
-                        return {
-                          icon: (
-                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                            </svg>
-                          ),
-                          iconBg: 'bg-indigo-100 text-indigo-600',
-                          title: 'Dagbok',
-                          description: `${formattedDate}${activity.data.work_performed ? ` - ${activity.data.work_performed.substring(0, 50)}${activity.data.work_performed.length > 50 ? '...' : ''}` : ''}`,
-                          badge: null,
-                          badgeColor: '',
-                        };
-                      }
                       case 'mileage':
                         return {
                           icon: (
@@ -456,12 +381,52 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           ),
                           iconBg: 'bg-teal-100 text-teal-600',
                           title: 'Milersättning',
-                          description: `${activity.data.distance_km || 0} km`,
-                          badge: `${activity.data.amount_sek || 0} kr`,
+                          description: activity.description || 'Milersättning registrerad',
+                          badge: activity.data?.distance_km ? `${activity.data.distance_km} km` : null,
                           badgeColor: 'text-teal-600',
                         };
+                      case 'ata':
+                        return {
+                          icon: (
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                          ),
+                          iconBg: 'bg-purple-100 text-purple-600',
+                          title: 'ÄTA',
+                          description: activity.description || 'ÄTA skapad',
+                          badge: null,
+                          badgeColor: '',
+                        };
+                      case 'diary':
+                        return {
+                          icon: (
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                            </svg>
+                          ),
+                          iconBg: 'bg-indigo-100 text-indigo-600',
+                          title: 'Dagbok',
+                          description: activity.description || 'Dagboksanteckning skapad',
+                          badge: null,
+                          badgeColor: '',
+                        };
                       default:
-                        return null;
+                        return {
+                          icon: (
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="12" cy="12" r="9" />
+                              <path d="M12 7v5l3 2" />
+                            </svg>
+                          ),
+                          iconBg: 'bg-gray-100 text-gray-600',
+                          title: activity.type,
+                          description: activity.description || 'Aktivitet',
+                          badge: null,
+                          badgeColor: '',
+                        };
                     }
                   };
 
