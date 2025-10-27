@@ -7,9 +7,10 @@ import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 interface DashboardClientProps {
   userName: string;
   stats: {
-    projectsCount: number;
-    timeEntriesCount: number;
-    materialsCount: number;
+    active_projects: number;
+    total_hours_week: number;
+    total_materials_week: number;
+    total_time_entries_week: number;
   };
   activeTimeEntry?: {
     id: string;
@@ -275,7 +276,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:border-orange-500 hover:shadow-md cursor-pointer transition-all" onClick={() => router.push('/dashboard/projects')}>
           <div className="p-5 sm:p-6">
             <div className="text-sm text-gray-600">Aktiva Projekt</div>
-            <div className="mt-1 text-2xl font-semibold">{stats.projectsCount}</div>
+            <div className="mt-1 text-2xl font-semibold">{stats.active_projects}</div>
             <div className="mt-2 text-sm text-gray-600 hover:text-gray-900">Visa alla projekt →</div>
           </div>
         </div>
@@ -283,7 +284,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:border-orange-500 hover:shadow-md cursor-pointer transition-all" onClick={() => router.push('/dashboard/time')}>
           <div className="p-5 sm:p-6">
             <div className="text-sm text-gray-600">Tidsrapporter denna vecka</div>
-            <div className="mt-1 text-2xl font-semibold">{stats.timeEntriesCount}</div>
+            <div className="mt-1 text-2xl font-semibold">{stats.total_time_entries_week}</div>
             <div className="mt-2 text-sm text-gray-600 hover:text-gray-900">Logga tid →</div>
           </div>
         </div>
@@ -291,7 +292,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:border-orange-500 hover:shadow-md cursor-pointer transition-all" onClick={() => router.push('/dashboard/materials')}>
           <div className="p-5 sm:p-6">
             <div className="text-sm text-gray-600">Material & Utgifter denna vecka</div>
-            <div className="mt-1 text-2xl font-semibold">{stats.materialsCount}</div>
+            <div className="mt-1 text-2xl font-semibold">{stats.total_materials_week}</div>
             <div className="mt-2 text-sm text-gray-600 hover:text-gray-900">Hantera material & utgifter →</div>
           </div>
         </div>
