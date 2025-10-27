@@ -75,6 +75,80 @@ grep -r "prompt(" --include="*.tsx" --include="*.ts"
 
 ---
 
+## ❌ FÖRBJUDET: Multi-Region Deployment
+
+**VIKTIGT:** EP-Tracker är konfigurerad för **ENDAST EN REGION: Stockholm (arn1)**
+
+Detta är ett krav på grund av Vercel Hobby-planens begränsningar. Multi-region deployment kräver Pro/Enterprise.
+
+### ✅ TILLÅTET:
+```typescript
+// Next.js Route Handlers & Pages
+export const runtime = 'nodejs';  // ✅ Preferred
+export const preferredRegion = 'arn1';  // ✅ REQUIRED
+
+// OR if Edge is absolutely necessary:
+export const runtime = 'edge';  // ⚠️ Use sparingly
+export const preferredRegion = 'arn1';  // ✅ REQUIRED
+```
+
+### ❌ FÖRBJUDET:
+```typescript
+// NEVER use multiple regions
+export const preferredRegion = ['arn1', 'fra1'];  // ❌ FORBIDDEN
+export const preferredRegion = 'auto';  // ❌ FORBIDDEN
+
+// NEVER configure multiple regions in vercel.json
+{
+  "regions": ["arn1", "fra1"]  // ❌ FORBIDDEN
+}
+```
+
+### 🔧 Konfigurationsfiler som MÅSTE respektera detta:
+
+1. **vercel.json:**
+   ```json
+   {
+     "regions": ["arn1"]  // ✅ ONLY Stockholm
+   }
+   ```
+
+2. **middleware.ts:**
+   ```typescript
+   export const config = {
+     matcher: [...],
+     regions: ['arn1']  // ✅ REQUIRED
+   };
+   ```
+
+3. **Alla API routes (app/api/**/route.ts):**
+   ```typescript
+   export const preferredRegion = 'arn1';
+   ```
+
+4. **Alla Page routes (app/**/page.tsx):**
+   ```typescript
+   export const preferredRegion = 'arn1';
+   ```
+
+### 🚨 Fel du kommer se om detta bryts:
+```
+Error: Deploying Serverless Functions to multiple regions 
+is restricted to the Pro and Enterprise plans.
+```
+
+### ✅ Verifiering innan commit:
+```bash
+# Kontrollera att INGA multi-region konfigurationer finns:
+rg -n "regions\s*:\s*\[[^\]]*,\s*[^\]]*\]" --type ts --type json
+rg -n "preferredRegion\s*=\s*\[" --type ts
+rg -n "preferredRegion\s*=\s*['\"]auto['\"]" --type ts
+
+# Resultatet ska vara TOMT. Alla träffar = FEL!
+```
+
+---
+
 ## Andra viktiga regler:
 
 ### TypeScript
