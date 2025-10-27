@@ -326,7 +326,18 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                   const getActivityDetails = () => {
                     switch (activity.type) {
                       case 'time_entry': {
+                        // Validate start_at exists and is valid
+                        if (!activity.data.start_at) {
+                          return null; // Skip invalid time entries
+                        }
+                        
                         const startDate = new Date(activity.data.start_at);
+                        
+                        // Check if date is valid
+                        if (isNaN(startDate.getTime())) {
+                          return null; // Skip invalid dates
+                        }
+                        
                         const duration = activity.data.stop_at 
                           ? Math.round((new Date(activity.data.stop_at).getTime() - startDate.getTime()) / (1000 * 60 * 60) * 10) / 10
                           : null;
@@ -405,7 +416,17 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           badgeColor: '',
                         };
                       case 'diary_entry': {
+                        if (!activity.data.date) {
+                          return null; // Skip if no date
+                        }
+                        
                         const diaryDate = new Date(activity.data.date);
+                        
+                        // Check if date is valid
+                        if (isNaN(diaryDate.getTime())) {
+                          return null; // Skip invalid dates
+                        }
+                        
                         const formattedDate = isClient 
                           ? diaryDate.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })
                           : activity.data.date;
