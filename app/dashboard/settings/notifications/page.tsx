@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNotificationPermission } from '@/lib/hooks/use-notification-permission';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,11 +12,25 @@ export default function NotificationsPage() {
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [testErrorMessage, setTestErrorMessage] = useState<string>('');
   const [isResetting, setIsResetting] = useState(false);
+  const [hasTokens, setHasTokens] = useState<boolean | null>(null);
+
+  // Check if user actually has FCM tokens in database
+  useEffect(() => {
+    if (permission === 'granted') {
+      fetch('/api/notifications/status')
+        .then(res => res.json())
+        .then(data => {
+          setHasTokens(data.hasTokens || false);
+        })
+        .catch(() => setHasTokens(false));
+    }
+  }, [permission]);
 
   const handleEnableNotifications = async () => {
     const success = await requestPermission();
     if (success) {
       console.log('✅ Notifications enabled');
+      setHasTokens(true); // Update state after successful registration
     }
   };
 
@@ -47,9 +61,10 @@ export default function NotificationsPage() {
         }
       }
 
-      // 3. Reload page to reset state
+      // 3. Update state and show activation button
+      setHasTokens(false);
       alert('✅ Notiser återställda! Aktivera notiser igen för att fortsätta.');
-      window.location.reload();
+      // Don't reload - just update state
     } catch (error) {
       console.error('❌ Error resetting notifications:', error);
       alert('❌ Misslyckades att återställa notiser. Försök igen.');
@@ -148,7 +163,32 @@ export default function NotificationsPage() {
             </div>
           )}
 
-          {permission === 'granted' && (
+          {permission === 'granted' && hasTokens === false && (
+            <div>
+              <div className="flex items-center gap-2 text-yellow-600 mb-4">
+                <X className="w-5 h-5" />
+                <span className="font-medium">Notiser behöver reaktiveras!</span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Chrome-tillstånd finns, men FCM tokens saknas. Klicka för att registrera igen.
+              </p>
+              <Button onClick={handleEnableNotifications} disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Aktiverar...
+                  </>
+                ) : (
+                  <>
+                    <Bell className="mr-2 h-4 w-4" />
+                    Aktivera notiser
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
+          {permission === 'granted' && hasTokens !== false && (
             <div>
               <div className="flex items-center gap-2 text-green-600 mb-4">
                 <Check className="w-5 h-5" />
