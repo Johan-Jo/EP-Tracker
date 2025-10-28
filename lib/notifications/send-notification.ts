@@ -15,6 +15,8 @@ export interface NotificationPayload {
  * Send a push notification to a user
  */
 export async function sendNotification(payload: NotificationPayload) {
+  console.log(`🔔 [sendNotification] Starting for user ${payload.userId}, type: ${payload.type}`);
+  
   if (!messaging) {
     console.warn('⚠️ Firebase messaging not available - notification not sent');
     return null;
@@ -22,6 +24,7 @@ export async function sendNotification(payload: NotificationPayload) {
 
   try {
     const supabase = await createClient();
+    console.log(`🔔 [sendNotification] Supabase client created`);
 
     // 1. Check user preferences
     const { data: prefs } = await supabase
@@ -29,6 +32,8 @@ export async function sendNotification(payload: NotificationPayload) {
       .select('*')
       .eq('user_id', payload.userId)
       .single();
+
+    console.log(`🔔 [sendNotification] User preferences:`, prefs);
 
     // Check if notification type is enabled
     const prefKey = getPreferenceKey(payload.type);
@@ -49,6 +54,8 @@ export async function sendNotification(payload: NotificationPayload) {
       .select('fcm_token')
       .eq('user_id', payload.userId);
 
+    console.log(`🔔 [sendNotification] Found ${subscriptions?.length || 0} subscriptions`);
+
     if (!subscriptions || subscriptions.length === 0) {
       console.log(`📭 No subscriptions for user ${payload.userId}`);
       return null;
@@ -56,6 +63,8 @@ export async function sendNotification(payload: NotificationPayload) {
 
     // 4. Send to all devices
     const tokens = subscriptions.map((s) => s.fcm_token);
+    console.log(`🔔 [sendNotification] Preparing to send to ${tokens.length} tokens`);
+    
     const message: any = {
       notification: {
         title: payload.title,
@@ -78,7 +87,21 @@ export async function sendNotification(payload: NotificationPayload) {
       };
     }
 
+    console.log(`🔔 [sendNotification] Calling Firebase sendEachForMulticast...`);
     const response = await messaging.sendEachForMulticast(message);
+    console.log(`🔔 [sendNotification] Firebase response:`, JSON.stringify({
+      successCount: response.successCount,
+      failureCount: response.failureCount,
+    }));
+
+    // Log failures if any
+    if (response.failureCount > 0) {
+      response.responses.forEach((resp, idx) => {
+        if (!resp.success) {
+          console.error(`❌ Failed to send to token ${idx}:`, resp.error);
+        }
+      });
+    }
 
     // 5. Log notification
     await supabase.from('notification_log').insert({

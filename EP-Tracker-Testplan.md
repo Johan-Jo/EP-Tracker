@@ -58,11 +58,12 @@ Denna testplan riktar sig till:
 10. [Checklistor](#checklistor)
 11. [Godkännanden](#godkännanden)
 12. [Inställningar](#inställningar)
-13. [PWA & Offline](#pwa--offline)
-14. [Säkerhet & Behörigheter](#säkerhet--behörigheter)
-15. [Prestanda](#prestanda)
-16. [Kompatibilitet](#kompatibilitet)
-17. [Testrapportering](#testrapportering)
+13. [Push-Notiser & Projekt-Alerts](#push-notiser--projekt-alerts) ⭐ **NYT**
+14. [PWA & Offline](#pwa--offline)
+15. [Säkerhet & Behörigheter](#säkerhet--behörigheter)
+16. [Prestanda](#prestanda)
+17. [Kompatibilitet](#kompatibilitet)
+18. [Testrapportering](#testrapportering)
 
 ---
 
@@ -1426,7 +1427,97 @@ Dashboard visar:
 
 <div style="page-break-after: always;"></div>
 
-## 13. PWA & Offline
+## 13. Push-Notiser & Projekt-Alerts
+
+### TEST-096: Aktivera Push-Notiser
+
+**Prioritet:** 🔴 Kritisk  
+**Förväntad tid:** 5 minuter
+
+#### Teststeg
+
+1. Gå till **Inställningar** → **"Notiser"**
+2. Klicka **"Aktivera notiser"**
+3. Acceptera webbläsarens notis-prompt
+4. Klicka **"Skicka test-notis"**
+
+#### Förväntat resultat
+
+- ✅ Notis-tillstånd beviljas
+- ✅ FCM token genereras och sparas
+- ✅ Test-notis visas inom 3 sekunder
+- ✅ Klick på notis öppnar Dashboard
+
+---
+
+### TEST-097: Konfigurera Projekt Alert-inställningar
+
+**Prioritet:** 🔴 Kritisk  
+**Förväntad tid:** 5 minuter
+
+#### Teststeg
+
+1. Skapa eller öppna projekt
+2. Scrolla till **"Alert-inställningar"** (eller klicka "Redigera")
+3. Sätt arbetsdag: Start `07:00`, Slut `16:00`
+4. Aktivera **"Notifiera vid check-in"** och **"Notifiera vid check-out"**
+5. Spara
+
+#### Förväntat resultat
+
+- ✅ Alert settings sparas korrekt
+- ✅ Visas på projektsidan
+- ✅ Default-värden finns för nya projekt
+
+---
+
+### TEST-098: Check-in/Check-out Notiser (Real-time)
+
+**Prioritet:** 🔴 Kritisk  
+**Förväntad tid:** 10 minuter
+
+#### Teststeg
+
+1. Logga in som **Admin/Foreman** (enhet 1), aktivera notiser
+2. Öppna inkognito, logga in som **Worker** (enhet 2)
+3. Worker checkar in på projektet
+4. Verifiera att Admin får notis med namn, projekt, tid
+5. Worker checkar ut
+6. Verifiera att Admin får notis med arbetad tid
+
+#### Förväntat resultat
+
+- ✅ Check-in notis inom 3 sekunder
+- ✅ Check-out notis med timmar
+- ✅ Klick navigerar till projekt
+- ✅ Worker får INTE notis (endast admin/foreman)
+
+---
+
+### TEST-099: Avaktivera Projekt-Alerts
+
+**Prioritet:** 🟠 Hög  
+**Förväntad tid:** 5 minuter
+
+#### Teststeg
+
+1. Öppna projekt → Alert-inställningar → Redigera
+2. Avaktivera **"Notifiera vid check-in"**
+3. Spara
+4. Worker checkar in
+5. Verifiera att INGEN notis skickas
+
+#### Förväntat resultat
+
+- ✅ Inställningar sparas
+- ✅ Ingen check-in notis skickas
+- ✅ Check-out notis fungerar fortfarande (om aktiverad)
+
+---
+
+<div style="page-break-after: always;"></div>
+
+## 14. PWA & Offline
 
 ### TEST-100: Installera PWA (Mobil)
 
