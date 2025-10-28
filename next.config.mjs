@@ -2,8 +2,8 @@ import withPWAInit from '@ducanh2912/next-pwa';
 
 const withPWA = withPWAInit({
 	dest: 'public',
-	disable: process.env.NODE_ENV === 'development',
-	register: true,
+	disable: true, // Disabled - using firebase-messaging-sw.js for push notifications instead
+	register: false,
 	skipWaiting: true,
 	sw: 'sw.js',
 	cacheOnNavigation: true,
