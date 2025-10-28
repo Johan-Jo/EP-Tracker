@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Search, FileText, Clock, CheckCircle, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,12 +12,20 @@ import Link from 'next/link';
 interface AtaPageNewProps {
 	orgId: string;
 	userRole: 'admin' | 'foreman' | 'worker' | 'finance';
+	projectId?: string;
 }
 
-export function AtaPageNew({ orgId, userRole }: AtaPageNewProps) {
+export function AtaPageNew({ orgId, userRole, projectId }: AtaPageNewProps) {
 	const [searchQuery, setSearchQuery] = useState('');
-	const [selectedProject, setSelectedProject] = useState<string>('all');
+	const [selectedProject, setSelectedProject] = useState<string>(projectId || 'all');
 	const supabase = createClient();
+	
+	// Set selected project when projectId prop changes
+	useEffect(() => {
+		if (projectId) {
+			setSelectedProject(projectId);
+		}
+	}, [projectId]);
 
 	const canApprove = userRole === 'admin' || userRole === 'foreman';
 

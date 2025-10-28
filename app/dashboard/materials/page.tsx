@@ -2,7 +2,14 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
 import { MaterialsPageNew } from '@/components/materials/materials-page-new';
 
-export default async function MaterialsPage() {
+interface PageProps {
+	searchParams: Promise<{ project_id?: string }>;
+}
+
+export default async function MaterialsPage(props: PageProps) {
+	const searchParams = await props.searchParams;
+	const projectId = searchParams.project_id;
+	
 	// Server-side: Only fetch session
 	const { user, membership } = await getSession();
 
@@ -18,5 +25,5 @@ export default async function MaterialsPage() {
 		);
 	}
 
-	return <MaterialsPageNew orgId={membership.org_id} />;
+	return <MaterialsPageNew orgId={membership.org_id} projectId={projectId} />;
 }

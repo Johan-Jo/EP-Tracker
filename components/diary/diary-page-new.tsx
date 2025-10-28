@@ -11,25 +11,32 @@ import { formatPlainDate, formatSwedishFull } from '@/lib/utils/formatPlainDate'
 
 interface DiaryPageNewProps {
 	orgId: string;
+	projectId?: string;
 }
 
-export function DiaryPageNew({ orgId }: DiaryPageNewProps) {
+export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 	const [searchQuery, setSearchQuery] = useState('');
 	const supabase = createClient();
 
 	// Fetch diary entries
 	const { data: diaryEntries = [], isLoading } = useQuery({
-		queryKey: ['diary', orgId],
+		queryKey: ['diary', orgId, projectId],
 		refetchOnMount: 'always', // Always refetch when component mounts
 		queryFn: async () => {
-			const { data, error } = await supabase
+			let query = supabase
 				.from('diary_entries')
 				.select(`
 					*,
 					project:projects(name, project_number)
 				`)
-				.eq('org_id', orgId)
-				.order('date', { ascending: false });
+				.eq('org_id', orgId);
+			
+			// Filter by project if projectId is provided
+			if (projectId) {
+				query = query.eq('project_id', projectId);
+			}
+			
+			const { data, error } = await query.order('date', { ascending: false });
 
 			if (error) throw error;
 

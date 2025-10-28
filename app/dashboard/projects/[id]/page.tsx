@@ -9,6 +9,7 @@ import { MapPin, Edit, Calendar, Users, Building2, Clock, DollarSign, TrendingUp
 import { PhasesList } from '@/components/projects/phases-list';
 import { WorkOrdersList } from '@/components/projects/work-orders-list';
 import { ProjectTeamTab } from '@/components/projects/project-team-tab';
+import { ProjectSummaryView } from '@/components/projects/project-summary-view';
 
 interface PageProps {
 	params: Promise<{ id: string }>;
@@ -105,99 +106,39 @@ export default async function ProjectDetailPage(props: PageProps) {
 								</p>
 							)}
 						</div>
-						{canEdit && (
-							<Button asChild className='bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30'>
-								<Link href={`/dashboard/projects/${project.id}/edit`}>
-									<Edit className='w-4 h-4 mr-2' />
-									Redigera projekt
-								</Link>
-							</Button>
-						)}
 					</div>
 				</div>
 
-				{/* Overview Cards with Icons */}
-				<div className='grid gap-4 md:grid-cols-4'>
-					{project.client_name && (
-						<Card className='border-2 hover:border-orange-200 transition-colors'>
-							<CardHeader className='pb-3'>
-								<div className='flex items-center gap-2'>
-									<div className='p-2 bg-blue-100 rounded-lg'>
-										<Building2 className='w-4 h-4 text-blue-600' />
-									</div>
-									<CardDescription className='text-xs'>Kund</CardDescription>
-								</div>
-							</CardHeader>
-							<CardContent>
-								<p className='font-semibold text-lg'>{project.client_name}</p>
-							</CardContent>
-						</Card>
-					)}
+			{/* Project Summary - Full Page View (Figma Design) */}
+			<div className='space-y-6'>
+				<ProjectSummaryView 
+					projectId={project.id} 
+					canEdit={canEdit}
+					projectName={project.name}
+					projectNumber={project.project_number}
+					clientName={project.client_name}
+					siteAddress={project.site_address}
+					status={project.status}
+					budgetMode={project.budget_mode}
+					budgetHours={project.budget_hours}
+					budgetAmount={project.budget_amount}
+					showEditButton={true}
+				/>
+			</div>
 
-					{project.site_address && (
-						<Card className='border-2 hover:border-orange-200 transition-colors'>
-							<CardHeader className='pb-3'>
-								<div className='flex items-center gap-2'>
-									<div className='p-2 bg-green-100 rounded-lg'>
-										<MapPin className='w-4 h-4 text-green-600' />
-									</div>
-									<CardDescription className='text-xs'>Plats</CardDescription>
-								</div>
-							</CardHeader>
-							<CardContent>
-								<p className='font-semibold text-lg line-clamp-2'>{project.site_address}</p>
-							</CardContent>
-						</Card>
-					)}
-
-					<Card className='border-2 hover:border-orange-200 transition-colors'>
-						<CardHeader className='pb-3'>
-							<div className='flex items-center gap-2'>
-								<div className='p-2 bg-purple-100 rounded-lg'>
-									<Calendar className='w-4 h-4 text-purple-600' />
-								</div>
-								<CardDescription className='text-xs'>Skapad</CardDescription>
-							</div>
-						</CardHeader>
-						<CardContent>
-							<p className='font-semibold text-lg'>
-								{new Date(project.created_at).toLocaleDateString('sv-SE')}
-							</p>
-						</CardContent>
-					</Card>
-
-					<Card className='border-2 hover:border-orange-200 transition-colors'>
-						<CardHeader className='pb-3'>
-							<div className='flex items-center gap-2'>
-								<div className='p-2 bg-orange-100 rounded-lg'>
-									<TrendingUp className='w-4 h-4 text-orange-600' />
-								</div>
-								<CardDescription className='text-xs'>Status</CardDescription>
-							</div>
-						</CardHeader>
-						<CardContent>
-							<p className='font-semibold text-lg capitalize'>
-								{project.status === 'active' && 'Pågående'}
-								{project.status === 'paused' && 'Pausad'}
-								{project.status === 'completed' && 'Slutförd'}
-								{project.status === 'archived' && 'Arkiverad'}
-							</p>
-						</CardContent>
-					</Card>
-				</div>
-
-			{/* Tabs */}
-			<Tabs defaultValue='overview' className='space-y-4'>
-				<TabsList>
-					<TabsTrigger value='overview'>Översikt</TabsTrigger>
-					<TabsTrigger value='phases'>
-						Faser ({project.phases?.length || 0})
-					</TabsTrigger>
-					<TabsTrigger value='work-orders'>
-						Arbetsorder ({project.work_orders?.length || 0})
-					</TabsTrigger>
-					<TabsTrigger value='team'>Team</TabsTrigger>
-				</TabsList>
+			{/* Legacy tabs (hidden for now, can be removed later) */}
+			{false && (
+				<Tabs defaultValue='overview' className='space-y-4'>
+					<TabsList>
+						<TabsTrigger value='overview'>Översikt</TabsTrigger>
+						<TabsTrigger value='phases'>
+							Faser ({project.phases?.length || 0})
+						</TabsTrigger>
+						<TabsTrigger value='work-orders'>
+							Arbetsorder ({project.work_orders?.length || 0})
+						</TabsTrigger>
+						<TabsTrigger value='team'>Team</TabsTrigger>
+					</TabsList>
 
 				<TabsContent value='overview' className='space-y-6'>
 					{/* Budget Overview */}
@@ -307,6 +248,7 @@ export default async function ProjectDetailPage(props: PageProps) {
 					/>
 				</TabsContent>
 			</Tabs>
+			)}
 			</div>
 		</div>
 	);

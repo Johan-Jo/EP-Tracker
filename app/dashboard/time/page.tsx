@@ -2,7 +2,14 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
 import { TimePageNew } from '@/components/time/time-page-new';
 
-export default async function TimePage() {
+interface PageProps {
+	searchParams: Promise<{ project_id?: string }>;
+}
+
+export default async function TimePage(props: PageProps) {
+	const searchParams = await props.searchParams;
+	const projectId = searchParams.project_id;
+	
 	// Server-side: Only fetch session
 	const { user, membership } = await getSession();
 
@@ -18,6 +25,6 @@ export default async function TimePage() {
 		);
 	}
 
-	return <TimePageNew orgId={membership.org_id} userId={user.id} />;
+	return <TimePageNew orgId={membership.org_id} userId={user.id} projectId={projectId} />;
 }
 

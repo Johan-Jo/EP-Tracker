@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, Package, Receipt, TrendingUp, FileImage } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,16 +13,24 @@ import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 
 interface MaterialsPageNewProps {
 	orgId: string;
+	projectId?: string;
 }
 
-export function MaterialsPageNew({ orgId }: MaterialsPageNewProps) {
+export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 	const [showAddDialog, setShowAddDialog] = useState(false);
 	const [editingMaterial, setEditingMaterial] = useState<any>(null);
 	const [viewingMaterial, setViewingMaterial] = useState<any>(null);
 	const [searchQuery, setSearchQuery] = useState('');
-	const [selectedProject, setSelectedProject] = useState<string>('all');
+	const [selectedProject, setSelectedProject] = useState<string>(projectId || 'all');
 	const supabase = createClient();
 	const queryClient = useQueryClient();
+	
+	// Set selected project when projectId prop changes
+	useEffect(() => {
+		if (projectId) {
+			setSelectedProject(projectId);
+		}
+	}, [projectId]);
 
 	// Fetch projects for filter
 	const { data: projects = [] } = useQuery({

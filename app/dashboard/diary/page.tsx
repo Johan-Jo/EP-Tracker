@@ -2,7 +2,14 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
 import { DiaryPageNew } from '@/components/diary/diary-page-new';
 
-export default async function DiaryPage() {
+interface PageProps {
+	searchParams: Promise<{ project_id?: string }>;
+}
+
+export default async function DiaryPage(props: PageProps) {
+	const searchParams = await props.searchParams;
+	const projectId = searchParams.project_id;
+	
 	const { user, membership } = await getSession();
 
 	if (!user) {
@@ -22,6 +29,6 @@ export default async function DiaryPage() {
 		redirect('/dashboard');
 	}
 
-	return <DiaryPageNew orgId={membership.org_id} />;
+	return <DiaryPageNew orgId={membership.org_id} projectId={projectId} />;
 }
 

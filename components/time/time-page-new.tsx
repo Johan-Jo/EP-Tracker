@@ -20,16 +20,24 @@ import { toast } from 'react-hot-toast';
 interface TimePageNewProps {
 	orgId: string;
 	userId: string;
+	projectId?: string;
 }
 
-export function TimePageNew({ orgId, userId }: TimePageNewProps) {
-	const [selectedProject, setSelectedProject] = useState('');
+export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
+	const [selectedProject, setSelectedProject] = useState(projectId || '');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [editingEntry, setEditingEntry] = useState<any | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
 	const supabase = createClient();
 	const queryClient = useQueryClient();
+	
+	// Set selected project when projectId prop changes
+	useEffect(() => {
+		if (projectId) {
+			setSelectedProject(projectId);
+		}
+	}, [projectId]);
 
 	const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
 	const [startTime, setStartTime] = useState('08:00');

@@ -2,7 +2,14 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
 import { AtaPageNew } from '@/components/ata/ata-page-new';
 
-export default async function AtaPage() {
+interface PageProps {
+	searchParams: Promise<{ project_id?: string }>;
+}
+
+export default async function AtaPage(props: PageProps) {
+	const searchParams = await props.searchParams;
+	const projectId = searchParams.project_id;
+	
 	const { user, membership } = await getSession();
 
 	if (!user) {
@@ -23,6 +30,6 @@ export default async function AtaPage() {
 		redirect('/dashboard');
 	}
 
-	return <AtaPageNew orgId={membership.org_id} userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance'} />;
+	return <AtaPageNew orgId={membership.org_id} userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance'} projectId={projectId} />;
 }
 
