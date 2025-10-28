@@ -2,11 +2,6 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-	// BLOCK sw.js - we only use firebase-messaging-sw.js for push notifications
-	if (request.nextUrl.pathname === '/sw.js') {
-		return new NextResponse(null, { status: 404 });
-	}
-
 	let supabaseResponse = NextResponse.next({
 		request,
 	});
