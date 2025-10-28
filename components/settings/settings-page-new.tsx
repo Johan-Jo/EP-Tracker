@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Building2, Users, User, ChevronRight } from 'lucide-react';
+import { Building2, Users, User, Bell, ChevronRight } from 'lucide-react';
 
 interface SettingsPageNewProps {
 	isAdmin: boolean;
@@ -32,6 +32,14 @@ export function SettingsPageNew({ isAdmin, canManageUsers }: SettingsPageNewProp
 			title: 'Min profil',
 			description: 'Uppdatera dina personliga uppgifter och inställningar',
 			href: '/dashboard/settings/profile',
+			visible: true,
+		},
+		{
+			id: 'notifications',
+			icon: Bell,
+			title: 'Notiser',
+			description: 'Aktivera pushnotiser och hantera notifieringsinställningar',
+			href: '/dashboard/settings/notifications',
 			visible: true,
 		},
 	];

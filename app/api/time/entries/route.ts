@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createTimeEntrySchema } from '@/lib/schemas/time-entry';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
+import { notifyTeamCheckIn } from '@/lib/notifications'; // EPIC 25: Push notifications
 
 // GET /api/time/entries - List time entries with filters
 export async function GET(request: NextRequest) {
@@ -129,6 +130,19 @@ export async function POST(request: NextRequest) {
 				return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
 			}
 			return NextResponse.json({ error: insertError.message }, { status: 500 });
+		}
+
+		// EPIC 25: Notify team leads when someone checks in
+		// Only notify on check-in (no stop_at), not on full entry creation
+		if (!entry.stop_at && entry.project_id) {
+			notifyTeamCheckIn({
+				userId: user.id,
+				projectId: entry.project_id,
+				action: 'check_in',
+			}).catch((error) => {
+				// Don't fail the request if notification fails
+				console.error('Failed to send check-in notification:', error);
+			});
 		}
 
 		return NextResponse.json({ entry }, { status: 201 });

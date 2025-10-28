@@ -4,6 +4,7 @@ import './globals.css';
 import { QueryProvider } from '@/lib/providers/query-provider';
 import { Toaster } from 'react-hot-toast';
 import { ZodInit } from '@/components/core/zod-init';
+import { NotificationHandler } from '@/components/core/notification-handler';
 
 const inter = Inter({
 	subsets: ['latin'],
@@ -39,6 +40,7 @@ export default function RootLayout({
 		<html lang='sv'>
 			<body className={`${inter.variable} font-sans antialiased`}>
 				<ZodInit />
+				<NotificationHandler />
 				<QueryProvider>{children}</QueryProvider>
 				<Toaster position="top-center" />
 			</body>
