@@ -11,11 +11,50 @@ export default function NotificationsPage() {
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [testErrorMessage, setTestErrorMessage] = useState<string>('');
+  const [isResetting, setIsResetting] = useState(false);
 
   const handleEnableNotifications = async () => {
     const success = await requestPermission();
     if (success) {
       console.log('✅ Notifications enabled');
+    }
+  };
+
+  const handleResetNotifications = async () => {
+    if (!confirm('Vill du verkligen återställa alla notis-inställningar? Du måste aktivera notiser igen efteråt.')) {
+      return;
+    }
+
+    setIsResetting(true);
+    setTestResult(null);
+
+    try {
+      // 1. Delete all tokens from database
+      const response = await fetch('/api/notifications/reset', {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reset on server');
+      }
+
+      // 2. Unregister all service workers
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          await registration.unregister();
+          console.log('🗑️ Unregistered service worker:', registration.scope);
+        }
+      }
+
+      // 3. Reload page to reset state
+      alert('✅ Notiser återställda! Aktivera notiser igen för att fortsätta.');
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ Error resetting notifications:', error);
+      alert('❌ Misslyckades att återställa notiser. Försök igen.');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -118,19 +157,35 @@ export default function NotificationsPage() {
               <p className="text-sm text-muted-foreground mb-4">
                 Du får nu pushnotiser för check-ins, godkännanden och andra viktiga händelser.
               </p>
-              <Button variant="outline" onClick={handleTestNotification} disabled={isTesting}>
-                {isTesting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Skickar...
-                  </>
-                ) : (
-                  <>
-                    <Bell className="mr-2 h-4 w-4" />
-                    Skicka test-notis
-                  </>
-                )}
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleTestNotification} disabled={isTesting}>
+                  {isTesting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Skickar...
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="mr-2 h-4 w-4" />
+                      Skicka test-notis
+                    </>
+                  )}
+                </Button>
+
+                <Button variant="destructive" onClick={handleResetNotifications} disabled={isResetting}>
+                  {isResetting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Återställer...
+                    </>
+                  ) : (
+                    <>
+                      <X className="mr-2 h-4 w-4" />
+                      Återställ notiser
+                    </>
+                  )}
+                </Button>
+              </div>
 
               {testResult === 'success' && (
                 <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md text-green-800 text-sm">
