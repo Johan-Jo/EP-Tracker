@@ -160,8 +160,8 @@ export default function NotificationsPage() {
               </p>
               <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
                 <li>Klicka på låsikonen i adressfältet</li>
-                <li>Hitta "Notiser" i listan</li>
-                <li>Ändra till "Tillåt"</li>
+                <li>Hitta &quot;Notiser&quot; i listan</li>
+                <li>Ändra till &quot;Tillåt&quot;</li>
                 <li>Ladda om sidan</li>
               </ol>
             </div>
