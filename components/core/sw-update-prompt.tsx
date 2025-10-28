@@ -49,7 +49,7 @@ export function ServiceWorkerUpdatePrompt() {
     if (!showPrompt) return null;
 
     return (
-        <Alert className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-md z-50 shadow-lg bg-blue-50 border-blue-200">
+        <Alert className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-md z-[60] shadow-lg bg-blue-50 border-blue-200">
             <RefreshCw className="h-4 w-4 text-blue-600" />
             <AlertTitle className="text-blue-800">Uppdatering tillgänglig</AlertTitle>
             <AlertDescription className="text-blue-700 space-y-3">
@@ -57,7 +57,7 @@ export function ServiceWorkerUpdatePrompt() {
                 <Button
                     size="sm"
                     onClick={handleUpdate}
-                    className="w-full"
+                    className="w-full bg-orange-500 hover:bg-orange-600"
                 >
                     Uppdatera nu
                 </Button>
