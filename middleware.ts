@@ -135,9 +135,9 @@ export const config = {
 		 * - favicon.ico (favicon file)
 		 * - public files (public folder)
 		 * - API routes (handled separately)
-		 * - sw.js and workbox files (service worker)
+		 * - firebase-messaging-sw.js (Firebase Cloud Messaging service worker)
 		 */
-		'/((?!_next/static|_next/image|_next/webpack-hmr|favicon.ico|sw.js|workbox-.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|json)$).*)',
+		'/((?!_next/static|_next/image|_next/webpack-hmr|favicon.ico|firebase-messaging-sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|json)$).*)',
 	],
 	regions: ['arn1'], // Stockholm - single region to avoid multi-region serverless error
 };

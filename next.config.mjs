@@ -1,13 +1,5 @@
-import withPWAInit from '@ducanh2912/next-pwa';
-
-const withPWA = withPWAInit({
-	dest: 'public',
-	disable: true, // Disabled - using firebase-messaging-sw.js for push notifications instead
-	register: false,
-	skipWaiting: true,
-	sw: 'sw.js',
-	cacheOnNavigation: true,
-});
+// PWA plugin REMOVED - using firebase-messaging-sw.js directly for push notifications
+// import withPWAInit from '@ducanh2912/next-pwa';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -54,5 +46,5 @@ const nextConfig = {
 	},
 };
 
-export default withPWA(nextConfig);
+export default nextConfig;
 
