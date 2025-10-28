@@ -22,7 +22,7 @@ const availableTours: TourInfo[] = [
 	{
 		id: 'projects',
 		title: 'Projekt',
-		description: 'Hur du skapar och hanterar projekt',
+		description: 'Skapa projekt, hantera team och konfigurera alert-inställningar',
 		page: '/dashboard/projects',
 	},
 	{

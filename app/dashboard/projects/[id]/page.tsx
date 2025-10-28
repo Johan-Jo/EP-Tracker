@@ -10,6 +10,7 @@ import { PhasesList } from '@/components/projects/phases-list';
 import { WorkOrdersList } from '@/components/projects/work-orders-list';
 import { ProjectTeamTab } from '@/components/projects/project-team-tab';
 import { ProjectSummaryView } from '@/components/projects/project-summary-view';
+import { ProjectAlertSettingsDisplay } from '@/components/projects/project-alert-settings-display';
 
 interface PageProps {
 	params: Promise<{ id: string }>;
@@ -124,6 +125,15 @@ export default async function ProjectDetailPage(props: PageProps) {
 					budgetAmount={project.budget_amount}
 					showEditButton={true}
 				/>
+
+				{/* Alert Settings Display - EPIC 25 Phase 2 */}
+				{canEdit && (
+					<ProjectAlertSettingsDisplay 
+						alertSettings={project.alert_settings} 
+						projectId={project.id}
+						canEdit={canEdit}
+					/>
+				)}
 			</div>
 
 			{/* Legacy tabs (hidden for now, can be removed later) */}

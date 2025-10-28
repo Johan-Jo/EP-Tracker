@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { updateTimeEntrySchema } from '@/lib/schemas/time-entry';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
+import { notifyOnCheckOut } from '@/lib/notifications/project-alerts'; // EPIC 25 Phase 2: Project alerts
 
 // PATCH /api/time/entries/[id] - Update time entry
 // EPIC 26: Optimized from 4 queries to 2 queries
@@ -37,7 +38,7 @@ export async function PATCH(
 		// EPIC 26: Fetch and check permissions in one query
 		const { data: existingEntry, error: fetchError } = await supabase
 			.from('time_entries')
-			.select('id, user_id, org_id, status')
+			.select('id, user_id, org_id, status, start_at, stop_at, project_id')
 			.eq('id', id)
 			.eq('org_id', membership.org_id)
 			.single();
@@ -83,6 +84,33 @@ export async function PATCH(
 		if (updateError) {
 			console.error('Error updating time entry:', updateError);
 			return NextResponse.json({ error: updateError.message }, { status: 500 });
+		}
+
+		// EPIC 25 Phase 2: Notify admin/foreman when someone checks out
+		// Detect check-out: entry had no stop_at but now it does
+		if (!existingEntry.stop_at && entry.stop_at && entry.project_id) {
+			// Get user's full name for notification
+			const { data: profile } = await supabase
+				.from('profiles')
+				.select('full_name')
+				.eq('id', entry.user_id)
+				.single();
+
+			// Calculate hours worked
+			const startTime = new Date(entry.start_at).getTime();
+			const stopTime = new Date(entry.stop_at).getTime();
+			const hoursWorked = (stopTime - startTime) / (1000 * 60 * 60); // Convert ms to hours
+
+			notifyOnCheckOut({
+				projectId: entry.project_id,
+				userId: entry.user_id,
+				userName: profile?.full_name || 'Okänd användare',
+				checkoutTime: new Date(entry.stop_at),
+				hoursWorked,
+			}).catch((error) => {
+				// Don't fail the request if notification fails
+				console.error('Failed to send check-out notification:', error);
+			});
 		}
 
 		return NextResponse.json({ entry }, { status: 200 });

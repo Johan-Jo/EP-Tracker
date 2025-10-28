@@ -18,6 +18,7 @@ import {
 	Calendar,
 	CalendarCheck,
 	Users,
+	Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -212,6 +213,42 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			],
 		},
 		{
+			title: 'Projekt Alert-inställningar',
+			description: 'Konfigurera notifieringar för check-in/out',
+			icon: Bell,
+			roles: ['admin', 'foreman'],
+			sections: [
+				{
+					title: 'Konfigurera alerts',
+					items: [
+						'Öppna ett projekt',
+						'Scrolla ner till "Alert-inställningar"',
+						'Klicka "Redigera" för att ändra',
+						'Sätt arbetsdag start/slut (t.ex. 07:00-16:00)',
+						'Aktivera/avaktivera olika alerts',
+					],
+				},
+				{
+					title: 'Alert-typer (Real-time)',
+					items: [
+						'✅ Notifiera vid check-in - Du får notis när arbetare checkar in',
+						'✅ Notifiera vid check-out - Du får notis när arbetare checkar ut',
+						'Notiserna innehåller: namn, projekt, tid och arbetad tid',
+						'Klicka på notisen för att gå direkt till projektet',
+					],
+				},
+				{
+					title: 'Alert-typer (Kommande)',
+					items: [
+						'⏰ Check-in påminnelse - Påminner arbetare X min före start',
+						'⏰ Check-out påminnelse - Påminner arbetare X min före slut',
+						'⚠️ Sen check-in varning - Varnar dig om sen check-in',
+						'⚠️ Glömt check-out varning - Varnar dig om glömt check-out',
+					],
+				},
+			],
+		},
+		{
 			title: 'Bjud in användare',
 			description: 'Lägg till nya teammedlemmar',
 			icon: Users,
@@ -291,7 +328,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 		{
 			id: 'projects',
 			title: 'Projekt',
-			description: 'Hur du skapar och hanterar projekt',
+			description: 'Skapa projekt, hantera team och konfigurera alert-inställningar',
 			icon: BookOpen,
 			page: '/dashboard/projects',
 			roles: ['admin', 'foreman', 'worker', 'finance'],
@@ -453,6 +490,41 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			answer:
 				'Systemet upptäcker automatiskt om personen inte är medlem och visar en dialogruta. Du kan välja att lägga till personen i projektet direkt, och uppdraget flyttas automatiskt efteråt. Detta sparar tid och förhindrar fel.',
 			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-17',
+			question: 'Hur aktiverar jag push-notifieringar?',
+			answer:
+				'Gå till "Inställningar → Notiser" och klicka "Aktivera notiser". Din webbläsare kommer att fråga om tillåtelse - acceptera för att ta emot notifieringar. Du kan välja vilka typer av notiser du vill ha och ställa in tysta timmar.',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
+		},
+		{
+			id: 'faq-18',
+			question: 'Vilka typer av notiser kan jag få?',
+			answer:
+				'Du kan få notiser om: godkännanden av tid, veckosammanfattningar, påminnelser om utcheckning, och projektspecifika alerts om check-in/out. Alla notiser kan aktiveras/avaktiveras individuellt i notis-inställningarna.',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
+		},
+		{
+			id: 'faq-19',
+			question: 'Hur ställer jag in projekt alert-inställningar?',
+			answer:
+				'Öppna projektet, scrolla ner till "Alert-inställningar" och klicka "Redigera". Här kan du sätta arbetsdag start/slut-tid, aktivera notiser för check-in/out, och konfigurera påminnelser och varningar. Endast admin och arbetsledare kan redigera alert-inställningar.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-20',
+			question: 'När får jag notis om check-in och check-out?',
+			answer:
+				'Om aktiverat i projektets alert-inställningar, får admin och arbetsledare en notis direkt när en arbetare checkar in eller ut på projektet. Notisen visar namn, projekt, tid och arbetad tid (vid check-out). Klicka på notisen för att gå direkt till projektet.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-21',
+			question: 'Fungerar notiser när appen är stängd?',
+			answer:
+				'Ja! Push-notiser fungerar även när appen är stängd. Du får notiser som vanliga systemnotiser i Windows, Mac, iOS eller Android. Klicka på notisen för att öppna appen och gå direkt till relevant sida.',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 	];
 

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { projectSchema, type ProjectFormData } from '@/lib/schemas/project';
+import { projectSchema, type ProjectFormData, type AlertSettings } from '@/lib/schemas/project';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { ProjectAlertSettings } from './project-alert-settings';
 
 interface ProjectFormProps {
 	project?: ProjectFormData & { id?: string };
@@ -29,6 +30,27 @@ export function ProjectForm({ project, orgId, onSubmit }: ProjectFormProps) {
 	const router = useRouter();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+
+	// Initialize alert settings state
+	const defaultAlertSettings: AlertSettings = {
+		work_day_start: '07:00',
+		work_day_end: '16:00',
+		notify_on_checkin: true,
+		notify_on_checkout: true,
+		checkin_reminder_enabled: false,
+		checkin_reminder_minutes_before: 15,
+		checkout_reminder_enabled: false,
+		checkout_reminder_minutes_before: 15,
+		late_checkin_enabled: false,
+		late_checkin_minutes_after: 15,
+		forgotten_checkout_enabled: false,
+		forgotten_checkout_minutes_after: 30,
+		alert_recipients: ['admin', 'foreman'],
+	};
+
+	const [alertSettings, setAlertSettings] = useState<AlertSettings>(
+		project?.alert_settings || defaultAlertSettings
+	);
 
 	const {
 		register,
@@ -50,6 +72,7 @@ export function ProjectForm({ project, orgId, onSubmit }: ProjectFormProps) {
 			budget_hours: null,
 			budget_amount: null,
 			status: 'active' as const,
+			alert_settings: defaultAlertSettings,
 		},
 	});
 
@@ -61,7 +84,13 @@ export function ProjectForm({ project, orgId, onSubmit }: ProjectFormProps) {
 		setError(null);
 
 		try {
-			const result = await onSubmit(data as ProjectFormData);
+			// Include alert_settings in submission
+			const projectData: ProjectFormData = {
+				...data,
+				alert_settings: alertSettings,
+			};
+
+			const result = await onSubmit(projectData);
 			
 			// Client-side redirect to avoid NEXT_REDIRECT error
 			if (result.success && result.project?.id) {
@@ -276,6 +305,13 @@ export function ProjectForm({ project, orgId, onSubmit }: ProjectFormProps) {
 					</div>
 				</CardContent>
 			</Card>
+
+			{/* Alert Settings */}
+			<ProjectAlertSettings
+				settings={alertSettings}
+				onChange={setAlertSettings}
+				disabled={isSubmitting}
+			/>
 
 			<div className='flex gap-3 justify-end pt-2'>
 				<Button

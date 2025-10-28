@@ -45,22 +45,27 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
 
 		// Parse request body
 		const body = await request.json();
-		const { name, project_number, client_name, site_address, status, budget_mode, budget_hours, budget_amount } = body;
+		const { name, project_number, client_name, site_address, status, budget_mode, budget_hours, budget_amount, alert_settings } = body;
+
+		// Prepare update object (only include fields that are provided)
+		const updateData: any = {
+			updated_at: new Date().toISOString(),
+		};
+
+		if (name !== undefined) updateData.name = name;
+		if (project_number !== undefined) updateData.project_number = project_number;
+		if (client_name !== undefined) updateData.client_name = client_name;
+		if (site_address !== undefined) updateData.site_address = site_address;
+		if (status !== undefined) updateData.status = status;
+		if (budget_mode !== undefined) updateData.budget_mode = budget_mode;
+		if (budget_hours !== undefined) updateData.budget_hours = budget_hours;
+		if (budget_amount !== undefined) updateData.budget_amount = budget_amount;
+		if (alert_settings !== undefined) updateData.alert_settings = alert_settings;
 
 		// Update project
 		const { data: updatedProject, error: updateError } = await supabase
 			.from('projects')
-			.update({
-				name,
-				project_number,
-				client_name,
-				site_address,
-				status,
-				budget_mode,
-				budget_hours,
-				budget_amount,
-				updated_at: new Date().toISOString(),
-			})
+			.update(updateData)
 			.eq('id', params.id)
 			.select()
 			.single();

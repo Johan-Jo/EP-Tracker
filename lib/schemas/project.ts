@@ -11,6 +11,25 @@ export const projectStatusEnum = z.enum([
 // Budget mode enum
 export const budgetModeEnum = z.enum(['none', 'hours', 'amount', 'ep_sync']);
 
+// Alert settings schema
+export const alertSettingsSchema = z.object({
+	work_day_start: z.string().default('07:00'),
+	work_day_end: z.string().default('16:00'),
+	notify_on_checkin: z.boolean().default(true),
+	notify_on_checkout: z.boolean().default(true),
+	checkin_reminder_enabled: z.boolean().default(false),
+	checkin_reminder_minutes_before: z.number().int().min(1).max(120).default(15),
+	checkout_reminder_enabled: z.boolean().default(false),
+	checkout_reminder_minutes_before: z.number().int().min(1).max(120).default(15),
+	late_checkin_enabled: z.boolean().default(false),
+	late_checkin_minutes_after: z.number().int().min(1).max(120).default(15),
+	forgotten_checkout_enabled: z.boolean().default(false),
+	forgotten_checkout_minutes_after: z.number().int().min(1).max(120).default(30),
+	alert_recipients: z.array(z.string()).default(['admin', 'foreman']),
+});
+
+export type AlertSettings = z.infer<typeof alertSettingsSchema>;
+
 // Project schema for creation/editing
 export const projectSchema = z.object({
 	name: z
@@ -27,6 +46,7 @@ export const projectSchema = z.object({
 	budget_hours: z.number().positive('Budget måste vara större än 0').optional().nullable(),
 	budget_amount: z.number().positive('Budget måste vara större än 0').optional().nullable(),
 	status: projectStatusEnum.default('active'),
+	alert_settings: alertSettingsSchema.optional(),
 });
 
 // Project database type (what comes from DB)
