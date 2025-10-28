@@ -86,11 +86,11 @@ export async function notifyOnCheckIn(params: {
         type: 'check_in',
         title: `👷 ${userName} checkade in`,
         body: `På projekt: ${project.name}\nTid: ${timeString}`,
+        url: `/dashboard/projects/${projectId}`,
         data: {
           projectId,
           userId,
           type: 'check_in',
-          url: `/dashboard/projects/${projectId}`,
         },
         tag: `checkin-${projectId}-${userId}`,
       });
@@ -171,11 +171,11 @@ export async function notifyOnCheckOut(params: {
         type: 'check_out',
         title: `🏠 ${userName} checkade ut`,
         body: `På projekt: ${project.name}\nTid: ${timeString}\nArbetat: ${hoursString}`,
+        url: `/dashboard/projects/${projectId}`,
         data: {
           projectId,
           userId,
           type: 'check_out',
-          url: `/dashboard/projects/${projectId}`,
         },
         tag: `checkout-${projectId}-${userId}`,
       });
@@ -217,10 +217,10 @@ export async function sendCheckInReminder(params: {
       type: 'reminder',
       title: '⏰ Dags att checka in snart',
       body: `Projekt: ${project.name}\nStarttid: ${workDayStart}`,
+      url: `/dashboard/time`,
       data: {
         projectId,
         type: 'checkin_reminder',
-        url: `/dashboard/time`,
       },
       tag: `checkin-reminder-${projectId}-${userId}`,
     });
@@ -261,10 +261,10 @@ export async function sendCheckOutReminder(params: {
       type: 'reminder',
       title: '⏰ Glöm inte checka ut',
       body: `Projekt: ${project.name}\nSluttid: ${workDayEnd}`,
+      url: `/dashboard/time`,
       data: {
         projectId,
         type: 'checkout_reminder',
-        url: `/dashboard/time`,
       },
       tag: `checkout-reminder-${projectId}-${userId}`,
     });
@@ -325,11 +325,11 @@ export async function sendLateCheckInAlert(params: {
         type: 'alert',
         title: '⚠️ Sen check-in',
         body: `${userName} har inte checkat in på ${project.name}\nStarttid var ${workDayStart} (nu ${currentTime})`,
+        url: `/dashboard/projects/${projectId}`,
         data: {
           projectId,
           userId,
           type: 'late_checkin',
-          url: `/dashboard/projects/${projectId}`,
         },
         tag: `late-checkin-${projectId}-${userId}`,
       });
@@ -391,11 +391,11 @@ export async function sendForgottenCheckOutAlert(params: {
         type: 'alert',
         title: '⚠️ Glömt check-out',
         body: `${userName} har inte checkat ut från ${project.name}\nSluttid var ${workDayEnd} (nu ${currentTime})\nIncheckad sedan: ${checkedInSince}`,
+        url: `/dashboard/projects/${projectId}`,
         data: {
           projectId,
           userId,
           type: 'forgotten_checkout',
-          url: `/dashboard/projects/${projectId}`,
         },
         tag: `forgotten-checkout-${projectId}-${userId}`,
       });
