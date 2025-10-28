@@ -114,9 +114,9 @@ ep-tracker/
 - `locales/en/common.json` - English translations (fallback)
 
 **PWA Configuration:**
-- `next.config.mjs` - PWA plugin configuration
 - `public/manifest.json` - PWA manifest with Swedish localization
-- Service worker configuration (Workbox)
+- `public/firebase-messaging-sw.js` - Firebase Cloud Messaging service worker for push notifications
+- No Workbox/next-pwa (removed to avoid Service Worker conflicts with FCM)
 
 **Styling:**
 - `app/globals.css` - Tailwind directives + CSS variables for shadcn/ui
