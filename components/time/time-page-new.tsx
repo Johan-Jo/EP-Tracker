@@ -62,6 +62,13 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 		setValue('start_at', `${currentDate}T${startTime}`);
 	}, [currentDate, startTime, setValue]);
 
+	// Update stop_at when date changes (FIX: Prevents wrong duration calculation)
+	useEffect(() => {
+		if (endTime) {
+			setValue('stop_at', `${currentDate}T${endTime}`);
+		}
+	}, [currentDate, endTime, setValue]);
+
 	// Populate form when editing
 	useEffect(() => {
 		if (editingEntry) {
