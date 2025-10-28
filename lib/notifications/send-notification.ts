@@ -8,6 +8,7 @@ export interface NotificationPayload {
   body: string;
   url: string;
   data?: Record<string, string>;
+  tag?: string; // Optional tag for grouping/replacing notifications
 }
 
 /**
@@ -55,7 +56,7 @@ export async function sendNotification(payload: NotificationPayload) {
 
     // 4. Send to all devices
     const tokens = subscriptions.map((s) => s.fcm_token);
-    const message = {
+    const message: any = {
       notification: {
         title: payload.title,
         body: payload.body,
@@ -67,6 +68,15 @@ export async function sendNotification(payload: NotificationPayload) {
       },
       tokens,
     };
+
+    // Add tag for web push (grouping/replacing notifications)
+    if (payload.tag) {
+      message.webpush = {
+        notification: {
+          tag: payload.tag,
+        },
+      };
+    }
 
     const response = await messaging.sendEachForMulticast(message);
 
