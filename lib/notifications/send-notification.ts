@@ -9,6 +9,7 @@ export interface NotificationPayload {
   url: string;
   data?: Record<string, string>;
   tag?: string; // Optional tag for grouping/replacing notifications
+  skipQuietHours?: boolean; // Skip quiet hours check (e.g., for test notifications)
 }
 
 /**
@@ -42,8 +43,8 @@ export async function sendNotification(payload: NotificationPayload) {
       return null;
     }
 
-    // 2. Check quiet hours
-    if (prefs && isInQuietHours(prefs)) {
+    // 2. Check quiet hours (unless skipQuietHours is true)
+    if (!payload.skipQuietHours && prefs && isInQuietHours(prefs)) {
       console.log(`🔇 In quiet hours, skipping notification`);
       return null;
     }

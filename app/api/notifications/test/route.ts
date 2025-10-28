@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`📤 Sending test notification to user ${user.id} (${subscriptions.length} devices)`);
 
-    // Send test notification
+    // Send test notification (skip quiet hours for test)
     const result = await sendNotification({
       userId: user.id,
       type: 'test',
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
       data: {
         test: 'true',
       },
+      skipQuietHours: true, // Always send test notifications
     });
 
     if (!result) {
