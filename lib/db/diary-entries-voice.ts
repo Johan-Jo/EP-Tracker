@@ -23,6 +23,23 @@ export async function getUserVoiceDiaryEntries(userId: string): Promise<DiaryEnt
   return data;
 }
 
+export async function getProjectVoiceDiaryEntries(projectId: string): Promise<DiaryEntry[]> {
+  const supabase = await createClient();
+  
+  const { data, error } = await supabase
+    .from('diary_entries')
+    .select('*')
+    .eq('project_id', projectId)
+    .eq('entry_source', 'voice')
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    throw new Error(`Failed to get project voice diary entries: ${error.message}`);
+  }
+  
+  return data;
+}
+
 export async function getDiaryEntryWithVoiceLog(entryId: string): Promise<{
   entry: DiaryEntry;
   voiceLog: VoiceLog | null;

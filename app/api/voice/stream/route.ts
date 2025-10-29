@@ -11,7 +11,7 @@ import { transcribeAudio, createConstructionPrompt } from '@/lib/voice/whisper';
 import { translateText } from '@/lib/voice/translate';
 import { createVoiceLog } from '@/lib/db/voice-logs';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

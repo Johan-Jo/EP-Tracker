@@ -43,9 +43,9 @@ export async function GET(req: NextRequest) {
     
     // Get single entry with voice log
     if (entryId) {
-      const entry = await getDiaryEntryWithVoiceLog(entryId);
+      const result = await getDiaryEntryWithVoiceLog(entryId);
       
-      if (!entry) {
+      if (!result) {
         return NextResponse.json(
           { error: 'Entry not found' },
           { status: 404 }
@@ -53,11 +53,11 @@ export async function GET(req: NextRequest) {
       }
       
       // Verify access
-      if (entry.created_by !== user.id) {
+      if (result.entry.user_id !== user.id) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
       
-      return NextResponse.json({ entry });
+      return NextResponse.json(result);
     }
     
     // Get entries by project

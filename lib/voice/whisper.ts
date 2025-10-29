@@ -39,7 +39,8 @@ export async function transcribeAudio(
   
   try {
     // Create a File-like object from buffer
-    const file = new File([audioBuffer], filename, {
+    const uint8Array = new Uint8Array(audioBuffer);
+    const file = new File([uint8Array], filename, {
       type: getMimeType(filename),
     });
     

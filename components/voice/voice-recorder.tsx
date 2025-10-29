@@ -38,12 +38,12 @@ export function VoiceRecorder({ onComplete, onError }: VoiceRecorderProps) {
   const [vad, setVad] = useState<VoiceActivityDetector | null>(null);
   const [audioLevel, setAudioLevel] = useState<number>(0);
   const [barHeights, setBarHeights] = useState<number[]>(Array(20).fill(15));
-  const timerRef = useRef<number | null>(null);
-  const vadIntervalRef = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const vadIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const dataArrayRef = useRef<Uint8Array | null>(null);
+  const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   
   // Cleanup on unmount only
   useEffect(() => {
@@ -143,7 +143,7 @@ export function VoiceRecorder({ onComplete, onError }: VoiceRecorderProps) {
       analyser.fftSize = 64; // Small FFT for 32 frequency bins
       analyser.smoothingTimeConstant = 0.7; // Smooth out rapid changes
       const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
+      const dataArray = new Uint8Array(bufferLength) as Uint8Array<ArrayBuffer>;
       
       // Connect audio stream to analyser
       const source = audioContext.createMediaStreamSource(stream);
@@ -280,35 +280,36 @@ export function VoiceRecorder({ onComplete, onError }: VoiceRecorderProps) {
       // Step 2: Connect to SSE stream for processing
       const eventSource = new EventSource(`/api/voice/stream?sessionId=${sessionId}`);
       
-      eventSource.addEventListener('start', (e) => {
-        const data = JSON.parse(e.data);
+      eventSource.addEventListener('start', (e: Event) => {
+        const data = JSON.parse((e as MessageEvent).data);
         console.log('Processing started:', data);
       });
       
-      eventSource.addEventListener('progress', (e) => {
-        const data = JSON.parse(e.data);
+      eventSource.addEventListener('progress', (e: Event) => {
+        const data = JSON.parse((e as MessageEvent).data);
         toast.loading(data.message, { id: 'voice-progress' });
       });
       
-      eventSource.addEventListener('transcription', (e) => {
-        const data = JSON.parse(e.data);
+      eventSource.addEventListener('transcription', (e: Event) => {
+        const data = JSON.parse((e as MessageEvent).data);
         console.log('Transcription:', data);
       });
       
-      eventSource.addEventListener('translation', (e) => {
-        const data = JSON.parse(e.data);
+      eventSource.addEventListener('translation', (e: Event) => {
+        const data = JSON.parse((e as MessageEvent).data);
         console.log('Translation:', data);
       });
       
-      eventSource.addEventListener('complete', (e) => {
-        const data = JSON.parse(e.data);
+      eventSource.addEventListener('complete', (e: Event) => {
+        const data = JSON.parse((e as MessageEvent).data);
         toast.dismiss('voice-progress');
         eventSource.close();
         onComplete?.(data.voiceLogId, data.translatedText);
       });
       
-      eventSource.addEventListener('error', (e) => {
-        const data = JSON.parse(e.data);
+      eventSource.addEventListener('error', (e: Event) => {
+        const messageEvent = e as MessageEvent;
+        const data = JSON.parse(messageEvent.data);
         toast.error(data.message, { id: 'voice-progress' });
         setError(data.message);
         onError?.(data.message);

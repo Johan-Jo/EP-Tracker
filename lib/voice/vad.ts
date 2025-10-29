@@ -21,7 +21,7 @@ export interface VADResult {
 export class VoiceActivityDetector {
   private audioContext: AudioContext;
   private analyser: AnalyserNode;
-  private dataArray: Uint8Array;
+  private dataArray: Uint8Array<ArrayBuffer>;
   private threshold: number;
   private smoothing: number;
   private minSpeechDuration: number;
@@ -43,7 +43,7 @@ export class VoiceActivityDetector {
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = this.smoothing;
     
-    this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+    this.dataArray = new Uint8Array(this.analyser.frequencyBinCount) as Uint8Array<ArrayBuffer>;
   }
   
   /**
@@ -131,6 +131,8 @@ export function createAmplitudeVisualizer(
   let animationId: number;
   
   function draw() {
+    if (!ctx) return;
+    
     animationId = requestAnimationFrame(draw);
     
     analyser.getByteTimeDomainData(dataArray);
