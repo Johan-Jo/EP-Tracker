@@ -32,43 +32,88 @@ export async function GET(
 
 	const supabase = await createClient();
 
-	// 1. Fetch project with phases
-	const { data: project, error: projectError } = await supabase
-		.from('projects')
-		.select(`
-			*,
-			phases (
+	// OPTIMIZED: Parallelize all database queries
+	const [
+		projectResult,
+		timeEntriesResult,
+		materialsResult,
+		expensesResult,
+		mileageResult,
+		projectMembersResult,
+	] = await Promise.all([
+		// 1. Fetch project with phases
+		supabase
+			.from('projects')
+			.select(`
+				*,
+				phases (
+					id,
+					name,
+					sort_order,
+					budget_hours,
+					budget_amount
+				)
+			`)
+			.eq('id', projectId)
+			.eq('org_id', membership.org_id)
+			.single(),
+		
+		// 2. Fetch time entries
+		supabase
+			.from('time_entries')
+			.select(`
 				id,
-				name,
-				sort_order,
-				budget_hours,
-				budget_amount
-			)
-		`)
-		.eq('id', projectId)
-		.eq('org_id', membership.org_id)
-		.single();
+				user_id,
+				phase_id,
+				duration_min,
+				profiles:user_id (
+					id,
+					full_name
+				)
+			`)
+			.eq('project_id', projectId),
+		
+		// 3. Fetch materials
+		supabase
+			.from('materials')
+			.select('qty, unit_price_sek, total_sek')
+			.eq('project_id', projectId),
+		
+		// 4. Fetch expenses
+		supabase
+			.from('expenses')
+			.select('amount')
+			.eq('project_id', projectId),
+		
+		// 5. Fetch mileage
+		supabase
+			.from('mileage')
+			.select('distance_km, rate_per_km')
+			.eq('project_id', projectId),
+		
+		// 6. Fetch project members
+		supabase
+			.from('project_members')
+			.select(`
+				user_id,
+				profiles:user_id (
+					id,
+					full_name
+				)
+			`)
+			.eq('project_id', projectId),
+	]);
 
+	const { data: project, error: projectError } = projectResult;
 	if (projectError || !project) {
 		return NextResponse.json({ error: 'Project not found' }, { status: 404 });
 	}
 
-	// 2. Fetch time entries grouped by user and phase
-	const { data: timeEntries } = await supabase
-		.from('time_entries')
-		.select(`
-			id,
-			user_id,
-			phase_id,
-			start_at,
-			stop_at,
-			duration_min,
-			profiles:user_id (
-				id,
-				full_name
-			)
-		`)
-		.eq('project_id', projectId);
+	const { data: timeEntries } = timeEntriesResult;
+	const { data: materials } = materialsResult;
+	const { data: expenses } = expensesResult;
+	const { data: mileage } = mileageResult;
+	const { data: projectMembers } = projectMembersResult;
 
 	// 3. Calculate time statistics
 	const totalMinutes = timeEntries?.reduce((sum, entry) => {
@@ -107,31 +152,16 @@ export async function GET(
 		}
 	});
 
-	// 4. Fetch materials statistics
-	const { data: materials } = await supabase
-		.from('materials')
-		.select('qty, unit_price_sek, total_sek')
-		.eq('project_id', projectId);
-
+	// 4. Calculate materials statistics (already fetched in parallel)
 	const materialsStats = {
 		count: materials?.length || 0,
 		totalCost: materials?.reduce((sum, m) => sum + (m.total_sek || 0), 0) || 0,
 	};
 
-	// 5. Fetch expenses statistics
-	const { data: expenses } = await supabase
-		.from('expenses')
-		.select('amount')
-		.eq('project_id', projectId);
-
+	// 5. Calculate expenses statistics (already fetched in parallel)
 	const expensesTotal = expenses?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
 
-	// 6. Fetch mileage statistics
-	const { data: mileage } = await supabase
-		.from('mileage')
-		.select('distance_km, rate_per_km')
-		.eq('project_id', projectId);
-
+	// 6. Calculate mileage statistics (already fetched in parallel)
 	const mileageTotal = mileage?.reduce((sum, m) => sum + (m.distance_km * m.rate_per_km), 0) || 0;
 
 	// 7. Total costs
@@ -144,37 +174,28 @@ export async function GET(
 	const hoursPercentage = budgetHours > 0 ? Math.round((totalHours / budgetHours) * 100) : 0;
 	const costsPercentage = budgetAmount > 0 ? Math.round((totalCosts / budgetAmount) * 100) : 0;
 
-	// 9. Fetch recent activities (last 10) - optimized to only fetch what we need
-	const { data: activities } = await supabase
-		.rpc('get_recent_activities_fast', {
-			p_org_id: membership.org_id,
-			p_limit: 20, // Reduced from 50 to 20
-		});
-
-	// Filter activities for this project only
-	const projectActivities = activities
-		?.filter((a: any) => a.project_id === projectId)
-		.slice(0, 10) || [];
-
-	// 10. Fetch team members from project_members + memberships for role
-	const { data: projectMembers } = await supabase
-		.from('project_members')
-		.select(`
-			user_id,
-			profiles:user_id (
-				id,
-				full_name
-			)
-		`)
-		.eq('project_id', projectId);
-
-	// Get membership roles for these users
+	// 9. Fetch activities and memberships in parallel (optimized)
 	const userIds = projectMembers?.map(pm => pm.user_id) || [];
-	const { data: memberships } = await supabase
-		.from('memberships')
-		.select('user_id, role')
-		.eq('org_id', membership.org_id)
-		.in('user_id', userIds.length > 0 ? userIds : ['00000000-0000-0000-0000-000000000000']);
+	
+	const [activitiesResult, membershipsResult] = await Promise.all([
+		// Fetch recent project activities directly
+		supabase
+			.from('activity_log')
+			.select('*')
+			.eq('project_id', projectId)
+			.order('created_at', { ascending: false })
+			.limit(10),
+		
+		// Get membership roles for team members
+		supabase
+			.from('memberships')
+			.select('user_id, role')
+			.eq('org_id', membership.org_id)
+			.in('user_id', userIds.length > 0 ? userIds : ['00000000-0000-0000-0000-000000000000']),
+	]);
+
+	const { data: projectActivities } = activitiesResult;
+	const { data: memberships } = membershipsResult;
 
 	const teamMembers = projectMembers?.map((pm) => {
 		const userMembership = memberships?.find(m => m.user_id === pm.user_id);
@@ -260,11 +281,12 @@ export async function GET(
 
 	return NextResponse.json(summary, {
 		headers: {
-			'Cache-Control': 'private, s-maxage=10, stale-while-revalidate=30',
+			// OPTIMIZED: Increased cache time for better performance
+			'Cache-Control': 'private, s-maxage=30, stale-while-revalidate=60',
 		},
 	});
 }
 
-// Enable ISR with 10 second revalidation
-export const revalidate = 10;
+// Enable ISR with 30 second revalidation (up from 10)
+export const revalidate = 30;
 

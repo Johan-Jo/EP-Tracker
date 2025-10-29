@@ -71,7 +71,7 @@ export const timeTourSteps = [
 		description:
 			'Fyll i formuläret för att rapportera tid. Välj projekt, datum, start- och sluttid. Du kan också använda slidern på översiktssidan för att checka in/ut.',
 		target: '[data-tour="time-form"]',
-		position: 'bottom' as const,
+		position: 'top' as const,
 	},
 	{
 		id: 'time-entries',

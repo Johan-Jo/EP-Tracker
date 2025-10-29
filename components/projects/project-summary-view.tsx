@@ -42,6 +42,7 @@ interface ProjectSummaryViewProps {
 	budgetHours?: number | null;
 	budgetAmount?: number | null;
 	showEditButton?: boolean;
+	initialSummary?: ProjectSummary | null;
 }
 
 interface ProjectSummary {
@@ -107,10 +108,10 @@ interface ProjectSummary {
 	};
 }
 
-export function ProjectSummaryView({ projectId, canEdit, projectName, projectNumber, clientName, siteAddress, status, budgetMode, budgetHours, budgetAmount, showEditButton = false }: ProjectSummaryViewProps) {
+export function ProjectSummaryView({ projectId, canEdit, projectName, projectNumber, clientName, siteAddress, status, budgetMode, budgetHours, budgetAmount, showEditButton = false, initialSummary }: ProjectSummaryViewProps) {
 	const router = useRouter();
-	const [summary, setSummary] = useState<ProjectSummary | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
+	const [summary, setSummary] = useState<ProjectSummary | null>(initialSummary || null);
+	const [isLoading, setIsLoading] = useState(!initialSummary);
 	const [error, setError] = useState<string | null>(null);
 	const [showNewPhaseDialog, setShowNewPhaseDialog] = useState(false);
 	const [newPhaseName, setNewPhaseName] = useState('');
@@ -130,7 +131,10 @@ export function ProjectSummaryView({ projectId, canEdit, projectName, projectNum
 	const [showTeamDialog, setShowTeamDialog] = useState(false);
 
 	useEffect(() => {
-		fetchSummary();
+		// Only fetch if we don't have initial summary
+		if (!initialSummary) {
+			fetchSummary();
+		}
 		// Only re-fetch when projectId changes, not on every render
 	}, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -541,18 +545,18 @@ export function ProjectSummaryView({ projectId, canEdit, projectName, projectNum
 														<div className='flex items-center gap-1'>
 															<Clock className='w-4 h-4' />
 															<span>
-																{phase.loggedHours}h / {phase.budgetHours}h
+																{phase.loggedHours || 0}h / {phase.budgetHours || 0}h
 															</span>
 														</div>
 														<div className='flex items-center gap-1'>
 															<DollarSign className='w-4 h-4' />
-															<span>{phase.budgetAmount.toLocaleString('sv-SE')} kr</span>
+															<span>{(phase.budgetAmount || 0).toLocaleString('sv-SE')} kr</span>
 														</div>
 													</div>
 													<div className='relative h-2 w-full overflow-hidden rounded-full bg-gray-200'>
 														<div
 															className='h-full bg-orange-500 transition-all'
-															style={{ width: `${Math.min(100, phase.hoursPercentage)}%` }}
+															style={{ width: `${Math.min(100, phase.hoursPercentage || 0)}%` }}
 														/>
 													</div>
 												</div>

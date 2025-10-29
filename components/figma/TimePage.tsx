@@ -148,12 +148,12 @@ export function TimePage() {
             <div>
               <label className="block text-sm mb-2">Datum *</label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none hidden md:block" />
                 <Input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="pl-9 h-11"
+                  className="md:pl-9 h-11"
                 />
               </div>
             </div>

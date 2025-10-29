@@ -60,19 +60,19 @@ export function TopNav({ userEmail, userName }: TopNavProps) {
 	return (
 		<header className='sticky top-0 z-40 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950'>
 			<div className='flex items-center justify-between h-16 px-4 md:px-6'>
-			{/* Logo */}
-			<div className='flex items-center gap-4'>
-				<div className='md:hidden'>
-					<Image
-						src="/images/EP-Flat.png"
-						alt="EP Tracker"
-						width={120}
-						height={40}
-						style={{ width: 'auto', height: '32px' }}
-						priority
-					/>
-				</div>
-			</div>
+		{/* Logo */}
+		<div className='flex items-center gap-4'>
+			<Link href='/dashboard' className='md:hidden'>
+				<Image
+					src="/images/EP-Flat.png"
+					alt="EP Tracker"
+					width={120}
+					height={40}
+					style={{ width: 'auto', height: '32px' }}
+					priority
+				/>
+			</Link>
+		</div>
 
 				{/* Right side - Sync Status, Notifications & User menu */}
 				<div className='flex items-center gap-3'>

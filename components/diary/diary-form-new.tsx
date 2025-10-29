@@ -19,14 +19,15 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 interface DiaryFormNewProps {
 	orgId: string;
 	userId: string;
+	projectId?: string;
 }
 
-export function DiaryFormNew({ orgId, userId }: DiaryFormNewProps) {
+export function DiaryFormNew({ orgId, userId, projectId }: DiaryFormNewProps) {
 	const router = useRouter();
 	const supabase = createClient();
 	const queryClient = useQueryClient();
 	
-	const [project, setProject] = useState('');
+	const [project, setProject] = useState(projectId || '');
 	// Use local date to avoid timezone issues
 	const getLocalDateString = () => {
 		const now = new Date();

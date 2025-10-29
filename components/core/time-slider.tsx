@@ -2,6 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ChevronRight, Loader2, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface TimeSliderProps {
   isActive: boolean;
@@ -11,6 +14,7 @@ interface TimeSliderProps {
   availableProjects?: Array<{ id: string; name: string }>;
   onCheckIn: (projectId: string) => Promise<void>;
   onCheckOut: () => Promise<void>;
+  onCheckOutComplete?: (projectId: string) => void;
   onProjectChange?: (projectId: string) => void;
 }
 
@@ -22,6 +26,7 @@ export function TimeSlider({
   availableProjects = [],
   onCheckIn, 
   onCheckOut,
+  onCheckOutComplete,
   onProjectChange 
 }: TimeSliderProps) {
   const [isDragging, setIsDragging] = useState(false);
@@ -30,6 +35,7 @@ export function TimeSlider({
   const [selectedProjectId, setSelectedProjectId] = useState(projectId);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showNoProjectDialog, setShowNoProjectDialog] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const threshold = 0.7; // 70% to trigger action
@@ -101,8 +107,26 @@ export function TimeSlider({
       setIsLoading(true);
       try {
         if (isActive) {
+          // Check out - save current project ID for diary prompt
+          const currentProjectId = projectId;
           await onCheckOut();
+          
+          // Notify parent component about check-out completion
+          if (currentProjectId && onCheckOutComplete) {
+            // Use setTimeout to ensure the callback happens after UI updates
+            setTimeout(() => {
+              onCheckOutComplete(currentProjectId);
+            }, 100);
+          }
         } else {
+          // Check in - verify project exists
+          if (availableProjects.length === 0) {
+            setShowNoProjectDialog(true);
+            setPosition(0);
+            setIsLoading(false);
+            return;
+          }
+          
           if (!selectedProjectId) {
             setPosition(0);
             setIsLoading(false);
@@ -161,15 +185,47 @@ export function TimeSlider({
   const label = isActive ? 'Swipa för att checka ut' : 'Swipa för att checka in';
 
   return (
-    <div className="w-full space-y-2">
-      {/* Timer display when active */}
-      {isActive && (
-        <div className="flex items-center justify-center py-2">
-          <div className="text-4xl font-mono font-bold text-gray-900 tracking-wider">
-            {elapsedTime}
+    <>
+      {/* No Project Dialog */}
+      <Dialog open={showNoProjectDialog} onOpenChange={setShowNoProjectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Inget projekt hittades</DialogTitle>
+            <DialogDescription>
+              Du måste skapa ett projekt för att kunna starta timern.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 mt-4">
+            <p className="text-sm text-muted-foreground">
+              Vill du skapa ett projekt nu?
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowNoProjectDialog(false)}
+                className="flex-1"
+              >
+                Avbryt
+              </Button>
+              <Link href="/dashboard/projects/new" className="flex-1">
+                <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+                  Skapa projekt
+                </Button>
+              </Link>
+            </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
+
+      <div className="w-full space-y-2">
+        {/* Timer display when active */}
+        {isActive && (
+          <div className="flex items-center justify-center py-2">
+            <div className="text-4xl font-mono font-bold text-gray-900 tracking-wider">
+              {elapsedTime}
+            </div>
+          </div>
+        )}
 
       {/* Project selector dropdown */}
       {!isActive && availableProjects.length > 0 && (
@@ -225,7 +281,7 @@ export function TimeSlider({
 
         {/* Sliding thumb */}
         <div
-          className="absolute top-1/2 -translate-y-1/2 h-12 w-12 bg-white border border-gray-200 rounded-full shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing z-10"
+          className="absolute top-1/2 -translate-y-1/2 h-12 w-12 bg-white border border-gray-200 rounded-full shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing z-10 overflow-hidden"
           style={{
             left: `calc(${position * 100}% - ${position * 48}px)`,
             transition: isDragging ? 'none' : 'left 0.3s ease-out'
@@ -233,14 +289,23 @@ export function TimeSlider({
           onMouseDown={(e) => handleStart(e.clientX)}
           onTouchStart={(e) => handleStart(e.touches[0].clientX)}
         >
-          <ChevronRight 
+          <svg 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
             className="w-6 h-6 text-gray-600"
             style={{
               transform: `scale(${1 + position * 0.2})`
             }}
-          />
+          >
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
         </div>
       </div>
     </div>
+    </>
   );
 }

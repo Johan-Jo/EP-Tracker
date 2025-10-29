@@ -3,6 +3,9 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { TimeSlider } from '@/components/core/time-slider';
 import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 interface DashboardClientProps {
   userName: string;
@@ -41,6 +44,9 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
   const router = useRouter();
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [showDiaryPromptDialog, setShowDiaryPromptDialog] = useState(false);
+  const [completedProjectId, setCompletedProjectId] = useState<string | null>(null);
+  const [showQuickStartBanner, setShowQuickStartBanner] = useState(true);
   
   // EPIC 26: Optimistic UI state for instant feedback
   const [optimisticTimeEntry, setOptimisticTimeEntry] = useState(activeTimeEntry);
@@ -50,7 +56,13 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
   // Prevent hydration mismatch for date formatting
   useEffect(() => {
     setIsClient(true);
-  }, []);
+    
+    // Check if user has dismissed the quick start banner
+    const dismissed = localStorage.getItem(`quickStartDismissed_${userId}`);
+    if (dismissed === 'true') {
+      setShowQuickStartBanner(false);
+    }
+  }, [userId]);
 
   // EPIC 26: Sync optimistic state when server data changes
   useEffect(() => {
@@ -129,17 +141,65 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
       });
   };
 
+  // Handle check-out complete callback - show diary prompt
+  const handleCheckOutComplete = (projectId: string) => {
+    setCompletedProjectId(projectId);
+    setShowDiaryPromptDialog(true);
+  };
+
+  // Handle dismissing quick start banner
+  const handleDismissQuickStart = () => {
+    setShowQuickStartBanner(false);
+    localStorage.setItem(`quickStartDismissed_${userId}`, 'true');
+  };
+
   return (
-    <div className="p-4 sm:p-6">
-      {/* Welcome */}
-      <div className="mb-6" data-tour="dashboard-header">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Välkommen, {userName}! <span className="align-middle">👋</span>
-        </h1>
-        <p className="text-gray-600 mt-2">
-          Här är en översikt över dina projekt och aktiviteter.
-        </p>
-      </div>
+    <>
+      {/* Diary Prompt Dialog */}
+      <Dialog open={showDiaryPromptDialog} onOpenChange={setShowDiaryPromptDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bra jobbat! 👏</DialogTitle>
+            <DialogDescription>
+              Du har checkat ut från projektet.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 mt-4">
+            <p className="text-sm text-muted-foreground">
+              Vill du skapa en dagbokspost om detta projekt nu?
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowDiaryPromptDialog(false)}
+                className="flex-1"
+              >
+                Inte nu
+              </Button>
+              <Link 
+                href={`/dashboard/diary/new?project_id=${completedProjectId}`}
+                className="flex-1"
+                onClick={() => setShowDiaryPromptDialog(false)}
+              >
+                <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+                  Skapa dagbokspost
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <div className="p-4 sm:p-6">
+        {/* Welcome */}
+        <div className="mb-6" data-tour="dashboard-header">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Välkommen, {userName.split(' ')[0]}! <span className="align-middle">👋</span>
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Här är en översikt över dina projekt och aktiviteter.
+          </p>
+        </div>
 
       {/* Time Check-in/Check-out Slider - EPIC 26: Uses optimistic state */}
       <div className="mb-6 bg-gradient-to-r from-orange-50 to-orange-100/50 border-2 border-orange-200 rounded-xl p-4" data-tour="time-slider">
@@ -182,34 +242,48 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
           availableProjects={allProjects}
           onCheckIn={handleCheckIn}
           onCheckOut={handleCheckOut}
+          onCheckOutComplete={handleCheckOutComplete}
         />
       </div>
 
       {/* Quick Start Banner - BLUE GRADIENT */}
-      <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 sm:p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 9v4M12 17h.01" />
-              </svg>
-            </div>
-            <div className="leading-tight">
-              <div className="font-medium">Kom igång snabbt</div>
-              <div className="text-sm text-gray-600">
-                Följ vår snabbguide för att sätta upp ditt första projekt
+      {showQuickStartBanner && (
+        <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 sm:p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200 relative">
+          {/* Close button */}
+          <button
+            onClick={handleDismissQuickStart}
+            className="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+            aria-label="Stäng"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pr-8">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 9v4M12 17h.01" />
+                </svg>
+              </div>
+              <div className="leading-tight">
+                <div className="font-medium">Kom igång snabbt</div>
+                <div className="text-sm text-gray-600">
+                  Följ vår snabbguide för att sätta upp ditt första projekt
+                </div>
               </div>
             </div>
+            <button 
+              onClick={() => router.push('/dashboard?tour=dashboard')}
+              className="inline-flex items-center justify-center h-9 px-4 rounded-lg border border-blue-300 bg-white text-blue-600 text-sm font-medium hover:bg-blue-50 shrink-0"
+            >
+              Starta interaktiv guide
+            </button>
           </div>
-          <button 
-            onClick={() => router.push('/dashboard?tour=dashboard')}
-            className="inline-flex items-center justify-center h-9 px-4 rounded-lg border border-blue-300 bg-white text-blue-600 text-sm font-medium hover:bg-blue-50"
-          >
-            Starta interaktiv guide
-          </button>
         </div>
-      </div>
+      )}
 
       {/* Quick actions */}
       <div className="mt-6" data-tour="quick-actions">
@@ -519,6 +593,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
       <div className="h-10" />
 
       <PageTourTrigger tourId="dashboard" />
-    </div>
+      </div>
+    </>
   );
 }

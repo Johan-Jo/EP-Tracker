@@ -6,6 +6,7 @@ import { Plus, Search, Package, Receipt, TrendingUp, FileImage } from 'lucide-re
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { createClient } from '@/lib/supabase/client';
 import { AddMaterialDialog } from '@/components/materials/add-material-dialog';
 import { MaterialDetailModal } from '@/components/materials/material-detail-modal';
@@ -197,54 +198,34 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 					</Button>
 					</div>
 
-					{/* Search */}
-					<div className='flex gap-2'>
-						<div className='relative flex-1'>
-							<Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground' />
-							<Input
-								placeholder='Sök material eller utgift...'
-								className='pl-9'
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-							/>
-						</div>
+				{/* Search and Project Filter */}
+				<div className='flex flex-col sm:flex-row gap-3'>
+					<div className='relative flex-1'>
+						<Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground' />
+						<Input
+							placeholder='Sök material eller utgift...'
+							className='pl-9'
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+						/>
 					</div>
+					{!projectId && (
+						<Select value={selectedProject} onValueChange={setSelectedProject}>
+							<SelectTrigger className='w-full sm:w-64' data-tour="materials-tabs">
+								<SelectValue placeholder='Alla projekt' />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value='all'>Alla projekt</SelectItem>
+								{projects.map((project: any) => (
+									<SelectItem key={project.id} value={project.id}>
+										{project.name}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					)}
 				</div>
-
-				{/* Project Tabs */}
-				<div className='border-b border-border px-4 md:px-8 overflow-x-auto' data-tour="materials-tabs">
-					<div className='flex gap-1 min-w-max'>
-						<button
-							onClick={() => setSelectedProject('all')}
-							className={`px-4 py-3 text-sm font-medium transition-colors relative ${
-								selectedProject === 'all'
-									? 'text-orange-600'
-									: 'text-muted-foreground hover:text-foreground'
-							}`}
-						>
-							Alla projekt
-							{selectedProject === 'all' && (
-								<div className='absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600' />
-							)}
-						</button>
-						{projects.map((project: any) => (
-							<button
-								key={project.id}
-								onClick={() => setSelectedProject(project.id)}
-								className={`px-4 py-3 text-sm font-medium transition-colors relative ${
-									selectedProject === project.id
-										? 'text-orange-600'
-										: 'text-muted-foreground hover:text-foreground'
-								}`}
-							>
-								{project.name}
-								{selectedProject === project.id && (
-									<div className='absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600' />
-								)}
-							</button>
-						))}
-					</div>
-				</div>
+			</div>
 			</header>
 
 			{/* Main Content */}
@@ -433,20 +414,22 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 			</main>
 
 			{/* Add Material Dialog */}
-			<AddMaterialDialog 
-				open={showAddDialog} 
-				onClose={() => setShowAddDialog(false)} 
-				orgId={orgId} 
-			/>
+		<AddMaterialDialog 
+			open={showAddDialog} 
+			onClose={() => setShowAddDialog(false)} 
+			orgId={orgId}
+			projectId={projectId}
+		/>
 
 			{/* Edit Material Dialog */}
 			{editingMaterial && (
-				<AddMaterialDialog 
-					open={true} 
-					onClose={() => setEditingMaterial(null)} 
-					orgId={orgId}
-					editingMaterial={editingMaterial}
-				/>
+			<AddMaterialDialog 
+				open={true} 
+				onClose={() => setEditingMaterial(null)} 
+				orgId={orgId}
+				editingMaterial={editingMaterial}
+				projectId={projectId}
+			/>
 			)}
 
 			{/* View Material Detail Modal */}

@@ -8,19 +8,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Package, Receipt, Loader2 } from 'lucide-react';
+import { Package, Receipt, Loader2, Camera, Upload, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import Image from 'next/image';
 
 interface AddMaterialDialogProps {
 	open: boolean;
 	onClose: () => void;
 	orgId: string;
 	editingMaterial?: any;
+	projectId?: string;
 }
 
-export function AddMaterialDialog({ open, onClose, orgId, editingMaterial }: AddMaterialDialogProps) {
+export function AddMaterialDialog({ open, onClose, orgId, editingMaterial, projectId }: AddMaterialDialogProps) {
 	const [type, setType] = useState<'material' | 'expense'>('material');
-	const [project, setProject] = useState('');
+	const [project, setProject] = useState(projectId || '');
 	const [name, setName] = useState('');
 	const [quantity, setQuantity] = useState('');
 	const [unit, setUnit] = useState('st');
@@ -28,6 +30,9 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial }: Add
 	const [supplier, setSupplier] = useState('');
 	const [notes, setNotes] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [photos, setPhotos] = useState<File[]>([]);
+	const [photosPreviews, setPhotosPreviews] = useState<string[]>([]);
+	const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
 
 	const supabase = createClient();
 	const queryClient = useQueryClient();
@@ -43,6 +48,10 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial }: Add
 			setUnitPrice(String(editingMaterial.unit_price));
 			setSupplier(editingMaterial.supplier || '');
 			setNotes(editingMaterial.notes || '');
+			// Load existing photos if available
+			if (editingMaterial.photo_urls && editingMaterial.photo_urls.length > 0) {
+				setPhotosPreviews(editingMaterial.photo_urls);
+			}
 		}
 	}, [editingMaterial]);
 
@@ -71,6 +80,37 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial }: Add
 		{ value: 'förp', label: 'förp' },
 	];
 
+	const uploadPhotosToStorage = async (): Promise<string[]> => {
+		if (photos.length === 0) return [];
+
+		setIsUploadingPhotos(true);
+		const uploadedUrls: string[] = [];
+
+		try {
+			for (const photo of photos) {
+				const fileExt = photo.name.split('.').pop();
+				const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+				const filePath = `${orgId}/${type}s/${fileName}`;
+
+				const { error: uploadError } = await supabase.storage
+					.from('receipts')
+					.upload(filePath, photo);
+
+				if (uploadError) throw uploadError;
+
+				const { data: { publicUrl } } = supabase.storage
+					.from('receipts')
+					.getPublicUrl(filePath);
+
+				uploadedUrls.push(publicUrl);
+			}
+
+			return uploadedUrls;
+		} finally {
+			setIsUploadingPhotos(false);
+		}
+	};
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
@@ -89,6 +129,12 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial }: Add
 			} = await supabase.auth.getUser();
 			if (!user) throw new Error('Not authenticated');
 
+			// Upload photos to storage
+			const newPhotoUrls = await uploadPhotosToStorage();
+			
+			// Combine with existing photos (for editing)
+			const allPhotoUrls = [...photosPreviews.filter(url => typeof url === 'string' && url.startsWith('http')), ...newPhotoUrls];
+
 			if (editingMaterial) {
 				// Update existing material/expense
 				if (type === 'material') {
@@ -101,6 +147,7 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial }: Add
 							unit,
 							unit_price_sek: parseFloat(unitPrice),
 							notes: notes || supplier || null,
+							photo_urls: allPhotoUrls,
 						})
 						.eq('id', editingMaterial.id);
 
@@ -114,6 +161,7 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial }: Add
 							amount_sek: totalPrice,
 							category: supplier || 'Övrigt',
 							notes: notes || null,
+							photo_urls: allPhotoUrls,
 						})
 						.eq('id', editingMaterial.id);
 
@@ -131,6 +179,7 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial }: Add
 						unit,
 						unit_price_sek: parseFloat(unitPrice),
 						notes: notes || supplier || null,
+						photo_urls: allPhotoUrls,
 						status: 'draft',
 					});
 
@@ -144,6 +193,7 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial }: Add
 						amount_sek: totalPrice,
 						category: supplier || 'Övrigt',
 						notes: notes || null,
+						photo_urls: allPhotoUrls,
 						status: 'draft',
 						vat: true,
 					});
@@ -160,8 +210,41 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial }: Add
 			onClose();
 		} catch (error) {
 			console.error('Error adding material:', error);
+			alert('Ett fel uppstod vid sparande. Försök igen.');
 		} finally {
 			setIsSubmitting(false);
+		}
+	};
+
+	const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const files = Array.from(e.target.files || []);
+		if (photos.length + photosPreviews.length + files.length > 10) {
+			alert('Max 10 foton tillåtna');
+			return;
+		}
+
+		setPhotos([...photos, ...files]);
+
+		// Create previews
+		files.forEach((file) => {
+			const reader = new FileReader();
+			reader.onloadend = () => {
+				setPhotosPreviews((prev) => [...prev, reader.result as string]);
+			};
+			reader.readAsDataURL(file);
+		});
+	};
+
+	const removePhoto = (index: number) => {
+		// Check if it's a new photo or existing one
+		if (index < photosPreviews.length - photos.length) {
+			// Existing photo (URL string) - just remove from previews
+			setPhotosPreviews(photosPreviews.filter((_, i) => i !== index));
+		} else {
+			// New photo (File object) - remove from both arrays
+			const photoIndex = index - (photosPreviews.length - photos.length);
+			setPhotos(photos.filter((_, i) => i !== photoIndex));
+			setPhotosPreviews(photosPreviews.filter((_, i) => i !== index));
 		}
 	};
 
@@ -174,6 +257,8 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial }: Add
 		setUnitPrice('');
 		setSupplier('');
 		setNotes('');
+		setPhotos([]);
+		setPhotosPreviews([]);
 	};
 
 	const handleClose = () => {
@@ -343,32 +428,110 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial }: Add
 						/>
 					</div>
 
-					{/* Notes */}
-					<div className='space-y-2'>
-						<Label htmlFor='notes'>Anteckningar</Label>
-						<Textarea
-							id='notes'
-							value={notes}
-							onChange={(e) => setNotes(e.target.value)}
-							placeholder='Valfria anteckningar...'
-							className='resize-none h-20'
-						/>
-					</div>
+				{/* Notes */}
+				<div className='space-y-2'>
+					<Label htmlFor='notes'>Anteckningar</Label>
+					<Textarea
+						id='notes'
+						value={notes}
+						onChange={(e) => setNotes(e.target.value)}
+						placeholder='Valfria anteckningar...'
+						className='resize-none h-20'
+					/>
+				</div>
 
-					{/* Actions */}
-					<div className='flex gap-3 pt-4'>
-						<Button type='button' variant='outline' onClick={handleClose} className='flex-1'>
-							Avbryt
-						</Button>
-						<Button
-							type='submit'
-							disabled={isSubmitting}
-							className='flex-1 bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40'
-						>
-							{isSubmitting && <Loader2 className='w-4 h-4 mr-2 animate-spin' />}
-							{editingMaterial ? 'Spara ändringar' : 'Lägg till'}
-						</Button>
-					</div>
+				{/* Photos */}
+				<div className='space-y-2'>
+					<Label>Bilder & Kvitton (max 10)</Label>
+					
+					{/* Existing photos preview */}
+					{photosPreviews.length > 0 && (
+						<div className='grid grid-cols-4 gap-3 mb-3'>
+							{photosPreviews.map((preview, index) => (
+								<div key={index} className='relative group'>
+									<div className='relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200'>
+										<Image
+											src={preview}
+											alt={`Foto ${index + 1}`}
+											fill
+											className='object-cover'
+											sizes='(max-width: 768px) 50vw, 25vw'
+										/>
+									</div>
+									<button
+										type='button'
+										onClick={() => removePhoto(index)}
+										className='absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity'
+									>
+										<X className='w-3 h-3' />
+									</button>
+								</div>
+							))}
+						</div>
+					)}
+
+					{/* Photo upload buttons */}
+					{photosPreviews.length < 10 && (
+						<div className='flex gap-3'>
+							<Button
+								type='button'
+								variant='outline'
+								onClick={() => document.getElementById('photo-upload')?.click()}
+								disabled={isSubmitting || isUploadingPhotos}
+								className='flex-1'
+							>
+								<Upload className='w-4 h-4 mr-2' />
+								Välj fil
+							</Button>
+							<Button
+								type='button'
+								onClick={() => document.getElementById('camera-capture')?.click()}
+								disabled={isSubmitting || isUploadingPhotos}
+								className='flex-1 bg-orange-500 hover:bg-orange-600 text-white'
+							>
+								<Camera className='w-4 h-4 mr-2' />
+								Ta foto
+							</Button>
+						</div>
+					)}
+
+					{/* Hidden inputs */}
+					<input
+						id='photo-upload'
+						type='file'
+						accept='image/*'
+						multiple
+						onChange={handlePhotoChange}
+						className='hidden'
+					/>
+					<input
+						id='camera-capture'
+						type='file'
+						accept='image/*'
+						capture='environment'
+						onChange={handlePhotoChange}
+						className='hidden'
+					/>
+					
+					<p className='text-xs text-muted-foreground'>
+						{photosPreviews.length} av 10 bilder uppladdade
+					</p>
+				</div>
+
+				{/* Actions */}
+				<div className='flex gap-3 pt-4'>
+					<Button type='button' variant='outline' onClick={handleClose} className='flex-1'>
+						Avbryt
+					</Button>
+					<Button
+						type='submit'
+						disabled={isSubmitting || isUploadingPhotos}
+						className='flex-1 bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40'
+					>
+						{(isSubmitting || isUploadingPhotos) && <Loader2 className='w-4 h-4 mr-2 animate-spin' />}
+						{editingMaterial ? 'Spara ändringar' : 'Lägg till'}
+					</Button>
+				</div>
 				</form>
 			</DialogContent>
 		</Dialog>

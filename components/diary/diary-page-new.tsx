@@ -18,6 +18,23 @@ export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 	const [searchQuery, setSearchQuery] = useState('');
 	const supabase = createClient();
 
+	// Fetch project info if filtering by project
+	const { data: projectInfo } = useQuery({
+		queryKey: ['project', projectId],
+		queryFn: async () => {
+			if (!projectId) return null;
+			const { data, error } = await supabase
+				.from('projects')
+				.select('id, name, project_number')
+				.eq('id', projectId)
+				.single();
+			
+			if (error) throw error;
+			return data;
+		},
+		enabled: !!projectId,
+	});
+
 	// Fetch diary entries
 	const { data: diaryEntries = [], isLoading } = useQuery({
 		queryKey: ['diary', orgId, projectId],
@@ -132,16 +149,22 @@ export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 							<p className='text-sm text-muted-foreground'>
 								AFC-stil dagboksposter för dina projekt
 							</p>
+							{projectInfo && (
+								<div className='mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-sm'>
+									<FileText className='w-4 h-4' />
+									<span>Filtrerar: {projectInfo.name}</span>
+								</div>
+							)}
 						</div>
-						<Button 
-							asChild
-							className='shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:scale-105 transition-all duration-200'
-						>
-							<Link href='/dashboard/diary/new'>
-								<Plus className='w-4 h-4 mr-2' />
-								Ny dagbokspost
-							</Link>
-						</Button>
+					<Button 
+						asChild
+						className='shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:scale-105 transition-all duration-200'
+					>
+						<Link href={projectId ? `/dashboard/diary/new?project_id=${projectId}` : '/dashboard/diary/new'}>
+							<Plus className='w-4 h-4 mr-2' />
+							Ny dagbokspost
+						</Link>
+					</Button>
 					</div>
 
 					{/* Search */}
@@ -225,10 +248,16 @@ export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 								<FileText className='w-6 h-6 md:w-8 md:h-8 text-muted-foreground' />
 							</div>
 							<p className='text-muted-foreground text-sm md:text-base'>
-								{searchQuery ? 'Inga dagboksposter hittades' : 'Inga dagboksposter ännu'}
+								{searchQuery 
+									? 'Inga dagboksposter hittades' 
+									: projectInfo 
+										? `Inga dagboksposter för ${projectInfo.name}` 
+										: 'Inga dagboksposter ännu'}
 							</p>
 							<p className='text-xs md:text-sm text-muted-foreground mt-2'>
-								{searchQuery ? 'Prova att söka efter något annat' : 'Skapa din första dagbokspost för att komma igång'}
+								{searchQuery 
+									? 'Prova att söka efter något annat' 
+									: 'Skapa din första dagbokspost för att komma igång'}
 							</p>
 						</div>
 					) : (

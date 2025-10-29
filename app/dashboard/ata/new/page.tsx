@@ -5,7 +5,14 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
-export default async function NewAtaPage() {
+interface PageProps {
+	searchParams: Promise<{ project_id?: string }>;
+}
+
+export default async function NewAtaPage(props: PageProps) {
+	const searchParams = await props.searchParams;
+	const projectId = searchParams.project_id;
+	
 	const { user, membership } = await getSession();
 
 	if (!user) {
@@ -44,9 +51,12 @@ export default async function NewAtaPage() {
 				</p>
 			</div>
 
-			<div className='max-w-3xl'>
-				<AtaForm userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance'} />
-			</div>
+		<div className='max-w-3xl'>
+			<AtaForm 
+				userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance'} 
+				projectId={projectId}
+			/>
+		</div>
 		</div>
 	);
 }

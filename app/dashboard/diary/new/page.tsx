@@ -2,7 +2,14 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
 import { DiaryFormNew } from '@/components/diary/diary-form-new';
 
-export default async function NewDiaryPage() {
+interface PageProps {
+	searchParams: Promise<{ project_id?: string }>;
+}
+
+export default async function NewDiaryPage(props: PageProps) {
+	const searchParams = await props.searchParams;
+	const projectId = searchParams.project_id;
+	
 	const { user, membership } = await getSession();
 
 	if (!user) {
@@ -22,6 +29,6 @@ export default async function NewDiaryPage() {
 		redirect('/dashboard/diary');
 	}
 
-	return <DiaryFormNew orgId={membership.org_id} userId={user.id} />;
+	return <DiaryFormNew orgId={membership.org_id} userId={user.id} projectId={projectId} />;
 }
 

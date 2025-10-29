@@ -60,6 +60,140 @@ export default async function ProjectDetailPage(props: PageProps) {
 
 	const canEdit = ['admin', 'foreman'].includes(membership.role);
 
+	// PERFORMANCE: Fetch project summary on server-side for instant page load
+	// Use internal API call with supabase client instead of HTTP fetch
+	let initialSummary = null;
+	try {
+		// Directly query data here instead of going through HTTP
+		// This is faster and avoids cookie forwarding issues
+		const [
+			timeEntriesResult,
+			materialsResult,
+			expensesResult,
+			mileageResult,
+			projectMembersResult,
+			activitiesResult,
+		] = await Promise.all([
+			supabase
+				.from('time_entries')
+				.select('id, user_id, phase_id, duration_min, profiles:user_id(id, full_name)')
+				.eq('project_id', params.id),
+			supabase
+				.from('materials')
+				.select('qty, unit_price_sek, total_sek')
+				.eq('project_id', params.id),
+			supabase
+				.from('expenses')
+				.select('amount')
+				.eq('project_id', params.id),
+			supabase
+				.from('mileage')
+				.select('distance_km, rate_per_km')
+				.eq('project_id', params.id),
+			supabase
+				.from('project_members')
+				.select('user_id, profiles:user_id(id, full_name)')
+				.eq('project_id', params.id),
+			supabase
+				.from('activity_log')
+				.select('*')
+				.eq('project_id', params.id)
+				.order('created_at', { ascending: false })
+				.limit(10),
+		]);
+
+		const timeEntries = timeEntriesResult.data || [];
+		const materials = materialsResult.data || [];
+		const expenses = expensesResult.data || [];
+		const mileageData = mileageResult.data || [];
+		const projectMembers = projectMembersResult.data || [];
+		const activities = activitiesResult.data || [];
+
+		// Calculate statistics
+		const totalMinutes = timeEntries.reduce((sum, entry) => sum + (entry.duration_min || 0), 0);
+		const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
+		
+		const materialsTotal = materials.reduce((sum, m) => sum + (m.total_sek || 0), 0);
+		const expensesTotal = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+		const mileageTotal = mileageData.reduce((sum, m) => sum + (m.distance_km * m.rate_per_km), 0);
+		const totalCosts = materialsTotal + expensesTotal + mileageTotal;
+
+		const budgetHours = project.budget_hours || 0;
+		const budgetAmount = project.budget_amount || 0;
+		
+		// Calculate hours per phase
+		const phaseHoursMap = new Map<string, number>();
+		timeEntries.forEach((entry: any) => {
+			if (entry.phase_id) {
+				const current = phaseHoursMap.get(entry.phase_id) || 0;
+				phaseHoursMap.set(entry.phase_id, current + (entry.duration_min || 0) / 60);
+			}
+		});
+		
+		// Enrich phases with calculated data
+		const enrichedPhases = (project.phases || []).map((phase: any) => {
+			const loggedHours = Math.round((phaseHoursMap.get(phase.id) || 0) * 10) / 10;
+			const phaseBudgetHours = phase.budget_hours || 0;
+			const phaseBudgetAmount = phase.budget_amount || 0;
+			
+			return {
+				id: phase.id,
+				name: phase.name,
+				sortOrder: phase.sort_order || 0,
+				budgetHours: phaseBudgetHours,
+				budgetAmount: phaseBudgetAmount,
+				loggedHours,
+				hoursPercentage: phaseBudgetHours > 0
+					? Math.round((loggedHours / phaseBudgetHours) * 100)
+					: 0,
+			};
+		});
+		
+		initialSummary = {
+			project: {
+				id: project.id,
+				name: project.name,
+				projectNumber: project.project_number,
+				status: project.status,
+				budgetMode: project.budget_mode,
+				budgetHours,
+				budgetAmount,
+			},
+			time: {
+				totalHours,
+				budgetHours,
+				remainingHours: budgetHours - totalHours,
+				percentage: budgetHours > 0 ? Math.round((totalHours / budgetHours) * 100) : 0,
+				byUser: [],
+			},
+			costs: {
+				materials: materialsTotal,
+				expenses: expensesTotal,
+				mileage: mileageTotal,
+				total: totalCosts,
+				budgetAmount,
+				remaining: budgetAmount - totalCosts,
+				percentage: budgetAmount > 0 ? Math.round((totalCosts / budgetAmount) * 100) : 0,
+			},
+			materials: {
+				count: materials.length,
+				totalCost: materialsTotal,
+			},
+			phases: enrichedPhases,
+			team: projectMembers.map((pm: any) => ({
+				userId: pm.user_id,
+				userName: pm.profiles?.full_name || 'Okänd',
+				role: 'Medlem',
+				loggedHours: 0,
+			})),
+			activities,
+			deadline: null,
+		};
+	} catch (error) {
+		console.error('Error pre-fetching summary:', error);
+		// Continue without initial summary - component will fetch it
+	}
+
 	return (
 		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
 			<div className='px-4 md:px-8 py-6 space-y-6'>
@@ -124,6 +258,7 @@ export default async function ProjectDetailPage(props: PageProps) {
 					budgetHours={project.budget_hours}
 					budgetAmount={project.budget_amount}
 					showEditButton={true}
+					initialSummary={initialSummary}
 				/>
 
 				{/* Alert Settings Display - EPIC 25 Phase 2 */}

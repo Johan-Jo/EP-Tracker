@@ -143,3 +143,16 @@
 html {
   font-size: var(--font-size);
 }
+
+/* Fix date input calendar icon overlap on mobile */
+@media (max-width: 768px) {
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Ensure date input padding works correctly on mobile */
+  input[type="date"] {
+    padding-left: 0.75rem !important;
+  }
+}
