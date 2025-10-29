@@ -37,9 +37,13 @@ export function VoiceRecorder({ onComplete, onError }: VoiceRecorderProps) {
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [vad, setVad] = useState<VoiceActivityDetector | null>(null);
   const [audioLevel, setAudioLevel] = useState<number>(0);
+  const [barHeights, setBarHeights] = useState<number[]>(Array(20).fill(15));
   const timerRef = useRef<number | null>(null);
   const vadIntervalRef = useRef<number | null>(null);
+  const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const dataArrayRef = useRef<Uint8Array | null>(null);
   
   // Cleanup on unmount only
   useEffect(() => {
@@ -50,6 +54,9 @@ export function VoiceRecorder({ onComplete, onError }: VoiceRecorderProps) {
       if (vadIntervalRef.current) {
         clearInterval(vadIntervalRef.current);
       }
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
       }
@@ -59,6 +66,45 @@ export function VoiceRecorder({ onComplete, onError }: VoiceRecorderProps) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on unmount
+  
+  // Real-time audio visualization loop
+  useEffect(() => {
+    if (isRecording && !isPaused && analyserRef.current && dataArrayRef.current) {
+      const animate = () => {
+        if (analyserRef.current && dataArrayRef.current) {
+          // Get real frequency data from the microphone
+          analyserRef.current.getByteFrequencyData(dataArrayRef.current);
+          
+          // Calculate bar heights from actual audio frequencies
+          const newHeights = Array(20).fill(0).map((_, i) => {
+            // Sample frequency bins (distribute across spectrum)
+            const binIndex = Math.floor((i / 20) * dataArrayRef.current!.length);
+            const value = dataArrayRef.current![binIndex];
+            // Convert 0-255 to percentage height (15-85%)
+            const height = 15 + (value / 255) * 70;
+            return Math.round(height);
+          });
+          
+          setBarHeights(newHeights);
+        }
+        animationRef.current = requestAnimationFrame(animate);
+      };
+      animationRef.current = requestAnimationFrame(animate);
+    } else {
+      // Reset to minimal bars when not recording
+      setBarHeights(Array(20).fill(15));
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+    }
+    
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [isRecording, isPaused]);
   
   // Handle recording start
   const handleStart = async () => {
@@ -86,11 +132,25 @@ export function VoiceRecorder({ onComplete, onError }: VoiceRecorderProps) {
       // Create MediaRecorder
       const recorder = new MediaRecorder(stream, { mimeType });
       
-      // Create VAD
+      // Create VAD and Audio Analyser for real-time visualization
       const audioContext = new AudioContext();
       const vadInstance = new VoiceActivityDetector(audioContext);
       vadInstance.connect(stream);
       setVad(vadInstance);
+      
+      // Set up frequency analyser for audio visualization
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 64; // Small FFT for 32 frequency bins
+      analyser.smoothingTimeConstant = 0.7; // Smooth out rapid changes
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      
+      // Connect audio stream to analyser
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+      
+      analyserRef.current = analyser;
+      dataArrayRef.current = dataArray;
       
       const chunks: Blob[] = [];
       
@@ -242,7 +302,7 @@ export function VoiceRecorder({ onComplete, onError }: VoiceRecorderProps) {
       
       eventSource.addEventListener('complete', (e) => {
         const data = JSON.parse(e.data);
-        toast.success('Röstanteckning klar!', { id: 'voice-progress' });
+        toast.dismiss('voice-progress');
         eventSource.close();
         onComplete?.(data.voiceLogId, data.translatedText);
       });
@@ -277,15 +337,20 @@ export function VoiceRecorder({ onComplete, onError }: VoiceRecorderProps) {
   return (
     <div className="flex flex-col items-center gap-4 p-6">
       {/* Control Buttons */}
-      <div className="flex gap-4">
-        {!isRecording && !isPaused && (
-          <Button
-            onClick={handleStart}
-            size="lg"
-            className="h-20 w-20 rounded-full"
-          >
-            <Mic className="h-8 w-8" />
-          </Button>
+      <div className="flex flex-col items-center gap-4">
+        {recordingState === 'idle' && (
+          <>
+            <Button
+              onClick={handleStart}
+              size="lg"
+              className="h-20 w-20 rounded-full"
+            >
+              <Mic className="h-8 w-8" />
+            </Button>
+            <p className="text-sm text-muted-foreground text-center">
+              Tryck på knappen för att börja spela in
+            </p>
+          </>
         )}
         
         {isRecording && !isPaused && (
@@ -300,7 +365,7 @@ export function VoiceRecorder({ onComplete, onError }: VoiceRecorderProps) {
         )}
         
         {isPaused && (
-          <>
+          <div className="flex gap-4">
             <Button
               onClick={handleResume}
               size="lg"
@@ -316,7 +381,7 @@ export function VoiceRecorder({ onComplete, onError }: VoiceRecorderProps) {
             >
               <Square className="h-8 w-8" />
             </Button>
-          </>
+          </div>
         )}
         
         {(recordingState === 'uploading' || recordingState === 'processing') && (
@@ -346,22 +411,32 @@ export function VoiceRecorder({ onComplete, onError }: VoiceRecorderProps) {
       
       {/* Audio Level Indicator */}
       {isRecording && (
-        <div className="space-y-2 w-full max-w-xs">
-          <div className="flex items-center gap-2">
-            <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-green-500 transition-all duration-100 ease-out"
-                style={{ width: `${Math.min(100, audioLevel)}%` }}
-              />
-            </div>
-            <span className="text-xs text-muted-foreground w-10 text-right">
-              {Math.round(audioLevel)}%
-            </span>
+        <div className="space-y-3 w-full max-w-xs">
+          {/* Voice Raster - Real-time Audio Bars */}
+          <div className="flex items-center justify-center gap-1 h-16">
+            {barHeights.map((height, i) => {
+              // Determine if this is active audio (based on bar height)
+              const isActive = height > 20;
+              
+              return (
+                <div
+                  key={i}
+                  className={`w-1.5 rounded-full transition-all duration-75 ${
+                    isActive ? 'bg-red-500' : 'bg-gray-300'
+                  }`}
+                  style={{ 
+                    height: `${height}%`,
+                    opacity: isActive ? 0.8 : 0.5,
+                  }}
+                />
+              );
+            })}
           </div>
+          
+          {/* Audio Status */}
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-              <div className={`w-2 h-2 rounded-full ${audioLevel > 10 ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
-              {audioLevel > 10 ? 'Audio detected' : 'Speak now'}
+            <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              Prata in ditt meddelande
             </div>
           </div>
         </div>
@@ -370,13 +445,13 @@ export function VoiceRecorder({ onComplete, onError }: VoiceRecorderProps) {
       {/* Status Messages */}
       {recordingState === 'uploading' && (
         <div className="text-center text-sm text-muted-foreground">
-          Uploading audio...
+          Nu gör vi om ditt röstmeddelande till text...
         </div>
       )}
       
       {recordingState === 'processing' && (
         <div className="text-center text-sm text-muted-foreground">
-          Processing...
+          Nu gör vi om ditt röstmeddelande till text...
         </div>
       )}
       
@@ -388,3 +463,4 @@ export function VoiceRecorder({ onComplete, onError }: VoiceRecorderProps) {
     </div>
   );
 }
+

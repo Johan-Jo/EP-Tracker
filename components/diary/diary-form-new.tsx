@@ -14,6 +14,7 @@ import { toast } from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { VoiceRecorder } from '@/components/voice/voice-recorder';
 import { useVoiceStore } from '@/lib/stores/voice-store';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 interface DiaryFormNewProps {
 	orgId: string;
@@ -198,6 +199,14 @@ export function DiaryFormNew({ orgId, userId }: DiaryFormNewProps) {
 		toast.error(error);
 		setShowVoiceDialog(false);
 		voiceStore.reset();
+	};
+	
+	const handleDialogClose = (open: boolean) => {
+		if (!open) {
+			// Cancel recording and reset when dialog is closed
+			voiceStore.reset();
+		}
+		setShowVoiceDialog(open);
 	};
 
 	const handleSign = () => {
@@ -497,10 +506,14 @@ export function DiaryFormNew({ orgId, userId }: DiaryFormNewProps) {
 			<Dialog open={showVoiceDialog} onOpenChange={setShowVoiceDialog}>
 				<DialogContent className='sm:max-w-[500px]'>
 					<DialogHeader>
-						<DialogTitle>Röstanteckning</DialogTitle>
-						<DialogDescription>
-							Spela in en röstanteckning som översätts till text
-						</DialogDescription>
+						<VisuallyHidden>
+							<DialogTitle>Röstanteckning</DialogTitle>
+						</VisuallyHidden>
+						{voiceStore.recordingState === 'idle' && (
+							<DialogDescription className="text-base text-center">
+								Spela in en röstanteckning på vilket språk som helst, som vi automatiskt översätter till svensk text
+							</DialogDescription>
+						)}
 					</DialogHeader>
 					<div className='py-4'>
 						<VoiceRecorder
