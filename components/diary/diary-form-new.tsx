@@ -8,9 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, X, ArrowLeft, Sun, Cloud, CloudRain, CloudSnow, Wind } from 'lucide-react';
+import { Upload, X, ArrowLeft, Sun, Cloud, CloudRain, CloudSnow, Wind, Mic } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'react-hot-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { VoiceRecorder } from '@/components/voice/voice-recorder';
+import { useVoiceStore } from '@/lib/stores/voice-store';
 
 interface DiaryFormNewProps {
 	orgId: string;
@@ -43,6 +46,8 @@ export function DiaryFormNew({ orgId, userId }: DiaryFormNewProps) {
 	const [photos, setPhotos] = useState<File[]>([]);
 	const [signature, setSignature] = useState('');
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [showVoiceDialog, setShowVoiceDialog] = useState(false);
+	const voiceStore = useVoiceStore();
 
 	// Fetch projects
 	const { data: projects = [] } = useQuery({
@@ -176,6 +181,24 @@ export function DiaryFormNew({ orgId, userId }: DiaryFormNewProps) {
 			setIsSubmitting(false);
 		}
 	};
+	
+	const handleVoiceComplete = (voiceLogId: string, translatedText: string) => {
+		setWorkPerformed((prev) => {
+			if (prev) {
+				return `${prev}\n\n${translatedText}`;
+			}
+			return translatedText;
+		});
+		setShowVoiceDialog(false);
+		voiceStore.reset();
+		toast.success('Röstanteckning tillagd!');
+	};
+	
+	const handleVoiceError = (error: string) => {
+		toast.error(error);
+		setShowVoiceDialog(false);
+		voiceStore.reset();
+	};
 
 	const handleSign = () => {
 		if (!signature.trim()) {
@@ -290,17 +313,29 @@ export function DiaryFormNew({ orgId, userId }: DiaryFormNewProps) {
 						</div>
 					</div>
 
-					{/* Work Performed */}
-					<div className='space-y-2'>
+				{/* Work Performed */}
+				<div className='space-y-2'>
+					<div className="flex items-center justify-between">
 						<Label htmlFor='workPerformed'>Utfört arbete</Label>
-						<Textarea
-							id='workPerformed'
-							value={workPerformed}
-							onChange={(e) => setWorkPerformed(e.target.value)}
-							placeholder='Beskriv dagens arbetsmoment...'
-							className='resize-none min-h-[100px]'
-						/>
+						<Button
+							type='button'
+							variant='outline'
+							size='sm'
+							onClick={() => setShowVoiceDialog(true)}
+							className='gap-2'
+						>
+							<Mic className='h-4 w-4' />
+							Röstanteckning
+						</Button>
 					</div>
+					<Textarea
+						id='workPerformed'
+						value={workPerformed}
+						onChange={(e) => setWorkPerformed(e.target.value)}
+						placeholder='Beskriv dagens arbetsmoment...'
+						className='resize-none min-h-[100px]'
+					/>
+				</div>
 
 					{/* Issues/Problems */}
 					<div className='space-y-2'>
@@ -457,6 +492,24 @@ export function DiaryFormNew({ orgId, userId }: DiaryFormNewProps) {
 					</div>
 				</form>
 			</main>
+			
+			{/* Voice Recording Dialog */}
+			<Dialog open={showVoiceDialog} onOpenChange={setShowVoiceDialog}>
+				<DialogContent className='sm:max-w-[500px]'>
+					<DialogHeader>
+						<DialogTitle>Röstanteckning</DialogTitle>
+						<DialogDescription>
+							Spela in en röstanteckning som översätts till text
+						</DialogDescription>
+					</DialogHeader>
+					<div className='py-4'>
+						<VoiceRecorder
+							onComplete={handleVoiceComplete}
+							onError={handleVoiceError}
+						/>
+					</div>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

@@ -20,3 +20,5 @@ Write-Host ""
 Write-Host "This will update the log_activity() trigger to correctly handle diary_entries." -ForegroundColor Gray
 
 
+
+
