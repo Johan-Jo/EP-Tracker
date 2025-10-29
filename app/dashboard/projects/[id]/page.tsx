@@ -187,7 +187,7 @@ export default async function ProjectDetailPage(props: PageProps) {
 				loggedHours: 0,
 			})),
 			activities,
-			deadline: null,
+			deadline: undefined,
 		};
 	} catch (error) {
 		console.error('Error pre-fetching summary:', error);
