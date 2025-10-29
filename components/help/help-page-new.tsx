@@ -19,6 +19,7 @@ import {
 	CalendarCheck,
 	Users,
 	Bell,
+	Mic,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -62,6 +63,52 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 						'Fyll i datum, start, stopp',
 						'Välj projekt och fas',
 						'Spara',
+					],
+				},
+			],
+		},
+		{
+			title: 'Röstanteckningar (Voice-to-Text)',
+			description: 'Diktera arbetsrapporter och få automatisk översättning',
+			icon: Mic,
+			roles: ['admin', 'foreman', 'worker', 'finance'],
+			sections: [
+				{
+					title: 'Spela in röstanteckning',
+					items: [
+						'Gå till "Dagbok"-sidan',
+						'Klicka på mikrofon-ikonen',
+						'Prata in din arbetsrapport (på valfritt språk)',
+						'Systemet visar ljudnivå i realtid',
+						'Klicka "Stoppa" när du är klar',
+					],
+				},
+				{
+					title: 'Automatisk bearbetning',
+					items: [
+						'Ljudet laddas upp automatiskt',
+						'Whisper AI transkriberar din röst till text',
+						'Om du pratade på annat språk än svenska översätts texten automatiskt',
+						'Du får direkt feedback om transkription och översättning',
+						'Texten sparas och kan användas för dagboksanteckningar',
+					],
+				},
+				{
+					title: 'Språkstöd',
+					items: [
+						'Automatisk språkdetektering - prata på valfritt språk',
+						'Stöd för: Svenska, Engelska, Polska, Tyska, Spanska, och många fler',
+						'AI översätter automatiskt till svenska',
+						'Perfekt för flerspråkiga team',
+					],
+				},
+				{
+					title: 'Tips för bästa resultat',
+					items: [
+						'Tala tydligt och i normal hastighet',
+						'Undvik mycket bakgrundsljud om möjligt',
+						'Använd branschtermer - systemet känner igen byggtermer',
+						'Du kan diktera mätningar, material och arbetsbeskrivningar',
 					],
 				},
 			],
@@ -342,6 +389,14 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 		{
+			id: 'diary',
+			title: 'Dagbok & Röstanteckningar',
+			description: 'Skriv dagboksanteckningar eller diktera med röst-till-text',
+			icon: Mic,
+			page: '/dashboard/diary',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
+		},
+		{
 			id: 'materials',
 			title: 'Material & Utlägg',
 			description: 'Lägg till material, utlägg och miltal',
@@ -524,6 +579,41 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			question: 'Fungerar notiser när appen är stängd?',
 			answer:
 				'Ja! Push-notiser fungerar även när appen är stängd. Du får notiser som vanliga systemnotiser i Windows, Mac, iOS eller Android. Klicka på notisen för att öppna appen och gå direkt till relevant sida.',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
+		},
+		{
+			id: 'faq-22',
+			question: 'Hur använder jag röstanteckningar?',
+			answer:
+				'Gå till Dagbok-sidan och klicka på mikrofon-ikonen. Prata in din arbetsrapport på valfritt språk. Systemet transkriberar automatiskt din röst till text och översätter till svenska om du pratade på annat språk. Perfekt för att snabbt rapportera från arbetsplatsen!',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
+		},
+		{
+			id: 'faq-23',
+			question: 'Vilka språk kan jag använda för röstanteckningar?',
+			answer:
+				'Du kan prata på nästan vilket språk som helst! Systemet detekterar automatiskt språket och stöder bl.a. Svenska, Engelska, Polska, Tyska, Spanska, Franska, Italienska och många fler. Om du pratar på annat språk än svenska översätts texten automatiskt till svenska.',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
+		},
+		{
+			id: 'faq-24',
+			question: 'Hur exakt är rösttranskriptionen?',
+			answer:
+				'Vi använder OpenAI Whisper, som är en av de mest avancerade AI-modellerna för rösttranskription. Systemet är specialtränat för byggbranschen och känner igen vanliga byggtermer som betong, armering, gjutning, etc. För bästa resultat, tala tydligt och undvik mycket bakgrundsljud.',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
+		},
+		{
+			id: 'faq-25',
+			question: 'Sparas mina röstinspelningar?',
+			answer:
+				'Röstinspelningarna laddas upp och transkriberas säkert. Efter transkription sparas både originalljudet och den transkriberade texten så du alltid kan gå tillbaka och lyssna på originalinspelningen om du behöver dubbelkolla något.',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
+		},
+		{
+			id: 'faq-26',
+			question: 'Kan jag använda röstanteckningar offline?',
+			answer:
+				'Rösttranskription och översättning kräver internetanslutning eftersom den använder AI i molnet. Du kan dock spela in ljudet offline, och det kommer automatiskt att bearbetas när du får internetanslutning igen.',
 			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 	];

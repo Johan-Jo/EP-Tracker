@@ -191,3 +191,46 @@ export const planningTodayTourSteps = [
 	},
 ];
 
+export const diaryTourSteps = [
+	{
+		id: 'diary-welcome',
+		title: 'Välkommen till Dagboken!',
+		description:
+			'Här kan du skriva dagboksanteckningar och använda röstanteckningar för att snabbt rapportera från arbetsplatsen.',
+		target: 'body',
+		position: 'center' as const,
+	},
+	{
+		id: 'diary-create',
+		title: 'Skapa dagboksanteckning',
+		description:
+			'Klicka här för att skapa en ny dagboksanteckning. Du kan skriva text manuellt eller använda röstinspelning.',
+		target: '[data-tour="add-diary"]',
+		position: 'bottom' as const,
+	},
+	{
+		id: 'diary-voice',
+		title: 'Röstanteckningar (Voice-to-Text)',
+		description:
+			'Klicka på mikrofon-ikonen för att spela in en röstanteckning. Systemet transkriberar automatiskt din röst till text och översätter till svenska om du pratar på annat språk.',
+		target: '[data-tour="voice-record"]',
+		position: 'bottom' as const,
+	},
+	{
+		id: 'diary-languages',
+		title: 'Flerspråkigt stöd',
+		description:
+			'Du kan prata på valfritt språk! Systemet detekterar automatiskt språket och översätter till svenska. Perfekt för internationella team.',
+		target: '[data-tour="voice-record"]',
+		position: 'bottom' as const,
+	},
+	{
+		id: 'diary-list',
+		title: 'Dina dagboksanteckningar',
+		description:
+			'Här ser du alla dina dagboksanteckningar sorterade per projekt och datum. Klicka på en anteckning för att se detaljer eller lyssna på originalinspelningen.',
+		target: '[data-tour="diary-list"]',
+		position: 'top' as const,
+	},
+];
+
