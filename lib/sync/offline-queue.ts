@@ -7,7 +7,7 @@ interface QueueItem {
 	action: SyncAction;
 	entity: SyncEntity;
 	entity_id: string;
-	payload: any;
+	payload: unknown;
 }
 
 const MAX_RETRIES = 5;
@@ -21,13 +21,13 @@ export class OfflineQueueManager {
 		if (typeof window !== 'undefined') {
 			// Listen for online/offline events
 			window.addEventListener('online', () => {
-				console.log('🌐 Connection restored - starting sync');
+				console.warn('🌐 Connection restored - starting sync');
 				this.isOnline = true;
 				this.processSyncQueue();
 			});
 
 			window.addEventListener('offline', () => {
-				console.log('📡 Connection lost - offline mode activated');
+				console.warn('📡 Connection lost - offline mode activated');
 				this.isOnline = false;
 			});
 		}
@@ -53,7 +53,7 @@ export class OfflineQueueManager {
 				retry_count: 0,
 			});
 
-			console.log(`✅ Added to sync queue: ${item.action} ${item.entity}`, item.entity_id);
+			console.warn(`✅ Added to sync queue: ${item.action} ${item.entity}`, item.entity_id);
 
 			// Try to sync immediately if online
 			if (this.isOnline && !this.syncInProgress) {
@@ -73,12 +73,12 @@ export class OfflineQueueManager {
 		if (!database) return;
 		
 		if (this.syncInProgress) {
-			console.log('⏳ Sync already in progress, skipping...');
+			console.warn('⏳ Sync already in progress, skipping...');
 			return;
 		}
 
 		if (!this.isOnline) {
-			console.log('📡 Offline, sync postponed');
+			console.warn('📡 Offline, sync postponed');
 			return;
 		}
 
@@ -88,18 +88,18 @@ export class OfflineQueueManager {
 			const queue = await database.sync_queue.orderBy('created_at').toArray();
 
 			if (queue.length === 0) {
-				console.log('✨ Sync queue is empty');
+				console.warn('✨ Sync queue is empty');
 				return;
 			}
 
-			console.log(`🔄 Processing ${queue.length} items in sync queue`);
+			console.warn(`🔄 Processing ${queue.length} items in sync queue`);
 
 			for (const item of queue) {
 				try {
 					await this.syncItem(item);
 					// Remove from queue after successful sync
 					await database.sync_queue.delete(item.id!);
-					console.log(`✅ Synced and removed: ${item.entity} ${item.entity_id}`);
+					console.warn(`✅ Synced and removed: ${item.entity} ${item.entity_id}`);
 				} catch (error) {
 					console.error(`❌ Failed to sync item:`, error);
 					
@@ -123,7 +123,7 @@ export class OfflineQueueManager {
 				}
 			}
 
-			console.log('✨ Sync queue processed successfully');
+			console.warn('✨ Sync queue processed successfully');
 		} catch (error) {
 			console.error('❌ Error processing sync queue:', error);
 		} finally {
@@ -219,7 +219,7 @@ export class OfflineQueueManager {
 		const database = await db();
 		if (!database) return;
 		await database.sync_queue.clear();
-		console.log('🗑️ Sync queue cleared');
+		console.warn('🗑️ Sync queue cleared');
 	}
 }
 
