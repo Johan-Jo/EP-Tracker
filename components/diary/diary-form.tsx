@@ -378,12 +378,13 @@ export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 								<div className="flex flex-col items-center gap-2">
 									<ImagePlus className="h-8 w-8 text-muted-foreground" />
 									<span className="text-sm text-muted-foreground">
-										Lägg till foto ({photos.length}/10)
+										Ta foto eller välj fil ({photos.length}/10)
 									</span>
 								</div>
 								<input
 									type="file"
 									accept="image/*"
+									capture="environment"
 									multiple
 									className="hidden"
 									onChange={handlePhotoChange}

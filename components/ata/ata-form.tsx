@@ -335,23 +335,24 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 							</div>
 						)}
 
-						{photos.length < 10 && (
-							<label className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted transition-colors">
-								<div className="flex flex-col items-center gap-2">
-									<ImagePlus className="h-8 w-8 text-muted-foreground" />
-									<span className="text-sm text-muted-foreground">
-										Lägg till foto ({photos.length}/10)
-									</span>
-								</div>
-								<input
-									type="file"
-									accept="image/*"
-									multiple
-									className="hidden"
-									onChange={handlePhotoChange}
-								/>
-							</label>
-						)}
+					{photos.length < 10 && (
+						<label className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted transition-colors">
+							<div className="flex flex-col items-center gap-2">
+								<ImagePlus className="h-8 w-8 text-muted-foreground" />
+								<span className="text-sm text-muted-foreground">
+									Ta foto eller välj fil ({photos.length}/10)
+								</span>
+							</div>
+							<input
+								type="file"
+								accept="image/*"
+								capture="environment"
+								multiple
+								className="hidden"
+								onChange={handlePhotoChange}
+							/>
+						</label>
+					)}
 					</div>
 				</div>
 			</div>

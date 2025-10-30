@@ -147,19 +147,19 @@ export function DiaryFormNew({ orgId, userId, projectId }: DiaryFormNewProps) {
 			if (photos.length > 0) {
 				for (let i = 0; i < photos.length; i++) {
 					const photo = photos[i];
-					const fileExt = photo.name.split('.').pop();
-					const fileName = `${entry.id}-${i}-${Date.now()}.${fileExt}`;
-					const filePath = `${orgId}/diary/${fileName}`;
+				const fileExt = photo.name.split('.').pop();
+				const fileName = `${entry.id}-${i}-${Date.now()}.${fileExt}`;
+				const filePath = `${orgId}/diary/${fileName}`;
 
-					const { error: uploadError } = await supabase.storage
-						.from('photos')
-						.upload(filePath, photo);
+				const { error: uploadError } = await supabase.storage
+					.from('diary-photos')
+					.upload(filePath, photo);
 
-					if (uploadError) throw uploadError;
+				if (uploadError) throw uploadError;
 
-					const { data: { publicUrl } } = supabase.storage
-						.from('photos')
-						.getPublicUrl(filePath);
+				const { data: { publicUrl } } = supabase.storage
+					.from('diary-photos')
+					.getPublicUrl(filePath);
 
 					await supabase.from('diary_photos').insert({
 						diary_entry_id: entry.id,
@@ -402,10 +402,11 @@ export function DiaryFormNew({ orgId, userId, projectId }: DiaryFormNewProps) {
 							{photos.length === 0 ? (
 								<label className='w-full flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer'>
 									<Upload className='w-8 h-8' />
-									<span className='text-sm'>Lägg till foto (0/10)</span>
+									<span className='text-sm'>Ta foto eller välj fil (0/10)</span>
 									<input
 										type='file'
 										accept='image/*'
+										capture='environment'
 										multiple
 										onChange={handlePhotoUpload}
 										className='hidden'
