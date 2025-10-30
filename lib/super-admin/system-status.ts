@@ -47,7 +47,7 @@ export async function getSystemStatus(): Promise<SystemStatus> {
 	try {
 		await supabase.from('profiles').select('id').limit(1);
 		dbResponseTime = Date.now() - dbStart;
-	} catch (error) {
+	} catch {
 		dbStatus = 'disconnected';
 		dbResponseTime = -1;
 	}
@@ -100,7 +100,7 @@ export async function getSystemMetrics(): Promise<SystemMetrics> {
 			.select('storage_used_bytes');
 
 		const totalStorageBytes = (storageData || []).reduce(
-			(sum: number, org: any) => sum + (org.storage_used_bytes || 0),
+			(sum: number, org: { storage_used_bytes?: number | null }) => sum + (org.storage_used_bytes || 0),
 			0
 		);
 

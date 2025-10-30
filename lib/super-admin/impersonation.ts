@@ -53,7 +53,8 @@ export async function startImpersonation(
 		throw new Error('User not found');
 	}
 
-	const orgMember: any = user.organization_members?.[0];
+	interface OrganizationMemberLite { organizations?: { id: string; name: string } }
+	const orgMember = (user.organization_members?.[0] ?? null) as OrganizationMemberLite | null;
 	const org = orgMember?.organizations;
 
 	if (!org) {

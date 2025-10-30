@@ -217,7 +217,7 @@ export async function getMRRTrendData(): Promise<{ month: string; mrr: number }[
   
   for (let i = 11; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+    // Start of month available via 'date' when needed
     const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
     
     // Get subscriptions active during this month
@@ -297,7 +297,7 @@ export async function getOrganizationsByPlan(): Promise<{ plan: string; count: n
   
   const planCounts: Record<string, number> = {};
   
-  (orgs || []).forEach((org: any) => {
+  (orgs || []).forEach((org: { plan?: { name?: string } | Array<{ name?: string }> }) => {
     const plan = Array.isArray(org.plan) ? org.plan[0] : org.plan;
     const planName = plan?.name || 'No Plan';
     planCounts[planName] = (planCounts[planName] || 0) + 1;

@@ -11,7 +11,7 @@ export interface SearchResult {
 	id: string;
 	title: string;
 	subtitle: string;
-	metadata?: any;
+	metadata?: Record<string, unknown>;
 }
 
 /**
@@ -58,7 +58,8 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
 
 		if (users) {
 			for (const user of users) {
-				const orgMember: any = user.organization_members?.[0];
+				interface OrganizationMemberLite { organizations?: { id: string; name: string } }
+				const orgMember = (user.organization_members?.[0] ?? null) as OrganizationMemberLite | null;
 				const org = orgMember?.organizations;
 
 				results.push({

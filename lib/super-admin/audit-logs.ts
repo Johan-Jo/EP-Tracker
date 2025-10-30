@@ -12,7 +12,7 @@ export interface AuditLog {
 	action: string;
 	resource_type: string | null;
 	resource_id: string | null;
-	metadata: any;
+	metadata: Record<string, unknown> | null;
 	created_at: string;
 	admin_email?: string;
 	admin_name?: string;
@@ -83,7 +83,7 @@ export async function getAuditLogs(filters: AuditLogFilters = {}): Promise<{
 	}
 
 	// Transform data to include admin info
-	const logs: AuditLog[] = (data || []).map((log: any) => ({
+	const logs: AuditLog[] = (data || []).map((log) => ({
 		...log,
 		admin_email: log.admin?.user?.email,
 		admin_name: log.admin?.user?.full_name,
@@ -112,7 +112,7 @@ export async function getAuditLogActions(): Promise<string[]> {
 	}
 
 	// Get unique actions
-	const actions = Array.from(new Set((data || []).map((log: any) => log.action)));
+	const actions = Array.from(new Set((data || []).map((log) => log.action)));
 	return actions.filter(Boolean) as string[];
 }
 
@@ -133,7 +133,7 @@ export async function getAuditLogResourceTypes(): Promise<string[]> {
 	}
 
 	// Get unique resource types
-	const types = Array.from(new Set((data || []).map((log: any) => log.resource_type)));
+	const types = Array.from(new Set((data || []).map((log) => log.resource_type)));
 	return types.filter(Boolean) as string[];
 }
 
@@ -168,7 +168,7 @@ export async function logAuditAction(
 	action: string,
 	resourceType?: string,
 	resourceId?: string,
-	metadata?: any
+	metadata?: Record<string, unknown>
 ): Promise<void> {
 	const supabase = await createClient();
 
