@@ -590,7 +590,9 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 														{entry.project?.name || 'Okänt projekt'}
 													</h4>
 													<p className='text-sm text-muted-foreground'>
-											{entry.task_label || 'Ingen beskrivning'}
+											{entry.task_label && (
+												<span>{entry.task_label}</span>
+											)}
 													</p>
 												</div>
 											</div>
