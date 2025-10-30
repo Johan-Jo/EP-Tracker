@@ -390,6 +390,7 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 				</form>
 			</CardContent>
 		</Card>
+	</>
 	);
 }
 

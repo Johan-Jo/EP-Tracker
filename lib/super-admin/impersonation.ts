@@ -53,9 +53,13 @@ export async function startImpersonation(
 		throw new Error('User not found');
 	}
 
-	interface OrganizationMemberLite { organizations?: { id: string; name: string } }
-	const orgMember = (user.organization_members?.[0] ?? null) as OrganizationMemberLite | null;
-	const org = orgMember?.organizations;
+	type Org = { id: string; name: string };
+	interface OrganizationMemberLite { organizations?: Org | Org[] }
+	const orgMember = (user.organization_members?.[0] ?? null) as unknown as OrganizationMemberLite | null;
+	const organizations = orgMember?.organizations;
+	const org: Org | undefined = Array.isArray(organizations)
+		? organizations[0]
+		: organizations;
 
 	if (!org) {
 		throw new Error('User has no organization');

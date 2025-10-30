@@ -58,9 +58,11 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
 
 		if (users) {
 			for (const user of users) {
-				interface OrganizationMemberLite { organizations?: { id: string; name: string } }
-				const orgMember = (user.organization_members?.[0] ?? null) as OrganizationMemberLite | null;
-				const org = orgMember?.organizations;
+				type Org = { id: string; name: string };
+				interface OrganizationMemberLite { organizations?: Org | Org[] }
+				const orgMember = (user.organization_members?.[0] ?? null) as unknown as OrganizationMemberLite | null;
+				const organizations = orgMember?.organizations;
+				const org: Org | undefined = Array.isArray(organizations) ? organizations[0] : organizations;
 
 				results.push({
 					type: 'user',
