@@ -146,11 +146,12 @@ export async function POST(request: NextRequest) {
 					if (!conflictsByUser[absence.user_id]) {
 						conflictsByUser[absence.user_id] = [];
 					}
-					const absenceType = {
+					const absenceTypeMap: Record<string, string> = {
 						'vacation': 'Semester',
 						'sick': 'Sjuk',
 						'training': 'Utbildning',
-					}[absence.type] || absence.type;
+					};
+					const absenceType = absenceTypeMap[absence.type as string] || absence.type;
 					
 					conflictsByUser[absence.user_id].push({
 						type: 'absence',
