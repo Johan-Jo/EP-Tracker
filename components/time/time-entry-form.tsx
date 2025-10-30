@@ -7,7 +7,6 @@ import { createTimeEntrySchema, type CreateTimeEntryInput } from '@/lib/schemas/
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Clock, Loader2, CheckCircle2, X } from 'lucide-react';
@@ -15,6 +14,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { TimeEntryWithRelations } from '@/lib/schemas/time-entry';
 import { useEffect } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import Link from 'next/link';
 
 interface TimeEntryFormProps {
 	orgId: string;
@@ -27,6 +28,8 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [selectedProject, setSelectedProject] = useState(initialData?.project_id || '');
 	const [showSuccess, setShowSuccess] = useState(false);
+	const [showDiaryPromptDialog, setShowDiaryPromptDialog] = useState(false);
+	const [completedProjectId, setCompletedProjectId] = useState<string | null>(null);
 	const isEditMode = !!initialData?.id;
 	
 	const supabase = createClient();
@@ -152,13 +155,18 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 					task_label: '',
 					start_at: new Date().toISOString().slice(0, 16),
 					stop_at: null,
-					notes: '',
 				});
 				setSelectedProject('');
 
 				// Show success message
 				setShowSuccess(true);
 				setTimeout(() => setShowSuccess(false), 5000);
+
+				// Prompt to create diary entry like the slider
+				if (data.project_id) {
+					setCompletedProjectId(data.project_id);
+					setShowDiaryPromptDialog(true);
+				}
 			}
 
 			onSuccess?.();
@@ -171,7 +179,45 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 	};
 
 	return (
-		<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+		<>
+			{/* Diary Prompt Dialog - reused same UI as slider */}
+			<Dialog open={showDiaryPromptDialog} onOpenChange={setShowDiaryPromptDialog}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Bra jobbat! 👏</DialogTitle>
+						<DialogDescription>
+							Din arbetstid har sparats.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="flex flex-col gap-3 mt-4">
+						<p className="text-sm text-muted-foreground">
+							Vill du uppdatera dagboken för detta projekt nu?
+						</p>
+						<div className="flex gap-3">
+							<Button
+								variant="outline"
+								onClick={() => setShowDiaryPromptDialog(false)}
+								className="flex-1"
+							>
+								Inte nu
+							</Button>
+							{completedProjectId && (
+								<Link 
+									href={`/dashboard/diary/new?project_id=${completedProjectId}`}
+									className="flex-1"
+									onClick={() => setShowDiaryPromptDialog(false)}
+								>
+									<Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+										Skapa dagbokspost
+									</Button>
+								</Link>
+							)}
+						</div>
+					</div>
+				</DialogContent>
+			</Dialog>
+
+			<Card className="border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
 			<CardHeader>
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-3">
@@ -327,16 +373,7 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 						</div>
 					</div>
 
-					{/* Notes */}
-					<div className="space-y-2">
-						<Label htmlFor="notes">Anteckningar (valfritt)</Label>
-						<Textarea
-							id="notes"
-							placeholder="Fritext anteckningar..."
-							rows={3}
-							{...register('notes')}
-						/>
-					</div>
+					{/* Description field removed: we now prompt for diary update after save */}
 
 					{/* Actions */}
 				<div className="flex gap-3 pt-4">

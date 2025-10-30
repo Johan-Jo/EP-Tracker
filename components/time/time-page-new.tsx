@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Calendar, Clock, Save, Filter, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+// Removed textarea for description; diary prompt will be used instead
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { createTimeEntrySchema, type CreateTimeEntryInput } from '@/lib/schemas/time-entry';
 import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 import { toast } from 'react-hot-toast';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import Link from 'next/link';
 
 interface TimePageNewProps {
 	orgId: string;
@@ -29,6 +31,8 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 	const [editingEntry, setEditingEntry] = useState<any | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
+	const [showDiaryPromptDialog, setShowDiaryPromptDialog] = useState(false);
+	const [completedProjectId, setCompletedProjectId] = useState<string | null>(null);
 	const supabase = createClient();
 	const queryClient = useQueryClient();
 	
@@ -85,7 +89,6 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 			setValue('project_id', editingEntry.project_id);
 			setValue('start_at', editingEntry.start_at);
 			setValue('stop_at', editingEntry.stop_at);
-			setValue('notes', editingEntry.notes || '');
 			setSelectedProject(editingEntry.project_id);
 		}
 	}, [editingEntry, setValue]);
@@ -216,7 +219,6 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 					task_label: '',
 					start_at: today + 'T08:00',
 					stop_at: null,
-					notes: '',
 				});
 				setSelectedProject('');
 			}
@@ -274,10 +276,15 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 				task_label: '',
 				start_at: today + 'T08:00',
 				stop_at: null,
-				notes: '',
 			});
 			setSelectedProject('');
 			setEditingEntry(null);
+
+			// Show diary prompt dialog like the slider
+			if (data.project_id) {
+				setCompletedProjectId(data.project_id);
+				setShowDiaryPromptDialog(true);
+			}
 		} catch (error) {
 			console.error('Error saving time entry:', error);
 		} finally {
@@ -315,6 +322,28 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 
 	return (
 		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
+			{/* Diary Prompt Dialog */}
+			<Dialog open={showDiaryPromptDialog} onOpenChange={setShowDiaryPromptDialog}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Bra jobbat! 👏</DialogTitle>
+						<DialogDescription>Din arbetstid har sparats.</DialogDescription>
+					</DialogHeader>
+					<div className='flex flex-col gap-3 mt-4'>
+						<p className='text-sm text-muted-foreground'>Vill du uppdatera dagboken för detta projekt nu?</p>
+						<div className='flex gap-3'>
+							<Button variant='outline' onClick={() => setShowDiaryPromptDialog(false)} className='flex-1'>
+								Inte nu
+							</Button>
+							{completedProjectId && (
+								<Link href={`/dashboard/diary/new?project_id=${completedProjectId}`} className='flex-1' onClick={() => setShowDiaryPromptDialog(false)}>
+									<Button className='w-full bg-orange-500 hover:bg-orange-600 text-white'>Skapa dagbokspost</Button>
+								</Link>
+							)}
+						</div>
+					</div>
+				</DialogContent>
+			</Dialog>
 			{/* Header */}
 			<header className='sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border'>
 				<div className='px-4 md:px-8 py-4 md:py-6'>
@@ -479,15 +508,7 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 							</div>
 						)}
 
-						{/* Description */}
-						<div>
-							<label className='block text-sm font-medium mb-2'>Beskrivning</label>
-							<Textarea
-								{...register('notes')}
-								placeholder='Vad arbetade du med? (valfritt)'
-								className='resize-none h-24'
-							/>
-						</div>
+					{/* Description removed: we prompt for diary update after save */}
 
 						{/* Save Button */}
 						<Button
@@ -569,7 +590,7 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 														{entry.project?.name || 'Okänt projekt'}
 													</h4>
 													<p className='text-sm text-muted-foreground'>
-														{entry.task_label || entry.notes || 'Ingen beskrivning'}
+											{entry.task_label || 'Ingen beskrivning'}
 													</p>
 												</div>
 											</div>

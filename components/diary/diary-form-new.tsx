@@ -327,13 +327,13 @@ export function DiaryFormNew({ orgId, userId, projectId }: DiaryFormNewProps) {
 				<div className='space-y-2'>
 					<div className="flex items-center justify-between">
 						<Label htmlFor='workPerformed'>Utfört arbete</Label>
-						<Button
-							type='button'
-							variant='outline'
-							size='sm'
-							onClick={() => setShowVoiceDialog(true)}
-							className='gap-2'
-						>
+					<Button
+						type='button'
+						size='sm'
+						onClick={() => setShowVoiceDialog(true)}
+						aria-label='Starta röstanteckning'
+						className='gap-2 bg-orange-500 hover:bg-orange-600 text-white shadow-sm'
+					>
 							<Mic className='h-4 w-4' />
 							Röstanteckning
 						</Button>
