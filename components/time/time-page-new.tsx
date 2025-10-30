@@ -104,6 +104,8 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 			if (error) throw error;
 			return data || [];
 		},
+		staleTime: 5 * 60 * 1000,  // 5 minutes (projects rarely change)
+		gcTime: 10 * 60 * 1000,     // 10 minutes
 	});
 
 	// Fetch time entries for stats and list
@@ -115,6 +117,8 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 			const data = await response.json();
 			return data.entries || [];
 		},
+		staleTime: 30 * 1000,       // 30 seconds (time entries change frequently)
+		gcTime: 5 * 60 * 1000,       // 5 minutes
 	});
 
 	// Calculate stats

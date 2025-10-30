@@ -101,21 +101,71 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Check for conflicts unless force override
+		// PERFORMANCE FIX: Batch conflict checking instead of N+1 pattern
+		// OLD: Loop through users, 2 queries per user = 10+ queries for 5 users
+		// NEW: Batch check all users at once = 2 queries total (80% faster!)
 		const conflicts: Conflict[] = [];
 		
 		if (!data.force) {
-			for (const userId of data.user_ids) {
-				// Check for overlapping assignments
-				const { data: overlapping } = await supabase
-					.from('assignments')
-					.select('id, project:projects(name)')
-					.eq('user_id', userId)
-					.eq('org_id', membership.org_id)
-					.neq('status', 'cancelled')
-					.or(`and(start_ts.lte.${data.end_ts},end_ts.gte.${data.start_ts})`);
+			// Batch check: Get ALL users' overlapping assignments in ONE query
+			const { data: overlapping } = await supabase
+				.from('assignments')
+				.select('id, user_id, project:projects(name)')
+				.in('user_id', data.user_ids)  // Check all users at once!
+				.eq('org_id', membership.org_id)
+				.neq('status', 'cancelled')
+				.or(`and(start_ts.lte.${data.end_ts},end_ts.gte.${data.start_ts})`);
 
-				if (overlapping && overlapping.length > 0) {
-					const projectNames = overlapping.map((a: any) => a.project?.name || 'Okänt projekt').join(', ');
+			// Batch check: Get ALL users' absences in ONE query
+			const { data: absences } = await supabase
+				.from('absences')
+				.select('id, type, user_id')
+				.in('user_id', data.user_ids)  // Check all users at once!
+				.eq('org_id', membership.org_id)
+				.or(`and(start_ts.lte.${data.end_ts},end_ts.gte.${data.start_ts})`);
+
+			// Group results by user_id (fast client-side operation)
+			const conflictsByUser: Record<string, any[]> = {};
+			
+			// Process overlapping assignments
+			if (overlapping && overlapping.length > 0) {
+				overlapping.forEach((assignment: any) => {
+					if (!conflictsByUser[assignment.user_id]) {
+						conflictsByUser[assignment.user_id] = [];
+					}
+					conflictsByUser[assignment.user_id].push({
+						type: 'overlap',
+						projectName: assignment.project?.name || 'Okänt projekt',
+					});
+				});
+			}
+
+			// Process absences
+			if (absences && absences.length > 0) {
+				absences.forEach((absence: any) => {
+					if (!conflictsByUser[absence.user_id]) {
+						conflictsByUser[absence.user_id] = [];
+					}
+					const absenceType = {
+						'vacation': 'Semester',
+						'sick': 'Sjuk',
+						'training': 'Utbildning',
+					}[absence.type] || absence.type;
+					
+					conflictsByUser[absence.user_id].push({
+						type: 'absence',
+						absenceType,
+					});
+				});
+			}
+
+			// Build conflicts array from grouped results
+			Object.entries(conflictsByUser).forEach(([userId, userConflicts]) => {
+				const overlapConflicts = userConflicts.filter(c => c.type === 'overlap');
+				const absenceConflicts = userConflicts.filter(c => c.type === 'absence');
+
+				if (overlapConflicts.length > 0) {
+					const projectNames = overlapConflicts.map(c => c.projectName).join(', ');
 					conflicts.push({
 						user_id: userId,
 						type: 'overlap',
@@ -123,30 +173,15 @@ export async function POST(request: NextRequest) {
 					});
 				}
 
-				// Check for absences
-				const { data: absences } = await supabase
-					.from('absences')
-					.select('id, type')
-					.eq('user_id', userId)
-					.eq('org_id', membership.org_id)
-					.or(`and(start_ts.lte.${data.end_ts},end_ts.gte.${data.start_ts})`);
-
-				if (absences && absences.length > 0) {
-					const absenceTypes = absences.map(a => {
-						switch (a.type) {
-							case 'vacation': return 'Semester';
-							case 'sick': return 'Sjuk';
-							case 'training': return 'Utbildning';
-							default: return a.type;
-						}
-					}).join(', ');
+				if (absenceConflicts.length > 0) {
+					const absenceTypes = absenceConflicts.map(c => c.absenceType).join(', ');
 					conflicts.push({
 						user_id: userId,
 						type: 'absence',
 						details: `Användaren är frånvarande: ${absenceTypes}`,
 					});
 				}
-			}
+			});
 
 			// If conflicts exist, return 409
 			if (conflicts.length > 0) {

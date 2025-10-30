@@ -47,6 +47,8 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 			if (error) throw error;
 			return data || [];
 		},
+		staleTime: 5 * 60 * 1000,  // 5 minutes (projects rarely change)
+		gcTime: 10 * 60 * 1000,     // 10 minutes
 	});
 
 	// Fetch materials and expenses
@@ -117,6 +119,8 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 				(a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
 			);
 		},
+		staleTime: 1 * 60 * 1000,  // 1 minute (materials change more frequently)
+		gcTime: 5 * 60 * 1000,      // 5 minutes
 	});
 
 	const getStatusColor = (status: string) => {

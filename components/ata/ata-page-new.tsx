@@ -44,6 +44,8 @@ export function AtaPageNew({ orgId, userRole, projectId }: AtaPageNewProps) {
 			if (error) throw error;
 			return data || [];
 		},
+		staleTime: 5 * 60 * 1000,  // 5 minutes (projects rarely change)
+		gcTime: 10 * 60 * 1000,     // 10 minutes
 	});
 
 	// Fetch ATA records
@@ -67,6 +69,8 @@ export function AtaPageNew({ orgId, userRole, projectId }: AtaPageNewProps) {
 			if (error) throw error;
 			return data || [];
 		},
+		staleTime: 2 * 60 * 1000,  // 2 minutes (ÄTA don't change often)
+		gcTime: 5 * 60 * 1000,      // 5 minutes
 	});
 
 	const getStatusColor = (status: string) => {

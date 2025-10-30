@@ -25,6 +25,8 @@ export function ChecklistPageNew({ orgId }: ChecklistPageNewProps) {
 			const data = await response.json();
 			return data.checklists || [];
 		},
+		staleTime: 2 * 60 * 1000,  // 2 minutes (checklists don't change often)
+		gcTime: 5 * 60 * 1000,      // 5 minutes
 	});
 
 	const getStatusConfig = (checklist: any) => {
