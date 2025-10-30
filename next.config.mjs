@@ -1,6 +1,12 @@
 // PWA plugin REMOVED - using firebase-messaging-sw.js directly for push notifications
 // import withPWAInit from '@ducanh2912/next-pwa';
 
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
 	images: {
@@ -14,7 +20,7 @@ const nextConfig = {
 	reactStrictMode: true,
 	
 	// Fix workspace root detection (multiple lockfiles warning)
-	outputFileTracingRoot: import.meta.dirname,
+	outputFileTracingRoot: __dirname,
 	
 	// Performance optimizations
 	experimental: {
