@@ -157,7 +157,7 @@ export async function handleSuccessfulCheckout(session: Stripe.Checkout.Session)
   }
 
   // Get the Stripe subscription to get pricing details
-  const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId) as Stripe.Subscription;
+  const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
 
   // Create subscription record
   const now = new Date().toISOString();
@@ -167,14 +167,14 @@ export async function handleSuccessfulCheckout(session: Stripe.Checkout.Session)
       organization_id: organizationId,
       plan_id: planId,
       status: 'active',
-      current_period_start: new Date(stripeSubscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
+      current_period_start: new Date((stripeSubscription as any).current_period_start * 1000).toISOString(),
+      current_period_end: new Date((stripeSubscription as any).current_period_end * 1000).toISOString(),
       cancel_at_period_end: false,
       stripe_subscription_id: subscriptionId,
-      stripe_price_id: stripeSubscription.items.data[0]?.price.id,
-      stripe_latest_invoice_id: typeof stripeSubscription.latest_invoice === 'string'
-        ? stripeSubscription.latest_invoice
-        : stripeSubscription.latest_invoice?.id,
+      stripe_price_id: (stripeSubscription as any).items.data[0]?.price.id,
+      stripe_latest_invoice_id: typeof (stripeSubscription as any).latest_invoice === 'string'
+        ? (stripeSubscription as any).latest_invoice
+        : (stripeSubscription as any).latest_invoice?.id,
       created_at: now,
       updated_at: now,
     });
