@@ -30,7 +30,7 @@ export async function getFeatureAdoption(filters?: DateRange): Promise<FeatureAd
 			.select('user_id', { count: 'exact' })
 			.gte('date', filters?.start_date || '2024-01-01');
 
-		const uniqueTimeUsers = new Set((timeUsers || []).map((t: any) => t.user_id)).size;
+		const uniqueTimeUsers = new Set((timeUsers || []).map((t: { user_id: string }) => t.user_id)).size;
 
 		features.push({
 			feature_name: 'Tidrapportering',
@@ -46,7 +46,7 @@ export async function getFeatureAdoption(filters?: DateRange): Promise<FeatureAd
 			.select('user_id', { count: 'exact' })
 			.gte('date', filters?.start_date || '2024-01-01');
 
-		const uniqueMaterialUsers = new Set((materialUsers || []).map((m: any) => m.user_id)).size;
+		const uniqueMaterialUsers = new Set((materialUsers || []).map((m: { user_id: string }) => m.user_id)).size;
 
 		features.push({
 			feature_name: 'Material',
@@ -62,7 +62,7 @@ export async function getFeatureAdoption(filters?: DateRange): Promise<FeatureAd
 			.select('user_id', { count: 'exact' })
 			.gte('date', filters?.start_date || '2024-01-01');
 
-		const uniqueExpenseUsers = new Set((expenseUsers || []).map((e: any) => e.user_id)).size;
+		const uniqueExpenseUsers = new Set((expenseUsers || []).map((e: { user_id: string }) => e.user_id)).size;
 
 		features.push({
 			feature_name: 'Utlägg',
@@ -78,7 +78,7 @@ export async function getFeatureAdoption(filters?: DateRange): Promise<FeatureAd
 			.select('user_id', { count: 'exact' })
 			.gte('date', filters?.start_date || '2024-01-01');
 
-		const uniqueMileageUsers = new Set((mileageUsers || []).map((m: any) => m.user_id)).size;
+		const uniqueMileageUsers = new Set((mileageUsers || []).map((m: { user_id: string }) => m.user_id)).size;
 
 		features.push({
 			feature_name: 'Milersättning',
@@ -94,7 +94,7 @@ export async function getFeatureAdoption(filters?: DateRange): Promise<FeatureAd
 			.select('created_by', { count: 'exact' })
 			.gte('created_at', filters?.start_date || '2024-01-01');
 
-		const uniqueAtaUsers = new Set((ataUsers || []).map((a: any) => a.created_by)).size;
+		const uniqueAtaUsers = new Set((ataUsers || []).map((a: { created_by: string }) => a.created_by)).size;
 
 		features.push({
 			feature_name: 'ÄTA',
@@ -110,7 +110,7 @@ export async function getFeatureAdoption(filters?: DateRange): Promise<FeatureAd
 			.select('user_id', { count: 'exact' })
 			.gte('date', filters?.start_date || '2024-01-01');
 
-		const uniqueDiaryUsers = new Set((diaryUsers || []).map((d: any) => d.user_id)).size;
+		const uniqueDiaryUsers = new Set((diaryUsers || []).map((d: { user_id: string }) => d.user_id)).size;
 
 		features.push({
 			feature_name: 'Dagbok',
@@ -126,7 +126,7 @@ export async function getFeatureAdoption(filters?: DateRange): Promise<FeatureAd
 			.select('created_by', { count: 'exact' })
 			.gte('created_at', filters?.start_date || '2024-01-01');
 
-		const uniqueChecklistUsers = new Set((checklistUsers || []).map((c: any) => c.created_by)).size;
+		const uniqueChecklistUsers = new Set((checklistUsers || []).map((c: { created_by: string }) => c.created_by)).size;
 
 		features.push({
 			feature_name: 'Checklistor',
@@ -170,7 +170,7 @@ export async function getFeatureAdoptionByPlan(): Promise<{
 		// Group by plan and calculate adoption
 		const planMap = new Map<string, string[]>();
 
-		(orgs || []).forEach((org: any) => {
+		(orgs || []).forEach((org: { id: string; subscriptions?: Array<{ pricing_plans?: { name: string } }> }) => {
 			const planName = org.subscriptions?.[0]?.pricing_plans?.name || 'No Plan';
 			if (!planMap.has(planName)) {
 				planMap.set(planName, []);
@@ -181,7 +181,7 @@ export async function getFeatureAdoptionByPlan(): Promise<{
 		// For each plan, calculate feature adoption
 		const results = [];
 
-		for (const [plan, orgIds] of planMap.entries()) {
+		for (const [plan] of planMap.entries()) {
 			// This would require more complex queries per plan
 			// Simplified version: just return empty for now
 			results.push({

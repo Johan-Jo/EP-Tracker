@@ -26,19 +26,20 @@ export async function getEngagementMetrics(days: number = 30): Promise<Engagemen
 
 			// DAU: Users active on this day
 			// We consider a user "active" if they created any content on that day
-			const { data: activeToday } = await supabase.rpc('get_active_users_on_date', {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const { data: _activeToday } = await supabase.rpc('get_active_users_on_date', {
 				target_date: dateStr,
 			}).single();
 
 			// WAU: Users active in the past 7 days
-			const weekAgo = new Date(date);
-			weekAgo.setDate(weekAgo.getDate() - 7);
-			const weekAgoStr = weekAgo.toISOString().split('T')[0];
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const _weekAgo = new Date(date);
+			_weekAgo.setDate(_weekAgo.getDate() - 7);
 
 			// MAU: Users active in the past 30 days
-			const monthAgo = new Date(date);
-			monthAgo.setDate(monthAgo.getDate() - 30);
-			const monthAgoStr = monthAgo.toISOString().split('T')[0];
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const _monthAgo = new Date(date);
+			_monthAgo.setDate(_monthAgo.getDate() - 30);
 
 			// Simplified calculation (would need actual queries)
 			metrics.push({
@@ -84,7 +85,7 @@ export async function getCurrentEngagement(): Promise<{
 			.gte('date', today)
 			.lte('date', today);
 
-		const dau = new Set((dauData || []).map((t: any) => t.user_id)).size;
+		const dau = new Set((dauData || []).map((t: { user_id: string }) => t.user_id)).size;
 
 		// Count unique users who created time entries in past 7 days (WAU)
 		const { data: wauData } = await supabase
@@ -92,7 +93,7 @@ export async function getCurrentEngagement(): Promise<{
 			.select('user_id')
 			.gte('date', weekAgoStr);
 
-		const wau = new Set((wauData || []).map((t: any) => t.user_id)).size;
+		const wau = new Set((wauData || []).map((t: { user_id: string }) => t.user_id)).size;
 
 		// Count unique users who created time entries in past 30 days (MAU)
 		const { data: mauData } = await supabase
@@ -100,7 +101,7 @@ export async function getCurrentEngagement(): Promise<{
 			.select('user_id')
 			.gte('date', monthAgoStr);
 
-		const mau = new Set((mauData || []).map((t: any) => t.user_id)).size;
+		const mau = new Set((mauData || []).map((t: { user_id: string }) => t.user_id)).size;
 
 		return { dau, wau, mau };
 	} catch (error) {
@@ -131,21 +132,21 @@ export async function getUserActivityFunnel(): Promise<{
 			.from('projects')
 			.select('created_by');
 
-		const createdProject = new Set((projectUsers || []).map((p: any) => p.created_by)).size;
+		const createdProject = new Set((projectUsers || []).map((p: { created_by: string }) => p.created_by)).size;
 
 		// Users who logged time
 		const { data: timeUsers } = await supabase
 			.from('time_entries')
 			.select('user_id');
 
-		const loggedTime = new Set((timeUsers || []).map((t: any) => t.user_id)).size;
+		const loggedTime = new Set((timeUsers || []).map((t: { user_id: string }) => t.user_id)).size;
 
 		// Users who added materials/expenses
 		const { data: materialUsers } = await supabase
 			.from('materials')
 			.select('user_id');
 
-		const addedMaterials = new Set((materialUsers || []).map((m: any) => m.user_id)).size;
+		const addedMaterials = new Set((materialUsers || []).map((m: { user_id: string }) => m.user_id)).size;
 
 		const total = totalUsers || 1;
 
