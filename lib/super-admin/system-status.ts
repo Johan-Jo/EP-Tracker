@@ -131,8 +131,7 @@ export async function getDatabaseMetrics(): Promise<{
 	table_count: number;
 	connection_count: number;
 }> {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const _supabase = await createClient();
+	// Database metrics would require admin privileges
 
 	try {
 		// This would require database admin privileges to get real metrics
