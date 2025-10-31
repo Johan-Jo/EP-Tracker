@@ -126,3 +126,33 @@ EPIC 30: Daybook Integration
 - Röst till rapport-flöde, Automatisk rapportgenerering
 - Visa original + översättning (toggle), Voice log history
 
+EPIC 31: Worksite Activation & Control View (docs/EPIC-31-Worksite-Activation-and-Control-View.md)
+- Projektplatsfält, worksite_enabled, worksite_code, timezone, control_qr_token, retention
+- Kontrollvy (Nu/Idag/Period) med filter/sök; PDF/CSV export inkl. sha256-hash
+- API: GET /worksites/:projectId/active, GET /worksites/:projectId/sessions?from&to
+
+EPIC 32: Session Builder, Corrections & Base Exports (docs/EPIC-32-Session-Builder-Corrections-and-Exports.md)
+- attendance_session från time_event; auto-stäng vid dygnsbyte; immutable_hash
+- Rättelser med reason; correction_log; export visar "Corrected: yes"
+- Job: attendance-builder; index på project_id/person_id + ts
+
+EPIC 33: Payroll Basis, Lock & Export (docs/EPIC-33-Payroll-Basis-Lock-and-Export.md)
+- payroll_basis per person/period: norm/övertid/OB/rast, rättelser
+- Låsning före export; upplåsning endast superadmin; CSV/PDF export
+- Job: basis-refresh vid lås/olås och ändringar
+
+EPIC 34: Invoice Basis, Lock & Export (docs/EPIC-34-Invoice-Basis-Lock-and-Export.md)
+- invoice_basis per projekt/period: tid, material, utlägg, mil, ÄTA; bilagor
+- Redigerbara rader/etiketter; SIE/CSV/PDF export; kräver låsning
+- API: POST /invoice/basis/lock, /exports/invoice, /exports/ledger
+
+EPIC 35: UE Support & Self-service (docs/EPIC-35-UE-Support-and-Self-Service.md)
+- Policy: company_id krävs vid stämpling (blockera eller val)
+- Lägg till UE-företag/personer eller self-service-länk; RLS upprätthålls
+- Stämpling stoppas om företag saknas när policy kräver
+
+EPIC 36: Security, RLS, Performance & Observability (docs/EPIC-36-Security-RLS-Performance-and-Observability.md)
+- Härda RLS för nya tabeller/vyer; engångstoken TTL 30 min
+- Prestandabudget: kontrollvy 500 rader <2s; mät p95-latens och DB p95
+- Structured logging, tracing för långsamma spans
+

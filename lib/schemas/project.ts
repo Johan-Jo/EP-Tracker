@@ -46,6 +46,17 @@ export const projectSchema = z.object({
 	budget_hours: z.number().positive('Budget måste vara större än 0').optional().nullable(),
 	budget_amount: z.number().positive('Budget måste vara större än 0').optional().nullable(),
 	status: projectStatusEnum.default('active'),
+	// Personalliggare/Worksite fields
+	worksite_enabled: z.boolean().default(false).optional(),
+	worksite_code: z.string().max(100).optional().nullable(),
+	address_line1: z.string().max(200).optional().nullable(),
+	address_line2: z.string().max(200).optional().nullable(),
+	postal_code: z.string().max(20).optional().nullable(),
+	city: z.string().max(100).optional().nullable(),
+	country: z.string().max(100).optional().nullable(),
+	building_id: z.string().max(100).optional().nullable(),
+	timezone: z.string().max(100).optional().nullable(),
+	retention_years: z.number().int().min(2).optional().nullable(),
 	alert_settings: alertSettingsSchema.optional(),
 });
 
@@ -62,6 +73,17 @@ export type Project = {
 	geo_fence_radius_m: number;
 	budget_mode: string;
 	status: string;
+	// Worksite fields
+	worksite_enabled?: boolean;
+	worksite_code?: string | null;
+	address_line1?: string | null;
+	address_line2?: string | null;
+	postal_code?: string | null;
+	city?: string | null;
+	country?: string | null;
+	building_id?: string | null;
+	timezone?: string | null;
+	retention_years?: number | null;
 	created_by: string | null;
 	created_at: string;
 	updated_at: string;
