@@ -1,6 +1,6 @@
 'use client';
 
-import { QRCodeSVG } from 'react-qr-code';
+import QRCode from 'react-qr-code';
 import {
 	Dialog,
 	DialogContent,
@@ -48,7 +48,7 @@ export function QRDialog({ open, onOpenChange, title, description, value, expire
 				</DialogHeader>
 				<div className='flex flex-col items-center gap-4 py-4'>
 					<div className='bg-white p-4 rounded-lg border-2'>
-						<QRCodeSVG 
+						<QRCode 
 							value={value} 
 							size={256}
 							className='qr-code-svg'
