@@ -252,60 +252,9 @@ const [error, setError] = useState<string | null>(null);
 								<p className='text-sm text-destructive'>{errors.client_name.message}</p>
 							)}
 						</div>
-					</div>
+				</div>
 
-					<div className='grid gap-4 md:grid-cols-2'>
-					 <div className='space-y-2'>
-					  <Label htmlFor='address_line1'>Gatuadress</Label>
-					   <AddressAutocomplete
-					   id='address_line1'
-					   name='address_line1'
-					   autoComplete='address-line1'
-					   value={watch('address_line1') || ''}
-					   onChange={(val) => setValue('address_line1', val, { shouldDirty: true })}
-					   onSelect={(addr) => {
-					   // Ensure numbers for coordinates
-					   const latNum = typeof addr.lat === 'number' ? addr.lat : parseFloat(String(addr.lat));
-					   const lonNum = typeof addr.lon === 'number' ? addr.lon : parseFloat(String(addr.lon));
-					   
-					   // Remove country from address fields
-					   let addr1Clean = addr.address_line1 || '';
-					   addr1Clean = addr1Clean.replace(/,\s*(sweden|sverige)$/i, '').trim();
-					   
-					   let cityClean = addr.city || '';
-					   cityClean = cityClean.replace(/,\s*(sweden|sverige)$/i, '').trim();
-					   const postalCity = `${addr.postal_code} ${cityClean}`.trim();
-					   
-							setValue('address_line1', addr1Clean, { shouldDirty: true });
-					   setValue('address_line2', postalCity, { shouldDirty: true });
-					   // Keep postal_code and city for backwards compatibility but don't show them
-					   setValue('postal_code', addr.postal_code, { shouldDirty: true });
-					    setValue('city', addr.city, { shouldDirty: true });
-							setValue('site_lat', latNum, { shouldDirty: true, shouldValidate: true });
-							setValue('site_lon', lonNum, { shouldDirty: true, shouldValidate: true });
-							console.log('Set coordinates:', { lat: latNum, lon: lonNum, original: { lat: addr.lat, lon: addr.lon } });
-						}}
-					    placeholder='Sök adress (Geoapify)...'
-					  />
-					 {errors.address_line1 && (
-					 <p className='text-sm text-destructive'>{errors.address_line1.message}</p>
-					 )}
-					 </div>
-					 <div className='space-y-2'>
-					 <Label htmlFor='address_line2'>Postnummer & Stad</Label>
-					 <Input
-					 id='address_line2'
-					 {...register('address_line2')}
-					 autoComplete='postal-code'
-					 placeholder='Ex: 113 29 Stockholm'
-					 />
-					 {errors.address_line2 && (
-					 <p className='text-sm text-destructive'>{errors.address_line2.message}</p>
-					 )}
-					 </div>
-					 </div>
-
-					<div className='grid gap-4 md:grid-cols-2'>
+				<div className='grid gap-4 md:grid-cols-2'>
 						<div className='space-y-2'>
 							<Label htmlFor='status'>Status</Label>
 							<Select
