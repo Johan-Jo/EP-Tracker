@@ -17,6 +17,7 @@ import {
 	HelpCircle,
 	Plus,
 	Calendar,
+	QrCode,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -56,6 +57,12 @@ const navItems: NavItem[] = [
 		href: '/dashboard/planning',
 		icon: Calendar,
 		roles: ['admin', 'foreman', 'finance'],
+	},
+	{
+		label: 'Personalliggare',
+		href: '/dashboard/worksites',
+		icon: QrCode,
+		roles: ['admin', 'foreman'],
 	},
 	{
 		label: 'Tid',
