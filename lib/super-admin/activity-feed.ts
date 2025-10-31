@@ -85,17 +85,16 @@ export async function getRecentActivity(limit: number = 20): Promise<ActivityEve
     .order('created_at', { ascending: false })
     .limit(10);
   
-  (recentPayments || []).forEach((payment: { 
-    id: string; 
-    amount_sek: number; 
-    created_at: string;
-    subscription?: { organization?: { name?: string; id?: string } | null } | null;
-  }) => {
+  (recentPayments || []).forEach((payment: any) => {
+    const subscription = Array.isArray(payment.subscription) ? payment.subscription[0] : payment.subscription;
+    const org = subscription?.organization 
+      ? (Array.isArray(subscription.organization) ? subscription.organization[0] : subscription.organization)
+      : null;
     activities.push({
       id: `payment-${payment.id}`,
       type: 'payment_received',
       title: 'Payment Received',
-      description: `${payment.subscription?.organization?.name || 'Unknown'} paid ${payment.amount_sek} SEK`,
+      description: `${org?.name || 'Unknown'} paid ${payment.amount_sek} SEK`,
       timestamp: payment.created_at,
       metadata: { payment_id: payment.id, amount: payment.amount_sek },
     });
