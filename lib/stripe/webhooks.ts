@@ -158,9 +158,9 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
       cancel_at_period_end: false,
       stripe_subscription_id: subscriptionId,
       stripe_price_id: (subscription as any).items.data[0]?.price.id,
-      stripe_latest_invoice_id: typeof subscription.latest_invoice === 'string'
-        ? subscription.latest_invoice
-        : subscription.latest_invoice?.id,
+      stripe_latest_invoice_id: typeof (subscription as any).latest_invoice === 'string'
+        ? (subscription as any).latest_invoice
+        : (subscription as any).latest_invoice?.id,
       updated_at: now,
     }, {
       onConflict: 'stripe_subscription_id',
