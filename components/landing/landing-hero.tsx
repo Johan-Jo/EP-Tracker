@@ -21,7 +21,7 @@ export function LandingHero() {
                     
                     {/* Ingress */}
                     <p className="mx-auto mb-8 max-w-2xl text-xl leading-relaxed text-gray-700 sm:text-2xl">
-                        Röststyrd dagbok på 15 språk som blir svensk rapport
+                        EP-Tracker samlar timmar, material och projektstatus från fält och gör faktura- och löneunderlag på sekunder.
                     </p>
 
                     {/* Trust bar - proof points */}
