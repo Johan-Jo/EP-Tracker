@@ -12,8 +12,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-	title: 'EP Tracker',
-	description: 'Time tracking and site reporting for Swedish contractors',
+	title: 'Tidrapportering bygg - offline & veckoplanering | EP-Tracker',
+	description: 'Allt-i-ett för bygglag: tid, veckoplanering, dagbok och attest. Offline i fält och klara underlag för lön/faktura',
 	manifest: '/manifest.json',
 	icons: {
 		icon: '/images/faviconEP.png',
