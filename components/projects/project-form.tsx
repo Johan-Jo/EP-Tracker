@@ -17,10 +17,11 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, QrCode } from 'lucide-react';
 import { AddressAutocomplete } from '@/components/address/address-autocomplete';
 import { AddressMap } from '@/components/address/address-map';
 import { ProjectAlertSettings } from './project-alert-settings';
+import { QRDialog } from '@/components/worksites/qr-dialog';
 
 interface ProjectFormProps {
 	project?: ProjectFormData & { id?: string };
@@ -61,6 +62,12 @@ const [error, setError] = useState<string | null>(null);
 	const [alertSettings, setAlertSettings] = useState<AlertSettings>(
 		project?.alert_settings || defaultAlertSettings
 	);
+
+	// QR dialog states
+	const [showPlatsQR, setShowPlatsQR] = useState(false);
+	const [showKontrollQR, setShowKontrollQR] = useState(false);
+	const [controlQRToken, setControlQRToken] = useState<string | null>(null);
+	const [controlQRExpiresAt, setControlQRExpiresAt] = useState<Date | null>(null);
 
 	const {
 		register,
@@ -143,6 +150,39 @@ const [error, setError] = useState<string | null>(null);
 		}
 	}, [projNumber, projName, setValue]);
 
+	// QR generation handlers
+	const handleGeneratePlatsQR = () => {
+		if (!project?.id) {
+			setError('Spara projektet först innan du genererar QR-kod');
+			return;
+		}
+		// For now, just show the URL - could generate actual check-in URL later
+		const baseUrl = window.location.origin;
+		const projectId = project.id;
+		// TODO: Generate actual check-in URL when the endpoint is ready
+		setShowPlatsQR(true);
+	};
+
+	const handleGenerateKontrollQR = async () => {
+		if (!project?.id) {
+			setError('Spara projektet först innan du genererar Kontroll-QR');
+			return;
+		}
+		try {
+			// Call API to generate control token
+			const response = await fetch(`/api/worksites/${project.id}/control-token`, {
+				method: 'POST',
+			});
+			if (!response.ok) throw new Error('Failed to generate control token');
+			const data = await response.json();
+			setControlQRToken(data.token);
+			setControlQRExpiresAt(new Date(data.expires_at));
+			setShowKontrollQR(true);
+		} catch (err) {
+			setError('Kunde inte generera Kontroll-QR');
+		}
+	};
+
 	const handleFormSubmit = async (data: any) => {
 		setIsSubmitting(true);
 		setError(null);
@@ -192,6 +232,7 @@ const [error, setError] = useState<string | null>(null);
 	};
 
 	return (
+		<>
 		<form onSubmit={handleSubmit(handleFormSubmit)} className='space-y-6'>
 			{error && (
 				<Card className='border-destructive'>
@@ -402,6 +443,29 @@ const [error, setError] = useState<string | null>(null);
 						</div>
 					</div>
 
+					{project?.id && (
+						<div className='flex gap-2'>
+							<Button
+								type='button'
+								variant='outline'
+								onClick={handleGeneratePlatsQR}
+								className='flex items-center gap-2'
+							>
+								<QrCode className='w-4 h-4' />
+								Plats-QR
+							</Button>
+							<Button
+								type='button'
+								variant='outline'
+								onClick={handleGenerateKontrollQR}
+								className='flex items-center gap-2'
+							>
+								<QrCode className='w-4 h-4' />
+								Kontroll-QR
+							</Button>
+						</div>
+					)}
+
 					<div className='grid gap-4 md:grid-cols-3'>
 						<div className='space-y-2'>
 							<Label htmlFor='worksite_code'>Plats-ID (visningskod)</Label>
@@ -528,6 +592,28 @@ const [error, setError] = useState<string | null>(null);
 				</Button>
 			</div>
 		</form>
+
+	{/* QR Dialogs */}
+	{project?.id && (
+		<QRDialog
+			open={showPlatsQR}
+			onOpenChange={setShowPlatsQR}
+			title='Plats-QR'
+			description='Använd denna QR-kod för att tillåta incheckning på platsen'
+			value={`${window.location.origin}/worksites/${project.id}/checkin`}
+		/>
+	)}
+	{project?.id && controlQRToken && (
+		<QRDialog
+			open={showKontrollQR}
+			onOpenChange={setShowKontrollQR}
+			title='Kontroll-QR'
+			description='Använd denna QR-kod för att visa kontrollvyn (engångstoken)'
+			value={`${window.location.origin}/worksites/${project.id}/control?token=${controlQRToken}`}
+			expiresAt={controlQRExpiresAt || undefined}
+		/>
+	)}
+	</>
 	);
 }
 
