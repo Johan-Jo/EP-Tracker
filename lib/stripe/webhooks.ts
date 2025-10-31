@@ -153,11 +153,11 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
       organization_id: organizationId,
       plan_id: planId,
       status: 'active',
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+      current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
       cancel_at_period_end: false,
       stripe_subscription_id: subscriptionId,
-      stripe_price_id: subscription.items.data[0]?.price.id,
+      stripe_price_id: (subscription as any).items.data[0]?.price.id,
       stripe_latest_invoice_id: typeof subscription.latest_invoice === 'string'
         ? subscription.latest_invoice
         : subscription.latest_invoice?.id,
@@ -357,13 +357,13 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
     .from('subscriptions')
     .update({
       status,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      cancel_at_period_end: subscription.cancel_at_period_end,
-      stripe_price_id: subscription.items.data[0]?.price.id,
-      stripe_latest_invoice_id: typeof subscription.latest_invoice === 'string'
-        ? subscription.latest_invoice
-        : subscription.latest_invoice?.id,
+      current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+      current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+      cancel_at_period_end: (subscription as any).cancel_at_period_end,
+      stripe_price_id: (subscription as any).items.data[0]?.price.id,
+      stripe_latest_invoice_id: typeof (subscription as any).latest_invoice === 'string'
+        ? (subscription as any).latest_invoice
+        : (subscription as any).latest_invoice?.id,
       updated_at: now,
     })
     .eq('stripe_subscription_id', subscription.id);
