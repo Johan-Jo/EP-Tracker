@@ -28,7 +28,7 @@ export async function getCohortRetention(): Promise<CohortData[]> {
 		// Group by month
 		const cohorts = new Map<string, string[]>();
 
-		orgs.forEach((org: any) => {
+		orgs.forEach((org: { id: string; created_at: string }) => {
 			const month = org.created_at.substring(0, 7); // YYYY-MM
 			if (!cohorts.has(month)) {
 				cohorts.set(month, []);
@@ -128,7 +128,6 @@ export async function getChurnRiskOrganizations(): Promise<ChurnRisk[]> {
 
 		const sevenDaysAgo = new Date();
 		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-		const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
 
 		for (const org of orgs) {
 			const riskFactors: string[] = [];
@@ -238,7 +237,7 @@ export async function getRetentionRate(): Promise<{
 			.gte('date', lastMonthStart)
 			.lte('date', lastMonthEnd);
 
-		const lastMonthActive = new Set((lastMonthOrgs || []).map((t: any) => t.org_id)).size;
+		const lastMonthActive = new Set((lastMonthOrgs || []).map((t: { org_id: string }) => t.org_id)).size;
 
 		// Get orgs active this month
 		const { data: thisMonthOrgs } = await supabase
@@ -246,7 +245,7 @@ export async function getRetentionRate(): Promise<{
 			.select('org_id')
 			.gte('date', thisMonthStart);
 
-		const thisMonthActive = new Set((thisMonthOrgs || []).map((t: any) => t.org_id)).size;
+		const thisMonthActive = new Set((thisMonthOrgs || []).map((t: { org_id: string }) => t.org_id)).size;
 
 		// Calculate retention (of those active last month, how many are still active)
 		const retentionRate = lastMonthActive > 0

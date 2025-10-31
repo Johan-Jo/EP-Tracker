@@ -39,7 +39,7 @@ async function logWebhookEvent(event: Stripe.Event, processed: boolean, error?: 
     .insert({
       event_id: event.id,
       event_type: event.type,
-      event_data: event.data.object as any,
+      event_data: event.data.object as Record<string, unknown>,
       processed,
       processed_at: processed ? new Date().toISOString() : null,
       error: error || null,
@@ -137,7 +137,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
   }
 
   // Get the full subscription object from Stripe
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
   // Get plan ID from metadata
   const planId = session.metadata?.plan_id;
@@ -186,7 +186,11 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
 async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
   const supabase = await createClient();
 
-  const invoiceData = invoice as any;
+  const invoiceData = invoice as Stripe.Invoice & { 
+    subscription?: string | Stripe.Subscription | null;
+    payment_intent?: string | Stripe.PaymentIntent | null;
+    charge?: string | Stripe.Charge | null;
+  };
   const subscriptionId = typeof invoiceData.subscription === 'string'
     ? invoiceData.subscription
     : invoiceData.subscription?.id;
@@ -258,7 +262,11 @@ async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
   const supabase = await createClient();
 
-  const invoiceData = invoice as any;
+  const invoiceData = invoice as Stripe.Invoice & { 
+    subscription?: string | Stripe.Subscription | null;
+    payment_intent?: string | Stripe.PaymentIntent | null;
+    charge?: string | Stripe.Charge | null;
+  };
   const subscriptionId = typeof invoiceData.subscription === 'string'
     ? invoiceData.subscription
     : invoiceData.subscription?.id;
@@ -344,13 +352,13 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
 
   // Update subscription
   const now = new Date().toISOString();
-  const subscriptionAny = subscription as any; // Stripe types are complex
+  // Stripe subscription types are properly typed
   await supabase
     .from('subscriptions')
     .update({
       status,
-      current_period_start: new Date(subscriptionAny.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscriptionAny.current_period_end * 1000).toISOString(),
+      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
       cancel_at_period_end: subscription.cancel_at_period_end,
       stripe_price_id: subscription.items.data[0]?.price.id,
       stripe_latest_invoice_id: typeof subscription.latest_invoice === 'string'

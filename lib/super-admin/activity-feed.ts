@@ -58,7 +58,12 @@ export async function getRecentActivity(limit: number = 20): Promise<ActivityEve
     .order('created_at', { ascending: false })
     .limit(10);
   
-  (newSubs || []).forEach((sub: any) => {
+  (newSubs || []).forEach((sub: { 
+    id: string; 
+    created_at: string; 
+    organization?: { name?: string; id?: string } | null;
+    plan?: { name?: string } | null;
+  }) => {
     activities.push({
       id: `sub-${sub.id}`,
       type: 'subscription_created',
@@ -83,7 +88,12 @@ export async function getRecentActivity(limit: number = 20): Promise<ActivityEve
     .order('created_at', { ascending: false })
     .limit(10);
   
-  (recentPayments || []).forEach((payment: any) => {
+  (recentPayments || []).forEach((payment: { 
+    id: string; 
+    amount_sek: number; 
+    created_at: string;
+    subscription?: { organization?: { name?: string; id?: string } | null } | null;
+  }) => {
     activities.push({
       id: `payment-${payment.id}`,
       type: 'payment_received',
