@@ -23,7 +23,7 @@ interface QRDialogProps {
 export function QRDialog({ open, onOpenChange, title, description, value, expiresAt }: QRDialogProps) {
 	const handleDownload = () => {
 		// Create SVG data URI
-		const svg = document.querySelector('svg[data-testid="qr-code"]');
+		const svg = document.querySelector('.qr-code-svg');
 		if (!svg) return;
 		
 		const svgData = new XMLSerializer().serializeToString(svg);
@@ -51,8 +51,7 @@ export function QRDialog({ open, onOpenChange, title, description, value, expire
 						<QRCodeSVG 
 							value={value} 
 							size={256}
-							level='M'
-							includeMargin={true}
+							className='qr-code-svg'
 						/>
 					</div>
 					{expiresAt && (
