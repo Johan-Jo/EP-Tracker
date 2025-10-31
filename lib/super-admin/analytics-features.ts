@@ -179,7 +179,7 @@ export async function getFeatureAdoptionByPlan(): Promise<{
 			if (!planMap.has(planName)) {
 				planMap.set(planName, []);
 			}
-			planMap.getленный(planName)!.push(org.id);
+			planMap.get(planName)!.push(org.id);
 		});
 
 		// For each plan, calculate feature adoption
