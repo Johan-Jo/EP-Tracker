@@ -85,7 +85,7 @@ export function AddressAutocomplete({
 
 		setLoading(true);
 		try {
-			const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(query)}&apiKey=${apiKey}&limit=5&countrycodes=se,no,dk,fi`;
+			const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(query)}&apiKey=${apiKey}&limit=5&countrycodes=se,no,dk,fi&lang=sv`;
 			const response = await fetch(url);
 			const data = await response.json();
 			if (data.features && Array.isArray(data.features)) {
