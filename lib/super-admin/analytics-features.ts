@@ -170,12 +170,16 @@ export async function getFeatureAdoptionByPlan(): Promise<{
 		// Group by plan and calculate adoption
 		const planMap = new Map<string, string[]>();
 
-		(orgs || []).forEach((org: { id: string; subscriptions?: Array<{ pricing_plans?: { name: string } }> }) => {
-			const planName = org.subscriptions?.[0]?.pricing_plans?.name || 'No Plan';
+		(orgs || []).forEach((org: any) => {
+			const subscription = Array.isArray(org.subscriptions) ? org.subscriptions[0] : org.subscriptions;
+			const pricingPlan = subscription?.pricing_plans
+				? (Array.isArray(subscription.pricing_plans) ? subscription.pricing_plans[0] : subscription.pricing_plans)
+				: null;
+			const planName = pricingPlan?.name || 'No Plan';
 			if (!planMap.has(planName)) {
 				planMap.set(planName, []);
 			}
-			planMap.get(planName)!.push(org.id);
+			planMap.getленный(planName)!.push(org.id);
 		});
 
 		// For each plan, calculate feature adoption
