@@ -39,7 +39,7 @@ async function logWebhookEvent(event: Stripe.Event, processed: boolean, error?: 
     .insert({
       event_id: event.id,
       event_type: event.type,
-      event_data: event.data.object as Record<string, unknown>,
+      event_data: event.data.object as unknown as Record<string, unknown>,
       processed,
       processed_at: processed ? new Date().toISOString() : null,
       error: error || null,
