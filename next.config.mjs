@@ -50,6 +50,15 @@ const nextConfig = {
 			transform: 'lucide-react/dist/esm/icons/{{kebabCase member}}',
 		},
 	},
+	
+	// Temporarily allow ESLint warnings during build
+	// TODO: Fix all ESLint warnings incrementally
+	eslint: {
+		ignoreDuringBuilds: false,
+	},
+	typescript: {
+		ignoreBuildErrors: false,
+	},
 };
 
 export default nextConfig;
