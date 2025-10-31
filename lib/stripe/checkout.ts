@@ -157,7 +157,7 @@ export async function handleSuccessfulCheckout(session: Stripe.Checkout.Session)
   }
 
   // Get the Stripe subscription to get pricing details
-  const stripeSubscription: Stripe.Subscription = await stripe.subscriptions.retrieve(subscriptionId) as Stripe.Subscription;
+  const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
 
   // Create subscription record
   const now = new Date().toISOString();
