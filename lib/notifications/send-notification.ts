@@ -66,7 +66,12 @@ export async function sendNotification(payload: NotificationPayload) {
     const tokens = subscriptions.map((s) => s.fcm_token);
     console.log(`🔔 [sendNotification] Preparing to send to ${tokens.length} tokens`);
     
-    const message: any = {
+    const message: {
+      notification: { title: string; body: string };
+      data: Record<string, string>;
+      tokens: string[];
+      webpush?: { notification: { tag: string } };
+    } = {
       notification: {
         title: payload.title,
         body: payload.body,
@@ -142,7 +147,7 @@ function getPreferenceKey(type: string): string | null {
 /**
  * Check if current time is within quiet hours
  */
-function isInQuietHours(prefs: any): boolean {
+function isInQuietHours(prefs: { quiet_hours_start?: string; quiet_hours_end?: string }): boolean {
   if (!prefs.quiet_hours_start || !prefs.quiet_hours_end) {
     return false;
   }

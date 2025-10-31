@@ -286,7 +286,7 @@ export async function sendLateCheckInAlert(params: {
   workDayStart: string;
   minutesLate: number;
 }) {
-  const { projectId, userId, userName, workDayStart, minutesLate } = params;
+  const { projectId, userId, userName, workDayStart } = params;
   const supabase = await createClient();
 
   try {

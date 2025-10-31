@@ -18,7 +18,7 @@ export const queryKeys = {
 	// Projects
 	projects: {
 		all: ['projects'] as const,
-		list: (filters?: Record<string, any>) => ['projects', 'list', filters] as const,
+		list: (filters?: Record<string, unknown>) => ['projects', 'list', filters] as const,
 		detail: (id: string) => ['projects', 'detail', id] as const,
 		members: (id: string) => ['projects', 'members', id] as const,
 		phases: (projectId: string) => ['projects', 'phases', projectId] as const,
@@ -28,7 +28,7 @@ export const queryKeys = {
 	// Time Entries
 	timeEntries: {
 		all: ['time-entries'] as const,
-		list: (filters?: Record<string, any>) => ['time-entries', 'list', filters] as const,
+		list: (filters?: Record<string, unknown>) => ['time-entries', 'list', filters] as const,
 		detail: (id: string) => ['time-entries', 'detail', id] as const,
 		active: (userId: string) => ['time-entries', 'active', userId] as const,
 		byProject: (projectId: string) => ['time-entries', 'by-project', projectId] as const,
@@ -38,7 +38,7 @@ export const queryKeys = {
 	// Materials
 	materials: {
 		all: ['materials'] as const,
-		list: (filters?: Record<string, any>) => ['materials', 'list', filters] as const,
+		list: (filters?: Record<string, unknown>) => ['materials', 'list', filters] as const,
 		detail: (id: string) => ['materials', 'detail', id] as const,
 		byProject: (projectId: string) => ['materials', 'by-project', projectId] as const,
 	},
@@ -46,7 +46,7 @@ export const queryKeys = {
 	// Expenses
 	expenses: {
 		all: ['expenses'] as const,
-		list: (filters?: Record<string, any>) => ['expenses', 'list', filters] as const,
+		list: (filters?: Record<string, unknown>) => ['expenses', 'list', filters] as const,
 		detail: (id: string) => ['expenses', 'detail', id] as const,
 		byProject: (projectId: string) => ['expenses', 'by-project', projectId] as const,
 	},
@@ -54,7 +54,7 @@ export const queryKeys = {
 	// Mileage
 	mileage: {
 		all: ['mileage'] as const,
-		list: (filters?: Record<string, any>) => ['mileage', 'list', filters] as const,
+		list: (filters?: Record<string, unknown>) => ['mileage', 'list', filters] as const,
 		detail: (id: string) => ['mileage', 'detail', id] as const,
 	},
 	
@@ -67,7 +67,7 @@ export const queryKeys = {
 	// ATA (Ändrings- och Tilläggsarbeten)
 	ata: {
 		all: ['ata'] as const,
-		list: (filters?: Record<string, any>) => ['ata', 'list', filters] as const,
+		list: (filters?: Record<string, unknown>) => ['ata', 'list', filters] as const,
 		detail: (id: string) => ['ata', 'detail', id] as const,
 		byProject: (projectId: string) => ['ata', 'by-project', projectId] as const,
 	},
@@ -75,7 +75,7 @@ export const queryKeys = {
 	// Diary Entries
 	diary: {
 		all: ['diary'] as const,
-		list: (filters?: Record<string, any>) => ['diary', 'list', filters] as const,
+		list: (filters?: Record<string, unknown>) => ['diary', 'list', filters] as const,
 		detail: (id: string) => ['diary', 'detail', id] as const,
 		byProject: (projectId: string) => ['diary', 'by-project', projectId] as const,
 	},
@@ -83,22 +83,22 @@ export const queryKeys = {
 	// Checklists
 	checklists: {
 		all: ['checklists'] as const,
-		list: (filters?: Record<string, any>) => ['checklists', 'list', filters] as const,
+		list: (filters?: Record<string, unknown>) => ['checklists', 'list', filters] as const,
 		detail: (id: string) => ['checklists', 'detail', id] as const,
 		templates: ['checklists', 'templates'] as const,
 	},
 	
 	// Approvals
 	approvals: {
-		timeEntries: (filters?: Record<string, any>) => ['approvals', 'time-entries', filters] as const,
-		materials: (filters?: Record<string, any>) => ['approvals', 'materials', filters] as const,
-		expenses: (filters?: Record<string, any>) => ['approvals', 'expenses', filters] as const,
-		history: (filters?: Record<string, any>) => ['approvals', 'history', filters] as const,
+		timeEntries: (filters?: Record<string, unknown>) => ['approvals', 'time-entries', filters] as const,
+		materials: (filters?: Record<string, unknown>) => ['approvals', 'materials', filters] as const,
+		expenses: (filters?: Record<string, unknown>) => ['approvals', 'expenses', filters] as const,
+		history: (filters?: Record<string, unknown>) => ['approvals', 'history', filters] as const,
 	},
 	
 	// Planning
 	planning: {
-		assignments: (filters?: Record<string, any>) => ['planning', 'assignments', filters] as const,
+		assignments: (filters?: Record<string, unknown>) => ['planning', 'assignments', filters] as const,
 		today: (userId: string) => ['planning', 'today', userId] as const,
 		week: (weekStart: string) => ['planning', 'week', weekStart] as const,
 	},
