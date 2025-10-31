@@ -2,10 +2,20 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { LandingNav } from '@/components/landing/landing-nav';
 import { LandingHero } from '@/components/landing/landing-hero';
-import { LandingFeatures } from '@/components/landing/landing-features';
-import { LandingPricing } from '@/components/landing/landing-pricing';
-import { LandingFAQ } from '@/components/landing/landing-faq';
-import { LandingFooter } from '@/components/landing/landing-footer';
+import { ProofBar } from '@/components/landing/proof-bar';
+import { AudienceChips } from '@/components/landing/audience-chips';
+import { ProblemSolution } from '@/components/landing/problem-solution';
+import { ValueGrid } from '@/components/landing/value-grid';
+import { FeatureGrid } from '@/components/landing/landing-features-new';
+import { USPs } from '@/components/landing/usps';
+import { Steps } from '@/components/landing/steps';
+import { CompetitionMatrix } from '@/components/landing/competition-matrix';
+import { Testimonials } from '@/components/landing/testimonials';
+import { Integrations } from '@/components/landing/integrations';
+import { PricingCards } from '@/components/landing/landing-pricing-new';
+import { FAQ } from '@/components/landing/landing-faq-new';
+import { CTASection } from '@/components/landing/cta-section';
+import { Footer } from '@/components/landing/landing-footer-new';
 
 export default async function Home({
   searchParams,
@@ -85,10 +95,20 @@ export default async function Home({
     <div className="min-h-screen bg-white">
       <LandingNav />
       <LandingHero />
-      <LandingFeatures />
-      <LandingPricing />
-      <LandingFAQ />
-      <LandingFooter />
+      <ProofBar />
+      <AudienceChips />
+      <ProblemSolution />
+      <ValueGrid />
+      <FeatureGrid />
+      <USPs />
+      <Steps />
+      <CompetitionMatrix />
+      <Testimonials />
+      <Integrations />
+      <PricingCards />
+      <FAQ />
+      <CTASection />
+      <Footer />
     </div>
   );
 }

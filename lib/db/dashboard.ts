@@ -134,21 +134,31 @@ async function getRecentActivitiesLegacy(orgId: string, limit: number = 15) {
 export async function getActiveTimeEntry(userId: string) {
 	const supabase = await createClient();
 
-	const { data, error } = await supabase
-		.from('time_entries')
-		.select('*, projects(id, name)')
-		.eq('user_id', userId)
-		.is('stop_at', null)
-		.order('start_at', { ascending: false })
-		.limit(1)
-		.maybeSingle();
+	try {
+		const { data, error } = await supabase
+			.from('time_entries')
+			.select('*, projects(id, name)')
+			.eq('user_id', userId)
+			.is('stop_at', null)
+			.order('start_at', { ascending: false })
+			.limit(1)
+			.maybeSingle();
 
-	if (error) {
-		console.error('[DASHBOARD] Error fetching active time entry:', error);
+		if (error) {
+			console.error('[DASHBOARD] Error fetching active time entry:', {
+				code: error.code,
+				message: error.message,
+				details: error.details,
+				hint: error.hint,
+			});
+			return null;
+		}
+
+		return data;
+	} catch (err) {
+		console.error('[DASHBOARD] Exception fetching active time entry:', err);
 		return null;
 	}
-
-	return data;
 }
 
 /**

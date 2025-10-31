@@ -1,0 +1,128 @@
+EPIC 1: Verification & Infrastructure
+- Projekt setup, Next.js 15, TypeScript, Tailwind CSS v4
+- ESLint & Prettier, Supabase klient, State management (Zustand + React Query)
+- Offline storage (Dexie), PWA konfiguration, i18n setup
+
+EPIC 2: Database Schema & Authentication
+- 20+ databastabeller, Multi-tenant RLS säkerhet
+- Autentiseringssystem, Sign-in/sign-up/verify email-sidor
+- Auth API routes, Storage buckets, Svenska checklistmallar, Audit logging
+
+EPIC 3: Core UI & Projects Management
+- Dashboard layout (mobil + desktop), Navigation system
+- Projekt CRUD, Faser och arbetsorder, Organisation/användarinställningar
+- Rollbaserad åtkomst, Type-safe formulär med Zod
+
+EPIC 4: Time Tracking & Crew Management
+- Sticky timer widget, Manuell tidsinmatning, Tidsrapport lista
+- Crew clock-in (flera användare), Offline queue manager
+- Automatisk bakgrundssynkronisering, Sync status indicator
+
+EPIC 5: Materials, Expenses & Mileage
+- Materialtracking med kamera, Utlägg med kvittou
+- Milersättning med skattesatser (18.50 kr/mil)
+- Listor med filter, Offline support, Automatiska beräkningar
+
+EPIC 6: ÄTA, Dagbok & Checklistor
+- ÄTA med godkännandeflöde, Dagbok (AFC-stil) med foton
+- Checklistor med svenska mallar, Fotogalleri, Digital signatur
+- Godkännandedialog, Detaljvyer
+
+EPIC 7: Approvals & CSV Exports
+- Veckoselektor, Gransknings- och godkännandetabeller
+- Batch godkänna/avvisa, Periodlås, CSV-exporter (lön och faktura)
+- Bilagor ZIP-export, Export preview, Granskningslogg-viewer
+
+EPIC 8: Offline-First & PWA Features
+- Workbox Service Worker, Bakgrundssynkronisering
+- IndexedDB persistens, Konfliktlösning, PWA-installationsprompter
+- Dataförinläsning, Offline-testguide, Service worker-uppdateringar
+
+EPIC 9: Polish & Pilot Prep
+- Onboarding-flöde (4-stegs wizard), Interaktiva funktionsturer
+- Snabbstartschecklista, Svenska valideringsmeddelanden
+- Felgränser, Laddningstillstånd, Hjälp- och dokumentationssidor
+
+EPIC 10: Super Admin Foundation & Authentication
+- Super admin-autentisering, Route-skydd via middleware
+- Super admin layout och navigering, Super admin-banner
+- Dashboard med plattformsstatistik, Helper-script
+
+EPIC 11: Billing System & Pricing Plans
+- MRR-kalkylator, Prisplanerhantering, Prenumerationshantering
+- Betalningshantering, Billing dashboard med KPIs
+- Försäljningsfunnel, Trial-to-paid konvertering, Överfälliga betalningar
+
+EPIC 12: Organizations Management
+- Organisationslista med filter, Organisationsdetaljsida
+- Suspend/restore/delete, Lagringsanvändningsspårning
+- Prenumerationshälsoscore, Användargränser, Varningar
+
+EPIC 13: Users Management
+- Användarlista för super admin, Användardetaljer
+- Super admin grant/revoke, Användaraktivitetsgranskning, Rollhantering
+
+EPIC 14: Analytics & Reports
+- Dashboard med nyckeltal, Diagram och trender
+- Plattformshälsa, Tillväxtstatistik
+
+EPIC 15: Stripe Integration
+- Stripe Foundation, Stripe Integration, Betalningshantering
+- Webhook-hantering, Marknadskunder
+
+EPIC 16: System Configuration & Audit Logs
+- Feature flags-system, Underhållsläge
+- Audit logging och granskningsloggar, System health monitoring
+
+EPIC 17: Usage Analytics
+- Feature adoption tracking, Användaraktivitetsmått (DAU/WAU/MAU)
+- Content growth analytics, Cohort-analys, Churn risk-identifiering
+
+EPIC 18: Support Tools & User Impersonation
+- Global search, User impersonation, Support dashboard
+- Användarhantering, Support-åtgärder
+
+EPIC 21: Email System
+- E-postsystem (Resend/SendGrid), E-postmallar
+- E-postloggar och tracking, Transaktionsmeddelanden
+
+EPIC 22: Planning Foundation
+- Planeringssystemgrund, Databastabeller (assignments, absences, shift_templates)
+- Assignment-hantering, Frånvarohantering, Skiftmallar
+
+EPIC 23: Planning UI
+- Planeringsgränssnitt, Veckovy med drag-and-drop
+- Kapacitetshantering, Konfliktidentifiering, Resursallokering
+
+EPIC 24: Mobile Today View
+- Mobil "Idag"-vy, Jobbkort med status
+- Checka in/ut från mobil, Statusuppdateringar, Navigering i karta
+
+EPIC 25: Web Push Notifications
+- Push-prenumerationer, Notifikationsinställningar
+- Firebase Cloud Messaging, Notifikationslogg, Real-time notifikationer
+
+EPIC 26: Performance Optimization
+- Databasoptimering, Prestandaoptimering
+- Dashboard cache, Query-optimeringar, Index-optimeringar
+
+EPIC 27: Voice Notes Foundation
+- Databasstruktur (voice_sessions, voice_logs)
+- Storage bucket för röstinspelningar, RLS policies
+- TypeScript types och Zod-validering, Database CRUD operations
+
+EPIC 28: Backend Services (ASR & Translation)
+- OpenAI Whisper API-integration (ASR), GPT-4o översättning
+- Multilingual glossary (10+ språk), API routes (upload, stream, finalize)
+- Server-Sent Events (SSE) streaming
+
+EPIC 29: Voice Capture UI
+- Röstfångstgränssnitt med MediaRecorder, 15 språkstöd
+- Real-time transkription, Voice Activity Detection (VAD)
+- Pause/resume funktionalitet, Zustand state management
+
+EPIC 30: Daybook Integration
+- Dagboksintegration (voice_log_id linking)
+- Röst till rapport-flöde, Automatisk rapportgenerering
+- Visa original + översättning (toggle), Voice log history
+
