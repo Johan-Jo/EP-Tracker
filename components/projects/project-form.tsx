@@ -293,7 +293,20 @@ const [error, setError] = useState<string | null>(null);
 								<p className='text-sm text-destructive'>{errors.client_name.message}</p>
 							)}
 						</div>
-				</div>
+					</div>
+
+					<div className='space-y-2'>
+						<Label htmlFor='site_address'>Platsadress</Label>
+						<Input
+						id='site_address'
+						{...register('site_address')}
+						autoComplete='street-address'
+						 placeholder='Ex: Observatoriegatan 13, 113 29 Stockholm'
+					/>
+					{errors.site_address && (
+						<p className='text-sm text-destructive'>{errors.site_address.message}</p>
+					)}
+					</div>
 
 				<div className='grid gap-4 md:grid-cols-2'>
 						<div className='space-y-2'>
