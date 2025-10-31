@@ -1,6 +1,6 @@
 'use client';
 
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeSVG } from 'react-qr-code';
 import {
 	Dialog,
 	DialogContent,
