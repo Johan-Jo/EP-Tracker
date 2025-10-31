@@ -13,6 +13,7 @@ export async function POST(request: Request) {
 			address,
 			postalCode,
 			city,
+			campaignCode,
 		} = await request.json();
 
 		// Validate required fields
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
 			address,
 			postal_code: postalCode,
 			city,
+			campaign_code: campaignCode || null,
 		})
 		.select()
 		.single();

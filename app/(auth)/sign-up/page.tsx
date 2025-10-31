@@ -20,6 +20,7 @@ interface Step2Data {
 	address: string;
 	postalCode: string;
 	city: string;
+	campaignCode: string;
 }
 
 export default function SignUpPage() {
@@ -33,6 +34,7 @@ export default function SignUpPage() {
 	const [address, setAddress] = useState('');
 	const [postalCode, setPostalCode] = useState('');
 	const [city, setCity] = useState('');
+	const [campaignCode, setCampaignCode] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
 	const [userId, setUserId] = useState('');
@@ -59,6 +61,7 @@ export default function SignUpPage() {
 			setAddress(data.address);
 			setPostalCode(data.postalCode);
 			setCity(data.city);
+			setCampaignCode(data.campaignCode || '');
 		}
 		
 		if (savedUserId) {
@@ -86,7 +89,7 @@ export default function SignUpPage() {
 		setLoading(true);
 		setError('');
 
-		// Save step 2 data to localStorage
+	              // Save step 2 data to localStorage
 		localStorage.setItem('signup_step2', JSON.stringify({
 			companyName,
 			orgNumber,
@@ -94,6 +97,7 @@ export default function SignUpPage() {
 			address,
 			postalCode,
 			city,
+			campaignCode,
 		}));
 
 		try {
@@ -113,6 +117,7 @@ export default function SignUpPage() {
 					address,
 					postalCode,
 					city,
+					campaignCode,
 				}),
 			});
 
@@ -437,6 +442,21 @@ export default function SignUpPage() {
 												placeholder="Stockholm"
 											/>
 										</div>
+									</div>
+
+									<div>
+										<label htmlFor="campaignCode" className="block text-sm font-medium text-gray-700 mb-2">
+											Kampanjkod <span className="text-gray-500 font-normal">(valfritt)</span>
+										</label>
+										<input
+											id="campaignCode"
+											name="campaignCode"
+											type="text"
+											value={campaignCode}
+											onChange={(e) => setCampaignCode(e.target.value)}
+											className="block w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+											placeholder="Ange kampanjkod om du har en"
+										/>
 									</div>
 
 									{error && (
