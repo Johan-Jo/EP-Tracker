@@ -58,19 +58,16 @@ export async function getRecentActivity(limit: number = 20): Promise<ActivityEve
     .order('created_at', { ascending: false })
     .limit(10);
   
-  (newSubs || []).forEach((sub: { 
-    id: string; 
-    created_at: string; 
-    organization?: { name?: string; id?: string } | null;
-    plan?: { name?: string } | null;
-  }) => {
+  (newSubs || []).forEach((sub: any) => {
+    const org = Array.isArray(sub.organization) ? sub.organization[0] : sub.organization;
+    const plan = Array.isArray(sub.plan) ? sub.plan[0] : sub.plan;
     activities.push({
       id: `sub-${sub.id}`,
       type: 'subscription_created',
       title: 'New Subscription',
-      description: `${sub.organization?.name || 'Unknown'} subscribed to ${sub.plan?.name || 'Unknown Plan'}`,
+      description: `${org?.name || 'Unknown'} subscribed to ${plan?.name || 'Unknown Plan'}`,
       timestamp: sub.created_at,
-      metadata: { subscription_id: sub.id, organization_id: sub.organization?.id },
+      metadata: { subscription_id: sub.id, organization_id: org?.id },
     });
   });
   
