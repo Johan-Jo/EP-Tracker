@@ -26,20 +26,12 @@ export async function getEngagementMetrics(days: number = 30): Promise<Engagemen
 
 			// DAU: Users active on this day
 			// We consider a user "active" if they created any content on that day
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const { data: _activeToday } = await supabase.rpc('get_active_users_on_date', {
+			// (Query prepared for future use)
+			await supabase.rpc('get_active_users_on_date', {
 				target_date: dateStr,
 			}).single();
 
-			// WAU: Users active in the past 7 days
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const _weekAgo = new Date(date);
-			_weekAgo.setDate(_weekAgo.getDate() - 7);
-
-			// MAU: Users active in the past 30 days
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const _monthAgo = new Date(date);
-			_monthAgo.setDate(_monthAgo.getDate() - 30);
+			// WAU/MAU: Calculations would be done here in future implementation
 
 			// Simplified calculation (would need actual queries)
 			metrics.push({
