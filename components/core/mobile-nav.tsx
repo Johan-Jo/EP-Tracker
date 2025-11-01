@@ -15,6 +15,7 @@ import {
 	BookOpen,
 	HelpCircle,
 	Calendar,
+	QrCode,
 	X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -58,6 +59,12 @@ const mainNavItems: NavItem[] = [
 
 // Secondary navigation items (shown in menu modal)
 const menuItems: NavItem[] = [
+	{
+		label: 'Personalliggare',
+		href: '/dashboard/worksites',
+		icon: QrCode,
+		roles: ['admin', 'foreman'],
+	},
 	{
 		label: 'Planering',
 		href: '/dashboard/planning',
