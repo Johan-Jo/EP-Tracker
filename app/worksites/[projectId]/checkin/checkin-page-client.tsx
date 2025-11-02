@@ -8,6 +8,7 @@ import { MapPin, Clock, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from 'sonner';
+import QRCode from 'react-qr-code';
 
 interface CheckInPageClientProps {
 	project: {
@@ -97,15 +98,32 @@ export function CheckInPageClient({ project, userId }: CheckInPageClientProps) {
 								</p>
 							</div>
 						) : (
-							<div className='bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4'>
-								<div className='flex items-center gap-2 text-blue-700'>
-									<AlertCircle className='w-5 h-5' />
-									<span className='font-medium'>Välkommen till arbetsplatsen</span>
+							<>
+								<div className='bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4'>
+									<div className='flex items-center gap-2 text-blue-700'>
+										<AlertCircle className='w-5 h-5' />
+										<span className='font-medium'>Välkommen till arbetsplatsen</span>
+									</div>
+									<p className='text-blue-600 mt-1'>
+										Tryck på knappen nedan för att checka in
+									</p>
 								</div>
-								<p className='text-blue-600 mt-1'>
-									Scanna QR-koden eller tryck på knappen nedan för att checka in
-								</p>
-							</div>
+								
+								{/* Show QR code for sharing this check-in page */}
+								<div className='bg-gray-50 border border-gray-200 rounded-lg p-6 mb-4'>
+									<p className='text-center text-sm font-medium text-gray-700 mb-3'>
+										QR-kod för att dela denna check-in sida
+									</p>
+									<div className='flex justify-center'>
+										<div className='bg-white p-3 rounded-lg'>
+											<QRCode 
+												value={window.location.href} 
+												size={200}
+											/>
+										</div>
+									</div>
+								</div>
+							</>
 						)}
 
 						<Button
@@ -138,7 +156,7 @@ export function CheckInPageClient({ project, userId }: CheckInPageClientProps) {
 				<Card className='bg-orange-50 border-orange-200'>
 					<CardContent className='pt-6'>
 						<p className='text-sm text-orange-800'>
-							💡 <strong>Tips:</strong> Scanna QR-koden på arbetsplatsen eller tryck på "Checka in" för att registrera närvaro.
+							💡 <strong>Tips:</strong> Tryck på "Checka in" för att registrera närvaro. Dela QR-koden ovan för att andra ska kunna checka in på samma sätt.
 						</p>
 					</CardContent>
 				</Card>
