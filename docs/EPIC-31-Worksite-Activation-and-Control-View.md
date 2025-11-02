@@ -152,15 +152,16 @@ Aktivera personalliggare per projekt utan separat register. Lagra platsdata i `p
 - Check-in page with QR code
 - Check-in API endpoint
 - Control view UI (tabs, filters, search)
+- CSV export with sha256-hash
+- PDF/Text export with sha256-hash (uses txt format, proper PDF library can be added later)
 
 ### ⏳ In Progress
-- PDF export generation (CSV works, PDF TODO)
 - Performance optimization for 500+ sessions
 
 ### ❌ Remaining
-- PDF export implementation
 - Performance benchmarking
 - UAT with real users
+- Optional: Install pdfkit for proper PDF generation (currently uses txt)
 
 ## Dependencies & Milestone
 - **Del av M1**
