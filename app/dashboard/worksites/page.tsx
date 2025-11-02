@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { QrCode, MapPin, Users, ExternalLink, Clock } from 'lucide-react';
+import { QrCode, MapPin, Users, ExternalLink, Clock, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default async function WorksitesPage() {
@@ -119,6 +119,12 @@ export default async function WorksitesPage() {
 												<Link href={`/dashboard/projects/${worksite.id}`}>
 													<Button variant='outline' size='sm'>
 														Visa projekt
+													</Button>
+												</Link>
+												<Link href={`/worksites/${worksite.id}/checkin`}>
+													<Button variant='outline' size='sm'>
+														<CheckCircle className='w-4 h-4 mr-1' />
+														Check-in
 													</Button>
 												</Link>
 												<Link href={`/worksites/${worksite.id}/control`}>
