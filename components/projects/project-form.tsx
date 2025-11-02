@@ -403,7 +403,7 @@ const [error, setError] = useState<string | null>(null);
 			<CardContent className='space-y-4 pt-6'>
 	<div className='space-y-2'>
 	<Label>Karta</Label>
-	<AddressMap lat={watch('site_lat')} lon={watch('site_lon')} />
+	<AddressMap lat={watch('site_lat') ?? null} lon={watch('site_lon') ?? null} />
 	</div>
 	<div className='grid gap-4 md:grid-cols-2'>
 		<div className='space-y-2'>
@@ -448,7 +448,6 @@ const [error, setError] = useState<string | null>(null);
 						<div>
 						<input
 						 id='worksite_enabled'
-						name='worksite_enabled'
 						type='checkbox'
 						className='h-5 w-5'
 						{...register('worksite_enabled')}

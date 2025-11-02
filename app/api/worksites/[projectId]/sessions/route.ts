@@ -12,9 +12,10 @@ const querySchema = z.object({
 	limit: z.coerce.number().int().min(1).max(2000).optional(),
 });
 
-export async function GET(req: NextRequest, { params }: { params: { projectId: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
 	try {
-		const parseParams = paramsSchema.safeParse(params);
+		const resolvedParams = await params;
+		const parseParams = paramsSchema.safeParse(resolvedParams);
 		if (!parseParams.success) {
 			return NextResponse.json({ error: 'Invalid projectId' }, { status: 400 });
 		}
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest, { params }: { params: { projectId: s
 		let query = supabase
 			.from('time_entries')
 			.select('id, user_id, project_id, start_at, stop_at, status, profiles(full_name), projects(name)')
-			.eq('project_id', params.projectId)
+			.eq('project_id', resolvedParams.projectId)
 			.eq('org_id', membership.org_id)
 			.order('start_at', { ascending: true })
 			.limit(limit);

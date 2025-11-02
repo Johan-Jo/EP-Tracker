@@ -13,9 +13,10 @@ function generateToken(length = 32) {
 	return out;
 }
 
-export async function POST(_req: NextRequest, { params }: { params: { projectId: string } }) {
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
 	try {
-		const parse = paramsSchema.safeParse(params);
+		const resolvedParams = await params;
+		const parse = paramsSchema.safeParse(resolvedParams);
 		if (!parse.success) {
 			return NextResponse.json({ error: 'Invalid projectId' }, { status: 400 });
 		}
@@ -42,7 +43,7 @@ export async function POST(_req: NextRequest, { params }: { params: { projectId:
 		const { data: project } = await supabase
 			.from('projects')
 			.select('id, org_id, worksite_enabled')
-			.eq('id', params.projectId)
+			.eq('id', resolvedParams.projectId)
 			.eq('org_id', membership.org_id)
 			.single();
 
@@ -60,7 +61,7 @@ export async function POST(_req: NextRequest, { params }: { params: { projectId:
 		const { error: updateError } = await supabase
 			.from('projects')
 			.update({ control_qr_token: token, control_qr_expires_at: expires })
-			.eq('id', params.projectId)
+			.eq('id', resolvedParams.projectId)
 			.eq('org_id', membership.org_id);
 
 		if (updateError) {

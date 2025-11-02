@@ -32,6 +32,8 @@ export function AddressMap({ lat, lon, className = '' }: AddressMapProps) {
 	useEffect(() => {
 		setIsMounted(true);
 		// Import Leaflet CSS
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore - CSS import has no types
 		import('leaflet/dist/leaflet.css');
 		
 		// Fix default marker icon issue in Next.js

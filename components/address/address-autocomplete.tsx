@@ -57,7 +57,7 @@ export function AddressAutocomplete({
 	const [suggestions, setSuggestions] = useState<GeoapifyResult[]>([]);
 	const [showSuggestions, setShowSuggestions] = useState(false);
 	const [loading, setLoading] = useState(false);
-	const timeoutRef = useRef<NodeJS.Timeout>();
+	const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {

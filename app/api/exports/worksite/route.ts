@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 			// TODO: Implement proper PDF with library when installed
 			const pdfContent = `Personalliggare - Kontrollvy
 
-Projekt: ${project.name || 'N/A'}
+Projekt: ${project?.name || 'N/A'}
 Period: ${period}
 Exportdatum: ${new Date().toISOString()}
 Hash (SHA256): ${hash}

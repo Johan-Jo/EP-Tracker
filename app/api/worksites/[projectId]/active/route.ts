@@ -6,9 +6,10 @@ const paramsSchema = z.object({
 	projectId: z.string().uuid(),
 });
 
-export async function GET(_req: NextRequest, { params }: { params: { projectId: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
 	try {
-		const parse = paramsSchema.safeParse(params);
+		const resolvedParams = await params;
+		const parse = paramsSchema.safeParse(resolvedParams);
 		if (!parse.success) {
 			return NextResponse.json({ error: 'Invalid projectId' }, { status: 400 });
 		}
@@ -34,7 +35,7 @@ export async function GET(_req: NextRequest, { params }: { params: { projectId: 
 		const { data: project, error } = await supabase
 			.from('projects')
 			.select('id, org_id, name, worksite_enabled, worksite_code, address_line1, address_line2, postal_code, city, country, building_id, timezone, retention_years')
-			.eq('id', params.projectId)
+			.eq('id', resolvedParams.projectId)
 			.eq('org_id', membership.org_id)
 			.single();
 
