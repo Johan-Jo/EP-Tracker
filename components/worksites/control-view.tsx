@@ -73,8 +73,47 @@ export function ControlView({ projectId, initialData }: ControlViewProps) {
 	};
 
 	const handleExportPDF = async () => {
-		// TODO: Implement PDF export with sha256 hash
-		console.log('Export PDF - Not yet implemented');
+		try {
+			const now = new Date();
+			const today = format(now, 'yyyy-MM-dd');
+			let from = '';
+			let to = '';
+			
+			if (activeTab === 'now') {
+				const yesterday = new Date(now);
+				yesterday.setDate(yesterday.getDate() - 1);
+				from = format(yesterday, 'yyyy-MM-dd');
+				to = today;
+			} else if (activeTab === 'today') {
+				from = today;
+				to = today;
+			} else if (activeTab === 'period' && periodFrom && periodTo) {
+				from = periodFrom;
+				to = periodTo;
+			} else {
+				console.error('Please select a period before exporting');
+				return;
+			}
+			
+			const url = `/api/exports/worksite?projectId=${projectId}&from=${from}&to=${to}&format=pdf`;
+			
+			// Download file
+			const response = await fetch(url);
+			if (!response.ok) throw new Error('Export failed');
+			
+			const blob = await response.blob();
+			const link = document.createElement('a');
+			const downloadUrl = URL.createObjectURL(blob);
+			link.setAttribute('href', downloadUrl);
+			link.setAttribute('download', `kontroll-${projectId}-${Date.now()}.txt`);
+			link.style.visibility = 'hidden';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			URL.revokeObjectURL(downloadUrl);
+		} catch (error) {
+			console.error('Error exporting PDF:', error);
+		}
 	};
 
 	const handleExportCSV = async () => {
