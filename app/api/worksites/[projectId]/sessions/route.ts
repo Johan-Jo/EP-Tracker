@@ -14,6 +14,7 @@ const querySchema = z.object({
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
 	try {
+		const t0 = Date.now();
 		const resolvedParams = await params;
 		const parseParams = paramsSchema.safeParse(resolvedParams);
 		if (!parseParams.success) {
@@ -77,7 +78,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ proj
 			immutable_hash: (e as any).immutable_hash,
 		}));
 
-		return NextResponse.json({ sessions });
+		const duration = Date.now() - t0;
+		return new NextResponse(
+			JSON.stringify({ sessions, count: sessions.length, duration_ms: duration }),
+			{
+				status: 200,
+				headers: { 'Content-Type': 'application/json', 'X-Perf-ms': String(duration) },
+			}
+		);
 	} catch (e) {
 		console.error('GET /api/worksites/[projectId]/sessions error', e);
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

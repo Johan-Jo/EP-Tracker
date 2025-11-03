@@ -4,6 +4,7 @@ import { createHash } from 'crypto';
 
 export async function GET(request: NextRequest) {
 	try {
+		const t0 = Date.now();
 		const searchParams = request.nextUrl.searchParams;
 		const projectId = searchParams.get('projectId');
 		const from = searchParams.get('from');
@@ -64,11 +65,13 @@ ${rows?.map((r: any) => `${r.profiles?.full_name || ''} | ${r.check_in_ts} - ${r
 ---
 Metadata: project_id=${projectId} period=${period} created=${nowIso} hash=${hash}`;
 
+			const duration = Date.now() - t0;
 			return new NextResponse(pdfContent, {
 				status: 200,
 				headers: {
 					'Content-Type': 'text/plain; charset=utf-8',
 					'Content-Disposition': `attachment; filename="worksite_${projectId}.txt"`,
+					'X-Perf-ms': String(duration),
 				},
 			});
 		}
@@ -80,11 +83,13 @@ Metadata: project_id=${projectId} period=${period} created=${nowIso} hash=${hash
 		].map(v => `"${String(v ?? '')}"`).join(','));
 		const csv = [header.join(','), ...lines].join('\n');
 		const footer = `\n# project_id=${projectId} period=${period} created=${nowIso} hash=${hash}`;
+		const duration = Date.now() - t0;
 		return new NextResponse(csv + footer, {
 			status: 200,
 			headers: {
 				'Content-Type': 'text/csv; charset=utf-8',
 				'Content-Disposition': `attachment; filename="worksite_${projectId}.csv"`,
+				'X-Perf-ms': String(duration),
 			},
 		});
 	} catch (e) {

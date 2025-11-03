@@ -23,6 +23,8 @@ create table if not exists public.attendance_session (
 create index if not exists attendance_session_project_in_idx on public.attendance_session (project_id, check_in_ts);
 create index if not exists attendance_session_person_in_idx on public.attendance_session (person_id, check_in_ts);
 create index if not exists attendance_session_org_idx on public.attendance_session (org_id);
+-- Composite index to match API filter pattern (org_id + project_id + check_in_ts)
+create index if not exists attendance_session_org_project_in_idx on public.attendance_session (org_id, project_id, check_in_ts);
 
 -- RLS scaffolding (policies to be aligned with existing org/project policies)
 alter table public.attendance_session enable row level security;
