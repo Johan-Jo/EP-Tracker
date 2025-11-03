@@ -142,3 +142,4 @@ export const config = {
 	regions: ['arn1'], // Stockholm - single region to avoid multi-region serverless error
 };
 
+

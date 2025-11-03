@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Download, Loader2, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
+import { CorrectionDialog } from './correction-dialog';
 
 interface Session {
 	id: string;
@@ -17,6 +18,7 @@ interface Session {
 	check_in_ts: string;
 	check_out_ts?: string;
 	source_last: string;
+  corrected?: boolean;
 }
 
 interface ControlViewProps {
@@ -37,6 +39,7 @@ export function ControlView({ projectId, initialData }: ControlViewProps) {
 	const [searchQuery, setSearchQuery] = useState('');
 	const [periodFrom, setPeriodFrom] = useState('');
 	const [periodTo, setPeriodTo] = useState('');
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
 	useEffect(() => {
 		fetchSessions();
@@ -267,7 +270,7 @@ export function ControlView({ projectId, initialData }: ControlViewProps) {
 									<Loader2 className='w-8 h-8 animate-spin text-muted-foreground' />
 								</div>
 							) : filteredSessions.length > 0 ? (
-								<div className='overflow-x-auto'>
+                <div className='overflow-x-auto'>
 									<table className='w-full text-sm'>
 										<thead className='bg-muted/40 border-b'>
 											<tr>
@@ -276,11 +279,12 @@ export function ControlView({ projectId, initialData }: ControlViewProps) {
 												<th className='text-left p-3 font-medium'>In</th>
 												<th className='text-left p-3 font-medium'>Ut</th>
 												<th className='text-left p-3 font-medium'>Källa</th>
+                        <th className='text-left p-3 font-medium'>Korrigerad</th>
 											</tr>
 										</thead>
 										<tbody>
-											{filteredSessions.map((s) => (
-												<tr key={s.id} className='border-b hover:bg-muted/20'>
+                      {filteredSessions.map((s) => (
+                        <tr key={s.id} className='border-b hover:bg-muted/20 cursor-pointer' onClick={() => setSelectedSessionId(s.id)}>
 													<td className='p-3'>{s.name || s.id}</td>
 													<td className='p-3'>{s.company || '—'}</td>
 													<td className='p-3'>
@@ -293,6 +297,9 @@ export function ControlView({ projectId, initialData }: ControlViewProps) {
 														}
 													</td>
 													<td className='p-3'>{s.source_last || '—'}</td>
+                          <td className='p-3'>
+                            {s.corrected ? <Badge variant='outline'>Ja</Badge> : 'Nej'}
+                          </td>
 												</tr>
 											))}
 										</tbody>
@@ -307,6 +314,18 @@ export function ControlView({ projectId, initialData }: ControlViewProps) {
 					</Card>
 				</TabsContent>
 			</Tabs>
+      {selectedSessionId && (
+        <CorrectionDialog
+          projectId={projectId}
+          sessionId={selectedSessionId}
+          open={true}
+          onOpenChange={(v) => !v && setSelectedSessionId(null)}
+          onUpdated={() => {
+            setSelectedSessionId(null);
+            fetchSessions();
+          }}
+        />
+      )}
 		</div>
 	);
 }

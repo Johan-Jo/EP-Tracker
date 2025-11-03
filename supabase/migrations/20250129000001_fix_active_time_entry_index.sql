@@ -22,3 +22,4 @@ CREATE INDEX IF NOT EXISTS idx_time_entries_user_active_cover
 COMMENT ON INDEX idx_time_entries_user_active_cover IS 
   'Covering index for active time entries with project join - eliminates table lookup';
 
+

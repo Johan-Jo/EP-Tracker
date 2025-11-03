@@ -87,3 +87,4 @@ After applying the migration:
 
 This fix is part of EPIC-26 database optimization efforts to ensure all dashboard queries are fast and properly indexed.
 
+
