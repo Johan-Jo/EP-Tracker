@@ -27,14 +27,14 @@ export async function GET(request: NextRequest) {
 			.eq('id', projectId)
 			.single();
 
-		// Fetch sessions via time_entries (will switch to attendance_session after EPIC 32)
+		// EPIC 32: Export from attendance_session
 		let query = supabase
-			.from('time_entries')
-			.select('id, user_id, project_id, start_at, stop_at, profiles(full_name)')
+			.from('attendance_session')
+			.select('id, person_id, project_id, check_in_ts, check_out_ts, corrected, immutable_hash, profiles:person_id(full_name)')
 			.eq('project_id', projectId)
-			.order('start_at', { ascending: true });
-		if (from) query = query.gte('start_at', from);
-		if (to) query = query.lte('start_at', to);
+			.order('check_in_ts', { ascending: true });
+		if (from) query = query.gte('check_in_ts', from);
+		if (to) query = query.lte('check_in_ts', to);
 		const { data: rows, error } = await query;
 		if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -59,7 +59,7 @@ Adress:
 ${[project?.address_line1, project?.address_line2, project?.postal_code, project?.city].filter(Boolean).join(', ')}
 
 Personer:
-${rows?.map((r: any) => `${r.profiles?.full_name || ''} | ${r.start_at} - ${r.stop_at || 'Öppen'}`).join('\n') || 'Inga registreringar'}
+${rows?.map((r: any) => `${r.profiles?.full_name || ''} | ${r.check_in_ts} - ${r.check_out_ts || 'Öppen'} | Korrigerad: ${r.corrected ? 'Ja' : 'Nej'} | Hash: ${r.immutable_hash || ''}`).join('\n') || 'Inga registreringar'}
 
 ---
 Metadata: project_id=${projectId} period=${period} created=${nowIso} hash=${hash}`;
@@ -73,10 +73,10 @@ Metadata: project_id=${projectId} period=${period} created=${nowIso} hash=${hash
 			});
 		}
 
-		// CSV format (original)
-		const header = ['Namn','PersonID','In','Ut'];
+		// CSV format with corrected + per-row hash
+		const header = ['Namn','PersonID','In','Ut','Korrigerad','RadHash'];
 		const lines = (rows || []).map(r => [
-			(r as any).profiles?.full_name || '', r.user_id, r.start_at, r.stop_at || ''
+			(r as any).profiles?.full_name || '', (r as any).person_id, (r as any).check_in_ts, (r as any).check_out_ts || '', (r as any).corrected ? 'Ja' : 'Nej', (r as any).immutable_hash || ''
 		].map(v => `"${String(v ?? '')}"`).join(','));
 		const csv = [header.join(','), ...lines].join('\n');
 		const footer = `\n# project_id=${projectId} period=${period} created=${nowIso} hash=${hash}`;

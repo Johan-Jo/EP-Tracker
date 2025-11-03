@@ -45,17 +45,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ proj
 			return NextResponse.json({ error: 'No active organization membership' }, { status: 403 });
 		}
 
-		// For M1 we derive sessions from time_entries (until attendance_session exists)
+		// EPIC 32: Use attendance_session as source
 		let query = supabase
-			.from('time_entries')
-			.select('id, user_id, project_id, start_at, stop_at, status, profiles(full_name), projects(name)')
+			.from('attendance_session')
+			.select('id, person_id, project_id, check_in_ts, check_out_ts, corrected, immutable_hash, profiles:person_id(full_name), projects:project_id(name)')
 			.eq('project_id', resolvedParams.projectId)
 			.eq('org_id', membership.org_id)
-			.order('start_at', { ascending: true })
+			.order('check_in_ts', { ascending: true })
 			.limit(limit);
 
-		if (from) query = query.gte('start_at', from);
-		if (to) query = query.lte('start_at', to);
+		if (from) query = query.gte('check_in_ts', from);
+		if (to) query = query.lte('check_in_ts', to);
 
 		const { data: entries, error } = await query;
 		if (error) {
@@ -64,16 +64,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ proj
 
 		// Map to a minimal session-like structure
 		const sessions = (entries || []).map(e => ({
-			id: e.id,
-			person_id: e.user_id,
-			project_id: e.project_id,
-			check_in_ts: e.start_at,
-			check_out_ts: e.stop_at,
+			id: (e as any).id,
+			person_id: (e as any).person_id,
+			project_id: (e as any).project_id,
+			check_in_ts: (e as any).check_in_ts,
+			check_out_ts: (e as any).check_out_ts,
 			name: (e as any).profiles?.full_name ?? null,
 			project_name: (e as any).projects?.name ?? null,
-			source_first: 'time_entry',
-			source_last: 'time_entry',
-			corrected: false,
+			source_first: 'session',
+			source_last: 'session',
+			corrected: (e as any).corrected ?? false,
+			immutable_hash: (e as any).immutable_hash,
 		}));
 
 		return NextResponse.json({ sessions });
