@@ -7,9 +7,10 @@ const paramsSchema = z.object({
 });
 
 const querySchema = z.object({
-	from: z.string().datetime().optional(),
-	to: z.string().datetime().optional(),
-	limit: z.coerce.number().int().min(1).max(2000).optional(),
+    // Accept either full ISO datetimes or simple dates (yyyy-MM-dd)
+    from: z.string().optional(),
+    to: z.string().optional(),
+    limit: z.coerce.number().int().min(1).max(2000).optional(),
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
@@ -28,7 +29,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ proj
 			return NextResponse.json({ error: 'Invalid query params', details: parseQuery.error.format() }, { status: 400 });
 		}
 
-		const { from, to, limit = 1000 } = parseQuery.data;
+        const { from, to, limit = 1000 } = parseQuery.data;
+
+        // Normalize date-only inputs to full ISO range in UTC
+        const normalizeFrom = (v?: string) => {
+            if (!v) return undefined;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+                return new Date(v + 'T00:00:00.000Z').toISOString();
+            }
+            return v;
+        };
+        const normalizeTo = (v?: string) => {
+            if (!v) return undefined;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+                return new Date(v + 'T23:59:59.999Z').toISOString();
+            }
+            return v;
+        };
+
+        const fromISO = normalizeFrom(from);
+        const toISO = normalizeTo(to);
 
 		const supabase = await createClient();
 		const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -55,8 +75,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ proj
 			.order('check_in_ts', { ascending: true })
 			.limit(limit);
 
-		if (from) query = query.gte('check_in_ts', from);
-		if (to) query = query.lte('check_in_ts', to);
+        if (fromISO) query = query.gte('check_in_ts', fromISO);
+        if (toISO) query = query.lte('check_in_ts', toISO);
 
 		const { data: entries, error } = await query;
 		if (error) {
