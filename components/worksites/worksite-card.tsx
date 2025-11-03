@@ -13,6 +13,7 @@ interface WorksiteCardProps {
 		name: string;
 		project_number?: string | null;
 		worksite_code?: string | null;
+		worksite_enabled?: boolean | null;
 		address_line1?: string | null;
 		address_line2?: string | null;
 		city?: string | null;
@@ -38,17 +39,24 @@ export function WorksiteCard({ worksite, canEdit, onSelect, isSelected }: Worksi
 	const handleGenerateKontrollQR = async () => {
 		setIsGeneratingToken(true);
 		try {
+			if (!worksite.worksite_enabled) {
+				alert('Aktivera personalliggare för projektet innan du genererar Kontroll-QR.');
+				return;
+			}
 			const response = await fetch(`/api/worksites/${worksite.id}/control-token`, {
 				method: 'POST',
 			});
-			if (!response.ok) throw new Error('Failed to generate control token');
+			if (!response.ok) {
+				const j = await response.json().catch(() => ({}));
+				throw new Error(j.error || 'Failed to generate control token');
+			}
 			const data = await response.json();
 			setControlQRToken(data.token);
-			setControlQRExpiresAt(new Date(data.expires_at));
+			setControlQRExpiresAt(data.expiresAt ? new Date(data.expiresAt) : null);
 			setShowKontrollQR(true);
 		} catch (err) {
 			console.error('Error generating control QR:', err);
-			alert('Kunde inte generera Kontroll-QR');
+			alert(`Kunde inte generera Kontroll-QR${(err as Error)?.message ? `: ${(err as Error).message}` : ''}`);
 		} finally {
 			setIsGeneratingToken(false);
 		}
