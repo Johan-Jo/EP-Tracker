@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { Users as UsersIcon, Shield, Activity, Search } from 'lucide-react';
-import { UsersTableClient } from '@/components/super-admin/users/users-table-client';
+import { UsersTableClient, type UserData } from '@/components/super-admin/users/users-table-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -191,19 +191,7 @@ export default async function AllUsersPage() {
     }
   }
 
-  const usersWithActivity: Array<{
-    id: string;
-    email: string;
-    full_name: string | null;
-    phone: string | null;
-    created_at: string;
-    organization_members: Array<{
-      role: string;
-      organization: { id: string; name: string; status?: string } | null;
-      created_at: string;
-    }>;
-    last_activity: string | null;
-  }> = Array.from(usersMap.values());
+  const usersWithActivity: UserData[] = Array.from(usersMap.values());
 
   console.log('Users with activity:', usersWithActivity.length);
 
