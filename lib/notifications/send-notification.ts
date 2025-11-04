@@ -22,6 +22,19 @@ export async function sendNotification(payload: NotificationPayload) {
   const supabase = await createClient();
   console.log(`🔔 [sendNotification] Supabase client created`);
 
+  // Get user's org_id from active membership
+  const { data: membership } = await supabase
+    .from('memberships')
+    .select('org_id')
+    .eq('user_id', payload.userId)
+    .eq('is_active', true)
+    .single();
+
+  if (!membership) {
+    console.error(`❌ No active membership found for user ${payload.userId}`);
+    return null;
+  }
+
   // 1. Check user preferences
   const { data: prefs } = await supabase
     .from('notification_preferences')
@@ -103,15 +116,16 @@ export async function sendNotification(payload: NotificationPayload) {
           });
         }
 
-        // Log notification
+        // Log notification (map type to valid database type)
+        const logType = payload.type === 'team_checkout' ? 'team_checkin' : payload.type;
         await supabase.from('notification_log').insert({
           user_id: payload.userId,
-          type: payload.type,
+          org_id: membership.org_id,
+          type: logType,
           title: payload.title,
           body: payload.body,
-          data: payload.data,
-          sent_at: new Date().toISOString(),
-          delivery_status: 'sent',
+          project_id: payload.data?.projectId || null,
+          status: 'sent',
         });
 
         console.log(`✅ Sent notification to ${response.successCount}/${tokens.length} devices via Firebase`);
@@ -188,15 +202,16 @@ export async function sendNotification(payload: NotificationPayload) {
       return null;
     }
 
-    // Log notification
+    // Log notification (map type to valid database type)
+    const logType = payload.type === 'team_checkout' ? 'team_checkin' : payload.type;
     await supabase.from('notification_log').insert({
       user_id: payload.userId,
-      type: payload.type,
+      org_id: membership.org_id,
+      type: logType,
       title: payload.title,
       body: payload.body,
-      data: payload.data,
-      sent_at: new Date().toISOString(),
-      delivery_status: emailResult.success ? 'sent' : 'failed',
+      project_id: payload.data?.projectId || null,
+      status: emailResult.success ? 'sent' : 'failed',
       error_message: emailResult.success ? null : emailResult.error,
     });
 
@@ -210,17 +225,18 @@ export async function sendNotification(payload: NotificationPayload) {
 
 /**
  * Map notification type to preference key
+ * Must match the actual database column names in notification_preferences table
  */
 function getPreferenceKey(type: string): string | null {
   const mapping: Record<string, string> = {
     checkout_reminder: 'checkout_reminders',
     team_checkin: 'team_checkin', // Matches database column name (singular)
     team_checkout: 'team_checkin', // Uses same preference as team_checkin
-    approval_needed: 'approvals_needed',
-    approval_confirmed: 'approval_confirmed',
-    ata_update: 'ata_updates',
-    diary_update: 'diary_updates',
-    weekly_summary: 'weekly_summary',
+    approval_needed: 'approvals', // Database has 'approvals' column
+    approval_confirmed: 'approvals', // Database has 'approvals' column
+    ata_update: 'project_alerts', // Fallback to project_alerts
+    diary_update: 'project_alerts', // Fallback to project_alerts
+    weekly_summary: 'project_alerts', // Fallback to project_alerts
   };
   return mapping[type] || null;
 }
@@ -228,8 +244,8 @@ function getPreferenceKey(type: string): string | null {
 /**
  * Check if current time is within quiet hours
  */
-function isInQuietHours(prefs: { quiet_hours_start?: string; quiet_hours_end?: string }): boolean {
-  if (!prefs.quiet_hours_start || !prefs.quiet_hours_end) {
+function isInQuietHours(prefs: { quiet_hours_enabled?: boolean; quiet_hours_start?: string; quiet_hours_end?: string }): boolean {
+  if (!prefs.quiet_hours_enabled || !prefs.quiet_hours_start || !prefs.quiet_hours_end) {
     return false;
   }
 
