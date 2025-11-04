@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -77,6 +77,55 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
     const [saving, setSaving] = useState(false);
     const [addingNote, setAddingNote] = useState(false);
     const [noteText, setNoteText] = useState('');
+    const [isRecording, setIsRecording] = useState(false);
+    const noteRef = useRef<HTMLTextAreaElement | null>(null);
+    // @ts-ignore - Web Speech API is not typed in TS DOM lib everywhere
+    const SpeechRecognition = typeof window !== 'undefined' && (window.SpeechRecognition || (window as any).webkitSpeechRecognition);
+    const recognitionRef = useRef<any | null>(null);
+
+    useEffect(() => {
+        if (addingNote) {
+            // Scroll to top and focus the input when opening quick add
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => noteRef.current?.focus(), 200);
+        }
+    }, [addingNote]);
+
+    const startVoice = () => {
+        if (!SpeechRecognition) {
+            alert('Din webbläsare stödjer inte röstinmatning. Prova Chrome/Edge.');
+            return;
+        }
+        try {
+            recognitionRef.current = new SpeechRecognition();
+            recognitionRef.current.lang = 'sv-SE';
+            recognitionRef.current.interimResults = true;
+            recognitionRef.current.continuous = true;
+            recognitionRef.current.onresult = (event: any) => {
+                let interim = '';
+                let finalTxt = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) finalTxt += transcript;
+                    else interim += transcript;
+                }
+                setNoteText(prev => (prev + finalTxt + interim));
+            };
+            recognitionRef.current.onend = () => setIsRecording(false);
+            recognitionRef.current.start();
+            setIsRecording(true);
+        } catch {
+            setIsRecording(false);
+        }
+    };
+
+    const stopVoice = () => {
+        try {
+            recognitionRef.current?.stop();
+        } finally {
+            setIsRecording(false);
+        }
+    };
     const [form, setForm] = useState({
         weather: diary?.weather || '',
         temperature_c: diary?.temperature_c ?? '',
@@ -322,7 +371,17 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
                         <CardTitle className='text-lg'>Ny post</CardTitle>
                     </CardHeader>
                     <CardContent className='space-y-3'>
-                        <Textarea rows={3} value={noteText} onChange={e => setNoteText(e.target.value)} placeholder='Skriv din post här…' />
+                        <div className='space-y-2'>
+                            <Textarea ref={noteRef} rows={3} value={noteText} onChange={e => setNoteText(e.target.value)} placeholder='Skriv din post här…' />
+                            <div className='flex items-center gap-2'>
+                                <Button type='button' variant={isRecording ? 'destructive' : 'outline'} size='sm' onClick={isRecording ? stopVoice : startVoice}>
+                                    {isRecording ? 'Stoppa inspelning' : 'Röst → text'}
+                                </Button>
+                                {!isRecording && (
+                                    <span className='text-xs text-muted-foreground'>Stöd: Chrome/Edge (sv-SE)</span>
+                                )}
+                            </div>
+                        </div>
                         <div className='flex justify-end gap-2'>
                             <Button variant='outline' size='sm' onClick={() => { setAddingNote(false); setNoteText(''); }} disabled={saving}>Avbryt</Button>
                             <Button size='sm' onClick={addNote} disabled={saving || !noteText.trim()}>{saving ? 'Sparar…' : 'Lägg till'}</Button>
