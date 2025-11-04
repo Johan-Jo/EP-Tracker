@@ -36,39 +36,38 @@ export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 	});
 
 	// Fetch diary entries
-	// PERFORMANCE FIX: Optimized query with JOIN instead of N+1 pattern
-	// OLD: 1 main query + N photo count queries = 21 queries for 20 entries (3-5 seconds)
-	// NEW: 1 query with JOIN + client-side count = 1 query (<500ms) - 10x faster!
-	const { data: diaryEntries = [], isLoading } = useQuery({
+	// FIX: Use server-side API route to avoid RLS issues with client-side Supabase
+	// Server route handles org_id filtering and RLS correctly
+	const { data: diaryEntries = [], isLoading, error: queryError } = useQuery({
 		queryKey: ['diary', orgId, projectId],
 		queryFn: async () => {
-			// Optimized: Single query with JOIN to get photos
-			let query = supabase
-				.from('diary_entries')
-				.select(`
-					*,
-					project:projects(name, project_number, is_locked),
-					diary_photos(id)
-				`)
-				.eq('org_id', orgId)
-				.order('date', { ascending: false });
+			const url = projectId 
+				? `/api/diary?project_id=${projectId}` 
+				: '/api/diary';
 			
-			// Filter by project if projectId is provided
-			if (projectId) {
-				query = query.eq('project_id', projectId);
+			const res = await fetch(url);
+			if (!res.ok) {
+				const j = await res.json().catch(() => ({}));
+				throw new Error(j.error || 'Kunde inte hämta dagboksposter');
 			}
 			
-			const { data, error } = await query;
-
-			if (error) throw error;
-
-			// Count photos from the joined data (no extra queries!)
-			const entriesWithPhotos = (data || []).map((entry: any) => ({
-				...entry,
-				photoCount: entry.diary_photos?.length || 0,
-				// Remove the raw diary_photos array to clean up the response
-				diary_photos: undefined,
-			}));
+			const j = await res.json();
+			const entries = j.diary || [];
+			
+			// Fetch photo counts for each entry (separate query for photos due to RLS)
+			const entriesWithPhotos = await Promise.all(
+				entries.map(async (entry: any) => {
+					const { data: photos } = await supabase
+						.from('diary_photos')
+						.select('id')
+						.eq('diary_entry_id', entry.id);
+					
+					return {
+						...entry,
+						photoCount: photos?.length || 0,
+					};
+				})
+			);
 
 			return entriesWithPhotos;
 		},
@@ -239,7 +238,16 @@ export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 				{/* Logbook Entries */}
 				<div>
 					<h3 className='text-xl font-semibold mb-4'>Dagboksposter</h3>
-					{isLoading ? (
+					{queryError ? (
+						<div className='bg-destructive/10 border border-destructive rounded-xl p-6 md:p-8 text-center'>
+							<p className='text-destructive text-sm md:text-base'>
+								Fel vid hämtning av dagboksposter: {queryError instanceof Error ? queryError.message : 'Okänt fel'}
+							</p>
+							<p className='text-xs md:text-sm text-muted-foreground mt-2'>
+								Prova att ladda om sidan eller kontakta support om problemet kvarstår.
+							</p>
+						</div>
+					) : isLoading ? (
 						<div className='flex items-center justify-center py-12'>
 							<div className='text-muted-foreground'>Laddar dagboksposter...</div>
 						</div>

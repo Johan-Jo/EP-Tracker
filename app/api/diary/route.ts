@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 		.from('diary_entries')
 		.select(`
 			*,
-			project:projects(name, project_number),
+			project:projects(name, project_number, is_locked),
 			created_by_profile:profiles!diary_entries_created_by_fkey(full_name)
 		`)
 		.eq('org_id', membership.org_id)
