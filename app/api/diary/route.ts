@@ -13,11 +13,11 @@ export async function GET(request: NextRequest) {
 	const searchParams = request.nextUrl.searchParams;
 	const projectId = searchParams.get('project_id');
 
-	let query = supabase
+    let query = supabase
 		.from('diary_entries')
 		.select(`
 			*,
-			project:projects(name, project_number, is_locked),
+            project:projects(name, project_number),
 			created_by_profile:profiles!diary_entries_created_by_fkey(full_name)
 		`)
 		.eq('org_id', membership.org_id)

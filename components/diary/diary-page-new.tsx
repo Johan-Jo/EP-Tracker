@@ -311,7 +311,7 @@ export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 											)}
 
 											<div className='ml-auto flex items-center gap-2'>
-												<Button
+                                                    <Button
 													variant='outline'
 													size='sm'
 													className='hover:bg-accent hover:text-accent-foreground hover:border-primary/50 transition-all duration-200'
@@ -322,14 +322,12 @@ export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 														Visa
 													</Link>
 												</Button>
-												<Button
-													variant='outline'
-													size='sm'
-													className='hover:bg-accent hover:text-accent-foreground hover:border-primary/50 transition-all duration-200'
-													asChild
-													disabled={entry.project?.is_locked}
-													title={entry.project?.is_locked ? 'Projektet är låst' : 'Redigera'}
-												>
+                                                    <Button
+                                                        variant='outline'
+                                                        size='sm'
+                                                        className='hover:bg-accent hover:text-accent-foreground hover:border-primary/50 transition-all duration-200'
+                                                        asChild
+                                                    >
 													<Link href={`/dashboard/diary/${entry.id}?edit=1`}>
 														<Pencil className='w-4 h-4' />
 													</Link>

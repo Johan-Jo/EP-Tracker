@@ -179,9 +179,8 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
                             <Button 
                                 size='sm' 
                                 onClick={() => setIsEditing(true)} 
-                                disabled={diary.project?.is_locked}
                             >
-                                {diary.project?.is_locked ? 'Låst' : 'Redigera'}
+                                Redigera
                             </Button>
                         </div>
 						

@@ -28,14 +28,25 @@ export async function PATCH(
       return NextResponse.json({ error: 'Diary entry not found' }, { status: 404 });
     }
 
-    const { data: project } = await supabase
-      .from('projects')
-      .select('id, is_locked')
-      .eq('id', entry.project_id)
-      .eq('org_id', membership.org_id)
-      .single();
+    let isLocked = false;
+    try {
+      const { data: project } = await supabase
+        .from('projects')
+        .select('id, is_locked')
+        .eq('id', entry.project_id)
+        .eq('org_id', membership.org_id)
+        .single();
+      isLocked = !!project?.is_locked;
+    } catch (e: any) {
+      // If column is missing (older DB), treat as unlocked
+      if (typeof e?.message === 'string' && e.message.includes('is_locked')) {
+        isLocked = false;
+      } else {
+        throw e;
+      }
+    }
 
-    if (project?.is_locked) {
+    if (isLocked) {
       return NextResponse.json({ error: 'Project is locked. Diary entries cannot be modified.' }, { status: 403 });
     }
 
@@ -90,7 +101,7 @@ export async function GET(
       .from('diary_entries')
       .select(`
         *,
-        project:projects(name, project_number, is_locked)
+        project:projects(name, project_number)
       `)
       .eq('id', id)
       .eq('org_id', membership.org_id)

@@ -53,7 +53,7 @@ export function DiaryList({ projectId, orgId }: DiaryListProps) {
 				.from('diary_entries')
                 .select(`
                     *,
-                    project:projects(name, project_number, is_locked),
+                    project:projects(name, project_number),
                     diary_photos(id)
                 `)
 				.eq('org_id', orgId)
@@ -157,8 +157,6 @@ export function DiaryList({ projectId, orgId }: DiaryListProps) {
                                     variant="ghost" 
                                     size="icon" 
                                     asChild
-                                    disabled={entry.project?.is_locked}
-                                    title={entry.project?.is_locked ? 'Projektet är låst' : 'Redigera'}
                                 >
                                     <Link href={`/dashboard/diary/${entry.id}?edit=1`}>
                                         <Pencil className="h-4 w-4" />
