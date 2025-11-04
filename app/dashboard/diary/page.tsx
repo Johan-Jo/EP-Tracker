@@ -24,10 +24,7 @@ export default async function DiaryPage(props: PageProps) {
 		);
 	}
 
-	// Only admin and foreman can access Diary - redirect others
-	if (membership.role !== 'admin' && membership.role !== 'foreman') {
-		redirect('/dashboard');
-	}
+	// Allow all authenticated roles to access Diary
 
 	return <DiaryPageNew orgId={membership.org_id} projectId={projectId} />;
 }

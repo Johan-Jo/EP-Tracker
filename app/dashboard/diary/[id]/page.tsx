@@ -21,10 +21,7 @@ export default async function DiaryDetailPage({ params }: { params: Promise<{ id
 		);
 	}
 
-	// Only admin and foreman can view diary entries
-	if (membership.role !== 'admin' && membership.role !== 'foreman') {
-		redirect('/dashboard/diary');
-	}
+	// Allow all authenticated roles to view diary entries
 
 	return (
 		<div className='flex-1 overflow-auto'>
