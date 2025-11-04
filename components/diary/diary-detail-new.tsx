@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { 
 	Calendar, 
 	Users, 
@@ -44,11 +47,11 @@ export function DiaryDetailNew({ diaryId }: DiaryDetailNewProps) {
 	const { data: diary, isLoading } = useQuery({
 		queryKey: ['diary', diaryId],
 		queryFn: async () => {
-			const { data, error } = await supabase
+            const { data, error } = await supabase
 				.from('diary_entries')
 				.select(`
 					*,
-					project:projects(name, project_number)
+                    project:projects(name, project_number, is_locked)
 				`)
 				.eq('id', diaryId)
 				.single();
@@ -58,7 +61,7 @@ export function DiaryDetailNew({ diaryId }: DiaryDetailNewProps) {
 		},
 	});
 
-	const { data: photos } = useQuery({
+    const { data: photos } = useQuery({
 		queryKey: ['diary-photos', diaryId],
 		queryFn: async () => {
 			const { data, error } = await supabase
@@ -90,14 +93,55 @@ export function DiaryDetailNew({ diaryId }: DiaryDetailNewProps) {
 		);
 	}
 
-	const weatherInfo = diary.weather ? weatherConfig[diary.weather] : null;
+    const weatherInfo = diary.weather ? weatherConfig[diary.weather] : null;
 	const WeatherIcon = weatherInfo?.icon;
+
+    // Edit state
+    const [isEditing, setIsEditing] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState({
+        weather: diary.weather || '',
+        temperature_c: diary.temperature_c ?? '',
+        crew_count: diary.crew_count ?? '',
+        work_performed: diary.work_performed || '',
+        obstacles: diary.obstacles || '',
+        safety_notes: diary.safety_notes || '',
+        deliveries: diary.deliveries || '',
+        visitors: diary.visitors || '',
+        signature_name: diary.signature_name || '',
+        signature_timestamp: diary.signature_timestamp || '',
+    });
+
+    const saveEdits = async () => {
+        setSaving(true);
+        try {
+            const res = await fetch(`/api/diary/${diaryId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...form,
+                    temperature_c: form.temperature_c === '' ? null : Number(form.temperature_c),
+                    crew_count: form.crew_count === '' ? null : Number(form.crew_count),
+                }),
+            });
+            if (!res.ok) {
+                const j = await res.json().catch(() => ({}));
+                throw new Error(j.error || 'Kunde inte spara');
+            }
+            // Refresh page data
+            window.location.reload();
+        } catch (e: any) {
+            alert(e.message);
+        } finally {
+            setSaving(false);
+        }
+    };
 
 	return (
 		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
 			<main className='px-4 md:px-8 py-6 max-w-5xl mx-auto space-y-4'>
 				{/* Header Card */}
-				<Card className='border-2 border-border hover:border-primary/30 hover:shadow-lg transition-all duration-200'>
+                <Card className='border-2 border-border hover:border-primary/30 hover:shadow-lg transition-all duration-200'>
 					<CardHeader className='pb-4'>
 						<div className='space-y-3'>
 							<CardTitle className='text-2xl md:text-3xl font-bold'>
@@ -107,6 +151,15 @@ export function DiaryDetailNew({ diaryId }: DiaryDetailNewProps) {
 								<span className='font-medium'>Projekt:</span> {diary.project?.project_number ? `${diary.project.project_number} - ` : ''}{diary.project?.name}
 							</p>
 						</div>
+                        <div className='mt-2'>
+                            <Button 
+                                size='sm' 
+                                onClick={() => setIsEditing(true)} 
+                                disabled={diary.project?.is_locked}
+                            >
+                                {diary.project?.is_locked ? 'Låst' : 'Redigera'}
+                            </Button>
+                        </div>
 						
 						{/* Key Details Row */}
 						<div className='flex flex-wrap items-center gap-3 pt-4 mt-4 border-t border-border'>
@@ -137,7 +190,76 @@ export function DiaryDetailNew({ diaryId }: DiaryDetailNewProps) {
 					</CardHeader>
 				</Card>
 
-				{/* Work Performed */}
+                {/* Edit Form */}
+                {isEditing && (
+                    <Card className='border-2 border-primary/30'>
+                        <CardHeader className='pb-4'>
+                            <CardTitle className='text-lg'>Redigera dagbokspost</CardTitle>
+                        </CardHeader>
+                        <CardContent className='space-y-3'>
+                            <div className='grid grid-cols-1 md:grid-cols-3 gap-3'>
+                                <div>
+                                    <label className='text-sm font-medium'>Väder</label>
+                                    <select className='mt-1 w-full border rounded p-2' value={form.weather}
+                                        onChange={e => setForm({ ...form, weather: e.target.value })}>
+                                        <option value=''>—</option>
+                                        <option value='sunny'>Soligt</option>
+                                        <option value='partly_cloudy'>Halvklart</option>
+                                        <option value='cloudy'>Molnigt</option>
+                                        <option value='rainy'>Regn</option>
+                                        <option value='snow'>Snö</option>
+                                        <option value='windy'>Blåsigt</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className='text-sm font-medium'>Temperatur (°C)</label>
+                                    <Input className='mt-1' type='number' value={form.temperature_c as any}
+                                        onChange={e => setForm({ ...form, temperature_c: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className='text-sm font-medium'>Manskap</label>
+                                    <Input className='mt-1' type='number' value={form.crew_count as any}
+                                        onChange={e => setForm({ ...form, crew_count: e.target.value })} />
+                                </div>
+                            </div>
+                            <div>
+                                <label className='text-sm font-medium'>Utfört arbete</label>
+                                <Textarea className='mt-1' rows={4} value={form.work_performed}
+                                    onChange={e => setForm({ ...form, work_performed: e.target.value })} />
+                            </div>
+                            <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+                                <div>
+                                    <label className='text-sm font-medium'>Hinder/Problem</label>
+                                    <Textarea className='mt-1' rows={3} value={form.obstacles}
+                                        onChange={e => setForm({ ...form, obstacles: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className='text-sm font-medium'>Säkerhet</label>
+                                    <Textarea className='mt-1' rows={3} value={form.safety_notes}
+                                        onChange={e => setForm({ ...form, safety_notes: e.target.value })} />
+                                </div>
+                            </div>
+                            <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+                                <div>
+                                    <label className='text-sm font-medium'>Leveranser</label>
+                                    <Textarea className='mt-1' rows={3} value={form.deliveries}
+                                        onChange={e => setForm({ ...form, deliveries: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className='text-sm font-medium'>Besökare</label>
+                                    <Textarea className='mt-1' rows={3} value={form.visitors}
+                                        onChange={e => setForm({ ...form, visitors: e.target.value })} />
+                                </div>
+                            </div>
+                            <div className='flex justify-end gap-2'>
+                                <Button variant='outline' onClick={() => setIsEditing(false)} disabled={saving}>Avbryt</Button>
+                                <Button onClick={saveEdits} disabled={saving}>{saving ? 'Sparar…' : 'Spara'}</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Work Performed */}
 				{diary.work_performed && (
 					<Card className='border-2 border-border hover:border-primary/30 hover:shadow-md transition-all duration-200'>
 						<CardHeader className='pb-4'>
