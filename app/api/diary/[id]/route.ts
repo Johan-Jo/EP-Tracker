@@ -78,7 +78,8 @@ export async function PATCH(
         .eq('id', id)
         .eq('org_id', membership.org_id)
         .single();
-      updatePayload.work_performed = `${existing?.work_performed || ''}${note}`;
+      // Prepend the new note so it appears at the top when rendered
+      updatePayload.work_performed = `${note}${existing?.work_performed || ''}`;
     }
 
     const { data: updated, error: updateError } = await supabase
