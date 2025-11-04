@@ -62,72 +62,71 @@ export async function sendNotification(payload: NotificationPayload) {
   // Try Firebase first if available and has tokens
   if (messaging && subscriptions && subscriptions.length > 0) {
     try {
-        // 4. Send to all devices via Firebase
-        const tokens = subscriptions.map((s) => s.fcm_token);
-        console.log(`🔔 [sendNotification] Preparing to send to ${tokens.length} tokens`);
-        
-        const message: {
-          notification: { title: string; body: string };
-          data: Record<string, string>;
-          tokens: string[];
-          webpush?: { notification: { tag: string } };
-        } = {
+      // 4. Send to all devices via Firebase
+      const tokens = subscriptions.map((s) => s.fcm_token);
+      console.log(`🔔 [sendNotification] Preparing to send to ${tokens.length} tokens`);
+      
+      const message: {
+        notification: { title: string; body: string };
+        data: Record<string, string>;
+        tokens: string[];
+        webpush?: { notification: { tag: string } };
+      } = {
+        notification: {
+          title: payload.title,
+          body: payload.body,
+        },
+        data: {
+          url: payload.url,
+          type: payload.type,
+          ...(payload.data || {}),
+        },
+        tokens,
+      };
+
+      // Add tag for web push (grouping/replacing notifications)
+      if (payload.tag) {
+        message.webpush = {
           notification: {
-            title: payload.title,
-            body: payload.body,
+            tag: payload.tag,
           },
-          data: {
-            url: payload.url,
-            type: payload.type,
-            ...(payload.data || {}),
-          },
-          tokens,
         };
-
-        // Add tag for web push (grouping/replacing notifications)
-        if (payload.tag) {
-          message.webpush = {
-            notification: {
-              tag: payload.tag,
-            },
-          };
-        }
-
-        console.log(`🔔 [sendNotification] Calling Firebase sendEachForMulticast...`);
-        const response = await messaging.sendEachForMulticast(message);
-        console.log(`🔔 [sendNotification] Firebase response:`, JSON.stringify({
-          successCount: response.successCount,
-          failureCount: response.failureCount,
-        }));
-
-        // Log failures if any
-        if (response.failureCount > 0) {
-          response.responses.forEach((resp, idx) => {
-            if (!resp.success) {
-              console.error(`❌ Failed to send to token ${idx}:`, resp.error);
-            }
-          });
-        }
-
-        // Log notification (use admin client to bypass RLS)
-        if (payload.orgId) {
-          const adminClient = createAdminClient();
-          await adminClient.from('notification_log').insert({
-            user_id: payload.userId,
-            org_id: payload.orgId,
-            type: payload.type,
-            title: payload.title,
-            body: payload.body,
-            status: 'sent',
-            project_id: payload.data?.projectId || null,
-          }).catch((err) => {
-            console.error('❌ Failed to log notification:', err);
-          });
-        }
-
-        console.log(`✅ Sent notification to ${response.successCount}/${tokens.length} devices via Firebase`);
-        return response;
       }
+
+      console.log(`🔔 [sendNotification] Calling Firebase sendEachForMulticast...`);
+      const response = await messaging.sendEachForMulticast(message);
+      console.log(`🔔 [sendNotification] Firebase response:`, JSON.stringify({
+        successCount: response.successCount,
+        failureCount: response.failureCount,
+      }));
+
+      // Log failures if any
+      if (response.failureCount > 0) {
+        response.responses.forEach((resp, idx) => {
+          if (!resp.success) {
+            console.error(`❌ Failed to send to token ${idx}:`, resp.error);
+          }
+        });
+      }
+
+      // Log notification (use admin client to bypass RLS)
+      if (payload.orgId) {
+        const adminClient = createAdminClient();
+        await adminClient.from('notification_log').insert({
+          user_id: payload.userId,
+          org_id: payload.orgId,
+          type: payload.type,
+          title: payload.title,
+          body: payload.body,
+          status: 'sent',
+          project_id: payload.data?.projectId || null,
+        }).catch((err) => {
+          console.error('❌ Failed to log notification:', err);
+        });
+      }
+
+      console.log(`✅ Sent notification to ${response.successCount}/${tokens.length} devices via Firebase`);
+      return response;
     } catch (error) {
       console.error('❌ Error sending Firebase notification, falling back to email:', error);
     }
