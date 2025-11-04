@@ -23,9 +23,11 @@ interface UserDetailModalProps {
       organization: {
         id: string;
         name: string;
-        status: string;
-      };
+        status?: string;
+      } | null;
+      created_at: string;
     }>;
+    phone: string | null;
   } | null;
 }
 
