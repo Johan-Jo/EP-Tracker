@@ -44,20 +44,16 @@ export function DiaryDetailNew({ diaryId }: DiaryDetailNewProps) {
 	const supabase = createClient();
 	const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
-	const { data: diary, isLoading } = useQuery({
+    const { data: diary, isLoading } = useQuery({
 		queryKey: ['diary', diaryId],
 		queryFn: async () => {
-            const { data, error } = await supabase
-				.from('diary_entries')
-				.select(`
-					*,
-                    project:projects(name, project_number, is_locked)
-				`)
-				.eq('id', diaryId)
-				.single();
-
-			if (error) throw error;
-			return data;
+            const res = await fetch(`/api/diary/${diaryId}`);
+            if (!res.ok) {
+                const j = await res.json().catch(() => ({}));
+                throw new Error(j.error || 'Kunde inte hämta dagbokspost');
+            }
+            const j = await res.json();
+            return j.diary;
 		},
 	});
 

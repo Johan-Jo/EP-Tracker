@@ -73,4 +73,41 @@ export async function PATCH(
   }
 }
 
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const { user, membership } = await getSession();
+    if (!user || !membership) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from('diary_entries')
+      .select(`
+        *,
+        project:projects(name, project_number, is_locked)
+      `)
+      .eq('id', id)
+      .eq('org_id', membership.org_id)
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    if (!data) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    return NextResponse.json({ diary: data }, { status: 200 });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('GET /api/diary/[id] error', e);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 
