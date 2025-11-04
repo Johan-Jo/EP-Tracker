@@ -139,6 +139,7 @@ export async function sendNotification(payload: NotificationPayload) {
   
   try {
     // Get user's email from profile
+    console.log(`📧 Fetching profile for user ${payload.userId}`);
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('email, full_name')
@@ -147,8 +148,11 @@ export async function sendNotification(payload: NotificationPayload) {
 
     if (profileError || !profile?.email) {
       console.error('❌ Could not find user email:', profileError);
+      console.error('❌ Profile data:', profile);
       return null;
     }
+
+    console.log(`📧 Found profile email: ${profile.email}`);
 
     // Build email content
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://eptracker.app';
@@ -184,6 +188,7 @@ export async function sendNotification(payload: NotificationPayload) {
     `;
 
     // Send email via Resend
+    console.log(`📧 Sending email to ${profile.email} via Resend...`);
     const emailResult = await sendEmail({
       to: profile.email,
       toName: profile.full_name || undefined,
@@ -194,6 +199,8 @@ export async function sendNotification(payload: NotificationPayload) {
       },
       emailType: 'notification',
     });
+
+    console.log(`📧 Email send result:`, { success: emailResult.success, error: emailResult.error, messageId: emailResult.messageId });
 
     if (!emailResult.success) {
       console.error('❌ Failed to send notification email:', emailResult.error);

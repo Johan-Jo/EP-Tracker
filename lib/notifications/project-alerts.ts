@@ -33,6 +33,7 @@ export async function notifyOnCheckIn(params: {
   checkinTime: Date;
 }) {
   const { projectId, userId, userName, checkinTime } = params;
+  console.log(`🔔 [notifyOnCheckIn] Starting for project ${projectId}, user ${userId} (${userName})`);
   const supabase = await createClient();
 
   try {
@@ -85,29 +86,46 @@ export async function notifyOnCheckIn(params: {
     });
 
     // Send notification to each recipient
+    let sentCount = 0;
+    let failedCount = 0;
     for (const recipient of recipients) {
       // Don't send to the person who checked in
       if (recipient.user_id === userId) {
+        console.log(`⏭️ Skipping notification to user who checked in: ${userId}`);
         continue;
       }
 
-      await sendNotification({
-        userId: recipient.user_id,
-        type: 'team_checkin',
-        title: `👷 ${userName} checkade in`,
-        body: `På projekt: ${project.name}\nTid: ${timeString}`,
-        url: `/dashboard/projects/${projectId}`,
-        data: {
-          projectId,
-          userId,
-          type: 'check_in',
-        },
-        tag: `checkin-${projectId}-${userId}`,
-        orgId: project.org_id,
-      });
+      console.log(`📧 Sending notification to recipient ${recipient.user_id}`);
+      try {
+        const result = await sendNotification({
+          userId: recipient.user_id,
+          type: 'team_checkin',
+          title: `👷 ${userName} checkade in`,
+          body: `På projekt: ${project.name}\nTid: ${timeString}`,
+          url: `/dashboard/projects/${projectId}`,
+          data: {
+            projectId,
+            userId,
+            type: 'check_in',
+          },
+          tag: `checkin-${projectId}-${userId}`,
+          orgId: project.org_id,
+        });
+        
+        if (result) {
+          console.log(`✅ Notification sent successfully to ${recipient.user_id}`);
+          sentCount++;
+        } else {
+          console.log(`⚠️ Notification returned null for ${recipient.user_id} (may be disabled or filtered)`);
+          failedCount++;
+        }
+      } catch (error) {
+        console.error(`❌ Error sending notification to ${recipient.user_id}:`, error);
+        failedCount++;
+      }
     }
 
-    console.log(`✅ Sent check-in notification for ${userName} on ${project.name}`);
+    console.log(`✅ Check-in notification summary for ${userName} on ${project.name}: ${sentCount} sent, ${failedCount} failed/skipped`);
   } catch (error) {
     console.error('Error in notifyOnCheckIn:', error);
   }
@@ -181,29 +199,46 @@ export async function notifyOnCheckOut(params: {
     const hoursString = `${hours}h ${minutes}min`;
 
     // Send notification to each recipient
+    let sentCount = 0;
+    let failedCount = 0;
     for (const recipient of recipients) {
       // Don't send to the person who checked out
       if (recipient.user_id === userId) {
+        console.log(`⏭️ Skipping notification to user who checked out: ${userId}`);
         continue;
       }
 
-      await sendNotification({
-        userId: recipient.user_id,
-        type: 'team_checkout',
-        title: `🏠 ${userName} checkade ut`,
-        body: `På projekt: ${project.name}\nTid: ${timeString}\nArbetat: ${hoursString}`,
-        url: `/dashboard/projects/${projectId}`,
-        data: {
-          projectId,
-          userId,
-          type: 'check_out',
-        },
-        tag: `checkout-${projectId}-${userId}`,
-        orgId: project.org_id,
-      });
+      console.log(`📧 Sending notification to recipient ${recipient.user_id}`);
+      try {
+        const result = await sendNotification({
+          userId: recipient.user_id,
+          type: 'team_checkout',
+          title: `🏠 ${userName} checkade ut`,
+          body: `På projekt: ${project.name}\nTid: ${timeString}\nArbetat: ${hoursString}`,
+          url: `/dashboard/projects/${projectId}`,
+          data: {
+            projectId,
+            userId,
+            type: 'check_out',
+          },
+          tag: `checkout-${projectId}-${userId}`,
+          orgId: project.org_id,
+        });
+        
+        if (result) {
+          console.log(`✅ Notification sent successfully to ${recipient.user_id}`);
+          sentCount++;
+        } else {
+          console.log(`⚠️ Notification returned null for ${recipient.user_id} (may be disabled or filtered)`);
+          failedCount++;
+        }
+      } catch (error) {
+        console.error(`❌ Error sending notification to ${recipient.user_id}:`, error);
+        failedCount++;
+      }
     }
 
-    console.log(`✅ Sent check-out notification for ${userName} on ${project.name}`);
+    console.log(`✅ Check-out notification summary for ${userName} on ${project.name}: ${sentCount} sent, ${failedCount} failed/skipped`);
   } catch (error) {
     console.error('Error in notifyOnCheckOut:', error);
   }

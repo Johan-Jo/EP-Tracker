@@ -123,6 +123,7 @@ export async function POST(request: NextRequest) {
 
 		if (data.event === 'check_in' && assignment.project_id) {
 			// Send check-in notification
+			console.log(`🔔 Triggering check-in notification for user ${user.id} on project ${assignment.project_id}`);
 			notifyOnCheckIn({
 				projectId: assignment.project_id,
 				userId: user.id,
@@ -130,7 +131,8 @@ export async function POST(request: NextRequest) {
 				checkinTime,
 			}).catch((error) => {
 				// Don't fail the request if notification fails
-				console.error('Failed to send check-in notification:', error);
+				console.error('❌ Failed to send check-in notification:', error);
+				console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
 			});
 		} else if (data.event === 'check_out' && assignment.project_id) {
 			// Calculate hours worked from actual check-in time (from audit log)
