@@ -45,7 +45,7 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
 	const supabase = createClient();
 	const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
-    const { data: diary, isLoading } = useQuery({
+    const { data: diary, isLoading, error: loadError } = useQuery({
 		queryKey: ['diary', diaryId],
 		queryFn: async () => {
             const res = await fetch(`/api/diary/${diaryId}`);
@@ -84,7 +84,16 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
 		return (
 			<Card className='border-2'>
 				<CardContent className='py-12 text-center'>
-					<p className='text-muted-foreground'>Dagbokspost hittades inte</p>
+					{loadError ? (
+						<div>
+							<p className='text-destructive mb-1'>Kunde inte ladda dagboksposten</p>
+							<p className='text-sm text-muted-foreground'>
+								{(loadError as Error).message}
+							</p>
+						</div>
+					) : (
+						<p className='text-muted-foreground'>Dagbokspost hittades inte</p>
+					)}
 				</CardContent>
 			</Card>
 		);
