@@ -191,7 +191,19 @@ export default async function AllUsersPage() {
     }
   }
 
-  const usersWithActivity = Array.from(usersMap.values());
+  const usersWithActivity: Array<{
+    id: string;
+    email: string;
+    full_name: string | null;
+    phone: string | null;
+    created_at: string;
+    organization_members: Array<{
+      role: string;
+      organization: { id: string; name: string; status?: string } | null;
+      created_at: string;
+    }>;
+    last_activity: string | null;
+  }> = Array.from(usersMap.values());
 
   console.log('Users with activity:', usersWithActivity.length);
 
