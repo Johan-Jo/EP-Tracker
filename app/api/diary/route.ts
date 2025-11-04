@@ -15,7 +15,10 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
         .from('diary_entries')
-        .select(`*`)
+        .select(`
+            *,
+            project:projects(name, project_number)
+        `)
 		.eq('org_id', membership.org_id)
 		.order('date', { ascending: false });
 

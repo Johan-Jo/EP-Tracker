@@ -99,7 +99,10 @@ export async function GET(
 
     const { data, error } = await supabase
       .from('diary_entries')
-      .select(`*`)
+      .select(`
+        *,
+        project:projects(name, project_number)
+      `)
       .eq('id', id)
       .eq('org_id', membership.org_id)
       .single();
