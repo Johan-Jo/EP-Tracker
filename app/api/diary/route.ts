@@ -14,12 +14,8 @@ export async function GET(request: NextRequest) {
 	const projectId = searchParams.get('project_id');
 
     let query = supabase
-		.from('diary_entries')
-		.select(`
-			*,
-            project:projects(name, project_number),
-			created_by_profile:profiles!diary_entries_created_by_fkey(full_name)
-		`)
+        .from('diary_entries')
+        .select(`*`)
 		.eq('org_id', membership.org_id)
 		.order('date', { ascending: false });
 
