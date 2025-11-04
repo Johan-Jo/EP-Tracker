@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -97,17 +97,35 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
     const [isEditing, setIsEditing] = useState(!!autoEdit);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
-        weather: diary.weather || '',
-        temperature_c: diary.temperature_c ?? '',
-        crew_count: diary.crew_count ?? '',
-        work_performed: diary.work_performed || '',
-        obstacles: diary.obstacles || '',
-        safety_notes: diary.safety_notes || '',
-        deliveries: diary.deliveries || '',
-        visitors: diary.visitors || '',
-        signature_name: diary.signature_name || '',
-        signature_timestamp: diary.signature_timestamp || '',
+        weather: diary?.weather || '',
+        temperature_c: diary?.temperature_c ?? '',
+        crew_count: diary?.crew_count ?? '',
+        work_performed: diary?.work_performed || '',
+        obstacles: diary?.obstacles || '',
+        safety_notes: diary?.safety_notes || '',
+        deliveries: diary?.deliveries || '',
+        visitors: diary?.visitors || '',
+        signature_name: diary?.signature_name || '',
+        signature_timestamp: diary?.signature_timestamp || '',
     });
+
+    // Update form when diary loads
+    useEffect(() => {
+        if (diary) {
+            setForm({
+                weather: diary.weather || '',
+                temperature_c: diary.temperature_c ?? '',
+                crew_count: diary.crew_count ?? '',
+                work_performed: diary.work_performed || '',
+                obstacles: diary.obstacles || '',
+                safety_notes: diary.safety_notes || '',
+                deliveries: diary.deliveries || '',
+                visitors: diary.visitors || '',
+                signature_name: diary.signature_name || '',
+                signature_timestamp: diary.signature_timestamp || '',
+            });
+        }
+    }, [diary]);
 
     const saveEdits = async () => {
         setSaving(true);
