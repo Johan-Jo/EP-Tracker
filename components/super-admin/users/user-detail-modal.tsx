@@ -123,56 +123,60 @@ export function UserDetailModal({ isOpen, onClose, user }: UserDetailModalProps)
 
             {user.organization_members && user.organization_members.length > 0 ? (
               <div className="space-y-2">
-                {user.organization_members.map((member, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between rounded-lg border border-gray-200 p-3 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900"
-                  >
-                    <Link
-                      href={`/super-admin/organizations/${member.organization.id}`}
-                      className="flex items-center gap-2 text-orange-600 hover:underline dark:text-orange-400"
-                      onClick={(e) => e.stopPropagation()}
+                {user.organization_members
+                  .filter((member) => member.organization !== null)
+                  .map((member, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between rounded-lg border border-gray-200 p-3 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900"
                     >
-                      <Building2 className="h-4 w-4" />
-                      <span className="font-medium">{member.organization.name}</span>
-                    </Link>
-
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        className={cn(
-                          'text-xs',
-                          member.organization.status === 'active' &&
-                            'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-                          member.organization.status === 'trial' &&
-                            'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-                          member.organization.status === 'suspended' &&
-                            'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
-                          member.organization.status === 'deleted' &&
-                            'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
-                        )}
+                      <Link
+                        href={`/super-admin/organizations/${member.organization!.id}`}
+                        className="flex items-center gap-2 text-orange-600 hover:underline dark:text-orange-400"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        {member.organization.status}
-                      </Badge>
+                        <Building2 className="h-4 w-4" />
+                        <span className="font-medium">{member.organization!.name}</span>
+                      </Link>
 
-                      <Badge
-                        className={cn(
-                          'flex items-center gap-1 text-xs',
-                          member.role === 'admin' &&
-                            'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
-                          member.role === 'manager' &&
-                            'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
-                          member.role === 'finance' &&
-                            'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-                          member.role === 'worker' &&
-                            'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+                      <div className="flex items-center gap-2">
+                        {member.organization!.status && (
+                          <Badge
+                            className={cn(
+                              'text-xs',
+                              member.organization!.status === 'active' &&
+                                'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
+                              member.organization!.status === 'trial' &&
+                                'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+                              member.organization!.status === 'suspended' &&
+                                'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
+                              member.organization!.status === 'deleted' &&
+                                'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+                            )}
+                          >
+                            {member.organization!.status}
+                          </Badge>
                         )}
-                      >
-                        <Shield className="h-3 w-3" />
-                        {member.role}
-                      </Badge>
+
+                        <Badge
+                          className={cn(
+                            'flex items-center gap-1 text-xs',
+                            member.role === 'admin' &&
+                              'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
+                            member.role === 'manager' &&
+                              'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
+                            member.role === 'finance' &&
+                              'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+                            member.role === 'worker' &&
+                              'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+                          )}
+                        >
+                          <Shield className="h-3 w-3" />
+                          {member.role}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             ) : (
               <div className="rounded-lg border border-gray-200 p-8 text-center dark:border-gray-800">
