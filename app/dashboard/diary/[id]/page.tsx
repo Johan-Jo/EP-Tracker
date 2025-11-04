@@ -5,8 +5,10 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { DiaryDetailNew } from '@/components/diary/diary-detail-new';
 
-export default async function DiaryDetailPage({ params }: { params: Promise<{ id: string }> }) {
-	const { id } = await params;
+export default async function DiaryDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ edit?: string }> }) {
+    const { id } = await params;
+    const sp = await searchParams;
+    const autoEdit = sp?.edit === '1' || sp?.edit === 'true';
 	const { user, membership } = await getSession();
 
 	if (!user) {
@@ -23,7 +25,7 @@ export default async function DiaryDetailPage({ params }: { params: Promise<{ id
 
 	// Allow all authenticated roles to view diary entries
 
-	return (
+    return (
 		<div className='flex-1 overflow-auto'>
 			<header className='sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border'>
 				<div className='px-4 md:px-8 py-4 md:py-6'>
@@ -40,7 +42,7 @@ export default async function DiaryDetailPage({ params }: { params: Promise<{ id
 				</div>
 			</header>
 
-			<DiaryDetailNew diaryId={id} />
+            <DiaryDetailNew diaryId={id} autoEdit={autoEdit} />
 		</div>
 	);
 }

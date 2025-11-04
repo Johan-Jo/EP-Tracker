@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Eye, Calendar, Users, Cloud, Thermometer, ImageIcon } from 'lucide-react';
+import { FileText, Eye, Calendar, Users, Cloud, Thermometer, ImageIcon, Pencil } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { formatPlainDate, formatSwedishFull } from '@/lib/utils/formatPlainDate';
@@ -51,11 +51,11 @@ export function DiaryList({ projectId, orgId }: DiaryListProps) {
 			// Optimized: Single query with photo count aggregation
 			let query = supabase
 				.from('diary_entries')
-				.select(`
-					*,
-					project:projects(name, project_number),
-					diary_photos(id)
-				`)
+                .select(`
+                    *,
+                    project:projects(name, project_number, is_locked),
+                    diary_photos(id)
+                `)
 				.eq('org_id', orgId)
 				.order('date', { ascending: false });
 
@@ -147,11 +147,24 @@ export function DiaryList({ projectId, orgId }: DiaryListProps) {
 									</p>
 								)}
 							</div>
-							<Button variant="ghost" size="icon" asChild>
-								<Link href={`/dashboard/diary/${entry.id}`}>
-									<Eye className="h-4 w-4" />
-								</Link>
-							</Button>
+                            <div className="flex items-center gap-1">
+                                <Button variant="ghost" size="icon" asChild>
+                                    <Link href={`/dashboard/diary/${entry.id}`}>
+                                        <Eye className="h-4 w-4" />
+                                    </Link>
+                                </Button>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    asChild
+                                    disabled={entry.project?.is_locked}
+                                    title={entry.project?.is_locked ? 'Projektet är låst' : 'Redigera'}
+                                >
+                                    <Link href={`/dashboard/diary/${entry.id}?edit=1`}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Link>
+                                </Button>
+                            </div>
 						</div>
 					</CardHeader>
 					<CardContent className="pt-0">

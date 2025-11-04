@@ -28,7 +28,8 @@ import { GalleryViewer } from '@/components/shared/gallery-viewer';
 import { formatPlainDate, formatSwedishFull } from '@/lib/utils/formatPlainDate';
 
 interface DiaryDetailNewProps {
-	diaryId: string;
+    diaryId: string;
+    autoEdit?: boolean;
 }
 
 const weatherConfig: Record<string, { label: string; icon: typeof Sun; color: string }> = {
@@ -40,7 +41,7 @@ const weatherConfig: Record<string, { label: string; icon: typeof Sun; color: st
 	windy: { label: 'Blåsigt', icon: Wind, color: 'text-gray-500' },
 };
 
-export function DiaryDetailNew({ diaryId }: DiaryDetailNewProps) {
+export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
 	const supabase = createClient();
 	const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
@@ -93,7 +94,7 @@ export function DiaryDetailNew({ diaryId }: DiaryDetailNewProps) {
 	const WeatherIcon = weatherInfo?.icon;
 
     // Edit state
-    const [isEditing, setIsEditing] = useState(false);
+    const [isEditing, setIsEditing] = useState(!!autoEdit);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
         weather: diary.weather || '',
