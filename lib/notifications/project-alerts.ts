@@ -103,6 +103,7 @@ export async function notifyOnCheckIn(params: {
           type: 'check_in',
         },
         tag: `checkin-${projectId}-${userId}`,
+        orgId: project.org_id,
       });
     }
 
@@ -198,6 +199,7 @@ export async function notifyOnCheckOut(params: {
           type: 'check_out',
         },
         tag: `checkout-${projectId}-${userId}`,
+        orgId: project.org_id,
       });
     }
 

@@ -1,5 +1,5 @@
 import { messaging } from './firebase-admin';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email/send';
 
 export interface NotificationPayload {
@@ -11,6 +11,7 @@ export interface NotificationPayload {
   data?: Record<string, string>;
   tag?: string; // Optional tag for grouping/replacing notifications
   skipQuietHours?: boolean; // Skip quiet hours check (e.g., for test notifications)
+  orgId?: string; // Organization ID for logging (optional)
 }
 
 /**
@@ -22,19 +23,6 @@ export async function sendNotification(payload: NotificationPayload) {
   const supabase = await createClient();
   console.log(`🔔 [sendNotification] Supabase client created`);
 
-  // Get user's org_id from active membership
-  const { data: membership } = await supabase
-    .from('memberships')
-    .select('org_id')
-    .eq('user_id', payload.userId)
-    .eq('is_active', true)
-    .single();
-
-  if (!membership) {
-    console.error(`❌ No active membership found for user ${payload.userId}`);
-    return null;
-  }
-
   // 1. Check user preferences
   const { data: prefs } = await supabase
     .from('notification_preferences')
@@ -44,10 +32,16 @@ export async function sendNotification(payload: NotificationPayload) {
 
   console.log(`🔔 [sendNotification] User preferences:`, prefs);
 
-  // Check if notification type is enabled
+  // Check global enabled flag (default to true if no preferences exist)
+  if (prefs && prefs.enabled === false) {
+    console.log(`⏭️ Notifications globally disabled for user ${payload.userId}`);
+    return null;
+  }
+
+  // Check if notification type is enabled (default to true if no preferences exist)
   const prefKey = getPreferenceKey(payload.type);
-  if (prefs && prefKey && !prefs[prefKey]) {
-    console.log(`⏭️ Notification ${payload.type} disabled for user ${payload.userId}`);
+  if (prefs && prefKey && prefs[prefKey] === false) {
+    console.log(`⏭️ Notification ${payload.type} disabled for user ${payload.userId} (prefKey: ${prefKey})`);
     return null;
   }
 
@@ -57,18 +51,17 @@ export async function sendNotification(payload: NotificationPayload) {
     return null;
   }
 
-  // Try Firebase first if available
-  if (messaging) {
+  // 3. Get FCM tokens (try Firebase first if available)
+  const { data: subscriptions } = await supabase
+    .from('push_subscriptions')
+    .select('fcm_token')
+    .eq('user_id', payload.userId);
+
+  console.log(`🔔 [sendNotification] Found ${subscriptions?.length || 0} subscriptions`);
+
+  // Try Firebase first if available and has tokens
+  if (messaging && subscriptions && subscriptions.length > 0) {
     try {
-      // 3. Get FCM tokens
-      const { data: subscriptions } = await supabase
-        .from('push_subscriptions')
-        .select('fcm_token')
-        .eq('user_id', payload.userId);
-
-      console.log(`🔔 [sendNotification] Found ${subscriptions?.length || 0} subscriptions`);
-
-      if (subscriptions && subscriptions.length > 0) {
         // 4. Send to all devices via Firebase
         const tokens = subscriptions.map((s) => s.fcm_token);
         console.log(`🔔 [sendNotification] Preparing to send to ${tokens.length} tokens`);
@@ -116,17 +109,21 @@ export async function sendNotification(payload: NotificationPayload) {
           });
         }
 
-        // Log notification (map type to valid database type)
-        const logType = payload.type === 'team_checkout' ? 'team_checkin' : payload.type;
-        await supabase.from('notification_log').insert({
-          user_id: payload.userId,
-          org_id: membership.org_id,
-          type: logType,
-          title: payload.title,
-          body: payload.body,
-          project_id: payload.data?.projectId || null,
-          status: 'sent',
-        });
+        // Log notification (use admin client to bypass RLS)
+        if (payload.orgId) {
+          const adminClient = createAdminClient();
+          await adminClient.from('notification_log').insert({
+            user_id: payload.userId,
+            org_id: payload.orgId,
+            type: payload.type,
+            title: payload.title,
+            body: payload.body,
+            status: 'sent',
+            project_id: payload.data?.projectId || null,
+          }).catch((err) => {
+            console.error('❌ Failed to log notification:', err);
+          });
+        }
 
         console.log(`✅ Sent notification to ${response.successCount}/${tokens.length} devices via Firebase`);
         return response;
@@ -138,6 +135,7 @@ export async function sendNotification(payload: NotificationPayload) {
 
   // Fallback to email if Firebase is not available or no tokens
   console.log(`📧 Firebase not available or no tokens - sending via email instead`);
+  console.log(`📧 Firebase available: ${!!messaging}, Has tokens: ${subscriptions?.length || 0}`);
   
   try {
     // Get user's email from profile
@@ -202,18 +200,22 @@ export async function sendNotification(payload: NotificationPayload) {
       return null;
     }
 
-    // Log notification (map type to valid database type)
-    const logType = payload.type === 'team_checkout' ? 'team_checkin' : payload.type;
-    await supabase.from('notification_log').insert({
-      user_id: payload.userId,
-      org_id: membership.org_id,
-      type: logType,
-      title: payload.title,
-      body: payload.body,
-      project_id: payload.data?.projectId || null,
-      status: emailResult.success ? 'sent' : 'failed',
-      error_message: emailResult.success ? null : emailResult.error,
-    });
+    // Log notification (use admin client to bypass RLS)
+    if (payload.orgId) {
+      const adminClient = createAdminClient();
+      await adminClient.from('notification_log').insert({
+        user_id: payload.userId,
+        org_id: payload.orgId,
+        type: payload.type,
+        title: payload.title,
+        body: payload.body,
+        status: emailResult.success ? 'sent' : 'failed',
+        error_message: emailResult.success ? null : emailResult.error,
+        project_id: payload.data?.projectId || null,
+      }).catch((err) => {
+        console.error('❌ Failed to log notification:', err);
+      });
+    }
 
     console.log(`✅ Sent notification via email to ${profile.email}`);
     return { success: true, method: 'email', messageId: emailResult.messageId };
@@ -225,18 +227,17 @@ export async function sendNotification(payload: NotificationPayload) {
 
 /**
  * Map notification type to preference key
- * Must match the actual database column names in notification_preferences table
  */
 function getPreferenceKey(type: string): string | null {
   const mapping: Record<string, string> = {
     checkout_reminder: 'checkout_reminders',
     team_checkin: 'team_checkin', // Matches database column name (singular)
     team_checkout: 'team_checkin', // Uses same preference as team_checkin
-    approval_needed: 'approvals', // Database has 'approvals' column
-    approval_confirmed: 'approvals', // Database has 'approvals' column
-    ata_update: 'project_alerts', // Fallback to project_alerts
-    diary_update: 'project_alerts', // Fallback to project_alerts
-    weekly_summary: 'project_alerts', // Fallback to project_alerts
+    approval_needed: 'approvals_needed',
+    approval_confirmed: 'approval_confirmed',
+    ata_update: 'ata_updates',
+    diary_update: 'diary_updates',
+    weekly_summary: 'weekly_summary',
   };
   return mapping[type] || null;
 }
@@ -244,8 +245,8 @@ function getPreferenceKey(type: string): string | null {
 /**
  * Check if current time is within quiet hours
  */
-function isInQuietHours(prefs: { quiet_hours_enabled?: boolean; quiet_hours_start?: string; quiet_hours_end?: string }): boolean {
-  if (!prefs.quiet_hours_enabled || !prefs.quiet_hours_start || !prefs.quiet_hours_end) {
+function isInQuietHours(prefs: { quiet_hours_start?: string; quiet_hours_end?: string }): boolean {
+  if (!prefs.quiet_hours_start || !prefs.quiet_hours_end) {
     return false;
   }
 
