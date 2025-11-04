@@ -72,6 +72,38 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
 		},
 	});
 
+    // Hooks that must be called unconditionally (before any early returns)
+    const [isEditing, setIsEditing] = useState(!!autoEdit);
+    const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState({
+        weather: diary?.weather || '',
+        temperature_c: diary?.temperature_c ?? '',
+        crew_count: diary?.crew_count ?? '',
+        work_performed: diary?.work_performed || '',
+        obstacles: diary?.obstacles || '',
+        safety_notes: diary?.safety_notes || '',
+        deliveries: diary?.deliveries || '',
+        visitors: diary?.visitors || '',
+        signature_name: diary?.signature_name || '',
+        signature_timestamp: diary?.signature_timestamp || '',
+    });
+    useEffect(() => {
+        if (diary) {
+            setForm({
+                weather: diary.weather || '',
+                temperature_c: diary.temperature_c ?? '',
+                crew_count: diary.crew_count ?? '',
+                work_performed: diary.work_performed || '',
+                obstacles: diary.obstacles || '',
+                safety_notes: diary.safety_notes || '',
+                deliveries: diary.deliveries || '',
+                visitors: diary.visitors || '',
+                signature_name: diary.signature_name || '',
+                signature_timestamp: diary.signature_timestamp || '',
+            });
+        }
+    }, [diary]);
+
 	if (isLoading) {
 		return (
 			<div className='flex items-center justify-center py-12'>
@@ -101,40 +133,6 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
 
     const weatherInfo = diary.weather ? weatherConfig[diary.weather] : null;
 	const WeatherIcon = weatherInfo?.icon;
-
-    // Edit state
-    const [isEditing, setIsEditing] = useState(!!autoEdit);
-    const [saving, setSaving] = useState(false);
-    const [form, setForm] = useState({
-        weather: diary?.weather || '',
-        temperature_c: diary?.temperature_c ?? '',
-        crew_count: diary?.crew_count ?? '',
-        work_performed: diary?.work_performed || '',
-        obstacles: diary?.obstacles || '',
-        safety_notes: diary?.safety_notes || '',
-        deliveries: diary?.deliveries || '',
-        visitors: diary?.visitors || '',
-        signature_name: diary?.signature_name || '',
-        signature_timestamp: diary?.signature_timestamp || '',
-    });
-
-    // Update form when diary loads
-    useEffect(() => {
-        if (diary) {
-            setForm({
-                weather: diary.weather || '',
-                temperature_c: diary.temperature_c ?? '',
-                crew_count: diary.crew_count ?? '',
-                work_performed: diary.work_performed || '',
-                obstacles: diary.obstacles || '',
-                safety_notes: diary.safety_notes || '',
-                deliveries: diary.deliveries || '',
-                visitors: diary.visitors || '',
-                signature_name: diary.signature_name || '',
-                signature_timestamp: diary.signature_timestamp || '',
-            });
-        }
-    }, [diary]);
 
     const saveEdits = async () => {
         setSaving(true);
