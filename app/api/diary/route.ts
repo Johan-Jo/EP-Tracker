@@ -45,6 +45,17 @@ export async function POST(request: NextRequest) {
 
 	const supabase = await createClient();
 	const body = await request.json();
+	// Block create if project is locked
+	const { data: lockProject } = await supabase
+		.from('projects')
+		.select('id, is_locked')
+		.eq('id', body.project_id)
+		.eq('org_id', membership.org_id)
+		.single();
+
+	if (lockProject?.is_locked) {
+		return NextResponse.json({ error: 'Project is locked. Diary entries cannot be modified.' }, { status: 403 });
+	}
 
 	// Validate date format (YYYY-MM-DD string only)
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
