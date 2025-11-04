@@ -112,7 +112,7 @@ export async function sendNotification(payload: NotificationPayload) {
       // Log notification (use admin client to bypass RLS)
       if (payload.orgId) {
         const adminClient = createAdminClient();
-        await adminClient.from('notification_log').insert({
+        const { error: logError } = await adminClient.from('notification_log').insert({
           user_id: payload.userId,
           org_id: payload.orgId,
           type: payload.type,
@@ -120,9 +120,10 @@ export async function sendNotification(payload: NotificationPayload) {
           body: payload.body,
           status: 'sent',
           project_id: payload.data?.projectId || null,
-        }).catch((err) => {
-          console.error('❌ Failed to log notification:', err);
         });
+        if (logError) {
+          console.error('❌ Failed to log notification:', logError);
+        }
       }
 
       console.log(`✅ Sent notification to ${response.successCount}/${tokens.length} devices via Firebase`);
@@ -202,7 +203,7 @@ export async function sendNotification(payload: NotificationPayload) {
     // Log notification (use admin client to bypass RLS)
     if (payload.orgId) {
       const adminClient = createAdminClient();
-      await adminClient.from('notification_log').insert({
+      const { error: logError } = await adminClient.from('notification_log').insert({
         user_id: payload.userId,
         org_id: payload.orgId,
         type: payload.type,
@@ -211,9 +212,10 @@ export async function sendNotification(payload: NotificationPayload) {
         status: emailResult.success ? 'sent' : 'failed',
         error_message: emailResult.success ? null : emailResult.error,
         project_id: payload.data?.projectId || null,
-      }).catch((err) => {
-        console.error('❌ Failed to log notification:', err);
       });
+      if (logError) {
+        console.error('❌ Failed to log notification:', logError);
+      }
     }
 
     console.log(`✅ Sent notification via email to ${profile.email}`);
