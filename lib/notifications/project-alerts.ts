@@ -52,8 +52,11 @@ export async function notifyOnCheckIn(params: {
 
     // Check if check-in notifications are enabled
     if (!alertSettings?.notify_on_checkin) {
+      console.log(`⏭️ Check-in notifications disabled for project ${project.name} (${projectId})`);
       return;
     }
+
+    console.log(`📧 Project ${project.name} has notify_on_checkin enabled, alert_recipients:`, alertSettings.alert_recipients);
 
     // Get admin and foreman users in the organization
     const { data: recipients, error: recipientsError } = await supabase
@@ -63,10 +66,17 @@ export async function notifyOnCheckIn(params: {
       .eq('is_active', true)
       .in('role', alertSettings.alert_recipients || ['admin', 'foreman']);
 
-    if (recipientsError || !recipients?.length) {
-      console.error('Error fetching recipients:', recipientsError);
+    if (recipientsError) {
+      console.error('❌ Error fetching recipients:', recipientsError);
       return;
     }
+
+    if (!recipients || recipients.length === 0) {
+      console.log(`⚠️ No recipients found for project ${project.name}. Roles checked:`, alertSettings.alert_recipients || ['admin', 'foreman']);
+      return;
+    }
+
+    console.log(`📧 Found ${recipients.length} recipients for check-in notification`);
 
     // Format time
     const timeString = checkinTime.toLocaleTimeString('sv-SE', {
@@ -83,7 +93,7 @@ export async function notifyOnCheckIn(params: {
 
       await sendNotification({
         userId: recipient.user_id,
-        type: 'check_in',
+        type: 'team_checkin',
         title: `👷 ${userName} checkade in`,
         body: `På projekt: ${project.name}\nTid: ${timeString}`,
         url: `/dashboard/projects/${projectId}`,
@@ -132,8 +142,11 @@ export async function notifyOnCheckOut(params: {
 
     // Check if check-out notifications are enabled
     if (!alertSettings?.notify_on_checkout) {
+      console.log(`⏭️ Check-out notifications disabled for project ${project.name} (${projectId})`);
       return;
     }
+
+    console.log(`📧 Project ${project.name} has notify_on_checkout enabled, alert_recipients:`, alertSettings.alert_recipients);
 
     // Get admin and foreman users in the organization
     const { data: recipients, error: recipientsError } = await supabase
@@ -143,10 +156,17 @@ export async function notifyOnCheckOut(params: {
       .eq('is_active', true)
       .in('role', alertSettings.alert_recipients || ['admin', 'foreman']);
 
-    if (recipientsError || !recipients?.length) {
-      console.error('Error fetching recipients:', recipientsError);
+    if (recipientsError) {
+      console.error('❌ Error fetching recipients:', recipientsError);
       return;
     }
+
+    if (!recipients || recipients.length === 0) {
+      console.log(`⚠️ No recipients found for project ${project.name}. Roles checked:`, alertSettings.alert_recipients || ['admin', 'foreman']);
+      return;
+    }
+
+    console.log(`📧 Found ${recipients.length} recipients for check-out notification`);
 
     // Format time
     const timeString = checkoutTime.toLocaleTimeString('sv-SE', {
@@ -168,7 +188,7 @@ export async function notifyOnCheckOut(params: {
 
       await sendNotification({
         userId: recipient.user_id,
-        type: 'check_out',
+        type: 'team_checkout',
         title: `🏠 ${userName} checkade ut`,
         body: `På projekt: ${project.name}\nTid: ${timeString}\nArbetat: ${hoursString}`,
         url: `/dashboard/projects/${projectId}`,

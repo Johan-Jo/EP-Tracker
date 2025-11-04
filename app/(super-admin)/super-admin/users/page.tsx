@@ -1,6 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { Users as UsersIcon, Shield, Activity, Search } from 'lucide-react';
 import { UsersTableClient } from '@/components/super-admin/users/users-table-client';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * All Users Page
@@ -10,49 +13,185 @@ import { UsersTableClient } from '@/components/super-admin/users/users-table-cli
  */
 
 export default async function AllUsersPage() {
+  await requireSuperAdmin();
   // Use admin client to bypass RLS
   const adminClient = createAdminClient();
   
-  // Fetch all organization members with their organizations
-  const { data: members, error } = await adminClient
-    .from('organization_members')
+  // Fetch all memberships with profiles and organizations
+  const { data: memberships, error } = await adminClient
+    .from('memberships')
     .select(`
       *,
-      organization:organizations(*)
+      profiles (
+        id,
+        email,
+        full_name,
+        phone,
+        created_at
+      ),
+      organizations (
+        id,
+        name,
+        status
+      )
     `)
+    .eq('is_active', true)
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching members:', error);
+    console.error('Error fetching memberships:', error);
   }
 
-  console.log('Members found:', members?.length || 0);
+  console.log('Memberships found:', memberships?.length || 0);
 
-  // Get user details from auth.users for each member
-  const usersWithActivity = [];
-  if (members && members.length > 0) {
-    for (const member of members) {
-      try {
-        const { data: { user }, error: userError } = await adminClient.auth.admin.getUserById(member.user_id);
+  // Transform data to group by user (users can be in multiple orgs)
+  const usersMap = new Map<string, {
+    id: string;
+    email: string;
+    full_name: string | null;
+    phone: string | null;
+    created_at: string;
+    organization_members: Array<{
+      role: string;
+      organization: { id: string; name: string; status?: string } | null;
+      created_at: string;
+    }>;
+    last_activity: string | null;
+  }>();
+
+  if (memberships && memberships.length > 0) {
+    for (const membership of memberships) {
+      const profile = Array.isArray(membership.profiles) 
+        ? membership.profiles[0] 
+        : membership.profiles;
+      const organization = Array.isArray(membership.organizations)
+        ? membership.organizations[0]
+        : membership.organizations;
+
+      if (!profile) continue;
+
+      const userId = profile.id;
+      
+      if (!usersMap.has(userId)) {
+        // Get last database activity (not just login)
+        // Check activity_log first (if it exists), then fall back to checking multiple tables
+        let lastActivity: string | null = null;
         
-        if (user && !userError) {
-          usersWithActivity.push({
-            id: user.id,
-            email: user.email || 'Unknown',
-            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-            created_at: user.created_at,
-            organization_members: [{
-              role: member.role,
-              organization: member.organization
-            }],
-            last_activity: user.last_sign_in_at || null,
-          });
+        try {
+          // Try activity_log first (most efficient - tracks all database activity)
+          const { data: activityLog } = await adminClient
+            .from('activity_log')
+            .select('created_at')
+            .eq('user_id', userId)
+            .eq('is_deleted', false)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (activityLog?.created_at) {
+            lastActivity = activityLog.created_at;
+          } else {
+            // Fallback: Check multiple tables for last activity
+            // Use updated_at if available, otherwise created_at
+            const activityQueries = await Promise.all([
+              // Time entries
+              adminClient
+                .from('time_entries')
+                .select('created_at, updated_at')
+                .eq('user_id', userId)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+              // Materials
+              adminClient
+                .from('materials')
+                .select('created_at, updated_at')
+                .eq('user_id', userId)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+              // Expenses
+              adminClient
+                .from('expenses')
+                .select('created_at, updated_at')
+                .eq('user_id', userId)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+              // Mileage
+              adminClient
+                .from('mileage')
+                .select('created_at, updated_at')
+                .eq('user_id', userId)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+              // Diary entries
+              adminClient
+                .from('diary_entries')
+                .select('created_at, updated_at')
+                .eq('created_by', userId)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+            ]);
+            
+            // Find the most recent activity across all tables
+            const allActivities = activityQueries
+              .map((result) => {
+                if (result?.data) {
+                  const entry = result.data as any;
+                  return entry.updated_at || entry.created_at;
+                }
+                return null;
+              })
+              .filter((date): date is string => date !== null);
+            
+            if (allActivities.length > 0) {
+              // Sort and get the most recent
+              allActivities.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+              lastActivity = allActivities[0];
+            }
+          }
+        } catch (err) {
+          console.error(`Error fetching last activity for user ${userId}:`, err);
+          // Keep lastActivity as null
         }
-      } catch (err) {
-        console.error('Error fetching user details:', err);
+
+        usersMap.set(userId, {
+          id: userId,
+          email: profile.email || 'Unknown',
+          full_name: profile.full_name,
+          phone: profile.phone,
+          created_at: profile.created_at || membership.created_at,
+          organization_members: [{
+            role: membership.role,
+            organization: organization ? { 
+              id: organization.id, 
+              name: organization.name,
+              status: (organization as any).status || 'active'
+            } : null,
+            created_at: membership.created_at,
+          }],
+          last_activity: lastActivity,
+        });
+      } else {
+        // User already exists, add this organization membership
+        const existingUser = usersMap.get(userId)!;
+        existingUser.organization_members.push({
+          role: membership.role,
+          organization: organization ? { 
+            id: organization.id, 
+            name: organization.name,
+            status: (organization as any).status || 'active'
+          } : null,
+          created_at: membership.created_at,
+        });
       }
     }
   }
+
+  const usersWithActivity = Array.from(usersMap.values());
 
   console.log('Users with activity:', usersWithActivity.length);
 

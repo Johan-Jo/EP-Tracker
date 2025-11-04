@@ -53,6 +53,7 @@ export async function getEngagementMetrics(days: number = 30): Promise<Engagemen
 
 /**
  * Get current DAU/WAU/MAU snapshot
+ * Uses activity_log if available, otherwise checks multiple tables
  */
 export async function getCurrentEngagement(): Promise<{
 	dau: number;
@@ -62,40 +63,107 @@ export async function getCurrentEngagement(): Promise<{
 	const supabase = await createClient();
 
 	try {
-		const today = new Date().toISOString().split('T')[0];
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const todayStr = today.toISOString();
+		
 		const weekAgo = new Date();
 		weekAgo.setDate(weekAgo.getDate() - 7);
-		const weekAgoStr = weekAgo.toISOString().split('T')[0];
+		weekAgo.setHours(0, 0, 0, 0);
+		const weekAgoStr = weekAgo.toISOString();
+		
 		const monthAgo = new Date();
 		monthAgo.setDate(monthAgo.getDate() - 30);
-		const monthAgoStr = monthAgo.toISOString().split('T')[0];
+		monthAgo.setHours(0, 0, 0, 0);
+		const monthAgoStr = monthAgo.toISOString();
 
-		// Count unique users who created time entries today (DAU)
-		const { data: dauData } = await supabase
-			.from('time_entries')
-			.select('user_id')
-			.gte('date', today)
-			.lte('date', today);
+		// Try activity_log first (most efficient and comprehensive)
+		try {
+			const { data: dauData } = await supabase
+				.from('activity_log')
+				.select('user_id')
+				.eq('is_deleted', false)
+				.gte('created_at', todayStr);
 
-		const dau = new Set((dauData || []).map((t: { user_id: string }) => t.user_id)).size;
+			const { data: wauData } = await supabase
+				.from('activity_log')
+				.select('user_id')
+				.eq('is_deleted', false)
+				.gte('created_at', weekAgoStr);
 
-		// Count unique users who created time entries in past 7 days (WAU)
-		const { data: wauData } = await supabase
-			.from('time_entries')
-			.select('user_id')
-			.gte('date', weekAgoStr);
+			const { data: mauData } = await supabase
+				.from('activity_log')
+				.select('user_id')
+				.eq('is_deleted', false)
+				.gte('created_at', monthAgoStr);
 
-		const wau = new Set((wauData || []).map((t: { user_id: string }) => t.user_id)).size;
+			const dau = new Set((dauData || []).map((a: { user_id: string }) => a.user_id)).size;
+			const wau = new Set((wauData || []).map((a: { user_id: string }) => a.user_id)).size;
+			const mau = new Set((mauData || []).map((a: { user_id: string }) => a.user_id)).size;
 
-		// Count unique users who created time entries in past 30 days (MAU)
-		const { data: mauData } = await supabase
-			.from('time_entries')
-			.select('user_id')
-			.gte('date', monthAgoStr);
+			return { dau, wau, mau };
+		} catch (activityLogError) {
+			// Fallback: Check multiple tables for activity
+			console.log('activity_log not available, using fallback queries');
+		}
 
-		const mau = new Set((mauData || []).map((t: { user_id: string }) => t.user_id)).size;
+		// Fallback: Check multiple activity sources
+		// Count unique users who created/updated content today (DAU)
+		const [dauTimeEntries, dauMaterials, dauExpenses, dauMileage, dauDiary] = await Promise.all([
+			supabase.from('time_entries').select('user_id').gte('created_at', todayStr),
+			supabase.from('materials').select('user_id').gte('created_at', todayStr),
+			supabase.from('expenses').select('user_id').gte('created_at', todayStr),
+			supabase.from('mileage').select('user_id').gte('created_at', todayStr),
+			supabase.from('diary_entries').select('created_by').gte('created_at', todayStr),
+		]);
 
-		return { dau, wau, mau };
+		const dauUsers = new Set([
+			...(dauTimeEntries.data || []).map((t: { user_id: string }) => t.user_id),
+			...(dauMaterials.data || []).map((m: { user_id: string }) => m.user_id),
+			...(dauExpenses.data || []).map((e: { user_id: string }) => e.user_id),
+			...(dauMileage.data || []).map((m: { user_id: string }) => m.user_id),
+			...(dauDiary.data || []).map((d: { created_by: string }) => d.created_by),
+		]);
+
+		// Count unique users active in past 7 days (WAU)
+		const [wauTimeEntries, wauMaterials, wauExpenses, wauMileage, wauDiary] = await Promise.all([
+			supabase.from('time_entries').select('user_id').gte('created_at', weekAgoStr),
+			supabase.from('materials').select('user_id').gte('created_at', weekAgoStr),
+			supabase.from('expenses').select('user_id').gte('created_at', weekAgoStr),
+			supabase.from('mileage').select('user_id').gte('created_at', weekAgoStr),
+			supabase.from('diary_entries').select('created_by').gte('created_at', weekAgoStr),
+		]);
+
+		const wauUsers = new Set([
+			...(wauTimeEntries.data || []).map((t: { user_id: string }) => t.user_id),
+			...(wauMaterials.data || []).map((m: { user_id: string }) => m.user_id),
+			...(wauExpenses.data || []).map((e: { user_id: string }) => e.user_id),
+			...(wauMileage.data || []).map((m: { user_id: string }) => m.user_id),
+			...(wauDiary.data || []).map((d: { created_by: string }) => d.created_by),
+		]);
+
+		// Count unique users active in past 30 days (MAU)
+		const [mauTimeEntries, mauMaterials, mauExpenses, mauMileage, mauDiary] = await Promise.all([
+			supabase.from('time_entries').select('user_id').gte('created_at', monthAgoStr),
+			supabase.from('materials').select('user_id').gte('created_at', monthAgoStr),
+			supabase.from('expenses').select('user_id').gte('created_at', monthAgoStr),
+			supabase.from('mileage').select('user_id').gte('created_at', monthAgoStr),
+			supabase.from('diary_entries').select('created_by').gte('created_at', monthAgoStr),
+		]);
+
+		const mauUsers = new Set([
+			...(mauTimeEntries.data || []).map((t: { user_id: string }) => t.user_id),
+			...(mauMaterials.data || []).map((m: { user_id: string }) => m.user_id),
+			...(mauExpenses.data || []).map((e: { user_id: string }) => e.user_id),
+			...(mauMileage.data || []).map((m: { user_id: string }) => m.user_id),
+			...(mauDiary.data || []).map((d: { created_by: string }) => d.created_by),
+		]);
+
+		return {
+			dau: dauUsers.size,
+			wau: wauUsers.size,
+			mau: mauUsers.size,
+		};
 	} catch (error) {
 		console.error('Error fetching current engagement:', error);
 		return { dau: 0, wau: 0, mau: 0 };
