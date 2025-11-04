@@ -52,21 +52,38 @@ export async function PATCH(
 
     // Allow admin/foreman to edit any; workers can edit own-created if desired (optional rule)
     // For simplicity, rely on RLS and organization scoping here.
+    // If append_work_performed is provided, append instead of overwriting
+    let updatePayload: Record<string, any> = {
+      weather: body.weather ?? null,
+      temperature_c: body.temperature_c ?? null,
+      crew_count: body.crew_count ?? null,
+      work_performed: body.work_performed ?? null,
+      obstacles: body.obstacles ?? null,
+      safety_notes: body.safety_notes ?? null,
+      deliveries: body.deliveries ?? null,
+      visitors: body.visitors ?? null,
+      signature_name: body.signature_name ?? null,
+      signature_timestamp: body.signature_timestamp ?? null,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (typeof body.append_work_performed === 'string' && body.append_work_performed.trim().length > 0) {
+      const author = (await getSession()).profile?.full_name || 'Okänd';
+      const stamp = new Date().toLocaleString('sv-SE');
+      const note = `\n\n- ${stamp} – ${author}: ${body.append_work_performed.trim()}`;
+      // Fetch current text to append to
+      const { data: existing } = await supabase
+        .from('diary_entries')
+        .select('work_performed')
+        .eq('id', id)
+        .eq('org_id', membership.org_id)
+        .single();
+      updatePayload.work_performed = `${existing?.work_performed || ''}${note}`;
+    }
+
     const { data: updated, error: updateError } = await supabase
       .from('diary_entries')
-      .update({
-        weather: body.weather ?? null,
-        temperature_c: body.temperature_c ?? null,
-        crew_count: body.crew_count ?? null,
-        work_performed: body.work_performed ?? null,
-        obstacles: body.obstacles ?? null,
-        safety_notes: body.safety_notes ?? null,
-        deliveries: body.deliveries ?? null,
-        visitors: body.visitors ?? null,
-        signature_name: body.signature_name ?? null,
-        signature_timestamp: body.signature_timestamp ?? null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', id)
       .eq('org_id', membership.org_id)
       .select('*')

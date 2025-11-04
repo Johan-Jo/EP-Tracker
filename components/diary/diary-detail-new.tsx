@@ -75,6 +75,8 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
     // Hooks that must be called unconditionally (before any early returns)
     const [isEditing, setIsEditing] = useState(!!autoEdit);
     const [saving, setSaving] = useState(false);
+    const [addingNote, setAddingNote] = useState(false);
+    const [noteText, setNoteText] = useState('');
     const [form, setForm] = useState({
         weather: diary?.weather || '',
         temperature_c: diary?.temperature_c ?? '',
@@ -159,6 +161,32 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
         }
     };
 
+    const addNote = async () => {
+        if (!noteText.trim()) {
+            setAddingNote(false);
+            return;
+        }
+        setSaving(true);
+        try {
+            const res = await fetch(`/api/diary/${diaryId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ append_work_performed: noteText.trim() }),
+            });
+            if (!res.ok) {
+                const j = await res.json().catch(() => ({}));
+                throw new Error(j.error || 'Kunde inte lägga till post');
+            }
+            window.location.reload();
+        } catch (e: any) {
+            alert(e.message);
+        } finally {
+            setSaving(false);
+            setAddingNote(false);
+            setNoteText('');
+        }
+    };
+
 	return (
 		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
 			<main className='px-4 md:px-8 py-6 max-w-5xl mx-auto space-y-4'>
@@ -173,12 +201,19 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
 								<span className='font-medium'>Projekt:</span> {diary.project?.project_number ? `${diary.project.project_number} - ` : ''}{diary.project?.name}
 							</p>
 						</div>
-                        <div className='mt-2'>
+                        <div className='mt-2 flex gap-2'>
                             <Button 
                                 size='sm' 
                                 onClick={() => setIsEditing(true)} 
                             >
                                 Redigera
+                            </Button>
+                            <Button 
+                                variant='outline'
+                                size='sm' 
+                                onClick={() => setAddingNote(true)}
+                            >
+                                Lägg till post
                             </Button>
                         </div>
 						
@@ -279,6 +314,22 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
                         </CardContent>
                     </Card>
                 )}
+
+            {/* Quick Add Note */}
+            {addingNote && (
+                <Card className='border-2 border-dashed'>
+                    <CardHeader className='pb-2'>
+                        <CardTitle className='text-lg'>Ny post</CardTitle>
+                    </CardHeader>
+                    <CardContent className='space-y-3'>
+                        <Textarea rows={3} value={noteText} onChange={e => setNoteText(e.target.value)} placeholder='Skriv din post här…' />
+                        <div className='flex justify-end gap-2'>
+                            <Button variant='outline' size='sm' onClick={() => { setAddingNote(false); setNoteText(''); }} disabled={saving}>Avbryt</Button>
+                            <Button size='sm' onClick={addNote} disabled={saving || !noteText.trim()}>{saving ? 'Sparar…' : 'Lägg till'}</Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
                 {/* Work Performed */}
 				{diary.work_performed && (
