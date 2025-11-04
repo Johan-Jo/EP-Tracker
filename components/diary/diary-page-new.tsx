@@ -346,7 +346,7 @@ export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 												</p>
 											)}
 											<p className='text-sm text-muted-foreground'>
-												Projekt: {entry.project?.project_number ? `${entry.project.project_number} - ` : ''}{entry.project?.name}
+												Projekt: <span className='font-bold'>{entry.project?.project_number ? `${entry.project.project_number} - ` : ''}{entry.project?.name}</span>
 											</p>
 										</div>
 
