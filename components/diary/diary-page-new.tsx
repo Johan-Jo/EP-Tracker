@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, FileText, Cloud, CloudRain, Sun, CloudSnow, Wind, Eye, Users, Calendar, Thermometer, ImageIcon } from 'lucide-react';
+import { Plus, Search, FileText, Cloud, CloudRain, Sun, CloudSnow, Wind, Eye, Users, Calendar, Thermometer, ImageIcon, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabase/client';
@@ -47,7 +47,7 @@ export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 				.from('diary_entries')
 				.select(`
 					*,
-					project:projects(name, project_number),
+					project:projects(name, project_number, is_locked),
 					diary_photos(id)
 				`)
 				.eq('org_id', orgId)
@@ -302,7 +302,7 @@ export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 												</div>
 											)}
 
-											<div className='ml-auto'>
+											<div className='ml-auto flex items-center gap-2'>
 												<Button
 													variant='outline'
 													size='sm'
@@ -312,6 +312,18 @@ export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 													<Link href={`/dashboard/diary/${entry.id}`}>
 														<Eye className='w-4 h-4 mr-1' />
 														Visa
+													</Link>
+												</Button>
+												<Button
+													variant='outline'
+													size='sm'
+													className='hover:bg-accent hover:text-accent-foreground hover:border-primary/50 transition-all duration-200'
+													asChild
+													disabled={entry.project?.is_locked}
+													title={entry.project?.is_locked ? 'Projektet är låst' : 'Redigera'}
+												>
+													<Link href={`/dashboard/diary/${entry.id}?edit=1`}>
+														<Pencil className='w-4 h-4' />
 													</Link>
 												</Button>
 											</div>
