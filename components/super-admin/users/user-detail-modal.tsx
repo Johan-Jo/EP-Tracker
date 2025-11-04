@@ -15,7 +15,7 @@ interface UserDetailModalProps {
   user: {
     id: string;
     email: string;
-    full_name: string;
+    full_name: string | null;
     created_at: string;
     last_activity: string | null;
     organization_members: Array<{
@@ -33,11 +33,13 @@ export function UserDetailModal({ isOpen, onClose, user }: UserDetailModalProps)
   if (!user) return null;
 
   const initials = user.full_name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+    ? user.full_name
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : user.email.slice(0, 2).toUpperCase();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -64,7 +66,7 @@ export function UserDetailModal({ isOpen, onClose, user }: UserDetailModalProps)
             </div>
             <div className="flex-1">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                {user.full_name}
+                {user.full_name || user.email}
               </h3>
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Mail className="h-4 w-4" />
