@@ -177,7 +177,10 @@ export async function POST(request: NextRequest) {
 					userName,
 					checkinTime: new Date(entry.start_at),
 				});
-				console.error(`🔔 [POST /api/time/entries] notifyOnCheckIn completed:`, notificationResult);
+				console.error(`🔔 [POST /api/time/entries] notifyOnCheckIn completed:`, JSON.stringify(notificationResult, null, 2));
+				if (notificationResult && notificationResult.results) {
+					console.error(`🔔 [POST /api/time/entries] Detailed results:`, JSON.stringify(notificationResult.results, null, 2));
+				}
 			} catch (error) {
 				// Don't fail the request if notification fails
 				console.error('❌ [POST /api/time/entries] Failed to send check-in notification:', error);
