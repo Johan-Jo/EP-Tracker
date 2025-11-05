@@ -121,6 +121,7 @@ export async function notifyOnCheckIn(params: {
           },
           tag: `checkin-${projectId}-${userId}`,
           orgId: project.org_id,
+          skipQuietHours: true, // Team check-ins are operational alerts, should bypass quiet hours
         });
         
         // Determine method and messageId based on result type
@@ -273,6 +274,7 @@ export async function notifyOnCheckOut(params: {
           },
           tag: `checkout-${projectId}-${userId}`,
           orgId: project.org_id,
+          skipQuietHours: true, // Team check-outs are operational alerts, should bypass quiet hours
         });
         
         if (result) {
@@ -439,6 +441,7 @@ export async function sendLateCheckInAlert(params: {
           type: 'late_checkin',
         },
         tag: `late-checkin-${projectId}-${userId}`,
+        skipQuietHours: true, // Operational alerts should bypass quiet hours
       });
     }
 
@@ -505,6 +508,7 @@ export async function sendForgottenCheckOutAlert(params: {
           type: 'forgotten_checkout',
         },
         tag: `forgotten-checkout-${projectId}-${userId}`,
+        skipQuietHours: true, // Operational alerts should bypass quiet hours
       });
     }
 
