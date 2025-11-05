@@ -18,21 +18,35 @@ export interface NotificationPayload {
  * Helper function to send email notification
  */
 async function sendEmailNotification(payload: NotificationPayload, adminClient: ReturnType<typeof createAdminClient>) {
-  // Get user's email from profile - use admin client to bypass RLS
-  console.error(`📧 Fetching profile for user ${payload.userId}`);
-  const { data: profile, error: profileError } = await adminClient
-    .from('profiles')
-    .select('email, full_name')
-    .eq('id', payload.userId)
-    .single();
+  console.error(`📧 [sendEmailNotification] Starting for user ${payload.userId}`);
+  try {
+    // Get user's email from profile - use admin client to bypass RLS
+    console.error(`📧 [sendEmailNotification] Fetching profile for user ${payload.userId}`);
+    const { data: profile, error: profileError } = await adminClient
+      .from('profiles')
+      .select('email, full_name')
+      .eq('id', payload.userId)
+      .single();
 
-  if (profileError || !profile?.email) {
-    console.error('❌ Could not find user email:', profileError);
-    console.error('❌ Profile data:', profile);
-    return { success: false, error: 'Profile not found' };
-  }
+    console.error(`📧 [sendEmailNotification] Profile query completed, error:`, profileError);
+    console.error(`📧 [sendEmailNotification] Profile data:`, profile ? { email: profile.email, hasFullName: !!profile.full_name } : 'null');
 
-  console.error(`📧 Found profile email: ${profile.email}`);
+    if (profileError) {
+      console.error('❌ [sendEmailNotification] Profile query error:', JSON.stringify(profileError));
+      return { success: false, error: `Profile query error: ${profileError.message}` };
+    }
+
+    if (!profile) {
+      console.error('❌ [sendEmailNotification] Profile not found for user:', payload.userId);
+      return { success: false, error: 'Profile not found' };
+    }
+
+    if (!profile.email) {
+      console.error('❌ [sendEmailNotification] Profile found but no email:', profile);
+      return { success: false, error: 'Profile has no email' };
+    }
+
+    console.error(`📧 [sendEmailNotification] Found profile email: ${profile.email}`);
 
   // Build email content
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://eptracker.app';
@@ -272,25 +286,33 @@ export async function sendNotification(payload: NotificationPayload) {
       
       // Always send email in addition to push for all notifications
       console.error(`📧 Sending email in addition to push notification`);
+      console.error(`📧 [Async Email] Starting async email send for user ${payload.userId}`);
       // Send email asynchronously (don't wait for it, wrap in try-catch to prevent any issues)
-      try {
-        sendEmailNotification(payload, adminClient)
-          .then((result) => {
-            console.error(`📧 [Async Email] Send completed:`, JSON.stringify(result));
-            if (result && result.success) {
-              console.error(`✅ [Async Email] Successfully sent email, messageId: ${result.messageId}`);
-            } else {
-              console.error(`❌ [Async Email] Failed to send email:`, result?.error);
-            }
-          })
-          .catch((err) => {
-            console.error('❌ [Async Email] Exception caught:', err);
-            console.error('❌ [Async Email] Error stack:', err instanceof Error ? err.stack : 'No stack');
-          });
-      } catch (err) {
-        // This shouldn't happen since sendEmailNotification is async, but just in case
-        console.error('❌ Error starting async email send:', err);
-      }
+      const emailPromise = sendEmailNotification(payload, adminClient)
+        .then((result) => {
+          console.error(`📧 [Async Email] Send completed at ${new Date().toISOString()}:`, JSON.stringify(result));
+          if (result && result.success) {
+            console.error(`✅ [Async Email] Successfully sent email, messageId: ${result.messageId}`);
+          } else {
+            console.error(`❌ [Async Email] Failed to send email:`, result?.error);
+          }
+          return result;
+        })
+        .catch((err) => {
+          console.error(`❌ [Async Email] Exception caught at ${new Date().toISOString()}:`, err);
+          console.error('❌ [Async Email] Error stack:', err instanceof Error ? err.stack : 'No stack');
+          console.error('❌ [Async Email] Error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
+          throw err;
+        });
+      
+      // Store promise to prevent it from being garbage collected
+      // Also log immediately that we've started
+      console.error(`📧 [Async Email] Promise created, async operation started`);
+      
+      // Don't await, but ensure promise is tracked
+      emailPromise.catch(() => {
+        // Already logged in the catch above
+      });
       
       return response;
     } catch (error) {
