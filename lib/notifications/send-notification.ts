@@ -18,11 +18,11 @@ export interface NotificationPayload {
  * Send a push notification to a user
  */
 export async function sendNotification(payload: NotificationPayload) {
-  console.log(`🔔 [sendNotification] Starting for user ${payload.userId}, type: ${payload.type}`);
+  console.error(`🔔 [sendNotification] Starting for user ${payload.userId}, type: ${payload.type}`);
   
   // Use admin client to bypass RLS when reading preferences and subscriptions
   const adminClient = createAdminClient();
-  console.log(`🔔 [sendNotification] Admin client created`);
+  console.error(`🔔 [sendNotification] Admin client created`);
 
   // 1. Check user preferences (use admin client to bypass RLS)
   const { data: prefs, error: prefsError } = await adminClient
@@ -35,7 +35,7 @@ export async function sendNotification(payload: NotificationPayload) {
     console.error(`❌ Error fetching preferences:`, prefsError);
   }
 
-  console.log(`🔔 [sendNotification] User preferences:`, prefs);
+  console.error(`🔔 [sendNotification] User preferences:`, prefs);
 
   // Check global enabled flag (default to true if no preferences exist)
   if (prefs && prefs.enabled === false) {
@@ -67,7 +67,7 @@ export async function sendNotification(payload: NotificationPayload) {
     console.error(`❌ Error fetching subscriptions:`, subsError);
   }
 
-  console.log(`🔔 [sendNotification] Found ${subscriptions?.length || 0} subscriptions`);
+  console.error(`🔔 [sendNotification] Found ${subscriptions?.length || 0} subscriptions`);
 
   // Try Firebase first if available and has tokens
   if (messaging && subscriptions && subscriptions.length > 0) {
@@ -149,7 +149,7 @@ export async function sendNotification(payload: NotificationPayload) {
   
   try {
     // Get user's email from profile - use admin client to bypass RLS
-    console.log(`📧 Fetching profile for user ${payload.userId}`);
+    console.error(`📧 Fetching profile for user ${payload.userId}`);
     const { data: profile, error: profileError } = await adminClient
       .from('profiles')
       .select('email, full_name')
@@ -162,7 +162,7 @@ export async function sendNotification(payload: NotificationPayload) {
       return null;
     }
 
-    console.log(`📧 Found profile email: ${profile.email}`);
+    console.error(`📧 Found profile email: ${profile.email}`);
 
     // Build email content
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://eptracker.app';
@@ -198,7 +198,7 @@ export async function sendNotification(payload: NotificationPayload) {
     `;
 
     // Send email via Resend
-    console.log(`📧 Sending email to ${profile.email} via Resend...`);
+    console.error(`📧 Sending email to ${profile.email} via Resend...`);
     const emailResult = await sendEmail({
       to: profile.email,
       toName: profile.full_name || undefined,
@@ -210,7 +210,7 @@ export async function sendNotification(payload: NotificationPayload) {
       emailType: 'notification',
     });
 
-    console.log(`📧 Email send result:`, { success: emailResult.success, error: emailResult.error, messageId: emailResult.messageId });
+    console.error(`📧 Email send result:`, { success: emailResult.success, error: emailResult.error, messageId: emailResult.messageId });
 
     if (!emailResult.success) {
       console.error('❌ Failed to send notification email:', emailResult.error);
@@ -235,7 +235,7 @@ export async function sendNotification(payload: NotificationPayload) {
       }
     }
 
-    console.log(`✅ Sent notification via email to ${profile.email}`);
+    console.error(`✅ Sent notification via email to ${profile.email}`);
     return { success: true, method: 'email', messageId: emailResult.messageId };
   } catch (error) {
     console.error('❌ Error sending notification email:', error);

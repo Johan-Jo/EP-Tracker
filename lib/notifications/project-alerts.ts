@@ -33,8 +33,8 @@ export async function notifyOnCheckIn(params: {
   checkinTime: Date;
 }) {
   const { projectId, userId, userName, checkinTime } = params;
-  console.log(`🔔 [notifyOnCheckIn] Starting for project ${projectId}, user ${userId} (${userName})`);
-  console.log(`🔔 [notifyOnCheckIn] Full params:`, JSON.stringify({ projectId, userId, userName, checkinTime: checkinTime.toISOString() }));
+  console.error(`🔔 [notifyOnCheckIn] Starting for project ${projectId}, user ${userId} (${userName})`);
+  console.error(`🔔 [notifyOnCheckIn] Full params:`, JSON.stringify({ projectId, userId, userName, checkinTime: checkinTime.toISOString() }));
   const supabase = await createClient();
 
   try {
@@ -58,12 +58,12 @@ export async function notifyOnCheckIn(params: {
       return;
     }
 
-    console.log(`📧 Project ${project.name} has notify_on_checkin enabled, alert_recipients:`, alertSettings.alert_recipients);
+    console.error(`📧 Project ${project.name} has notify_on_checkin enabled, alert_recipients:`, alertSettings.alert_recipients);
 
     // Get admin and foreman users in the organization
     const rolesToCheck = alertSettings.alert_recipients || ['admin', 'foreman'];
-    console.log(`🔔 [notifyOnCheckIn] Fetching recipients with roles:`, rolesToCheck);
-    console.log(`🔔 [notifyOnCheckIn] Org ID: ${project.org_id}`);
+    console.error(`🔔 [notifyOnCheckIn] Fetching recipients with roles:`, rolesToCheck);
+    console.error(`🔔 [notifyOnCheckIn] Org ID: ${project.org_id}`);
     
     const { data: recipients, error: recipientsError } = await supabase
       .from('memberships')
@@ -78,7 +78,7 @@ export async function notifyOnCheckIn(params: {
       return;
     }
 
-    console.log(`🔔 [notifyOnCheckIn] Recipients query result:`, recipients);
+    console.error(`🔔 [notifyOnCheckIn] Recipients query result:`, recipients);
     
     if (!recipients || recipients.length === 0) {
       console.log(`⚠️ No recipients found for project ${project.name}. Roles checked:`, rolesToCheck);
@@ -86,7 +86,7 @@ export async function notifyOnCheckIn(params: {
       return;
     }
 
-    console.log(`📧 Found ${recipients.length} recipients for check-in notification:`, recipients.map(r => r.user_id));
+    console.error(`📧 Found ${recipients.length} recipients for check-in notification:`, recipients.map(r => r.user_id));
 
     // Format time
     const timeString = checkinTime.toLocaleTimeString('sv-SE', {
@@ -134,7 +134,7 @@ export async function notifyOnCheckIn(params: {
       }
     }
 
-    console.log(`✅ Check-in notification summary for ${userName} on ${project.name}: ${sentCount} sent, ${failedCount} failed/skipped`);
+    console.error(`✅ Check-in notification summary for ${userName} on ${project.name}: ${sentCount} sent, ${failedCount} failed/skipped`);
   } catch (error) {
     console.error('Error in notifyOnCheckIn:', error);
   }
