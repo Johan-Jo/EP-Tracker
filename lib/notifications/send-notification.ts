@@ -147,8 +147,17 @@ async function sendEmailNotification(payload: NotificationPayload, adminClient: 
     }
   }
 
-  console.error(`✅ Sent notification via email to ${profile.email}`);
-  return { success: true, method: 'email', messageId: emailResult.messageId };
+    console.error(`✅ [sendEmailNotification] Sent notification via email to ${profile.email}`);
+    return { success: true, method: 'email', messageId: emailResult.messageId };
+  } catch (error) {
+    console.error(`❌ [sendEmailNotification] Unexpected error in sendEmailNotification:`, error);
+    console.error(`❌ [sendEmailNotification] Error stack:`, error instanceof Error ? error.stack : 'No stack');
+    console.error(`❌ [sendEmailNotification] Error details:`, JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
+  }
 }
 
 /**
