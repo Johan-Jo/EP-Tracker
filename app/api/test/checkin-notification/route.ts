@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		const alertSettings = project.alert_settings as any;
+		const apiKey = process.env.RESEND_API_KEY;
 		const debugInfo: any = {
 			projectName: project.name,
 			projectId: project.id,
@@ -71,6 +72,10 @@ export async function POST(request: NextRequest) {
 			alertSettings: {
 				notify_on_checkin: alertSettings?.notify_on_checkin ?? 'not set',
 				alert_recipients: alertSettings?.alert_recipients ?? 'not set',
+			},
+			environment: {
+				resendApiKeySet: !!apiKey && apiKey !== 're_placeholder_key',
+				resendApiKeyValue: apiKey ? (apiKey.substring(0, 10) + '...') : 'NOT SET',
 			},
 		};
 

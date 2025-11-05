@@ -197,8 +197,17 @@ export async function sendNotification(payload: NotificationPayload) {
       </html>
     `;
 
+    // Check RESEND_API_KEY before attempting to send
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey || apiKey === 're_placeholder_key') {
+      console.error(`❌ [sendNotification] RESEND_API_KEY not set! Cannot send email.`);
+      console.error(`❌ [sendNotification] API Key value: ${apiKey ? 'set but placeholder' : 'not set'}`);
+      return null;
+    }
+
     // Send email via Resend
     console.error(`📧 Sending email to ${profile.email} via Resend...`);
+    console.error(`📧 RESEND_API_KEY is set: ${!!apiKey}`);
     const emailResult = await sendEmail({
       to: profile.email,
       toName: profile.full_name || undefined,

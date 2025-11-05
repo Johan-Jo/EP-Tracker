@@ -72,7 +72,31 @@ export async function sendEmail(options: SendEmailOptions) {
         throw new Error(`Unknown template: ${template}`);
     }
 
+    // Check if API key is actually set (not just placeholder)
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey || apiKey === 're_placeholder_key') {
+      const errorMsg = 'RESEND_API_KEY is not set or is placeholder';
+      console.error(`❌ [sendEmail] ${errorMsg}`);
+      
+      // Log failed email
+      await adminClient.from('email_logs').insert({
+        to_email: to,
+        to_name: toName,
+        organization_id: organizationId,
+        subject,
+        template_name: template,
+        template_data: templateData,
+        sent_by: sentBy,
+        status: 'failed',
+        error_message: errorMsg,
+        email_type: emailType,
+      });
+
+      return { success: false, error: errorMsg };
+    }
+
     // Send via Resend
+    console.error(`📧 [sendEmail] Sending email to ${to} with subject: ${subject}`);
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: toName ? `${toName} <${to}>` : to,
@@ -82,6 +106,7 @@ export async function sendEmail(options: SendEmailOptions) {
     });
 
     if (error) {
+      console.error(`❌ [sendEmail] Resend error:`, error);
       // Log failed email
       await adminClient.from('email_logs').insert({
         to_email: to,
@@ -257,7 +282,7 @@ export async function sendTrialEndingReminder(
       daysRemaining,
       trialEndsAt: org.trial_ends_at,
       upgradeUrl: `${baseUrl}/dashboard/settings/billing`,
-      supportEmail: 'support@eptracker.se',
+      supportEmail: 'support@eptracker.app',
     },
     organizationId,
     emailType: 'notification',
@@ -316,7 +341,7 @@ export async function sendPaymentFailedNotification(
       amount: `${amount}`,
       retryDate,
       updatePaymentUrl: `${baseUrl}/dashboard/settings/billing`,
-      supportEmail: 'support@eptracker.se',
+      supportEmail: 'support@eptracker.app',
     },
     organizationId,
     emailType: 'notification',
