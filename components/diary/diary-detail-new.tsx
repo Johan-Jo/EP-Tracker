@@ -82,6 +82,20 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
     // @ts-ignore - Web Speech API is not typed in TS DOM lib everywhere
     const SpeechRecognition = typeof window !== 'undefined' && (window.SpeechRecognition || (window as any).webkitSpeechRecognition);
     const recognitionRef = useRef<any | null>(null);
+    
+    // Form state - must be initialized with empty values, then updated via useEffect
+    const [form, setForm] = useState({
+        weather: '',
+        temperature_c: '',
+        crew_count: '',
+        work_performed: '',
+        obstacles: '',
+        safety_notes: '',
+        deliveries: '',
+        visitors: '',
+        signature_name: '',
+        signature_timestamp: '',
+    });
 
     useEffect(() => {
         if (addingNote) {
@@ -90,6 +104,23 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
             setTimeout(() => noteRef.current?.focus(), 200);
         }
     }, [addingNote]);
+
+    useEffect(() => {
+        if (diary) {
+            setForm({
+                weather: diary.weather || '',
+                temperature_c: diary.temperature_c ?? '',
+                crew_count: diary.crew_count ?? '',
+                work_performed: diary.work_performed || '',
+                obstacles: diary.obstacles || '',
+                safety_notes: diary.safety_notes || '',
+                deliveries: diary.deliveries || '',
+                visitors: diary.visitors || '',
+                signature_name: diary.signature_name || '',
+                signature_timestamp: diary.signature_timestamp || '',
+            });
+        }
+    }, [diary]);
 
     const startVoice = () => {
         if (!SpeechRecognition) {
@@ -126,34 +157,6 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
             setIsRecording(false);
         }
     };
-    const [form, setForm] = useState({
-        weather: diary?.weather || '',
-        temperature_c: diary?.temperature_c ?? '',
-        crew_count: diary?.crew_count ?? '',
-        work_performed: diary?.work_performed || '',
-        obstacles: diary?.obstacles || '',
-        safety_notes: diary?.safety_notes || '',
-        deliveries: diary?.deliveries || '',
-        visitors: diary?.visitors || '',
-        signature_name: diary?.signature_name || '',
-        signature_timestamp: diary?.signature_timestamp || '',
-    });
-    useEffect(() => {
-        if (diary) {
-            setForm({
-                weather: diary.weather || '',
-                temperature_c: diary.temperature_c ?? '',
-                crew_count: diary.crew_count ?? '',
-                work_performed: diary.work_performed || '',
-                obstacles: diary.obstacles || '',
-                safety_notes: diary.safety_notes || '',
-                deliveries: diary.deliveries || '',
-                visitors: diary.visitors || '',
-                signature_name: diary.signature_name || '',
-                signature_timestamp: diary.signature_timestamp || '',
-            });
-        }
-    }, [diary]);
 
 	if (isLoading) {
 		return (

@@ -20,9 +20,10 @@ interface DiaryFormNewProps {
 	orgId: string;
 	userId: string;
 	projectId?: string;
+	defaultDate?: string;
 }
 
-export function DiaryFormNew({ orgId, userId, projectId }: DiaryFormNewProps) {
+export function DiaryFormNew({ orgId, userId, projectId, defaultDate }: DiaryFormNewProps) {
 	const router = useRouter();
 	const supabase = createClient();
 	const queryClient = useQueryClient();
@@ -36,7 +37,7 @@ export function DiaryFormNew({ orgId, userId, projectId }: DiaryFormNewProps) {
 		const day = String(now.getDate()).padStart(2, '0');
 		return `${year}-${month}-${day}`;
 	};
-	const [date, setDate] = useState(getLocalDateString());
+	const [date, setDate] = useState(defaultDate || getLocalDateString());
 	const [staffCount, setStaffCount] = useState('');
 	const [weather, setWeather] = useState('');
 	const [temperature, setTemperature] = useState('');

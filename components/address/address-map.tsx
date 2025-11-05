@@ -45,7 +45,12 @@ export function AddressMap({ lat, lon, className = '' }: AddressMapProps) {
 		});
 	}, []);
 
-	if (!isMounted || !lat || !lon) {
+	// Convert to numbers and validate
+	const latNum = lat != null ? Number(lat) : null;
+	const lonNum = lon != null ? Number(lon) : null;
+	const hasValidCoords = latNum != null && lonNum != null && !isNaN(latNum) && !isNaN(lonNum);
+
+	if (!isMounted || !hasValidCoords) {
 		return (
 			<div className={`bg-gray-100 border border-gray-200 rounded-md flex items-center justify-center ${className}`} style={{ height: '200px' }}>
 				<p className='text-sm text-muted-foreground'>Välj en adress för att visa karta</p>
@@ -56,7 +61,8 @@ export function AddressMap({ lat, lon, className = '' }: AddressMapProps) {
 	return (
 		<div className={`w-full rounded-md border border-gray-200 overflow-hidden ${className}`} style={{ height: '200px', minHeight: '200px' }}>
 			<MapContainer
-				center={[lat, lon]}
+				key={`${latNum}-${lonNum}`}
+				center={[latNum, lonNum]}
 				zoom={15}
 				style={{ height: '100%', width: '100%' }}
 				scrollWheelZoom={true}
@@ -67,7 +73,7 @@ export function AddressMap({ lat, lon, className = '' }: AddressMapProps) {
 					attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://geoapify.com/">Geoapify</a>'
 					url={`https://maps.geoapify.com/v1/tile/klokantech-basic/{z}/{x}/{y}.png?apiKey=${GEOAPIFY_API_KEY}`}
 				/>
-				<Marker position={[lat, lon]} />
+				<Marker key={`marker-${latNum}-${lonNum}`} position={[latNum, lonNum]} />
 			</MapContainer>
 		</div>
 	);

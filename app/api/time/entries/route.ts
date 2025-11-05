@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 		const status = searchParams.get('status');
 		const start_date = searchParams.get('start_date');
 		const end_date = searchParams.get('end_date');
-		const limit = parseInt(searchParams.get('limit') || '100');
+		const limit = parseInt(searchParams.get('limit') || '500');
 
 	// Build query
 	let query = supabase
@@ -52,13 +52,16 @@ export async function GET(request: NextRequest) {
 
 		// Apply filters
 		if (project_id) query = query.eq('project_id', project_id);
-		if (user_id) query = query.eq('user_id', user_id);
 		if (status) query = query.eq('status', status);
 		if (start_date) query = query.gte('start_at', start_date);
 		if (end_date) query = query.lte('start_at', end_date);
 
 		// Workers only see their own entries; admin/foreman/finance see all
-		if (membership.role === 'worker') {
+		// But if user_id param is provided, filter by that user (for viewing specific user's entries)
+		if (user_id) {
+			query = query.eq('user_id', user_id);
+		} else if (membership.role === 'worker') {
+			// Only apply worker filter if no user_id param (worker always sees own entries)
 			query = query.eq('user_id', user.id);
 		}
 

@@ -25,6 +25,6 @@ export default async function TimePage(props: PageProps) {
 		);
 	}
 
-	return <TimePageNew orgId={membership.org_id} userId={user.id} projectId={projectId} />;
+	return <TimePageNew orgId={membership.org_id} userId={user.id} userRole={membership.role} projectId={projectId} />;
 }
 

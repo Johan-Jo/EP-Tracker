@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Calendar, Clock, Save, Filter, Loader2, Trash2 } from 'lucide-react';
+import { Calendar, Clock, Save, Filter, Loader2, Trash2, BookOpen, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 // Removed textarea for description; diary prompt will be used instead
@@ -22,10 +22,11 @@ import Link from 'next/link';
 interface TimePageNewProps {
 	orgId: string;
 	userId: string;
+	userRole: string;
 	projectId?: string;
 }
 
-export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
+export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewProps) {
 	const [selectedProject, setSelectedProject] = useState(projectId || '');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [editingEntry, setEditingEntry] = useState<any | null>(null);
@@ -33,8 +34,54 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 	const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
 	const [showDiaryPromptDialog, setShowDiaryPromptDialog] = useState(false);
 	const [completedProjectId, setCompletedProjectId] = useState<string | null>(null);
+	const [showFilterDialog, setShowFilterDialog] = useState(false);
+	const [filterProject, setFilterProject] = useState<string>('');
+	const [filterStatus, setFilterStatus] = useState<string>('');
+	const [filterUserId, setFilterUserId] = useState<string>('');
+	const [filterStartDate, setFilterStartDate] = useState<string>('');
+	const [filterEndDate, setFilterEndDate] = useState<string>('');
+	const [diaryLoadingMap, setDiaryLoadingMap] = useState<Record<string, boolean>>({});
 	const supabase = createClient();
 	const queryClient = useQueryClient();
+	
+	// Check if user can see all entries (admin/foreman/finance)
+	const canSeeAllEntries = userRole === 'admin' || userRole === 'foreman' || userRole === 'finance';
+	
+	// Function to handle diary button click - checks if diary exists, then navigates
+	const handleDiaryClick = async (entry: any) => {
+		if (!entry.project_id) {
+			toast.error('Inget projekt kopplat till denna tidsregistrering');
+			return;
+		}
+		
+		const entryDate = new Date(entry.start_at).toISOString().split('T')[0];
+		const entryKey = `${entry.id}`;
+		
+		setDiaryLoadingMap(prev => ({ ...prev, [entryKey]: true }));
+		
+		try {
+			// Check if diary entry exists for this project and date
+			const response = await fetch(`/api/diary/find?project_id=${entry.project_id}&date=${entryDate}`);
+			if (!response.ok) {
+				throw new Error('Failed to check diary entry');
+			}
+			
+			const data = await response.json();
+			
+			if (data.diary?.id) {
+				// Diary exists - navigate to edit page
+				window.location.href = `/dashboard/diary/${data.diary.id}?edit=1`;
+			} else {
+				// No diary exists - navigate to create page with project and date
+				window.location.href = `/dashboard/diary/new?project_id=${entry.project_id}&date=${entryDate}`;
+			}
+		} catch (error) {
+			console.error('Error checking diary entry:', error);
+			toast.error('Misslyckades att öppna dagbok');
+		} finally {
+			setDiaryLoadingMap(prev => ({ ...prev, [entryKey]: false }));
+		}
+	};
 	
 	// Set selected project when projectId prop changes
 	useEffect(() => {
@@ -111,18 +158,83 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 		gcTime: 10 * 60 * 1000,     // 10 minutes
 	});
 
+	// Fetch all org members for user filter (only if admin/foreman/finance)
+	const { data: orgMembers } = useQuery({
+		queryKey: ['org-members', orgId],
+		queryFn: async () => {
+			if (!canSeeAllEntries) return [];
+			const response = await fetch('/api/organizations/members');
+			if (!response.ok) return [];
+			const data = await response.json();
+			return data.members || [];
+		},
+		enabled: canSeeAllEntries,
+		staleTime: 5 * 60 * 1000,
+	});
+
+	// Build API URL with filters
+	const buildEntriesUrl = () => {
+		const params = new URLSearchParams();
+		// Only filter by user_id if:
+		// 1. User is a worker (always filter to own entries)
+		// 2. User selected a specific user in filter
+		if (!canSeeAllEntries) {
+			params.append('user_id', userId);
+		} else if (filterUserId) {
+			params.append('user_id', filterUserId);
+		}
+		params.append('limit', '500');
+		if (filterProject) params.append('project_id', filterProject);
+		if (filterStatus) params.append('status', filterStatus);
+		if (filterStartDate) params.append('start_date', filterStartDate);
+		if (filterEndDate) params.append('end_date', filterEndDate);
+		return `/api/time/entries?${params.toString()}`;
+	};
+
 	// Fetch time entries for stats and list
 	const { data: timeEntries, refetch } = useQuery({
-		queryKey: ['time-entries-stats', orgId, userId],
+		queryKey: ['time-entries-stats', orgId, userId, userRole, filterProject, filterStatus, filterUserId, filterStartDate, filterEndDate],
 		queryFn: async () => {
-			const response = await fetch(`/api/time/entries?user_id=${userId}`);
+			const response = await fetch(buildEntriesUrl());
 			if (!response.ok) throw new Error('Failed to fetch time entries');
 			const data = await response.json();
 			return data.entries || [];
 		},
-		staleTime: 30 * 1000,       // 30 seconds (time entries change frequently)
+		staleTime: 0,                // Always refetch to show latest entries
 		gcTime: 5 * 60 * 1000,       // 5 minutes
 	});
+
+	// Fetch diary entries to check which ones exist for displayed time entries
+	const { data: diaryEntries } = useQuery({
+		queryKey: ['diary-entries-check', orgId],
+		queryFn: async () => {
+			const response = await fetch('/api/diary');
+			if (!response.ok) return [];
+			const data = await response.json();
+			return data.diary || [];
+		},
+		staleTime: 2 * 60 * 1000,  // 2 minutes
+		gcTime: 5 * 60 * 1000,
+	});
+
+	// Create a Set for quick lookup: "project_id:date" -> true
+	const diaryExistsMap = useMemo(() => {
+		if (!diaryEntries || !timeEntries) return new Set<string>();
+		const map = new Set<string>();
+		diaryEntries.forEach((diary: any) => {
+			const key = `${diary.project_id}:${diary.date}`;
+			map.add(key);
+		});
+		return map;
+	}, [diaryEntries, timeEntries]);
+
+	// Helper function to check if diary exists for a time entry
+	const hasDiaryEntry = (entry: any): boolean => {
+		if (!entry.project_id) return false;
+		const entryDate = new Date(entry.start_at).toISOString().split('T')[0];
+		const key = `${entry.project_id}:${entryDate}`;
+		return diaryExistsMap.has(key);
+	};
 
 	// Calculate stats
 	const calculateStats = () => {
@@ -318,10 +430,120 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 		}
 	};
 
-	const recentEntries = timeEntries?.slice(0, 10) || [];
+	const recentEntries = timeEntries || [];
 
 	return (
 		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
+			{/* Filter Dialog */}
+			<Dialog open={showFilterDialog} onOpenChange={setShowFilterDialog}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Filtrera registreringar</DialogTitle>
+						<DialogDescription>
+							Välj filter för att visa specifika tidsregistreringar
+						</DialogDescription>
+					</DialogHeader>
+					<div className='space-y-4 mt-4'>
+						{/* User Filter (only for admin/foreman/finance) */}
+						{canSeeAllEntries && (
+							<div>
+								<label className='block text-sm font-medium mb-2'>Användare</label>
+								<Select value={filterUserId || 'all'} onValueChange={(value) => setFilterUserId(value === 'all' ? '' : value)}>
+									<SelectTrigger>
+										<SelectValue placeholder='Alla användare' />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value='all'>Alla användare</SelectItem>
+										{orgMembers?.map((member) => (
+											<SelectItem key={member.user_id} value={member.user_id}>
+												{member.profiles.full_name} ({member.profiles.email})
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+						)}
+
+						{/* Project Filter */}
+						<div>
+							<label className='block text-sm font-medium mb-2'>Projekt</label>
+							<Select value={filterProject || 'all'} onValueChange={(value) => setFilterProject(value === 'all' ? '' : value)}>
+								<SelectTrigger>
+									<SelectValue placeholder='Alla projekt' />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value='all'>Alla projekt</SelectItem>
+									{projects?.map((project) => (
+										<SelectItem key={project.id} value={project.id}>
+											{project.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+
+						{/* Status Filter */}
+						<div>
+							<label className='block text-sm font-medium mb-2'>Status</label>
+							<Select value={filterStatus || 'all'} onValueChange={(value) => setFilterStatus(value === 'all' ? '' : value)}>
+								<SelectTrigger>
+									<SelectValue placeholder='Alla status' />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value='all'>Alla status</SelectItem>
+									<SelectItem value='draft'>Utkast</SelectItem>
+									<SelectItem value='submitted'>Inskickad</SelectItem>
+									<SelectItem value='approved'>Godkänd</SelectItem>
+									<SelectItem value='rejected'>Avvisad</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+
+						{/* Date Range */}
+						<div className='grid grid-cols-2 gap-4'>
+							<div>
+								<label className='block text-sm font-medium mb-2'>Från datum</label>
+								<Input
+									type='date'
+									value={filterStartDate}
+									onChange={(e) => setFilterStartDate(e.target.value)}
+								/>
+							</div>
+							<div>
+								<label className='block text-sm font-medium mb-2'>Till datum</label>
+								<Input
+									type='date'
+									value={filterEndDate}
+									onChange={(e) => setFilterEndDate(e.target.value)}
+								/>
+							</div>
+						</div>
+
+						<div className='flex gap-3 pt-4'>
+							<Button
+								variant='outline'
+								onClick={() => {
+									setFilterProject('');
+									setFilterStatus('');
+									setFilterUserId('');
+									setFilterStartDate('');
+									setFilterEndDate('');
+								}}
+								className='flex-1'
+							>
+								Rensa
+							</Button>
+							<Button
+								onClick={() => setShowFilterDialog(false)}
+								className='flex-1 bg-orange-500 hover:bg-orange-600 text-white'
+							>
+								Applicera
+							</Button>
+						</div>
+					</div>
+				</DialogContent>
+			</Dialog>
+
 			{/* Diary Prompt Dialog */}
 			<Dialog open={showDiaryPromptDialog} onOpenChange={setShowDiaryPromptDialog}>
 				<DialogContent>
@@ -555,10 +777,28 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 				<div data-tour="time-entries">
 					<div className='flex items-center justify-between mb-4'>
 						<h3 className='text-xl font-semibold'>Senaste registreringar</h3>
-						<Button variant='outline' size='sm'>
-							<Filter className='w-4 h-4 mr-2' />
-							Filter
-						</Button>
+						<div className='flex items-center gap-2'>
+							{(filterProject || filterStatus || filterUserId || filterStartDate || filterEndDate) && (
+								<Button
+									variant='ghost'
+									size='sm'
+									onClick={() => {
+										setFilterProject('');
+										setFilterStatus('');
+										setFilterUserId('');
+										setFilterStartDate('');
+										setFilterEndDate('');
+									}}
+									className='text-xs'
+								>
+									Rensa filter
+								</Button>
+							)}
+							<Button variant='outline' size='sm' onClick={() => setShowFilterDialog(true)}>
+								<Filter className='w-4 h-4 mr-2' />
+								Filter
+							</Button>
+						</div>
 					</div>
 
 					<div className='space-y-3'>
@@ -589,11 +829,16 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 													<h4 className='font-semibold text-base truncate mb-1'>
 														{entry.project?.name || 'Okänt projekt'}
 													</h4>
-													<p className='text-sm text-muted-foreground'>
-											{entry.task_label && (
-												<span>{entry.task_label}</span>
-											)}
-													</p>
+													{entry.user?.full_name && (
+														<p className='text-sm font-medium text-muted-foreground mb-1'>
+															{entry.user.full_name}
+														</p>
+													)}
+													{entry.task_label && entry.task_label.trim() !== '' && entry.task_label.toLowerCase() !== 'ingen beskrivning' && (
+														<p className='text-sm text-muted-foreground'>
+															{entry.task_label}
+														</p>
+													)}
 												</div>
 											</div>
 											<div className='flex flex-wrap gap-4 text-sm text-muted-foreground ml-11'>
@@ -628,29 +873,64 @@ export function TimePageNew({ orgId, userId, projectId }: TimePageNewProps) {
 											>
 												{getStatusText(entry.status)}
 											</span>
-											{entry.status === 'draft' && (
-												<>
-													<Button
-														variant='outline'
-														size='sm'
-														className='hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 transition-all duration-200'
-														onClick={() => {
-															setEditingEntry(entry);
-															window.scrollTo({ top: 0, behavior: 'smooth' });
-														}}
-													>
-														Ändra
-													</Button>
-													<Button
-														variant='outline'
-														size='sm'
-														className='hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-all duration-200'
-														onClick={() => handleDelete(entry.id)}
-													>
-														<Trash2 className='w-4 h-4' />
-													</Button>
-												</>
-											)}
+											<div className='flex items-center gap-2'>
+												{/* Diary Button - always visible */}
+												<Button
+													variant={hasDiaryEntry(entry) ? 'default' : 'outline'}
+													size='sm'
+													className={
+														hasDiaryEntry(entry)
+															? 'bg-green-50 hover:bg-green-100 text-green-700 border-green-300 transition-all duration-200'
+															: 'hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 transition-all duration-200'
+													}
+													onClick={() => handleDiaryClick(entry)}
+													disabled={diaryLoadingMap[entry.id] || !entry.project_id}
+													title={
+														entry.project_id
+															? hasDiaryEntry(entry)
+																? 'Dagbok finns - öppna för redigering'
+																: 'Skapa dagbok för detta datum'
+															: 'Inget projekt kopplat'
+													}
+												>
+													{diaryLoadingMap[entry.id] ? (
+														<Loader2 className='w-4 h-4 animate-spin' />
+													) : (
+														<>
+															{hasDiaryEntry(entry) ? (
+																<CheckCircle2 className='w-4 h-4 mr-1' />
+															) : (
+																<BookOpen className='w-4 h-4 mr-1' />
+															)}
+															Dagbok
+														</>
+													)}
+												</Button>
+												
+												{entry.status === 'draft' && (
+													<>
+														<Button
+															variant='outline'
+															size='sm'
+															className='hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 transition-all duration-200'
+															onClick={() => {
+																setEditingEntry(entry);
+																window.scrollTo({ top: 0, behavior: 'smooth' });
+															}}
+														>
+															Ändra
+														</Button>
+														<Button
+															variant='outline'
+															size='sm'
+															className='hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-all duration-200'
+															onClick={() => handleDelete(entry.id)}
+														>
+															<Trash2 className='w-4 h-4' />
+														</Button>
+													</>
+												)}
+											</div>
 										</div>
 									</div>
 								</div>

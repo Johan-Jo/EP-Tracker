@@ -64,24 +64,19 @@ export function ManageTeamDialog({ projectId, projectName, open, onOpenChange, c
 	const fetchData = async () => {
 		setLoading(true);
 		try {
-			// Fetch project members
-			const membersRes = await fetch(`/api/projects/${projectId}/members`);
+			// Fetch both in parallel for better performance
+			const [membersRes, allMembersRes] = await Promise.all([
+				fetch(`/api/projects/${projectId}/members`),
+				fetch('/api/organizations/members'),
+			]);
+
+			// Process project members
 			if (membersRes.ok) {
 				const data = await membersRes.json();
 				setProjectMembers(data.members || []);
 			}
 
-			// Fetch all org members
-			const orgRes = await fetch('/api/users/status');
-			if (orgRes.ok) {
-				const data = await orgRes.json();
-				// This returns statuses, but we need to fetch actual members
-				// Let's use a different endpoint or modify this
-			}
-
-			// For now, we'll fetch from a generic org members endpoint
-			// You may need to create this or use existing user management
-			const allMembersRes = await fetch('/api/organizations/members');
+			// Process org members
 			if (allMembersRes.ok) {
 				const data = await allMembersRes.json();
 				setOrgMembers(data.members || []);
@@ -161,8 +156,9 @@ export function ManageTeamDialog({ projectId, projectName, open, onOpenChange, c
 		(om) => !projectMembers.some((pm) => pm.user_id === om.user_id)
 	);
 
-	// Filter out admins and foremen (they have access automatically)
-	const workersToAdd = availableMembers.filter((m) => m.role === 'worker');
+	// Allow all roles to be added (including admins and foremen)
+	// They can explicitly add themselves even though they have automatic access
+	const membersToAdd = availableMembers;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -188,14 +184,19 @@ export function ManageTeamDialog({ projectId, projectName, open, onOpenChange, c
 										<SelectValue placeholder="Välj användare att lägga till" />
 									</SelectTrigger>
 									<SelectContent>
-										{workersToAdd.length === 0 ? (
+										{membersToAdd.length === 0 ? (
 											<div className="p-2 text-sm text-muted-foreground">
 												Alla användare är redan tillagda
 											</div>
 										) : (
-											workersToAdd.map((member) => (
+											membersToAdd.map((member) => (
 												<SelectItem key={member.user_id} value={member.user_id}>
 													{member.profiles.full_name} ({member.profiles.email})
+													{member.role !== 'worker' && (
+														<span className="text-xs text-muted-foreground ml-2">
+															- {member.role === 'admin' ? 'Admin' : member.role === 'foreman' ? 'Arbetsledare' : member.role}
+														</span>
+													)}
 												</SelectItem>
 											))
 										)}

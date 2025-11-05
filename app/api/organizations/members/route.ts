@@ -1,29 +1,17 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/get-session';
 
 export async function GET() {
 	try {
-		const supabase = await createClient();
+		// Use cached session (saves 1 query)
+		const { user, membership } = await getSession();
 
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
-
-		if (!user) {
+		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		// Get user's organization
-		const { data: membership } = await supabase
-			.from('memberships')
-			.select('org_id')
-			.eq('user_id', user.id)
-			.eq('is_active', true)
-			.single();
-
-		if (!membership) {
-			return NextResponse.json({ error: 'No active membership found' }, { status: 403 });
-		}
+		const supabase = await createClient();
 
 		// Get all members in organization with their profiles
 		const { data: members, error } = await supabase

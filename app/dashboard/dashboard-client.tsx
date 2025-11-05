@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { TimeSlider } from '@/components/core/time-slider';
 import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -42,6 +43,7 @@ interface DashboardClientProps {
 
 export default function DashboardClient({ userName, stats, activeTimeEntry, recentProject, allProjects, recentActivities, userId }: DashboardClientProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [showDiaryPromptDialog, setShowDiaryPromptDialog] = useState(false);
@@ -104,6 +106,10 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
           start_at: data.entry.start_at,
           projects: project ? { id: project.id, name: project.name } : null,
         });
+        // Invalidate time entries queries so time page shows new entry
+        // Use prefix matching to invalidate all related queries
+        queryClient.invalidateQueries({ queryKey: ['time-entries-stats'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ['time-entries'], exact: false });
       })
       .catch((error) => {
         console.error('Error starting time:', error);
@@ -135,6 +141,10 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
           throw new Error('Failed to stop time entry');
         }
         // Success - timer already stopped in UI, no action needed
+        // Invalidate time entries queries so time page shows updated entry
+        // Use prefix matching to invalidate all related queries
+        queryClient.invalidateQueries({ queryKey: ['time-entries-stats'], exact: false });
+        queryClient.invalidateQueries({ queryKey: ['time-entries'], exact: false });
       })
       .catch((error) => {
         console.error('Error stopping time:', error);

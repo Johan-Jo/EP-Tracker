@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getSession } from '@/lib/auth/get-session';
 
 // Get project members
 export async function GET(
@@ -9,15 +10,15 @@ export async function GET(
 ) {
 	try {
 		const { id } = await params;
-		const supabase = await createClient();
-
-		const {
-			data: { user },
-		} = await supabase.auth.getUser();
+		
+		// Use cached session (saves 1 query)
+		const { user } = await getSession();
 
 		if (!user) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
+
+		const supabase = await createClient();
 
 		// Get project members with profile info
 		const { data: members, error } = await supabase

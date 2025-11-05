@@ -17,7 +17,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, QrCode } from 'lucide-react';
+import { Loader2, QrCode, Navigation } from 'lucide-react';
 import { AddressAutocomplete } from '@/components/address/address-autocomplete';
 import { AddressMap } from '@/components/address/address-map';
 import { ProjectAlertSettings } from './project-alert-settings';
@@ -100,6 +100,8 @@ const [error, setError] = useState<string | null>(null);
 	const budgetMode = watch('budget_mode');
 	const status = watch('status');
 	const siteAddress = watch('site_address');
+	const siteLat = watch('site_lat');
+	const siteLon = watch('site_lon');
 	const addr1 = watch('address_line1');
 	const postal = watch('postal_code');
 	const city = watch('city');
@@ -297,15 +299,28 @@ const [error, setError] = useState<string | null>(null);
 
 					<div className='space-y-2'>
 						<Label htmlFor='site_address'>Platsadress</Label>
-						<Input
-						id='site_address'
-						{...register('site_address')}
-						autoComplete='street-address'
-						 placeholder='Ex: Observatoriegatan 13, 113 29 Stockholm'
-					/>
-					{errors.site_address && (
-						<p className='text-sm text-destructive'>{errors.site_address.message}</p>
-					)}
+						<AddressAutocomplete
+							id='site_address'
+							name='site_address'
+							autoComplete='street-address'
+							value={String(siteAddress || '')}
+							onChange={(val) => {
+								setValue('site_address', val || null, { shouldDirty: true });
+							}}
+							onSelect={(addr) => {
+								const latNum = Number(addr.lat);
+								const lonNum = Number(addr.lon);
+								const formattedAddress = `${addr.address_line1}, ${addr.postal_code} ${addr.city}`.trim();
+								
+								setValue('site_address', formattedAddress, { shouldDirty: true });
+								setValue('site_lat', latNum, { shouldDirty: true, shouldValidate: true });
+								setValue('site_lon', lonNum, { shouldDirty: true, shouldValidate: true });
+							}}
+							placeholder='Ex: Observatoriegatan 13, 113 29 Stockholm'
+						/>
+						{errors.site_address && (
+							<p className='text-sm text-destructive'>{errors.site_address.message}</p>
+						)}
 					</div>
 
 				<div className='grid gap-4 md:grid-cols-2'>
@@ -397,13 +412,27 @@ const [error, setError] = useState<string | null>(null);
 			</Card>
 
 			<Card className='border-2 hover:border-gray-300 transition-colors shadow-sm'>
-			<CardHeader className='bg-gray-50/50'>
+			<CardHeader className='bg-gray-50/50 relative pb-3'>
 		<CardTitle className='text-xl'>Platsinställningar</CardTitle>
+		{siteLat != null && siteLon != null && !isNaN(Number(siteLat)) && !isNaN(Number(siteLon)) && (
+			<a
+				href={`https://www.waze.com/ul?ll=${Number(siteLat)},${Number(siteLon)}&navigate=yes`}
+				target='_blank'
+				rel='noopener noreferrer'
+				className='absolute top-6 right-6 inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline'
+			>
+				<Navigation className='w-3.5 h-3.5' />
+				Öppna i Waze
+			</a>
+		)}
 		</CardHeader>
-			<CardContent className='space-y-4 pt-6'>
-	<div className='space-y-2'>
+			<CardContent className='space-y-4 pt-3'>
+	<div className='space-y-1.5'>
 	<Label>Karta</Label>
-	<AddressMap lat={watch('site_lat') ?? null} lon={watch('site_lon') ?? null} />
+	<AddressMap 
+		lat={siteLat != null && !isNaN(Number(siteLat)) ? Number(siteLat) : null} 
+		lon={siteLon != null && !isNaN(Number(siteLon)) ? Number(siteLon) : null} 
+	/>
 	</div>
 	<div className='grid gap-4 md:grid-cols-2'>
 		<div className='space-y-2'>
