@@ -295,33 +295,22 @@ export async function sendNotification(payload: NotificationPayload) {
       
       // Always send email in addition to push for all notifications
       console.error(`📧 Sending email in addition to push notification`);
-      console.error(`📧 [Async Email] Starting async email send for user ${payload.userId}`);
-      // Send email asynchronously (don't wait for it, wrap in try-catch to prevent any issues)
-      const emailPromise = sendEmailNotification(payload, adminClient)
-        .then((result) => {
-          console.error(`📧 [Async Email] Send completed at ${new Date().toISOString()}:`, JSON.stringify(result));
-          if (result && result.success) {
-            console.error(`✅ [Async Email] Successfully sent email, messageId: ${result.messageId}`);
-          } else {
-            console.error(`❌ [Async Email] Failed to send email:`, result?.error);
-          }
-          return result;
-        })
-        .catch((err) => {
-          console.error(`❌ [Async Email] Exception caught at ${new Date().toISOString()}:`, err);
-          console.error('❌ [Async Email] Error stack:', err instanceof Error ? err.stack : 'No stack');
-          console.error('❌ [Async Email] Error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
-          throw err;
-        });
-      
-      // Store promise to prevent it from being garbage collected
-      // Also log immediately that we've started
-      console.error(`📧 [Async Email] Promise created, async operation started`);
-      
-      // Don't await, but ensure promise is tracked
-      emailPromise.catch(() => {
-        // Already logged in the catch above
-      });
+      console.error(`📧 [Email] Starting email send for user ${payload.userId}`);
+      // Send email - await it to ensure it completes in serverless environment
+      try {
+        const emailResult = await sendEmailNotification(payload, adminClient);
+        console.error(`📧 [Email] Send completed:`, JSON.stringify(emailResult));
+        if (emailResult && emailResult.success) {
+          console.error(`✅ [Email] Successfully sent email, messageId: ${emailResult.messageId}`);
+        } else {
+          console.error(`❌ [Email] Failed to send email:`, emailResult?.error);
+        }
+      } catch (err) {
+        console.error(`❌ [Email] Exception caught:`, err);
+        console.error('❌ [Email] Error stack:', err instanceof Error ? err.stack : 'No stack');
+        console.error('❌ [Email] Error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
+        // Don't fail the push notification if email fails
+      }
       
       return response;
     } catch (error) {
