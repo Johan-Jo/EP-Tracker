@@ -135,33 +135,59 @@ export async function POST(request: NextRequest) {
 
 		// EPIC 25 Phase 2: Notify admin/foreman when someone checks in
 		// Only notify on check-in (no stop_at), not on full entry creation
-		console.log(`🔔 [POST /api/time/entries] Entry created: stop_at=${entry.stop_at}, project_id=${entry.project_id}`);
+		console.log(`🔔 [POST /api/time/entries] Entry created successfully`);
+		console.log(`🔔 [POST /api/time/entries] Entry details:`, JSON.stringify({
+			id: entry.id,
+			stop_at: entry.stop_at,
+			project_id: entry.project_id,
+			start_at: entry.start_at,
+			user_id: entry.user_id,
+		}));
 		
 		if (!entry.stop_at && entry.project_id) {
-			console.log(`🔔 [POST /api/time/entries] Triggering check-in notification for user ${user.id} on project ${entry.project_id}`);
+			console.log(`🔔 [POST /api/time/entries] ✅ Conditions met - triggering notification`);
+			console.log(`🔔 [POST /api/time/entries] User ID: ${user.id}, Project ID: ${entry.project_id}`);
 			
 			// Get user's full name for notification
-			const { data: profile } = await supabase
+			console.log(`🔔 [POST /api/time/entries] Fetching user profile...`);
+			const { data: profile, error: profileError } = await supabase
 				.from('profiles')
 				.select('full_name')
 				.eq('id', user.id)
 				.single();
 
-			const userName = profile?.full_name || user.email || 'Okänd användare';
-			console.log(`🔔 [POST /api/time/entries] User name: ${userName}`);
+			if (profileError) {
+				console.error(`❌ [POST /api/time/entries] Error fetching profile:`, profileError);
+			}
 
-			notifyOnCheckIn({
+			const userName = profile?.full_name || user.email || 'Okänd användare';
+			console.log(`🔔 [POST /api/time/entries] User name resolved: ${userName}`);
+			console.log(`🔔 [POST /api/time/entries] Calling notifyOnCheckIn with:`, JSON.stringify({
 				projectId: entry.project_id,
 				userId: user.id,
 				userName,
-				checkinTime: new Date(entry.start_at),
-			}).catch((error) => {
+				checkinTime: entry.start_at,
+			}));
+
+			// Call notification function and await it to catch errors
+			try {
+				const notificationResult = await notifyOnCheckIn({
+					projectId: entry.project_id,
+					userId: user.id,
+					userName,
+					checkinTime: new Date(entry.start_at),
+				});
+				console.log(`🔔 [POST /api/time/entries] notifyOnCheckIn completed:`, notificationResult);
+			} catch (error) {
 				// Don't fail the request if notification fails
-				console.error('❌ Failed to send check-in notification:', error);
-				console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-			});
+				console.error('❌ [POST /api/time/entries] Failed to send check-in notification:', error);
+				console.error('❌ [POST /api/time/entries] Error type:', typeof error);
+				console.error('❌ [POST /api/time/entries] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+				console.error('❌ [POST /api/time/entries] Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+			}
 		} else {
-			console.log(`⏭️ [POST /api/time/entries] Skipping notification: stop_at=${entry.stop_at}, project_id=${entry.project_id}`);
+			console.log(`⏭️ [POST /api/time/entries] Skipping notification - conditions not met`);
+			console.log(`⏭️ [POST /api/time/entries] stop_at: ${entry.stop_at}, project_id: ${entry.project_id}`);
 		}
 
 		return NextResponse.json({ entry }, { status: 201 });
