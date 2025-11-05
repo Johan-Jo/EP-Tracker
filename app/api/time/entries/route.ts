@@ -80,16 +80,25 @@ export async function GET(request: NextRequest) {
 // EPIC 26: Optimized from 4 queries to 1 query
 export async function POST(request: NextRequest) {
 	console.error('🚨 [POST /api/time/entries] FUNCTION CALLED AT TOP LEVEL');
+	console.error('🚨 [POST /api/time/entries] Request received at:', new Date().toISOString());
 	try {
 		// EPIC 26: Use cached session (saves 2 queries)
 		const { user, membership } = await getSession();
 
 		if (!user || !membership) {
+			console.error('❌ [POST /api/time/entries] Unauthorized - no user or membership');
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
+		console.error(`🔔 [POST /api/time/entries] User authenticated: ${user.id}, Org: ${membership.org_id}`);
+
 		// Parse and validate request body
 		const body = await request.json();
+		console.error(`🔔 [POST /api/time/entries] Request body:`, JSON.stringify({ 
+			project_id: body.project_id, 
+			start_at: body.start_at, 
+			stop_at: body.stop_at 
+		}));
 		const validation = createTimeEntrySchema.safeParse(body);
 
 		if (!validation.success) {
@@ -125,7 +134,7 @@ export async function POST(request: NextRequest) {
 			.single();
 
 		if (insertError) {
-			console.error('Error creating time entry:', insertError);
+			console.error('❌ [POST /api/time/entries] Error creating time entry:', insertError);
 			// Better error message if project doesn't exist or access denied
 			if (insertError.code === '23503') {
 				return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
@@ -133,9 +142,10 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: insertError.message }, { status: 500 });
 		}
 
+		console.error(`✅ [POST /api/time/entries] Time entry created successfully: ${entry.id}`);
+
 		// EPIC 25 Phase 2: Notify admin/foreman when someone checks in
 		// Only notify on check-in (no stop_at), not on full entry creation
-		console.error(`🔔 [POST /api/time/entries] Entry created successfully`);
 		console.error(`🔔 [POST /api/time/entries] Entry details:`, JSON.stringify({
 			id: entry.id,
 			stop_at: entry.stop_at,
