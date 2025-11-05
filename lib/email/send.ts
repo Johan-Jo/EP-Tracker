@@ -97,6 +97,8 @@ export async function sendEmail(options: SendEmailOptions) {
 
     // Send via Resend
     console.error(`📧 [sendEmail] Sending email to ${to} with subject: ${subject}`);
+    console.error(`📧 [sendEmail] FROM_EMAIL value: ${FROM_EMAIL}`);
+    console.error(`📧 [sendEmail] FROM_EMAIL env var: ${process.env.FROM_EMAIL || 'NOT SET'}`);
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: toName ? `${toName} <${to}>` : to,
