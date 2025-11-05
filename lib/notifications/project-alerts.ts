@@ -195,9 +195,10 @@ export async function notifyOnCheckOut(params: {
   const { projectId, userId, userName, checkoutTime, hoursWorked } = params;
   console.error(`🔔 [notifyOnCheckOut] Starting for project ${projectId}, user ${userId} (${userName})`);
   console.error(`🔔 [notifyOnCheckOut] Full params:`, JSON.stringify({ projectId, userId, userName, checkoutTime: checkoutTime.toISOString(), hoursWorked }));
-  const supabase = await createClient();
-
+  
   try {
+    const supabase = await createClient();
+    console.error(`🔔 [notifyOnCheckOut] Supabase client created`);
     // Get project with alert settings
     const { data: project, error: projectError } = await supabase
       .from('projects')
@@ -342,7 +343,17 @@ export async function notifyOnCheckOut(params: {
       results,
     };
   } catch (error) {
-    console.error('Error in notifyOnCheckOut:', error);
+    console.error('❌ [notifyOnCheckOut] Error in notifyOnCheckOut:', error);
+    console.error('❌ [notifyOnCheckOut] Error type:', typeof error);
+    console.error('❌ [notifyOnCheckOut] Error stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('❌ [notifyOnCheckOut] Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    return {
+      success: false,
+      sentCount: 0,
+      failedCount: 0,
+      results: [],
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 

@@ -89,15 +89,6 @@ export async function PATCH(
 		// EPIC 25 Phase 2: Notify admin/foreman when someone checks out
 		// Detect check-out: entry had no stop_at but now it does
 		if (!existingEntry.stop_at && entry.stop_at && entry.project_id) {
-			console.error(`🔔 [PATCH /api/time/entries/${id}] ✅ Conditions met - triggering checkout notification`);
-			console.error(`🔔 [PATCH /api/time/entries/${id}] Entry details:`, JSON.stringify({
-				id: entry.id,
-				stop_at: entry.stop_at,
-				start_at: entry.start_at,
-				project_id: entry.project_id,
-				user_id: entry.user_id,
-			}));
-			
 			// Get user's full name for notification
 			const { data: profile } = await supabase
 				.from('profiles')
@@ -110,7 +101,8 @@ export async function PATCH(
 			const stopTime = new Date(entry.stop_at).getTime();
 			const hoursWorked = (stopTime - startTime) / (1000 * 60 * 60); // Convert ms to hours
 
-			console.error(`🔔 [PATCH /api/time/entries/${id}] Calling notifyOnCheckOut with:`, JSON.stringify({
+			console.error(`🔔 [PATCH /api/time/entries/[id]] Triggering checkout notification`);
+			console.error(`🔔 [PATCH /api/time/entries/[id]] Checkout params:`, JSON.stringify({
 				projectId: entry.project_id,
 				userId: entry.user_id,
 				userName: profile?.full_name || 'Okänd användare',
@@ -119,21 +111,20 @@ export async function PATCH(
 			}));
 
 			try {
-				const notificationResult = await notifyOnCheckOut({
+				const notifyResult = await notifyOnCheckOut({
 					projectId: entry.project_id,
 					userId: entry.user_id,
 					userName: profile?.full_name || 'Okänd användare',
 					checkoutTime: new Date(entry.stop_at),
 					hoursWorked,
 				});
-				console.error(`🔔 [PATCH /api/time/entries/${id}] notifyOnCheckOut completed:`, JSON.stringify(notificationResult, null, 2));
+				console.error(`🔔 [PATCH /api/time/entries/[id]] notifyOnCheckOut completed:`, JSON.stringify(notifyResult, null, 2));
 			} catch (error) {
 				// Don't fail the request if notification fails
-				console.error(`❌ [PATCH /api/time/entries/${id}] Failed to send check-out notification:`, error);
+				console.error('❌ [PATCH /api/time/entries/[id]] Failed to send check-out notification:', error);
+				console.error('❌ [PATCH /api/time/entries/[id]] Error type:', typeof error);
+				console.error('❌ [PATCH /api/time/entries/[id]] Error stack:', error instanceof Error ? error.stack : 'No stack');
 			}
-		} else {
-			console.error(`⏭️ [PATCH /api/time/entries/${id}] Skipping checkout notification - conditions not met`);
-			console.error(`⏭️ [PATCH /api/time/entries/${id}] Existing stop_at: ${existingEntry.stop_at}, New stop_at: ${entry.stop_at}, project_id: ${entry.project_id}`);
 		}
 
 		return NextResponse.json({ entry }, { status: 200 });
