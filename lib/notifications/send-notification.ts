@@ -78,16 +78,26 @@ async function sendEmailNotification(payload: NotificationPayload, adminClient: 
   // Send email via Resend
   console.error(`📧 Sending email to ${profile.email} via Resend...`);
   console.error(`📧 RESEND_API_KEY is set: ${!!apiKey}`);
-  const emailResult = await sendEmail({
-    to: profile.email,
-    toName: profile.full_name || undefined,
-    subject: `🔔 ${payload.title}`,
-    template: 'custom',
-    templateData: {
-      html: emailHtml,
-    },
-    emailType: 'notification',
-  });
+  console.error(`📧 About to call sendEmail function...`);
+  
+  let emailResult;
+  try {
+    emailResult = await sendEmail({
+      to: profile.email,
+      toName: profile.full_name || undefined,
+      subject: `🔔 ${payload.title}`,
+      template: 'custom',
+      templateData: {
+        html: emailHtml,
+      },
+      emailType: 'notification',
+    });
+    console.error(`📧 sendEmail returned successfully`);
+  } catch (emailError) {
+    console.error(`❌ sendEmail threw an exception:`, emailError);
+    console.error(`❌ sendEmail error stack:`, emailError instanceof Error ? emailError.stack : 'No stack');
+    return { success: false, error: emailError instanceof Error ? emailError.message : String(emailError) };
+  }
 
   console.error(`📧 Email send result:`, { success: emailResult.success, error: emailResult.error, messageId: emailResult.messageId });
 
@@ -264,9 +274,19 @@ export async function sendNotification(payload: NotificationPayload) {
       console.error(`📧 Sending email in addition to push notification`);
       // Send email asynchronously (don't wait for it, wrap in try-catch to prevent any issues)
       try {
-        sendEmailNotification(payload, adminClient).catch((err) => {
-          console.error('❌ Failed to send notification email (async):', err);
-        });
+        sendEmailNotification(payload, adminClient)
+          .then((result) => {
+            console.error(`📧 [Async Email] Send completed:`, JSON.stringify(result));
+            if (result && result.success) {
+              console.error(`✅ [Async Email] Successfully sent email, messageId: ${result.messageId}`);
+            } else {
+              console.error(`❌ [Async Email] Failed to send email:`, result?.error);
+            }
+          })
+          .catch((err) => {
+            console.error('❌ [Async Email] Exception caught:', err);
+            console.error('❌ [Async Email] Error stack:', err instanceof Error ? err.stack : 'No stack');
+          });
       } catch (err) {
         // This shouldn't happen since sendEmailNotification is async, but just in case
         console.error('❌ Error starting async email send:', err);
