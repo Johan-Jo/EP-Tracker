@@ -170,7 +170,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 	});
 
 	// Fetch all org members for user filter (only if admin/foreman/finance)
-	const { data: orgMembers } = useQuery({
+	const { data: orgMembers } = useQuery<OrgMember[]>({
 		queryKey: ['org-members', orgId],
 		queryFn: async () => {
 			if (!canSeeAllEntries) return [];
@@ -465,7 +465,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value='all'>Alla användare</SelectItem>
-										{orgMembers?.map((member: OrgMember) => (
+										{orgMembers?.map((member) => (
 											<SelectItem key={member.user_id} value={member.user_id}>
 												{member.profiles.full_name} ({member.profiles.email})
 											</SelectItem>
