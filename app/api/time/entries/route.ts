@@ -79,6 +79,7 @@ export async function GET(request: NextRequest) {
 // POST /api/time/entries - Create new time entry
 // EPIC 26: Optimized from 4 queries to 1 query
 export async function POST(request: NextRequest) {
+	console.log('🚨 [POST /api/time/entries] FUNCTION CALLED AT TOP LEVEL');
 	try {
 		// EPIC 26: Use cached session (saves 2 queries)
 		const { user, membership } = await getSession();

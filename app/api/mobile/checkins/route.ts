@@ -5,6 +5,7 @@ import { notifyOnCheckIn, notifyOnCheckOut } from '@/lib/notifications/project-a
 
 // POST /api/mobile/checkins - Record check-in or check-out event
 export async function POST(request: NextRequest) {
+	console.log('🚨 [POST /api/mobile/checkins] FUNCTION CALLED AT TOP LEVEL');
 	try {
 		const supabase = await createClient();
 		const { data: { user }, error: authError } = await supabase.auth.getUser();
