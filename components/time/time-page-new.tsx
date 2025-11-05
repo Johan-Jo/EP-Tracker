@@ -19,6 +19,17 @@ import { toast } from 'react-hot-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Link from 'next/link';
 
+interface OrgMember {
+	id: string;
+	user_id: string;
+	role: string;
+	profiles: {
+		id: string;
+		full_name: string;
+		email: string;
+	};
+}
+
 interface TimePageNewProps {
 	orgId: string;
 	userId: string;
@@ -454,7 +465,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value='all'>Alla användare</SelectItem>
-										{orgMembers?.map((member) => (
+										{orgMembers?.map((member: OrgMember) => (
 											<SelectItem key={member.user_id} value={member.user_id}>
 												{member.profiles.full_name} ({member.profiles.email})
 											</SelectItem>
