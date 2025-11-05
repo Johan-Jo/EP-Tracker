@@ -60,9 +60,7 @@ async function sendEmailNotification(payload: NotificationPayload, adminClient: 
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
           <p style="color: #6b7280; font-size: 14px; text-align: center; margin: 0;">
             Detta är en automatisk notifikation från EP-Tracker.<br>
-            ${payload.type === 'team_checkin' || payload.type === 'team_checkout' 
-              ? 'Du får detta meddelande via e-post som ett tillägg till push-notifikationen.' 
-              : 'Du får detta meddelande via e-post eftersom push-notifikationer inte är tillgängliga just nu.'}
+            Du får detta meddelande via e-post som ett tillägg till push-notifikationen.
           </p>
         </div>
       </body>
@@ -262,15 +260,12 @@ export async function sendNotification(payload: NotificationPayload) {
 
       console.log(`✅ Sent notification to ${response.successCount}/${tokens.length} devices via Firebase`);
       
-      // For team notifications (check-in/check-out), also send email in addition to push
-      const isTeamNotification = payload.type === 'team_checkin' || payload.type === 'team_checkout';
-      if (isTeamNotification) {
-        console.error(`📧 Team notification detected - also sending email in addition to push`);
-        // Send email asynchronously (don't wait for it)
-        sendEmailNotification(payload, adminClient).catch((err) => {
-          console.error('❌ Failed to send team notification email:', err);
-        });
-      }
+      // Always send email in addition to push for all notifications
+      console.error(`📧 Sending email in addition to push notification`);
+      // Send email asynchronously (don't wait for it)
+      sendEmailNotification(payload, adminClient).catch((err) => {
+        console.error('❌ Failed to send notification email:', err);
+      });
       
       return response;
     } catch (error) {
