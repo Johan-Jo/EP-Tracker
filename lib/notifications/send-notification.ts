@@ -15,6 +15,121 @@ export interface NotificationPayload {
 }
 
 /**
+ * Helper function to send email notification
+ */
+async function sendEmailNotification(payload: NotificationPayload, adminClient: ReturnType<typeof createAdminClient>) {
+  // Get user's email from profile - use admin client to bypass RLS
+  console.error(`📧 Fetching profile for user ${payload.userId}`);
+  const { data: profile, error: profileError } = await adminClient
+    .from('profiles')
+    .select('email, full_name')
+    .eq('id', payload.userId)
+    .single();
+
+  if (profileError || !profile?.email) {
+    console.error('❌ Could not find user email:', profileError);
+    console.error('❌ Profile data:', profile);
+    return { success: false, error: 'Profile not found' };
+  }
+
+  console.error(`📧 Found profile email: ${profile.email}`);
+
+  // Build email content
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://eptracker.app';
+  const notificationUrl = payload.url.startsWith('http') ? payload.url : `${baseUrl}${payload.url}`;
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">🔔 EP-Tracker Notifikation</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none;">
+          <h2 style="color: #111827; margin-top: 0; font-size: 20px;">${payload.title}</h2>
+          <p style="color: #4b5563; font-size: 16px; white-space: pre-wrap;">${payload.body}</p>
+          ${payload.url ? `
+            <div style="margin-top: 30px; text-align: center;">
+              <a href="${notificationUrl}" style="display: inline-block; background: #ea580c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">Öppna i EP-Tracker</a>
+            </div>
+          ` : ''}
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+          <p style="color: #6b7280; font-size: 14px; text-align: center; margin: 0;">
+            Detta är en automatisk notifikation från EP-Tracker.<br>
+            ${payload.type === 'team_checkin' || payload.type === 'team_checkout' 
+              ? 'Du får detta meddelande via e-post som ett tillägg till push-notifikationen.' 
+              : 'Du får detta meddelande via e-post eftersom push-notifikationer inte är tillgängliga just nu.'}
+          </p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  // Check RESEND_API_KEY before attempting to send
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey || apiKey === 're_placeholder_key') {
+    console.error(`❌ [sendEmailNotification] RESEND_API_KEY not set! Cannot send email.`);
+    console.error(`❌ [sendEmailNotification] API Key value: ${apiKey ? 'set but placeholder' : 'not set'}`);
+    return { success: false, error: 'RESEND_API_KEY not set' };
+  }
+
+  // Send email via Resend
+  console.error(`📧 Sending email to ${profile.email} via Resend...`);
+  console.error(`📧 RESEND_API_KEY is set: ${!!apiKey}`);
+  const emailResult = await sendEmail({
+    to: profile.email,
+    toName: profile.full_name || undefined,
+    subject: `🔔 ${payload.title}`,
+    template: 'custom',
+    templateData: {
+      html: emailHtml,
+    },
+    emailType: 'notification',
+  });
+
+  console.error(`📧 Email send result:`, { success: emailResult.success, error: emailResult.error, messageId: emailResult.messageId });
+
+  if (!emailResult.success) {
+    console.error('❌ Failed to send notification email:', emailResult.error);
+    return { success: false, error: emailResult.error };
+  }
+
+  // Log notification (use admin client to bypass RLS)
+  if (payload.orgId) {
+    const logAdminClient = createAdminClient();
+    // Try with org_id first, fallback to without if column doesn't exist
+    let logData: any = {
+      user_id: payload.userId,
+      org_id: payload.orgId,
+      type: payload.type,
+      title: payload.title,
+      body: payload.body,
+      status: emailResult.success ? 'sent' : 'failed',
+      error_message: emailResult.success ? null : emailResult.error,
+      project_id: payload.data?.projectId || null,
+    };
+    let { error: logError } = await logAdminClient.from('notification_log').insert(logData);
+    
+    // If org_id column doesn't exist, try without it
+    if (logError && logError.code === 'PGRST204' && logError.message?.includes('org_id')) {
+      const { org_id, ...logDataWithoutOrgId } = logData;
+      ({ error: logError } = await logAdminClient.from('notification_log').insert(logDataWithoutOrgId));
+    }
+    
+    if (logError) {
+      console.error('❌ Failed to log notification:', logError);
+    }
+  }
+
+  console.error(`✅ Sent notification via email to ${profile.email}`);
+  return { success: true, method: 'email', messageId: emailResult.messageId };
+}
+
+/**
  * Send a push notification to a user
  */
 export async function sendNotification(payload: NotificationPayload) {
@@ -146,6 +261,17 @@ export async function sendNotification(payload: NotificationPayload) {
       }
 
       console.log(`✅ Sent notification to ${response.successCount}/${tokens.length} devices via Firebase`);
+      
+      // For team notifications (check-in/check-out), also send email in addition to push
+      const isTeamNotification = payload.type === 'team_checkin' || payload.type === 'team_checkout';
+      if (isTeamNotification) {
+        console.error(`📧 Team notification detected - also sending email in addition to push`);
+        // Send email asynchronously (don't wait for it)
+        sendEmailNotification(payload, adminClient).catch((err) => {
+          console.error('❌ Failed to send team notification email:', err);
+        });
+      }
+      
       return response;
     } catch (error) {
       console.error('❌ Error sending Firebase notification, falling back to email:', error);
@@ -157,113 +283,11 @@ export async function sendNotification(payload: NotificationPayload) {
   console.error(`📧 Firebase available: ${!!messaging}, Has tokens: ${subscriptions?.length || 0}`);
   
   try {
-    // Get user's email from profile - use admin client to bypass RLS
-    console.error(`📧 Fetching profile for user ${payload.userId}`);
-    const { data: profile, error: profileError } = await adminClient
-      .from('profiles')
-      .select('email, full_name')
-      .eq('id', payload.userId)
-      .single();
-
-    if (profileError || !profile?.email) {
-      console.error('❌ Could not find user email:', profileError);
-      console.error('❌ Profile data:', profile);
-      return null;
-    }
-
-    console.error(`📧 Found profile email: ${profile.email}`);
-
-    // Build email content
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://eptracker.app';
-    const notificationUrl = payload.url.startsWith('http') ? payload.url : `${baseUrl}${payload.url}`;
-
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">🔔 EP-Tracker Notifikation</h1>
-          </div>
-          <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none;">
-            <h2 style="color: #111827; margin-top: 0; font-size: 20px;">${payload.title}</h2>
-            <p style="color: #4b5563; font-size: 16px; white-space: pre-wrap;">${payload.body}</p>
-            ${payload.url ? `
-              <div style="margin-top: 30px; text-align: center;">
-                <a href="${notificationUrl}" style="display: inline-block; background: #ea580c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">Öppna i EP-Tracker</a>
-              </div>
-            ` : ''}
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-            <p style="color: #6b7280; font-size: 14px; text-align: center; margin: 0;">
-              Detta är en automatisk notifikation från EP-Tracker.<br>
-              Du får detta meddelande via e-post eftersom push-notifikationer inte är tillgängliga just nu.
-            </p>
-          </div>
-        </body>
-      </html>
-    `;
-
-    // Check RESEND_API_KEY before attempting to send
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey || apiKey === 're_placeholder_key') {
-      console.error(`❌ [sendNotification] RESEND_API_KEY not set! Cannot send email.`);
-      console.error(`❌ [sendNotification] API Key value: ${apiKey ? 'set but placeholder' : 'not set'}`);
-      return null;
-    }
-
-    // Send email via Resend
-    console.error(`📧 Sending email to ${profile.email} via Resend...`);
-    console.error(`📧 RESEND_API_KEY is set: ${!!apiKey}`);
-    const emailResult = await sendEmail({
-      to: profile.email,
-      toName: profile.full_name || undefined,
-      subject: `🔔 ${payload.title}`,
-      template: 'custom',
-      templateData: {
-        html: emailHtml,
-      },
-      emailType: 'notification',
-    });
-
-    console.error(`📧 Email send result:`, { success: emailResult.success, error: emailResult.error, messageId: emailResult.messageId });
-
+    const emailResult = await sendEmailNotification(payload, adminClient);
     if (!emailResult.success) {
-      console.error('❌ Failed to send notification email:', emailResult.error);
       return null;
     }
-
-    // Log notification (use admin client to bypass RLS)
-    if (payload.orgId) {
-      const adminClient = createAdminClient();
-      // Try with org_id first, fallback to without if column doesn't exist
-      let logData: any = {
-        user_id: payload.userId,
-        org_id: payload.orgId,
-        type: payload.type,
-        title: payload.title,
-        body: payload.body,
-        status: emailResult.success ? 'sent' : 'failed',
-        error_message: emailResult.success ? null : emailResult.error,
-        project_id: payload.data?.projectId || null,
-      };
-      let { error: logError } = await adminClient.from('notification_log').insert(logData);
-      
-      // If org_id column doesn't exist, try without it
-      if (logError && logError.code === 'PGRST204' && logError.message?.includes('org_id')) {
-        const { org_id, ...logDataWithoutOrgId } = logData;
-        ({ error: logError } = await adminClient.from('notification_log').insert(logDataWithoutOrgId));
-      }
-      
-      if (logError) {
-        console.error('❌ Failed to log notification:', logError);
-      }
-    }
-
-    console.error(`✅ Sent notification via email to ${profile.email}`);
-    return { success: true, method: 'email', messageId: emailResult.messageId };
+    return emailResult;
   } catch (error) {
     console.error('❌ Error sending notification email:', error);
     return null;
