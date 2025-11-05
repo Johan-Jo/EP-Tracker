@@ -193,6 +193,8 @@ export async function notifyOnCheckOut(params: {
   hoursWorked: number;
 }) {
   const { projectId, userId, userName, checkoutTime, hoursWorked } = params;
+  console.error(`🔔 [notifyOnCheckOut] Starting for project ${projectId}, user ${userId} (${userName})`);
+  console.error(`🔔 [notifyOnCheckOut] Full params:`, JSON.stringify({ projectId, userId, userName, checkoutTime: checkoutTime.toISOString(), hoursWorked }));
   const supabase = await createClient();
 
   try {
@@ -204,7 +206,7 @@ export async function notifyOnCheckOut(params: {
       .single();
 
     if (projectError || !project) {
-      console.error('Error fetching project:', projectError);
+      console.error('❌ [notifyOnCheckOut] Error fetching project:', projectError);
       return;
     }
 
@@ -212,31 +214,38 @@ export async function notifyOnCheckOut(params: {
 
     // Check if check-out notifications are enabled
     if (!alertSettings?.notify_on_checkout) {
-      console.log(`⏭️ Check-out notifications disabled for project ${project.name} (${projectId})`);
+      console.error(`⏭️ [notifyOnCheckOut] Check-out notifications disabled for project ${project.name} (${projectId})`);
       return;
     }
 
-    console.log(`📧 Project ${project.name} has notify_on_checkout enabled, alert_recipients:`, alertSettings.alert_recipients);
+    console.error(`📧 [notifyOnCheckOut] Project ${project.name} has notify_on_checkout enabled, alert_recipients:`, alertSettings.alert_recipients);
 
     // Get admin and foreman users in the organization
+    const rolesToCheck = alertSettings.alert_recipients || ['admin', 'foreman'];
+    console.error(`🔔 [notifyOnCheckOut] Fetching recipients with roles:`, rolesToCheck);
+    console.error(`🔔 [notifyOnCheckOut] Org ID: ${project.org_id}`);
+    
     const { data: recipients, error: recipientsError } = await supabase
       .from('memberships')
       .select('user_id')
       .eq('org_id', project.org_id)
       .eq('is_active', true)
-      .in('role', alertSettings.alert_recipients || ['admin', 'foreman']);
+      .in('role', rolesToCheck);
 
     if (recipientsError) {
-      console.error('❌ Error fetching recipients:', recipientsError);
+      console.error('❌ [notifyOnCheckOut] Error fetching recipients:', recipientsError);
       return;
     }
+
+    console.error(`🔔 [notifyOnCheckOut] Recipients query result:`, recipients);
 
     if (!recipients || recipients.length === 0) {
-      console.log(`⚠️ No recipients found for project ${project.name}. Roles checked:`, alertSettings.alert_recipients || ['admin', 'foreman']);
+      console.error(`⚠️ [notifyOnCheckOut] No recipients found for project ${project.name}. Roles checked:`, rolesToCheck);
+      console.error(`⚠️ [notifyOnCheckOut] Org ID used: ${project.org_id}`);
       return;
     }
 
-    console.log(`📧 Found ${recipients.length} recipients for check-out notification`);
+    console.error(`📧 [notifyOnCheckOut] Found ${recipients.length} recipients for check-out notification:`, recipients.map(r => r.user_id));
 
     // Format time
     const timeString = checkoutTime.toLocaleTimeString('sv-SE', {
@@ -252,14 +261,16 @@ export async function notifyOnCheckOut(params: {
     // Send notification to each recipient
     let sentCount = 0;
     let failedCount = 0;
+    const results: any[] = [];
+    
     for (const recipient of recipients) {
       // Don't send to the person who checked out
       if (recipient.user_id === userId) {
-        console.log(`⏭️ Skipping notification to user who checked out: ${userId}`);
+        console.error(`⏭️ [notifyOnCheckOut] Skipping notification to user who checked out: ${userId}`);
         continue;
       }
 
-      console.error(`📧 Sending notification to recipient ${recipient.user_id}`);
+      console.error(`📧 [notifyOnCheckOut] Sending notification to recipient ${recipient.user_id}`);
       try {
         const result = await sendNotification({
           userId: recipient.user_id,
@@ -277,20 +288,59 @@ export async function notifyOnCheckOut(params: {
           skipQuietHours: true, // Team check-outs are operational alerts, should bypass quiet hours
         });
         
+        // Determine method and messageId based on result type
+        let method = 'unknown';
+        let messageId: string | null = null;
+        
         if (result) {
-          console.log(`✅ Notification sent successfully to ${recipient.user_id}`);
+          // Check if it's an email result (has 'method' property)
+          if ('method' in result && typeof result.method === 'string') {
+            method = result.method;
+            messageId = ('messageId' in result ? result.messageId : null) || null;
+          } else {
+            // It's a Firebase BatchResponse
+            method = 'push';
+            // BatchResponse doesn't have a single messageId, so we leave it null
+          }
+        }
+        
+        const resultData = {
+          userId: recipient.user_id,
+          result: result,
+          success: !!result,
+          method,
+          messageId,
+        };
+        
+        results.push(resultData);
+        
+        if (result) {
+          console.error(`✅ [notifyOnCheckOut] Notification sent successfully to ${recipient.user_id}`);
+          console.error(`   Method: ${resultData.method}, MessageID: ${resultData.messageId}`);
           sentCount++;
         } else {
-          console.log(`⚠️ Notification returned null for ${recipient.user_id} (may be disabled or filtered)`);
+          console.error(`⚠️ [notifyOnCheckOut] Notification returned null for ${recipient.user_id} (may be disabled or filtered)`);
           failedCount++;
         }
-      } catch (error) {
-        console.error(`❌ Error sending notification to ${recipient.user_id}:`, error);
+      } catch (error: any) {
+        console.error(`❌ [notifyOnCheckOut] Error sending notification to ${recipient.user_id}:`, error);
+        results.push({
+          userId: recipient.user_id,
+          error: error.message,
+          success: false,
+        });
         failedCount++;
       }
     }
 
-    console.log(`✅ Check-out notification summary for ${userName} on ${project.name}: ${sentCount} sent, ${failedCount} failed/skipped`);
+    console.error(`✅ [notifyOnCheckOut] Check-out notification summary for ${userName} on ${project.name}: ${sentCount} sent, ${failedCount} failed/skipped`);
+    
+    return {
+      success: sentCount > 0,
+      sentCount,
+      failedCount,
+      results,
+    };
   } catch (error) {
     console.error('Error in notifyOnCheckOut:', error);
   }
