@@ -20,15 +20,20 @@ export interface NotificationPayload {
 export async function sendNotification(payload: NotificationPayload) {
   console.log(`🔔 [sendNotification] Starting for user ${payload.userId}, type: ${payload.type}`);
   
-  const supabase = await createClient();
-  console.log(`🔔 [sendNotification] Supabase client created`);
+  // Use admin client to bypass RLS when reading preferences and subscriptions
+  const adminClient = createAdminClient();
+  console.log(`🔔 [sendNotification] Admin client created`);
 
-  // 1. Check user preferences
-  const { data: prefs } = await supabase
+  // 1. Check user preferences (use admin client to bypass RLS)
+  const { data: prefs, error: prefsError } = await adminClient
     .from('notification_preferences')
     .select('*')
     .eq('user_id', payload.userId)
     .single();
+
+  if (prefsError && prefsError.code !== 'PGRST116') { // PGRST116 = no rows returned
+    console.error(`❌ Error fetching preferences:`, prefsError);
+  }
 
   console.log(`🔔 [sendNotification] User preferences:`, prefs);
 
@@ -51,11 +56,16 @@ export async function sendNotification(payload: NotificationPayload) {
     return null;
   }
 
-  // 3. Get FCM tokens (try Firebase first if available)
-  const { data: subscriptions } = await supabase
+  // 3. Get FCM tokens (try Firebase first if available) - use admin client to bypass RLS
+  const { data: subscriptions, error: subsError } = await adminClient
     .from('push_subscriptions')
     .select('fcm_token')
-    .eq('user_id', payload.userId);
+    .eq('user_id', payload.userId)
+    .eq('is_active', true);
+
+  if (subsError) {
+    console.error(`❌ Error fetching subscriptions:`, subsError);
+  }
 
   console.log(`🔔 [sendNotification] Found ${subscriptions?.length || 0} subscriptions`);
 
@@ -138,9 +148,9 @@ export async function sendNotification(payload: NotificationPayload) {
   console.log(`📧 Firebase available: ${!!messaging}, Has tokens: ${subscriptions?.length || 0}`);
   
   try {
-    // Get user's email from profile
+    // Get user's email from profile - use admin client to bypass RLS
     console.log(`📧 Fetching profile for user ${payload.userId}`);
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await adminClient
       .from('profiles')
       .select('email, full_name')
       .eq('id', payload.userId)
