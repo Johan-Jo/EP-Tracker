@@ -34,6 +34,7 @@ export async function notifyOnCheckIn(params: {
 }) {
   const { projectId, userId, userName, checkinTime } = params;
   console.log(`🔔 [notifyOnCheckIn] Starting for project ${projectId}, user ${userId} (${userName})`);
+  console.log(`🔔 [notifyOnCheckIn] Full params:`, JSON.stringify({ projectId, userId, userName, checkinTime: checkinTime.toISOString() }));
   const supabase = await createClient();
 
   try {
@@ -60,24 +61,32 @@ export async function notifyOnCheckIn(params: {
     console.log(`📧 Project ${project.name} has notify_on_checkin enabled, alert_recipients:`, alertSettings.alert_recipients);
 
     // Get admin and foreman users in the organization
+    const rolesToCheck = alertSettings.alert_recipients || ['admin', 'foreman'];
+    console.log(`🔔 [notifyOnCheckIn] Fetching recipients with roles:`, rolesToCheck);
+    console.log(`🔔 [notifyOnCheckIn] Org ID: ${project.org_id}`);
+    
     const { data: recipients, error: recipientsError } = await supabase
       .from('memberships')
       .select('user_id')
       .eq('org_id', project.org_id)
       .eq('is_active', true)
-      .in('role', alertSettings.alert_recipients || ['admin', 'foreman']);
+      .in('role', rolesToCheck);
 
     if (recipientsError) {
       console.error('❌ Error fetching recipients:', recipientsError);
+      console.error('❌ Recipients error details:', JSON.stringify(recipientsError));
       return;
     }
 
+    console.log(`🔔 [notifyOnCheckIn] Recipients query result:`, recipients);
+    
     if (!recipients || recipients.length === 0) {
-      console.log(`⚠️ No recipients found for project ${project.name}. Roles checked:`, alertSettings.alert_recipients || ['admin', 'foreman']);
+      console.log(`⚠️ No recipients found for project ${project.name}. Roles checked:`, rolesToCheck);
+      console.log(`⚠️ Org ID used: ${project.org_id}`);
       return;
     }
 
-    console.log(`📧 Found ${recipients.length} recipients for check-in notification`);
+    console.log(`📧 Found ${recipients.length} recipients for check-in notification:`, recipients.map(r => r.user_id));
 
     // Format time
     const timeString = checkinTime.toLocaleTimeString('sv-SE', {
