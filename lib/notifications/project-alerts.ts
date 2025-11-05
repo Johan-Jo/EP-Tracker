@@ -104,7 +104,7 @@ export async function notifyOnCheckIn(params: {
         continue;
       }
 
-      console.log(`📧 Sending notification to recipient ${recipient.user_id}`);
+      console.error(`📧 Sending notification to recipient ${recipient.user_id}`);
       try {
         const result = await sendNotification({
           userId: recipient.user_id,
@@ -217,7 +217,7 @@ export async function notifyOnCheckOut(params: {
         continue;
       }
 
-      console.log(`📧 Sending notification to recipient ${recipient.user_id}`);
+      console.error(`📧 Sending notification to recipient ${recipient.user_id}`);
       try {
         const result = await sendNotification({
           userId: recipient.user_id,
