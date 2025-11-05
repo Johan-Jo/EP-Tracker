@@ -262,10 +262,15 @@ export async function sendNotification(payload: NotificationPayload) {
       
       // Always send email in addition to push for all notifications
       console.error(`📧 Sending email in addition to push notification`);
-      // Send email asynchronously (don't wait for it)
-      sendEmailNotification(payload, adminClient).catch((err) => {
-        console.error('❌ Failed to send notification email:', err);
-      });
+      // Send email asynchronously (don't wait for it, wrap in try-catch to prevent any issues)
+      try {
+        sendEmailNotification(payload, adminClient).catch((err) => {
+          console.error('❌ Failed to send notification email (async):', err);
+        });
+      } catch (err) {
+        // This shouldn't happen since sendEmailNotification is async, but just in case
+        console.error('❌ Error starting async email send:', err);
+      }
       
       return response;
     } catch (error) {
