@@ -24,11 +24,11 @@ export async function getFeatureAdoption(filters?: DateRange): Promise<FeatureAd
 
 		const total = totalUsers || 1; // Avoid division by zero
 
-		// Time Entries
+		// Time Entries - use created_at instead of date
 		const { data: timeUsers } = await supabase
 			.from('time_entries')
 			.select('user_id', { count: 'exact' })
-			.gte('date', filters?.start_date || '2024-01-01');
+			.gte('created_at', filters?.start_date || '2024-01-01');
 
 		const uniqueTimeUsers = new Set((timeUsers || []).map((t: { user_id: string }) => t.user_id)).size;
 
@@ -40,11 +40,11 @@ export async function getFeatureAdoption(filters?: DateRange): Promise<FeatureAd
 			growth_rate: 0, // Calculate from previous period if needed
 		});
 
-		// Materials
+		// Materials - use created_at instead of date
 		const { data: materialUsers } = await supabase
 			.from('materials')
 			.select('user_id', { count: 'exact' })
-			.gte('date', filters?.start_date || '2024-01-01');
+			.gte('created_at', filters?.start_date || '2024-01-01');
 
 		const uniqueMaterialUsers = new Set((materialUsers || []).map((m: { user_id: string }) => m.user_id)).size;
 
@@ -56,11 +56,11 @@ export async function getFeatureAdoption(filters?: DateRange): Promise<FeatureAd
 			growth_rate: 0,
 		});
 
-		// Expenses
+		// Expenses - use created_at instead of date
 		const { data: expenseUsers } = await supabase
 			.from('expenses')
 			.select('user_id', { count: 'exact' })
-			.gte('date', filters?.start_date || '2024-01-01');
+			.gte('created_at', filters?.start_date || '2024-01-01');
 
 		const uniqueExpenseUsers = new Set((expenseUsers || []).map((e: { user_id: string }) => e.user_id)).size;
 
@@ -72,11 +72,11 @@ export async function getFeatureAdoption(filters?: DateRange): Promise<FeatureAd
 			growth_rate: 0,
 		});
 
-		// Mileage
+		// Mileage - use created_at instead of date
 		const { data: mileageUsers } = await supabase
 			.from('mileage')
 			.select('user_id', { count: 'exact' })
-			.gte('date', filters?.start_date || '2024-01-01');
+			.gte('created_at', filters?.start_date || '2024-01-01');
 
 		const uniqueMileageUsers = new Set((mileageUsers || []).map((m: { user_id: string }) => m.user_id)).size;
 
@@ -104,11 +104,11 @@ export async function getFeatureAdoption(filters?: DateRange): Promise<FeatureAd
 			growth_rate: 0,
 		});
 
-		// Diary
+		// Diary - use created_at instead of date
 		const { data: diaryUsers } = await supabase
 			.from('diary_entries')
 			.select('user_id', { count: 'exact' })
-			.gte('date', filters?.start_date || '2024-01-01');
+			.gte('created_at', filters?.start_date || '2024-01-01');
 
 		const uniqueDiaryUsers = new Set((diaryUsers || []).map((d: { user_id: string }) => d.user_id)).size;
 

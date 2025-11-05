@@ -8,27 +8,40 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { getCurrentEngagement } from '@/lib/super-admin/analytics-engagement';
 import { getRetentionRate } from '@/lib/super-admin/analytics-cohorts';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
 	try {
 		await requireSuperAdmin();
 
-		const supabase = await createClient();
+		const supabase = createAdminClient();
 
-		// Get basic counts
-		const [usersResult, orgsResult, projectsResult, engagement, retention] = await Promise.all([
-			supabase.from('profiles').select('id', { count: 'exact', head: true }),
+		// Get basic counts - use admin client to bypass RLS
+		// Count active memberships instead of all profiles
+		const [membershipsResult, orgsResult, activeOrgsResult, projectsResult, activeProjectsResult, engagement, retention] = await Promise.all([
+			supabase.from('memberships').select('user_id', { count: 'exact', head: true }).eq('is_active', true),
 			supabase.from('organizations').select('id', { count: 'exact', head: true }),
+			supabase.from('organizations').select('id', { count: 'exact', head: true }).eq('status', 'active'),
 			supabase.from('projects').select('id', { count: 'exact', head: true }),
+			supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 'active'),
 			getCurrentEngagement(),
 			getRetentionRate(),
 		]);
 
+		// Get unique user count from memberships
+		const { data: uniqueUsers } = await supabase
+			.from('memberships')
+			.select('user_id')
+			.eq('is_active', true);
+		
+		const totalUsers = new Set((uniqueUsers || []).map((m: { user_id: string }) => m.user_id)).size;
+
 		const overview = {
-			total_users: usersResult.count || 0,
+			total_users: totalUsers,
 			total_organizations: orgsResult.count || 0,
+			active_organizations: activeOrgsResult.count || 0,
 			total_projects: projectsResult.count || 0,
+			active_projects: activeProjectsResult.count || 0,
 			dau: engagement.dau,
 			wau: engagement.wau,
 			mau: engagement.mau,

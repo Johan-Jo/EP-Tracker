@@ -18,35 +18,28 @@ export interface NotificationPayload {
  * Helper function to send email notification
  */
 async function sendEmailNotification(payload: NotificationPayload, adminClient: ReturnType<typeof createAdminClient>) {
-  console.error(`📧 [sendEmailNotification] Starting for user ${payload.userId}`);
   try {
     // Get user's email from profile - use admin client to bypass RLS
-    console.error(`📧 [sendEmailNotification] Fetching profile for user ${payload.userId}`);
     const { data: profile, error: profileError } = await adminClient
       .from('profiles')
       .select('email, full_name')
       .eq('id', payload.userId)
       .single();
 
-    console.error(`📧 [sendEmailNotification] Profile query completed, error:`, profileError);
-    console.error(`📧 [sendEmailNotification] Profile data:`, profile ? { email: profile.email, hasFullName: !!profile.full_name } : 'null');
-
     if (profileError) {
-      console.error('❌ [sendEmailNotification] Profile query error:', JSON.stringify(profileError));
+      console.error('Failed to fetch profile for email notification:', profileError);
       return { success: false, error: `Profile query error: ${profileError.message}` };
     }
 
     if (!profile) {
-      console.error('❌ [sendEmailNotification] Profile not found for user:', payload.userId);
+      console.error('Profile not found for email notification:', payload.userId);
       return { success: false, error: 'Profile not found' };
     }
 
     if (!profile.email) {
-      console.error('❌ [sendEmailNotification] Profile found but no email:', profile);
+      console.error('Profile has no email:', payload.userId);
       return { success: false, error: 'Profile has no email' };
     }
-
-    console.error(`📧 [sendEmailNotification] Found profile email: ${profile.email}`);
 
   // Build email content
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://eptracker.app';
@@ -84,16 +77,11 @@ async function sendEmailNotification(payload: NotificationPayload, adminClient: 
   // Check RESEND_API_KEY before attempting to send
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey || apiKey === 're_placeholder_key') {
-    console.error(`❌ [sendEmailNotification] RESEND_API_KEY not set! Cannot send email.`);
-    console.error(`❌ [sendEmailNotification] API Key value: ${apiKey ? 'set but placeholder' : 'not set'}`);
+    console.error('RESEND_API_KEY not set, cannot send email notification');
     return { success: false, error: 'RESEND_API_KEY not set' };
   }
 
   // Send email via Resend
-  console.error(`📧 Sending email to ${profile.email} via Resend...`);
-  console.error(`📧 RESEND_API_KEY is set: ${!!apiKey}`);
-  console.error(`📧 About to call sendEmail function...`);
-  
   let emailResult;
   try {
     emailResult = await sendEmail({
@@ -106,17 +94,13 @@ async function sendEmailNotification(payload: NotificationPayload, adminClient: 
       },
       emailType: 'notification',
     });
-    console.error(`📧 sendEmail returned successfully`);
   } catch (emailError) {
-    console.error(`❌ sendEmail threw an exception:`, emailError);
-    console.error(`❌ sendEmail error stack:`, emailError instanceof Error ? emailError.stack : 'No stack');
+    console.error('Failed to send email notification:', emailError);
     return { success: false, error: emailError instanceof Error ? emailError.message : String(emailError) };
   }
 
-  console.error(`📧 Email send result:`, { success: emailResult.success, error: emailResult.error, messageId: emailResult.messageId });
-
   if (!emailResult.success) {
-    console.error('❌ Failed to send notification email:', emailResult.error);
+    console.error('Failed to send notification email:', emailResult.error);
     return { success: false, error: emailResult.error };
   }
 
@@ -143,16 +127,13 @@ async function sendEmailNotification(payload: NotificationPayload, adminClient: 
     }
     
     if (logError) {
-      console.error('❌ Failed to log notification:', logError);
+      console.error('Failed to log notification:', logError);
     }
   }
 
-    console.error(`✅ [sendEmailNotification] Sent notification via email to ${profile.email}`);
     return { success: true, method: 'email', messageId: emailResult.messageId };
   } catch (error) {
-    console.error(`❌ [sendEmailNotification] Unexpected error in sendEmailNotification:`, error);
-    console.error(`❌ [sendEmailNotification] Error stack:`, error instanceof Error ? error.stack : 'No stack');
-    console.error(`❌ [sendEmailNotification] Error details:`, JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    console.error('Unexpected error in sendEmailNotification:', error);
     return { 
       success: false, 
       error: error instanceof Error ? error.message : String(error) 
@@ -164,11 +145,8 @@ async function sendEmailNotification(payload: NotificationPayload, adminClient: 
  * Send a push notification to a user
  */
 export async function sendNotification(payload: NotificationPayload) {
-  console.error(`🔔 [sendNotification] Starting for user ${payload.userId}, type: ${payload.type}`);
-  
   // Use admin client to bypass RLS when reading preferences and subscriptions
   const adminClient = createAdminClient();
-  console.error(`🔔 [sendNotification] Admin client created`);
 
   // 1. Check user preferences (use admin client to bypass RLS)
   const { data: prefs, error: prefsError } = await adminClient
@@ -178,27 +156,22 @@ export async function sendNotification(payload: NotificationPayload) {
     .single();
 
   if (prefsError && prefsError.code !== 'PGRST116') { // PGRST116 = no rows returned
-    console.error(`❌ Error fetching preferences:`, prefsError);
+    console.error('Error fetching notification preferences:', prefsError);
   }
-
-  console.error(`🔔 [sendNotification] User preferences:`, prefs);
 
   // Check global enabled flag (default to true if no preferences exist)
   if (prefs && prefs.enabled === false) {
-    console.error(`⏭️ Notifications globally disabled for user ${payload.userId}`);
     return null;
   }
 
   // Check if notification type is enabled (default to true if no preferences exist)
   const prefKey = getPreferenceKey(payload.type);
   if (prefs && prefKey && prefs[prefKey] === false) {
-    console.error(`⏭️ Notification ${payload.type} disabled for user ${payload.userId} (prefKey: ${prefKey})`);
     return null;
   }
 
   // 2. Check quiet hours (unless skipQuietHours is true)
   if (!payload.skipQuietHours && prefs && isInQuietHours(prefs)) {
-    console.error(`🔇 In quiet hours, skipping notification`);
     return null;
   }
 
@@ -210,17 +183,14 @@ export async function sendNotification(payload: NotificationPayload) {
     .eq('is_active', true);
 
   if (subsError) {
-    console.error(`❌ Error fetching subscriptions:`, subsError);
+    console.error('Error fetching push subscriptions:', subsError);
   }
-
-  console.error(`🔔 [sendNotification] Found ${subscriptions?.length || 0} subscriptions`);
 
   // Try Firebase first if available and has tokens
   if (messaging && subscriptions && subscriptions.length > 0) {
     try {
       // 4. Send to all devices via Firebase
       const tokens = subscriptions.map((s) => s.fcm_token);
-      console.log(`🔔 [sendNotification] Preparing to send to ${tokens.length} tokens`);
       
       const message: {
         notification: { title: string; body: string };
@@ -249,18 +219,13 @@ export async function sendNotification(payload: NotificationPayload) {
         };
       }
 
-      console.log(`🔔 [sendNotification] Calling Firebase sendEachForMulticast...`);
       const response = await messaging.sendEachForMulticast(message);
-      console.log(`🔔 [sendNotification] Firebase response:`, JSON.stringify({
-        successCount: response.successCount,
-        failureCount: response.failureCount,
-      }));
 
       // Log failures if any
       if (response.failureCount > 0) {
         response.responses.forEach((resp, idx) => {
           if (!resp.success) {
-            console.error(`❌ Failed to send to token ${idx}:`, resp.error);
+            console.error('Failed to send push notification to token:', resp.error);
           }
         });
       }
@@ -287,41 +252,26 @@ export async function sendNotification(payload: NotificationPayload) {
         }
         
         if (logError) {
-          console.error('❌ Failed to log notification:', logError);
+          console.error('Failed to log notification:', logError);
         }
       }
-
-      console.log(`✅ Sent notification to ${response.successCount}/${tokens.length} devices via Firebase`);
       
       // Always send email in addition to push for all notifications
-      console.error(`📧 Sending email in addition to push notification`);
-      console.error(`📧 [Email] Starting email send for user ${payload.userId}`);
       // Send email - await it to ensure it completes in serverless environment
       try {
-        const emailResult = await sendEmailNotification(payload, adminClient);
-        console.error(`📧 [Email] Send completed:`, JSON.stringify(emailResult));
-        if (emailResult && emailResult.success) {
-          console.error(`✅ [Email] Successfully sent email, messageId: ${emailResult.messageId}`);
-        } else {
-          console.error(`❌ [Email] Failed to send email:`, emailResult?.error);
-        }
+        await sendEmailNotification(payload, adminClient);
       } catch (err) {
-        console.error(`❌ [Email] Exception caught:`, err);
-        console.error('❌ [Email] Error stack:', err instanceof Error ? err.stack : 'No stack');
-        console.error('❌ [Email] Error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
+        console.error('Failed to send email notification:', err);
         // Don't fail the push notification if email fails
       }
       
       return response;
     } catch (error) {
-      console.error('❌ Error sending Firebase notification, falling back to email:', error);
+      console.error('Error sending Firebase notification, falling back to email:', error);
     }
   }
 
   // Fallback to email if Firebase is not available or no tokens
-  console.error(`📧 Firebase not available or no tokens - sending via email instead`);
-  console.error(`📧 Firebase available: ${!!messaging}, Has tokens: ${subscriptions?.length || 0}`);
-  
   try {
     const emailResult = await sendEmailNotification(payload, adminClient);
     if (!emailResult.success) {
@@ -329,7 +279,7 @@ export async function sendNotification(payload: NotificationPayload) {
     }
     return emailResult;
   } catch (error) {
-    console.error('❌ Error sending notification email:', error);
+    console.error('Error sending notification email:', error);
     return null;
   }
 }

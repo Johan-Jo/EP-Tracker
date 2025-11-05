@@ -83,7 +83,6 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
     });
 
     // 🔄 Background sync - user doesn't wait for this!
-    console.log('🔄 [Dashboard] Calling POST /api/time/entries with:', { project_id: projectId, start_at: startTime });
     fetch('/api/time/entries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -93,14 +92,12 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
       }),
     })
       .then(async (response) => {
-        console.log('📡 [Dashboard] Response status:', response.status, response.statusText);
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('❌ [Dashboard] Response error:', errorText);
+          console.error('Failed to start time entry:', errorText);
           throw new Error('Failed to start time entry');
         }
         const data = await response.json();
-        console.log('✅ [Dashboard] Time entry created:', data.entry?.id);
         // Update with real entry ID from server (silent background update)
         setOptimisticTimeEntry({
           id: data.entry.id,
@@ -109,7 +106,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
         });
       })
       .catch((error) => {
-        console.error('❌ [Dashboard] Error starting time:', error);
+        console.error('Error starting time:', error);
         // Rollback optimistic update on error
         setOptimisticTimeEntry(activeTimeEntry);
       });

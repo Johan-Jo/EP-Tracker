@@ -12,7 +12,8 @@ import {
   HeadphonesIcon,
   FileText,
   Mail,
-  Palette
+  Palette,
+  Bell
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -77,6 +78,11 @@ const navigation: NavItem[] = [
     name: 'E-postmallar',
     href: '/super-admin/email-templates',
     icon: Palette,
+  },
+  {
+    name: 'Testa Notifikationer',
+    href: '/super-admin/test-notifications',
+    icon: Bell,
   },
   {
     name: 'System',

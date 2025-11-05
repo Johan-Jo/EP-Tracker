@@ -30,7 +30,7 @@ export async function getContentMetrics(): Promise<ContentMetrics[]> {
 
 		const users = totalUsers || 1;
 
-		// Time Entries
+		// Time Entries - use created_at instead of date
 		const { count: totalTimeEntries } = await supabase
 			.from('time_entries')
 			.select('id', { count: 'exact', head: true });
@@ -38,13 +38,13 @@ export async function getContentMetrics(): Promise<ContentMetrics[]> {
 		const { count: timeEntriesThisMonth } = await supabase
 			.from('time_entries')
 			.select('id', { count: 'exact', head: true })
-			.gte('date', thisMonthStart);
+			.gte('created_at', thisMonthStart);
 
 		const { count: timeEntriesLastMonth } = await supabase
 			.from('time_entries')
 			.select('id', { count: 'exact', head: true })
-			.gte('date', lastMonthStart)
-			.lte('date', lastMonthEnd);
+			.gte('created_at', lastMonthStart)
+			.lte('created_at', lastMonthEnd);
 
 		const timeGrowth = timeEntriesLastMonth
 			? ((timeEntriesThisMonth || 0) - timeEntriesLastMonth) / timeEntriesLastMonth * 100
@@ -59,7 +59,7 @@ export async function getContentMetrics(): Promise<ContentMetrics[]> {
 			average_per_user: (totalTimeEntries || 0) / users,
 		});
 
-		// Materials
+		// Materials - use created_at instead of date
 		const { count: totalMaterials } = await supabase
 			.from('materials')
 			.select('id', { count: 'exact', head: true });
@@ -67,13 +67,13 @@ export async function getContentMetrics(): Promise<ContentMetrics[]> {
 		const { count: materialsThisMonth } = await supabase
 			.from('materials')
 			.select('id', { count: 'exact', head: true })
-			.gte('date', thisMonthStart);
+			.gte('created_at', thisMonthStart);
 
 		const { count: materialsLastMonth } = await supabase
 			.from('materials')
 			.select('id', { count: 'exact', head: true })
-			.gte('date', lastMonthStart)
-			.lte('date', lastMonthEnd);
+			.gte('created_at', lastMonthStart)
+			.lte('created_at', lastMonthEnd);
 
 		const materialGrowth = materialsLastMonth
 			? ((materialsThisMonth || 0) - materialsLastMonth) / materialsLastMonth * 100
@@ -88,7 +88,7 @@ export async function getContentMetrics(): Promise<ContentMetrics[]> {
 			average_per_user: (totalMaterials || 0) / users,
 		});
 
-		// Expenses
+		// Expenses - use created_at instead of date
 		const { count: totalExpenses } = await supabase
 			.from('expenses')
 			.select('id', { count: 'exact', head: true });
@@ -96,13 +96,13 @@ export async function getContentMetrics(): Promise<ContentMetrics[]> {
 		const { count: expensesThisMonth } = await supabase
 			.from('expenses')
 			.select('id', { count: 'exact', head: true })
-			.gte('date', thisMonthStart);
+			.gte('created_at', thisMonthStart);
 
 		const { count: expensesLastMonth } = await supabase
 			.from('expenses')
 			.select('id', { count: 'exact', head: true })
-			.gte('date', lastMonthStart)
-			.lte('date', lastMonthEnd);
+			.gte('created_at', lastMonthStart)
+			.lte('created_at', lastMonthEnd);
 
 		const expenseGrowth = expensesLastMonth
 			? ((expensesThisMonth || 0) - expensesLastMonth) / expensesLastMonth * 100
@@ -175,7 +175,7 @@ export async function getContentMetrics(): Promise<ContentMetrics[]> {
 			average_per_user: (totalAta || 0) / users,
 		});
 
-		// Diary
+		// Diary - use created_at instead of date
 		const { count: totalDiary } = await supabase
 			.from('diary_entries')
 			.select('id', { count: 'exact', head: true });
@@ -183,13 +183,13 @@ export async function getContentMetrics(): Promise<ContentMetrics[]> {
 		const { count: diaryThisMonth } = await supabase
 			.from('diary_entries')
 			.select('id', { count: 'exact', head: true })
-			.gte('date', thisMonthStart);
+			.gte('created_at', thisMonthStart);
 
 		const { count: diaryLastMonth } = await supabase
 			.from('diary_entries')
 			.select('id', { count: 'exact', head: true })
-			.gte('date', lastMonthStart)
-			.lte('date', lastMonthEnd);
+			.gte('created_at', lastMonthStart)
+			.lte('created_at', lastMonthEnd);
 
 		const diaryGrowth = diaryLastMonth
 			? ((diaryThisMonth || 0) - diaryLastMonth) / diaryLastMonth * 100

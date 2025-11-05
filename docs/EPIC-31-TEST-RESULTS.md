@@ -5,6 +5,10 @@
 
 ---
 
+## Test Plan
+
+See the full plan and acceptance criteria in `docs/EPIC-31-TEST-PLAN.md`.
+
 ## Build Status
 ✅ **SUCCESS** - No compilation errors
 

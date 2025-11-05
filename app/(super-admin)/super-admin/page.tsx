@@ -25,6 +25,9 @@ import {
   BarChart3
 } from 'lucide-react';
 import Link from 'next/link';
+import { requireSuperAdmin } from '@/lib/auth/super-admin';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * Super Admin Dashboard
@@ -33,6 +36,7 @@ import Link from 'next/link';
  */
 
 export default async function SuperAdminDashboard() {
+  await requireSuperAdmin();
   // Fetch all metrics
   const [
     revenueMetrics,

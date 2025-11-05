@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { getOrganizationById } from '@/lib/super-admin/organizations';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 /**
  * GET /api/super-admin/organizations/[id]
@@ -117,7 +117,10 @@ export async function DELETE(
     await requireSuperAdmin();
     const { id } = await params;
     
-    const supabase = await createClient();
+    console.log(`[Super Admin] Deleting organization: ${id}`);
+    
+    // Use admin client to bypass RLS
+    const supabase = createAdminClient();
     
     // Soft delete by setting deleted_at
     const { data, error } = await supabase
@@ -138,6 +141,8 @@ export async function DELETE(
       );
     }
     
+    console.log(`[Super Admin] Organization ${id} deleted successfully`);
+    
     return NextResponse.json({
       success: true,
       message: 'Organization deleted successfully',
@@ -154,7 +159,7 @@ export async function DELETE(
     }
     
     return NextResponse.json(
-      { success: false, error: 'Failed to delete organization' },
+      { success: false, error: error instanceof Error ? error.message : 'Failed to delete organization' },
       { status: 500 }
     );
   }

@@ -71,15 +71,36 @@ export async function getCohortRetention(): Promise<CohortData[]> {
 				let activeOrgs = 0;
 
 				for (const orgId of orgIds) {
-					// Check if org had any time entries in this month
-					const { count } = await supabase
-						.from('time_entries')
-						.select('id', { count: 'exact', head: true })
-						.eq('org_id', orgId)
-						.gte('date', monthStart)
-						.lte('date', monthEnd);
+					// Check if org had any activity in this month - try activity_log first
+					let hasActivity = false;
+					
+					try {
+						const { count: logCount } = await supabase
+							.from('activity_log')
+							.select('id', { count: 'exact', head: true })
+							.eq('org_id', orgId)
+							.eq('is_deleted', false)
+							.gte('created_at', monthStart)
+							.lte('created_at', monthEnd);
+						
+						if (logCount && logCount > 0) {
+							hasActivity = true;
+						}
+					} catch (err) {
+						// Fallback to time_entries
+						const { count } = await supabase
+							.from('time_entries')
+							.select('id', { count: 'exact', head: true })
+							.eq('org_id', orgId)
+							.gte('created_at', monthStart)
+							.lte('created_at', monthEnd);
 
-					if (count && count > 0) {
+						if (count && count > 0) {
+							hasActivity = true;
+						}
+					}
+					
+					if (hasActivity) {
 						activeOrgs++;
 					}
 				}
@@ -133,15 +154,38 @@ export async function getChurnRiskOrganizations(): Promise<ChurnRisk[]> {
 			const riskFactors: string[] = [];
 			let riskScore = 0;
 
-			// Check last activity (time entries)
-			const { data: recentEntries } = await supabase
-				.from('time_entries')
-				.select('date')
-				.eq('org_id', org.id)
-				.order('date', { ascending: false })
-				.limit(1);
+			// Check last activity - try activity_log first, then fallback to time_entries
+			let lastActivity: string | null = null;
+			
+			try {
+				const { data: activityLog } = await supabase
+					.from('activity_log')
+					.select('created_at')
+					.eq('org_id', org.id)
+					.eq('is_deleted', false)
+					.order('created_at', { ascending: false })
+					.limit(1)
+					.maybeSingle();
+				
+				if (activityLog?.created_at) {
+					lastActivity = activityLog.created_at;
+				}
+			} catch (err) {
+				// Fallback to time_entries
+			}
+			
+			if (!lastActivity) {
+				const { data: recentEntries } = await supabase
+					.from('time_entries')
+					.select('created_at')
+					.eq('org_id', org.id)
+					.order('created_at', { ascending: false })
+					.limit(1)
+					.maybeSingle();
 
-			const lastActivity = recentEntries?.[0]?.date || null;
+				lastActivity = recentEntries?.created_at || null;
+			}
+			
 			const daysInactive = lastActivity
 				? Math.floor((Date.now() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24))
 				: 999;
@@ -158,37 +202,54 @@ export async function getChurnRiskOrganizations(): Promise<ChurnRisk[]> {
 				riskScore += 10;
 			}
 
-			// Risk factor: Low activity count
-			const { count: activityCount } = await supabase
-				.from('time_entries')
-				.select('id', { count: 'exact', head: true })
-				.eq('org_id', org.id)
-				.gte('date', thirtyDaysAgoStr);
+			// Risk factor: Low activity count - use activity_log if available
+			let activityCount = 0;
+			try {
+				const { count: logCount } = await supabase
+					.from('activity_log')
+					.select('id', { count: 'exact', head: true })
+					.eq('org_id', org.id)
+					.eq('is_deleted', false)
+					.gte('created_at', thirtyDaysAgoStr);
+				
+				activityCount = logCount || 0;
+			} catch (err) {
+				// Fallback to time_entries
+				const { count: timeCount } = await supabase
+					.from('time_entries')
+					.select('id', { count: 'exact', head: true })
+					.eq('org_id', org.id)
+					.gte('created_at', thirtyDaysAgoStr);
+				
+				activityCount = timeCount || 0;
+			}
 
 			if (activityCount !== null && activityCount < 5) {
 				riskFactors.push('Låg aktivitet (< 5 tidrapporter/månad)');
 				riskScore += 20;
 			}
 
-			// Risk factor: No users added recently
+			// Risk factor: No users added recently - use memberships instead of organization_members
 			const { count: userCount } = await supabase
-				.from('organization_members')
+				.from('memberships')
 				.select('user_id', { count: 'exact', head: true })
-				.eq('org_id', org.id);
+				.eq('org_id', org.id)
+				.eq('is_active', true);
 
 			if (userCount !== null && userCount === 1) {
 				riskFactors.push('Endast en användare');
 				riskScore += 15;
 			}
 
-			// Risk factor: No projects
+			// Risk factor: No active projects
 			const { count: projectCount } = await supabase
 				.from('projects')
 				.select('id', { count: 'exact', head: true })
-				.eq('org_id', org.id);
+				.eq('org_id', org.id)
+				.eq('status', 'active');
 
 			if (projectCount !== null && projectCount === 0) {
-				riskFactors.push('Inga projekt skapade');
+				riskFactors.push('Inga aktiva projekt');
 				riskScore += 25;
 			}
 
@@ -230,22 +291,42 @@ export async function getRetentionRate(): Promise<{
 		const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
 		const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
 
-		// Get orgs active last month
-		const { data: lastMonthOrgs } = await supabase
-			.from('time_entries')
-			.select('org_id')
-			.gte('date', lastMonthStart)
-			.lte('date', lastMonthEnd);
+		// Get orgs active last month - try activity_log first, then fallback to time_entries
+		let lastMonthActive = 0;
+		let thisMonthActive = 0;
+		
+		try {
+			const { data: lastMonthOrgs } = await supabase
+				.from('activity_log')
+				.select('org_id')
+				.eq('is_deleted', false)
+				.gte('created_at', lastMonthStart)
+				.lte('created_at', lastMonthEnd + 'T23:59:59');
 
-		const lastMonthActive = new Set((lastMonthOrgs || []).map((t: { org_id: string }) => t.org_id)).size;
+			const { data: thisMonthOrgs } = await supabase
+				.from('activity_log')
+				.select('org_id')
+				.eq('is_deleted', false)
+				.gte('created_at', thisMonthStart);
 
-		// Get orgs active this month
-		const { data: thisMonthOrgs } = await supabase
-			.from('time_entries')
-			.select('org_id')
-			.gte('date', thisMonthStart);
+			lastMonthActive = new Set((lastMonthOrgs || []).map((a: { org_id: string }) => a.org_id)).size;
+			thisMonthActive = new Set((thisMonthOrgs || []).map((a: { org_id: string }) => a.org_id)).size;
+		} catch (err) {
+			// Fallback to time_entries using created_at
+			const { data: lastMonthOrgs } = await supabase
+				.from('time_entries')
+				.select('org_id')
+				.gte('created_at', lastMonthStart)
+				.lte('created_at', lastMonthEnd + 'T23:59:59');
 
-		const thisMonthActive = new Set((thisMonthOrgs || []).map((t: { org_id: string }) => t.org_id)).size;
+			const { data: thisMonthOrgs } = await supabase
+				.from('time_entries')
+				.select('org_id')
+				.gte('created_at', thisMonthStart);
+
+			lastMonthActive = new Set((lastMonthOrgs || []).map((t: { org_id: string }) => t.org_id)).size;
+			thisMonthActive = new Set((thisMonthOrgs || []).map((t: { org_id: string }) => t.org_id)).size;
+		}
 
 		// Calculate retention (of those active last month, how many are still active)
 		const retentionRate = lastMonthActive > 0

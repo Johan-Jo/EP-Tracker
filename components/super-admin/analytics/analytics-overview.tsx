@@ -7,7 +7,9 @@ import { Users, Building2, FolderKanban, Activity, TrendingUp, TrendingDown } fr
 interface AnalyticsOverview {
 	total_users: number;
 	total_organizations: number;
+	active_organizations?: number;
 	total_projects: number;
+	active_projects?: number;
 	dau: number;
 	wau: number;
 	mau: number;
@@ -68,7 +70,9 @@ export function AnalyticsOverview() {
 				<CardContent>
 					<div className="text-2xl font-bold">{overview.total_organizations}</div>
 					<p className="text-xs text-muted-foreground mt-1">
-						Aktiva organisationer
+						{overview.active_organizations !== undefined 
+							? `${overview.active_organizations} aktiva`
+							: 'Aktiva organisationer'}
 					</p>
 				</CardContent>
 			</Card>
@@ -81,7 +85,11 @@ export function AnalyticsOverview() {
 				<CardContent>
 					<div className="text-2xl font-bold">{overview.total_projects}</div>
 					<p className="text-xs text-muted-foreground mt-1">
-						Genomsnitt: {(overview.total_projects / overview.total_organizations).toFixed(1)} per org
+						{overview.active_organizations && overview.active_organizations > 0
+							? `Genomsnitt: ${(overview.total_projects / overview.active_organizations).toFixed(1)} per org`
+							: overview.active_projects !== undefined
+								? `${overview.active_projects} aktiva`
+								: 'Totalt'}
 					</p>
 				</CardContent>
 			</Card>

@@ -1,4 +1,8 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
+import type { OrganizationWithDetails } from './organizations-types';
+
+// Re-export type for backward compatibility
+export type { OrganizationWithDetails } from './organizations-types';
 
 /**
  * Organization Management Helpers
@@ -6,39 +10,12 @@ import { createClient } from '@/lib/supabase/server';
  * Functions for managing organizations from the super admin panel.
  */
 
-export interface OrganizationWithDetails {
-  id: string;
-  name: string;
-  status: string;
-  plan_id: string | null;
-  storage_used_bytes: number;
-  trial_ends_at: string | null;
-  deleted_at: string | null;
-  created_at: string;
-  updated_at: string;
-  plan?: {
-    id: string;
-    name: string;
-    price_sek: number;
-    billing_cycle: string;
-    max_users: number;
-    max_storage_gb: number;
-  };
-  subscription?: {
-    id: string;
-    status: string;
-    current_period_end: string;
-  };
-  user_count?: number;
-  project_count?: number;
-  last_activity?: string;
-}
-
 /**
  * Get all organizations with details
  */
 export async function getAllOrganizations(includeDeleted: boolean = false) {
-  const supabase = await createClient();
+  // Use admin client to bypass RLS and see all organizations
+  const supabase = createAdminClient();
   
   let query = supabase
     .from('organizations')
@@ -62,23 +39,24 @@ export async function getAllOrganizations(includeDeleted: boolean = false) {
   // Get user counts for each org
   const orgsWithCounts = await Promise.all(
     (orgs || []).map(async (org) => {
-      // Get user count
+      // Get user count (using memberships table)
       const { count: userCount } = await supabase
-        .from('organization_members')
+        .from('memberships')
         .select('*', { count: 'exact', head: true })
-        .eq('organization_id', org.id);
+        .eq('org_id', org.id)
+        .eq('is_active', true);
       
       // Get project count
       const { count: projectCount } = await supabase
         .from('projects')
         .select('*', { count: 'exact', head: true })
-        .eq('organization_id', org.id);
+        .eq('org_id', org.id);
       
       // Get subscription
       const { data: subscription } = await supabase
         .from('subscriptions')
         .select('id, status, current_period_end')
-        .eq('organization_id', org.id)
+        .eq('org_id', org.id)
         .maybeSingle();
       
       return {
@@ -97,7 +75,8 @@ export async function getAllOrganizations(includeDeleted: boolean = false) {
  * Get organization by ID with full details
  */
 export async function getOrganizationById(orgId: string) {
-  const supabase = await createClient();
+  // Use admin client to bypass RLS
+  const supabase = createAdminClient();
   
   const { data: org, error } = await supabase
     .from('organizations')
@@ -116,14 +95,15 @@ export async function getOrganizationById(orgId: string) {
   
   // Get counts
   const { count: userCount } = await supabase
-    .from('organization_members')
+    .from('memberships')
     .select('*', { count: 'exact', head: true })
-    .eq('organization_id', orgId);
+    .eq('org_id', orgId)
+    .eq('is_active', true);
   
   const { count: projectCount } = await supabase
     .from('projects')
     .select('*', { count: 'exact', head: true })
-    .eq('organization_id', orgId);
+    .eq('org_id', orgId);
   
   return {
     ...org,
@@ -154,60 +134,20 @@ export async function calculateStorageUsage(orgId: string): Promise<number> {
   return totalBytes;
 }
 
-/**
- * Format storage size for display
- */
-export function formatStorageSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return `${Math.round((bytes / Math.pow(k, i)) * 100) / 100} ${sizes[i]}`;
-}
-
-/**
- * Calculate storage usage percentage
- */
-export function getStorageUsagePercentage(usedBytes: number, maxGB: number): number {
-  const maxBytes = maxGB * 1024 * 1024 * 1024;
-  return Math.round((usedBytes / maxBytes) * 100);
-}
+// Re-export formatters for backward compatibility
+export {
+  formatStorageSize,
+  getStorageUsagePercentage,
+  getOrganizationStatusColor,
+  formatOrganizationStatus,
+} from './organizations-formatters';
 
 /**
  * Check if organization is approaching storage limit
  */
 export function isApproachingStorageLimit(usedBytes: number, maxGB: number): boolean {
+  const { getStorageUsagePercentage } = require('./organizations-formatters');
   return getStorageUsagePercentage(usedBytes, maxGB) >= 80;
-}
-
-/**
- * Get organization status color
- */
-export function getOrganizationStatusColor(status: string): string {
-  const colorMap: Record<string, string> = {
-    active: 'green',
-    trial: 'blue',
-    suspended: 'red',
-    deleted: 'gray',
-  };
-  
-  return colorMap[status] || 'gray';
-}
-
-/**
- * Format organization status for display
- */
-export function formatOrganizationStatus(status: string): string {
-  const statusMap: Record<string, string> = {
-    active: 'Active',
-    trial: 'Trial',
-    suspended: 'Suspended',
-    deleted: 'Deleted',
-  };
-  
-  return statusMap[status] || status;
 }
 
 /**
@@ -223,7 +163,7 @@ export async function isOrganizationInactive(orgId: string): Promise<boolean> {
   const { count } = await supabase
     .from('time_entries')
     .select('*', { count: 'exact', head: true })
-    .eq('organization_id', orgId)
+    .eq('org_id', orgId)
     .gte('created_at', thirtyDaysAgo.toISOString());
   
   return (count || 0) === 0;
@@ -239,7 +179,7 @@ export async function getLastActivityDate(orgId: string): Promise<Date | null> {
   const { data: timeEntry } = await supabase
     .from('time_entries')
     .select('created_at')
-    .eq('organization_id', orgId)
+    .eq('org_id', orgId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();

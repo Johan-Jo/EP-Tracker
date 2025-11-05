@@ -79,26 +79,16 @@ export async function GET(request: NextRequest) {
 // POST /api/time/entries - Create new time entry
 // EPIC 26: Optimized from 4 queries to 1 query
 export async function POST(request: NextRequest) {
-	console.error('🚨 [POST /api/time/entries] FUNCTION CALLED AT TOP LEVEL');
-	console.error('🚨 [POST /api/time/entries] Request received at:', new Date().toISOString());
 	try {
 		// EPIC 26: Use cached session (saves 2 queries)
 		const { user, membership } = await getSession();
 
 		if (!user || !membership) {
-			console.error('❌ [POST /api/time/entries] Unauthorized - no user or membership');
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		console.error(`🔔 [POST /api/time/entries] User authenticated: ${user.id}, Org: ${membership.org_id}`);
-
 		// Parse and validate request body
 		const body = await request.json();
-		console.error(`🔔 [POST /api/time/entries] Request body:`, JSON.stringify({ 
-			project_id: body.project_id, 
-			start_at: body.start_at, 
-			stop_at: body.stop_at 
-		}));
 		const validation = createTimeEntrySchema.safeParse(body);
 
 		if (!validation.success) {
@@ -134,7 +124,6 @@ export async function POST(request: NextRequest) {
 			.single();
 
 		if (insertError) {
-			console.error('❌ [POST /api/time/entries] Error creating time entry:', insertError);
 			// Better error message if project doesn't exist or access denied
 			if (insertError.code === '23503') {
 				return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
@@ -142,65 +131,30 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: insertError.message }, { status: 500 });
 		}
 
-		console.error(`✅ [POST /api/time/entries] Time entry created successfully: ${entry.id}`);
-
 		// EPIC 25 Phase 2: Notify admin/foreman when someone checks in
 		// Only notify on check-in (no stop_at), not on full entry creation
-		console.error(`🔔 [POST /api/time/entries] Entry details:`, JSON.stringify({
-			id: entry.id,
-			stop_at: entry.stop_at,
-			project_id: entry.project_id,
-			start_at: entry.start_at,
-			user_id: entry.user_id,
-		}));
-		
 		if (!entry.stop_at && entry.project_id) {
-			console.error(`🔔 [POST /api/time/entries] ✅ Conditions met - triggering notification`);
-			console.error(`🔔 [POST /api/time/entries] User ID: ${user.id}, Project ID: ${entry.project_id}`);
-			
 			// Get user's full name for notification
-			console.error(`🔔 [POST /api/time/entries] Fetching user profile...`);
-			const { data: profile, error: profileError } = await supabase
+			const { data: profile } = await supabase
 				.from('profiles')
 				.select('full_name')
 				.eq('id', user.id)
 				.single();
 
-			if (profileError) {
-				console.error(`❌ [POST /api/time/entries] Error fetching profile:`, profileError);
-			}
-
 			const userName = profile?.full_name || user.email || 'Okänd användare';
-			console.error(`🔔 [POST /api/time/entries] User name resolved: ${userName}`);
-			console.error(`🔔 [POST /api/time/entries] Calling notifyOnCheckIn with:`, JSON.stringify({
-				projectId: entry.project_id,
-				userId: user.id,
-				userName,
-				checkinTime: entry.start_at,
-			}));
 
 			// Call notification function and await it to catch errors
 			try {
-				const notificationResult = await notifyOnCheckIn({
+				await notifyOnCheckIn({
 					projectId: entry.project_id,
 					userId: user.id,
 					userName,
 					checkinTime: new Date(entry.start_at),
 				});
-				console.error(`🔔 [POST /api/time/entries] notifyOnCheckIn completed:`, JSON.stringify(notificationResult, null, 2));
-				if (notificationResult && notificationResult.results) {
-					console.error(`🔔 [POST /api/time/entries] Detailed results:`, JSON.stringify(notificationResult.results, null, 2));
-				}
 			} catch (error) {
 				// Don't fail the request if notification fails
-				console.error('❌ [POST /api/time/entries] Failed to send check-in notification:', error);
-				console.error('❌ [POST /api/time/entries] Error type:', typeof error);
-				console.error('❌ [POST /api/time/entries] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-				console.error('❌ [POST /api/time/entries] Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+				console.error('Failed to send check-in notification:', error);
 			}
-		} else {
-			console.error(`⏭️ [POST /api/time/entries] Skipping notification - conditions not met`);
-			console.error(`⏭️ [POST /api/time/entries] stop_at: ${entry.stop_at}, project_id: ${entry.project_id}`);
 		}
 
 		return NextResponse.json({ entry }, { status: 201 });

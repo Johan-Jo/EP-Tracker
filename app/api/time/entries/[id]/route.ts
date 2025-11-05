@@ -101,29 +101,17 @@ export async function PATCH(
 			const stopTime = new Date(entry.stop_at).getTime();
 			const hoursWorked = (stopTime - startTime) / (1000 * 60 * 60); // Convert ms to hours
 
-			console.error(`🔔 [PATCH /api/time/entries/[id]] Triggering checkout notification`);
-			console.error(`🔔 [PATCH /api/time/entries/[id]] Checkout params:`, JSON.stringify({
-				projectId: entry.project_id,
-				userId: entry.user_id,
-				userName: profile?.full_name || 'Okänd användare',
-				checkoutTime: entry.stop_at,
-				hoursWorked,
-			}));
-
 			try {
-				const notifyResult = await notifyOnCheckOut({
+				await notifyOnCheckOut({
 					projectId: entry.project_id,
 					userId: entry.user_id,
 					userName: profile?.full_name || 'Okänd användare',
 					checkoutTime: new Date(entry.stop_at),
 					hoursWorked,
 				});
-				console.error(`🔔 [PATCH /api/time/entries/[id]] notifyOnCheckOut completed:`, JSON.stringify(notifyResult, null, 2));
 			} catch (error) {
 				// Don't fail the request if notification fails
-				console.error('❌ [PATCH /api/time/entries/[id]] Failed to send check-out notification:', error);
-				console.error('❌ [PATCH /api/time/entries/[id]] Error type:', typeof error);
-				console.error('❌ [PATCH /api/time/entries/[id]] Error stack:', error instanceof Error ? error.stack : 'No stack');
+				console.error('Failed to send check-out notification:', error);
 			}
 		}
 
