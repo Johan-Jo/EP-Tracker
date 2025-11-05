@@ -39,20 +39,20 @@ export async function sendNotification(payload: NotificationPayload) {
 
   // Check global enabled flag (default to true if no preferences exist)
   if (prefs && prefs.enabled === false) {
-    console.log(`⏭️ Notifications globally disabled for user ${payload.userId}`);
+    console.error(`⏭️ Notifications globally disabled for user ${payload.userId}`);
     return null;
   }
 
   // Check if notification type is enabled (default to true if no preferences exist)
   const prefKey = getPreferenceKey(payload.type);
   if (prefs && prefKey && prefs[prefKey] === false) {
-    console.log(`⏭️ Notification ${payload.type} disabled for user ${payload.userId} (prefKey: ${prefKey})`);
+    console.error(`⏭️ Notification ${payload.type} disabled for user ${payload.userId} (prefKey: ${prefKey})`);
     return null;
   }
 
   // 2. Check quiet hours (unless skipQuietHours is true)
   if (!payload.skipQuietHours && prefs && isInQuietHours(prefs)) {
-    console.log(`🔇 In quiet hours, skipping notification`);
+    console.error(`🔇 In quiet hours, skipping notification`);
     return null;
   }
 
@@ -144,8 +144,8 @@ export async function sendNotification(payload: NotificationPayload) {
   }
 
   // Fallback to email if Firebase is not available or no tokens
-  console.log(`📧 Firebase not available or no tokens - sending via email instead`);
-  console.log(`📧 Firebase available: ${!!messaging}, Has tokens: ${subscriptions?.length || 0}`);
+  console.error(`📧 Firebase not available or no tokens - sending via email instead`);
+  console.error(`📧 Firebase available: ${!!messaging}, Has tokens: ${subscriptions?.length || 0}`);
   
   try {
     // Get user's email from profile - use admin client to bypass RLS

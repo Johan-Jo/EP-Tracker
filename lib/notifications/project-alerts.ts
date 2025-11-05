@@ -54,7 +54,7 @@ export async function notifyOnCheckIn(params: {
 
     // Check if check-in notifications are enabled
     if (!alertSettings?.notify_on_checkin) {
-      console.log(`⏭️ Check-in notifications disabled for project ${project.name} (${projectId})`);
+      console.error(`⏭️ Check-in notifications disabled for project ${project.name} (${projectId})`);
       return;
     }
 
@@ -81,8 +81,8 @@ export async function notifyOnCheckIn(params: {
     console.error(`🔔 [notifyOnCheckIn] Recipients query result:`, recipients);
     
     if (!recipients || recipients.length === 0) {
-      console.log(`⚠️ No recipients found for project ${project.name}. Roles checked:`, rolesToCheck);
-      console.log(`⚠️ Org ID used: ${project.org_id}`);
+      console.error(`⚠️ No recipients found for project ${project.name}. Roles checked:`, rolesToCheck);
+      console.error(`⚠️ Org ID used: ${project.org_id}`);
       return;
     }
 
@@ -100,7 +100,7 @@ export async function notifyOnCheckIn(params: {
     for (const recipient of recipients) {
       // Don't send to the person who checked in
       if (recipient.user_id === userId) {
-        console.log(`⏭️ Skipping notification to user who checked in: ${userId}`);
+        console.error(`⏭️ Skipping notification to user who checked in: ${userId}`);
         continue;
       }
 
