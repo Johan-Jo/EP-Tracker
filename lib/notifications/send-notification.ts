@@ -122,7 +122,8 @@ export async function sendNotification(payload: NotificationPayload) {
       // Log notification (use admin client to bypass RLS)
       if (payload.orgId) {
         const adminClient = createAdminClient();
-        const { error: logError } = await adminClient.from('notification_log').insert({
+        // Try with org_id first, fallback to without if column doesn't exist
+        let logData: any = {
           user_id: payload.userId,
           org_id: payload.orgId,
           type: payload.type,
@@ -130,7 +131,15 @@ export async function sendNotification(payload: NotificationPayload) {
           body: payload.body,
           status: 'sent',
           project_id: payload.data?.projectId || null,
-        });
+        };
+        let { error: logError } = await adminClient.from('notification_log').insert(logData);
+        
+        // If org_id column doesn't exist, try without it
+        if (logError && logError.code === 'PGRST204' && logError.message?.includes('org_id')) {
+          const { org_id, ...logDataWithoutOrgId } = logData;
+          ({ error: logError } = await adminClient.from('notification_log').insert(logDataWithoutOrgId));
+        }
+        
         if (logError) {
           console.error('❌ Failed to log notification:', logError);
         }
@@ -229,7 +238,8 @@ export async function sendNotification(payload: NotificationPayload) {
     // Log notification (use admin client to bypass RLS)
     if (payload.orgId) {
       const adminClient = createAdminClient();
-      const { error: logError } = await adminClient.from('notification_log').insert({
+      // Try with org_id first, fallback to without if column doesn't exist
+      let logData: any = {
         user_id: payload.userId,
         org_id: payload.orgId,
         type: payload.type,
@@ -238,7 +248,15 @@ export async function sendNotification(payload: NotificationPayload) {
         status: emailResult.success ? 'sent' : 'failed',
         error_message: emailResult.success ? null : emailResult.error,
         project_id: payload.data?.projectId || null,
-      });
+      };
+      let { error: logError } = await adminClient.from('notification_log').insert(logData);
+      
+      // If org_id column doesn't exist, try without it
+      if (logError && logError.code === 'PGRST204' && logError.message?.includes('org_id')) {
+        const { org_id, ...logDataWithoutOrgId } = logData;
+        ({ error: logError } = await adminClient.from('notification_log').insert(logDataWithoutOrgId));
+      }
+      
       if (logError) {
         console.error('❌ Failed to log notification:', logError);
       }
