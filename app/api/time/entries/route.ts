@@ -134,7 +134,11 @@ export async function POST(request: NextRequest) {
 
 		// EPIC 25 Phase 2: Notify admin/foreman when someone checks in
 		// Only notify on check-in (no stop_at), not on full entry creation
+		console.log(`🔔 [POST /api/time/entries] Entry created: stop_at=${entry.stop_at}, project_id=${entry.project_id}`);
+		
 		if (!entry.stop_at && entry.project_id) {
+			console.log(`🔔 [POST /api/time/entries] Triggering check-in notification for user ${user.id} on project ${entry.project_id}`);
+			
 			// Get user's full name for notification
 			const { data: profile } = await supabase
 				.from('profiles')
@@ -142,15 +146,21 @@ export async function POST(request: NextRequest) {
 				.eq('id', user.id)
 				.single();
 
+			const userName = profile?.full_name || user.email || 'Okänd användare';
+			console.log(`🔔 [POST /api/time/entries] User name: ${userName}`);
+
 			notifyOnCheckIn({
 				projectId: entry.project_id,
 				userId: user.id,
-				userName: profile?.full_name || user.email || 'Okänd användare',
+				userName,
 				checkinTime: new Date(entry.start_at),
 			}).catch((error) => {
 				// Don't fail the request if notification fails
-				console.error('Failed to send check-in notification:', error);
+				console.error('❌ Failed to send check-in notification:', error);
+				console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
 			});
+		} else {
+			console.log(`⏭️ [POST /api/time/entries] Skipping notification: stop_at=${entry.stop_at}, project_id=${entry.project_id}`);
 		}
 
 		return NextResponse.json({ entry }, { status: 201 });
