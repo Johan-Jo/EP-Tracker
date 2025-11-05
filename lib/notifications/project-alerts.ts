@@ -123,12 +123,28 @@ export async function notifyOnCheckIn(params: {
           orgId: project.org_id,
         });
         
+        // Determine method and messageId based on result type
+        let method = 'unknown';
+        let messageId: string | null = null;
+        
+        if (result) {
+          // Check if it's an email result (has 'method' property)
+          if ('method' in result && typeof result.method === 'string') {
+            method = result.method;
+            messageId = ('messageId' in result ? result.messageId : null) || null;
+          } else {
+            // It's a Firebase BatchResponse
+            method = 'push';
+            // BatchResponse doesn't have a single messageId, so we leave it null
+          }
+        }
+        
         const resultData = {
           userId: recipient.user_id,
           result: result,
           success: !!result,
-          method: result?.method || 'unknown',
-          messageId: result?.messageId || null,
+          method,
+          messageId,
         };
         
         results.push(resultData);
