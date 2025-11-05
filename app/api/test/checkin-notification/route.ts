@@ -102,15 +102,25 @@ export async function POST(request: NextRequest) {
 		// Try to send notification
 		let notificationResult = null;
 		try {
-			await notifyOnCheckIn({
+			const notifyResult = await notifyOnCheckIn({
 				projectId,
 				userId,
 				userName: profile.full_name || profile.email,
 				checkinTime: new Date(),
 			});
-			notificationResult = { success: true, message: 'Notification sent' };
+			notificationResult = {
+				success: notifyResult?.success || false,
+				sentCount: notifyResult?.sentCount || 0,
+				failedCount: notifyResult?.failedCount || 0,
+				results: notifyResult?.results || [],
+				message: notifyResult?.success ? `Notification sent to ${notifyResult.sentCount} recipient(s)` : 'No notifications sent',
+			};
 		} catch (error: any) {
-			notificationResult = { success: false, error: error.message };
+			notificationResult = { 
+				success: false, 
+				error: error.message,
+				stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+			};
 		}
 
 		return NextResponse.json({

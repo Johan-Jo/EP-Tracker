@@ -97,6 +97,8 @@ export async function notifyOnCheckIn(params: {
     // Send notification to each recipient
     let sentCount = 0;
     let failedCount = 0;
+    const results: any[] = [];
+    
     for (const recipient of recipients) {
       // Don't send to the person who checked in
       if (recipient.user_id === userId) {
@@ -121,20 +123,43 @@ export async function notifyOnCheckIn(params: {
           orgId: project.org_id,
         });
         
+        const resultData = {
+          userId: recipient.user_id,
+          result: result,
+          success: !!result,
+          method: result?.method || 'unknown',
+          messageId: result?.messageId || null,
+        };
+        
+        results.push(resultData);
+        
         if (result) {
-          console.log(`✅ Notification sent successfully to ${recipient.user_id}`);
+          console.error(`✅ Notification sent successfully to ${recipient.user_id}`);
+          console.error(`   Method: ${resultData.method}, MessageID: ${resultData.messageId}`);
           sentCount++;
         } else {
-          console.log(`⚠️ Notification returned null for ${recipient.user_id} (may be disabled or filtered)`);
+          console.error(`⚠️ Notification returned null for ${recipient.user_id} (may be disabled or filtered)`);
           failedCount++;
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(`❌ Error sending notification to ${recipient.user_id}:`, error);
+        results.push({
+          userId: recipient.user_id,
+          error: error.message,
+          success: false,
+        });
         failedCount++;
       }
     }
 
     console.error(`✅ Check-in notification summary for ${userName} on ${project.name}: ${sentCount} sent, ${failedCount} failed/skipped`);
+    
+    return {
+      success: sentCount > 0,
+      sentCount,
+      failedCount,
+      results,
+    };
   } catch (error) {
     console.error('Error in notifyOnCheckIn:', error);
   }
