@@ -1,0 +1,36 @@
+name: Cron Jobs
+
+on:
+  schedule:
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Check-in Reminders
+        run: |
+          curl -X GET "${{ secrets.APP_URL }}/api/cron/checkin-reminders" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"
+      
+      - name: Trigger Check-out Reminders
+        run: |
+          curl -X GET "${{ secrets.APP_URL }}/api/cron/checkout-reminders" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"
+      
+      - name: Trigger Late Check-in Alerts
+        run: |
+          curl -X GET "${{ secrets.APP_URL }}/api/cron/late-checkin-alerts" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"
+      
+      - name: Trigger Forgotten Check-out Alerts
+        run: |
+          curl -X GET "${{ secrets.APP_URL }}/api/cron/forgotten-checkout-alerts" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"
+
