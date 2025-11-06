@@ -457,7 +457,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 						'För varje person beräknas:',
 						'  • Totala timmar = summa av alla sessioner för perioden',
 						'  • OB-timmar = timmar under natt/helg/helgdag',
-						'  • Rasttimmar = automatiska rastar (30 min efter 6h arbete)',
+						'  • Rasttimmar = automatiskt 1 timme per projekt per dag om arbetstid > 5 timmar',
 						'  • Nettotimmar = totala timmar - rasttimmar',
 						'  • Normaltid = min(nettotimmar, normal threshold × antal veckor)',
 						'  • Övertid = max(0, nettotimmar - normal threshold × antal veckor)',
@@ -859,7 +859,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			id: 'faq-39',
 			question: 'Hur fungerar automatiska rastar?',
 			answer:
-				'Om en närvarosession är längre än den konfigurerade tröskeln (standard: 6 timmar), läggs automatiskt en rast till (standard: 30 minuter). Denna rast dras av från totala arbetstimmar. Du kan konfigurera både tröskel och rastlängd under "Löneregler".',
+				'Systemet beräknar automatiskt rasttimmar baserat på arbetstid per projekt per dag. Om arbetstiden är mer än 5 timmar i ett projekt under en dag, dras automatiskt 1 timme av för rast. Denna rast dras av från totala arbetstimmar innan normaltid och övertid beräknas.',
 			roles: ['admin', 'foreman'],
 		},
 	];

@@ -128,7 +128,7 @@ function calculateOBHours(
 }
 
 /**
- * Calculate break hours for a session
+ * Calculate break hours for a session (legacy - kept for backward compatibility)
  */
 function calculateBreakHours(
 	sessionHours: number,
@@ -139,6 +139,48 @@ function calculateBreakHours(
 		return rules.auto_break_duration / 60; // Convert minutes to hours
 	}
 	return 0;
+}
+
+/**
+ * Calculate break hours per project per day
+ * Rule: If work time is more than 5 hours in a project per day, discount 1 hour for breaks
+ * 
+ * @param entries Array of entries with project_id, check_in_ts, check_out_ts
+ * @returns Total break hours for all project-day combinations
+ */
+function calculateBreakHoursPerProjectPerDay(
+	entries: Array<{ project_id: string; check_in_ts: string; check_out_ts: string | null }>
+): number {
+	// Group entries by person-project-day
+	const projectDayMap = new Map<string, number>(); // key: "projectId|date", value: total hours
+	
+	entries.forEach((entry) => {
+		if (!entry.check_out_ts) {
+			return; // Skip incomplete entries
+		}
+		
+		const checkIn = new Date(entry.check_in_ts);
+		const checkOut = new Date(entry.check_out_ts);
+		const dateKey = checkIn.toISOString().split('T')[0]; // YYYY-MM-DD
+		const projectDayKey = `${entry.project_id}|${dateKey}`;
+		
+		const sessionHours = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
+		
+		if (sessionHours > 0) {
+			const currentHours = projectDayMap.get(projectDayKey) || 0;
+			projectDayMap.set(projectDayKey, currentHours + sessionHours);
+		}
+	});
+	
+	// Calculate breaks: 1 hour per project per day if > 5 hours
+	let totalBreakHours = 0;
+	projectDayMap.forEach((totalHours) => {
+		if (totalHours > 5) {
+			totalBreakHours += 1; // 1 hour break per project per day
+		}
+	});
+	
+	return totalBreakHours;
 }
 
 /**
@@ -275,6 +317,7 @@ export async function refreshPayrollBasis(
 					personSessionsMap.set(personId, []);
 				}
 				personSessionsMap.get(personId)!.push({
+					project_id: entry.project_id,
 					check_in_ts: entry.start_at,
 					check_out_ts: entry.stop_at,
 				});
@@ -288,6 +331,7 @@ export async function refreshPayrollBasis(
 				personSessionsMap.set(personId, []);
 			}
 			personSessionsMap.get(personId)!.push({
+				project_id: session.project_id,
 				check_in_ts: session.check_in_ts,
 				check_out_ts: session.check_out_ts,
 			});
@@ -335,22 +379,25 @@ export async function refreshPayrollBasis(
 	const totalNormalHoursThreshold = rules.normal_hours_threshold * weeksInPeriod;
 	
 	for (const [personId, sessions] of personSessionsMap.entries()) {
+		// Filter sessions within the selected period
+		const periodSessions = sessions.filter((session: any) => {
+			const checkIn = new Date(session.check_in_ts);
+			return checkIn >= periodStartDate && checkIn <= periodEndDate;
+		});
+		
+		// Calculate break hours per project per day (new rule: 1 hour if > 5 hours per project per day)
+		const totalBreakHours = calculateBreakHoursPerProjectPerDay(periodSessions);
+		
 		// Calculate totals for entire period
 		let totalHours = 0;
 		let totalOBHours = 0;
-		let totalBreakHours = 0;
 		
-		sessions.forEach((session: any) => {
+		periodSessions.forEach((session: any) => {
 			const checkIn = new Date(session.check_in_ts);
 			const checkOut = session.check_out_ts ? new Date(session.check_out_ts) : null;
 			
 			if (!checkOut) {
 				// Skip incomplete sessions/entries
-				return;
-			}
-			
-			// Only include sessions within the selected period
-			if (checkIn < periodStartDate || checkIn > periodEndDate) {
 				return;
 			}
 			
@@ -360,7 +407,6 @@ export async function refreshPayrollBasis(
 			if (sessionHours > 0) {
 				totalHours += sessionHours;
 				totalOBHours += calculateOBHours(checkIn, checkOut, rules.ob_rates);
-				totalBreakHours += calculateBreakHours(sessionHours, rules);
 			}
 		});
 		
