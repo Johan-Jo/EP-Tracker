@@ -2,6 +2,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { TimeSlider } from '@/components/core/time-slider';
 import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -119,26 +120,49 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
   };
 
   // EPIC 26: Optimistic check-out - INSTANT UI, background sync!
-  const handleCheckOut = async () => {
+  const handleCheckOut = async (customStopAt?: string, customStartAt?: string) => {
     if (!optimisticTimeEntry) return;
 
     const entryIdToStop = optimisticTimeEntry.id;
     const previousEntry = optimisticTimeEntry;
     
+    // Check if we're using a temporary ID - if so, wait a bit for check-in to complete
+    // or show an error if checkout happens too quickly
+    if (entryIdToStop.startsWith('temp-')) {
+      console.error('Cannot checkout: Entry still being created. Please wait a moment.');
+      // Rollback - keep timer running
+      setOptimisticTimeEntry(previousEntry);
+      // Show user-friendly error toast
+      toast.error('Vänta ett ögonblick medan tiden registreras, försök sedan igen.', {
+        duration: 4000,
+      });
+      return;
+    }
+    
     // ⚡ INSTANT UI update! Timer disappears immediately!
     setOptimisticTimeEntry(null);
+
+    // Prepare update body - include both start_at and stop_at if custom times provided
+    const updateBody: { stop_at: string; start_at?: string } = {
+      stop_at: customStopAt || new Date().toISOString(),
+    };
+    
+    // Include start_at only if it was edited
+    if (customStartAt) {
+      updateBody.start_at = customStartAt;
+    }
 
     // 🔄 Background sync - user doesn't wait for this!
     fetch(`/api/time/entries/${entryIdToStop}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        stop_at: new Date().toISOString(),
-      }),
+      body: JSON.stringify(updateBody),
     })
-      .then((response) => {
+      .then(async (response) => {
         if (!response.ok) {
-          throw new Error('Failed to stop time entry');
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('Failed to stop time entry:', errorData);
+          throw new Error(errorData.error || 'Failed to stop time entry');
         }
         // Success - timer already stopped in UI, no action needed
         // Invalidate time entries queries so time page shows updated entry
@@ -150,6 +174,10 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
         console.error('Error stopping time:', error);
         // Rollback optimistic update on error
         setOptimisticTimeEntry(previousEntry);
+        // Show error toast to user
+        toast.error('Kunde inte checka ut. Försök igen.', {
+          duration: 4000,
+        });
       });
   };
 

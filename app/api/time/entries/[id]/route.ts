@@ -64,19 +64,24 @@ export async function PATCH(
 
 		// EPIC 26: Update time entry without JOINs for maximum speed
 		// Client already has project/phase data, just return updated entry
+		// Only include fields that are actually provided in the update
+		const updateFields: Record<string, any> = {
+			updated_at: new Date().toISOString(),
+		};
+		
+		// Only add fields that are defined in the request
+		if (data.project_id !== undefined) updateFields.project_id = data.project_id;
+		if (data.phase_id !== undefined) updateFields.phase_id = data.phase_id;
+		if (data.work_order_id !== undefined) updateFields.work_order_id = data.work_order_id;
+		if (data.task_label !== undefined) updateFields.task_label = data.task_label;
+		if (data.start_at !== undefined) updateFields.start_at = data.start_at;
+		if (data.stop_at !== undefined) updateFields.stop_at = data.stop_at;
+		if (data.notes !== undefined) updateFields.notes = data.notes;
+		if (data.status !== undefined) updateFields.status = data.status;
+		
 		const { data: entry, error: updateError } = await supabase
 			.from('time_entries')
-			.update({
-				project_id: data.project_id,
-				phase_id: data.phase_id,
-				work_order_id: data.work_order_id,
-				task_label: data.task_label,
-				start_at: data.start_at,
-				stop_at: data.stop_at,
-				notes: data.notes,
-				status: data.status,
-				updated_at: new Date().toISOString(),
-			})
+			.update(updateFields)
 			.eq('id', id)
 			.select('*')
 			.single();
