@@ -5,24 +5,6 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["arn1"],
-  "crons": [
-    {
-      "path": "/api/cron/checkin-reminders",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/checkout-reminders",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/late-checkin-alerts",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/forgotten-checkout-alerts",
-      "schedule": "*/15 * * * *"
-    }
-  ],
   "functions": {
     "app/dashboard/**/*.{ts,tsx}": {
       "maxDuration": 10,
