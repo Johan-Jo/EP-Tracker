@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     // Get all projects with check-in reminders enabled
     const { data: projects, error: projectsError } = await adminClient
       .from('projects')
-      .select('id, name, alert_settings')
+      .select('id, name, org_id, alert_settings')
       .not('alert_settings', 'is', null);
 
     if (projectsError) {
