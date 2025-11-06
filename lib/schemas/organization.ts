@@ -25,8 +25,14 @@ export const membershipSchema = z.object({
 	role: membershipRoleEnum,
 	hourly_rate_sek: z
 		.number()
-		.min(0, 'Timtaxa måste vara positiv')
-		.max(999999, 'Timtaxa är för hög')
+		.min(0, 'Faktureringsvärde måste vara positivt')
+		.max(999999, 'Faktureringsvärde är för högt')
+		.optional()
+		.nullable(),
+	salary_per_hour_sek: z
+		.number()
+		.min(0, 'Lön måste vara positiv')
+		.max(999999, 'Lön är för hög')
 		.optional()
 		.nullable(),
 	is_active: z.boolean().default(true),
@@ -37,7 +43,8 @@ export type Membership = {
 	org_id: string;
 	user_id: string;
 	role: string;
-	hourly_rate_sek: number | null;
+	hourly_rate_sek: number | null; // Faktureringsvärde (vad som faktureras kunden)
+	salary_per_hour_sek: number | null; // Faktisk lön per timme för anställd
 	is_active: boolean;
 	created_at: string;
 	updated_at: string;

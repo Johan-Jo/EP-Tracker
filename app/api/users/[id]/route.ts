@@ -4,7 +4,8 @@ import { z } from 'zod';
 
 const updateUserSchema = z.object({
 	role: z.enum(['admin', 'foreman', 'worker', 'finance']).optional(),
-	hourly_rate_sek: z.number().positive().nullable().optional(),
+	hourly_rate_sek: z.number().min(0).nullable().optional(), // Faktureringsvärde
+	salary_per_hour_sek: z.number().min(0).nullable().optional(), // Faktisk lön
 	full_name: z.string().min(1).optional(),
 	phone: z.string().optional().nullable(),
 });
@@ -46,7 +47,10 @@ export async function PATCH(
 
 		// Parse and validate request body
 		const body = await request.json();
+		console.log('[API] Received update request:', { userId, body });
+		
 		const validatedData = updateUserSchema.parse(body);
+		console.log('[API] Validated data:', validatedData);
 
 		// Get the target user's membership in this org
 		const { data: targetMembership, error: targetError } = await supabase
@@ -83,7 +87,7 @@ export async function PATCH(
 			}
 		}
 
-		// Update membership (role and hourly_rate_sek)
+		// Update membership (role, hourly_rate_sek, and salary_per_hour_sek)
 		const membershipUpdates: any = {
 			updated_at: new Date().toISOString(),
 		};
@@ -96,6 +100,10 @@ export async function PATCH(
 			membershipUpdates.hourly_rate_sek = validatedData.hourly_rate_sek;
 		}
 
+		if (validatedData.salary_per_hour_sek !== undefined) {
+			membershipUpdates.salary_per_hour_sek = validatedData.salary_per_hour_sek;
+		}
+
 		const { error: membershipUpdateError } = await supabase
 			.from('memberships')
 			.update(membershipUpdates)
@@ -103,7 +111,11 @@ export async function PATCH(
 
 		if (membershipUpdateError) {
 			console.error('Error updating membership:', membershipUpdateError);
-			return NextResponse.json({ error: 'Failed to update user membership' }, { status: 500 });
+			console.error('Membership updates attempted:', membershipUpdates);
+			return NextResponse.json({ 
+				error: 'Failed to update user membership',
+				details: membershipUpdateError.message 
+			}, { status: 500 });
 		}
 
 		// Update profile (full_name and phone)

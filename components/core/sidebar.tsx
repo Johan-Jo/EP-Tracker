@@ -18,6 +18,7 @@ import {
 	Plus,
 	Calendar,
 	QrCode,
+	DollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -99,6 +100,12 @@ const navItems: NavItem[] = [
 		href: '/dashboard/approvals',
 		icon: CheckSquare,
 		roles: ['admin', 'foreman'], // Only admin and foreman can approve
+	},
+	{
+		label: 'Löneunderlag',
+		href: '/dashboard/payroll',
+		icon: DollarSign,
+		roles: ['admin', 'foreman'], // Only admin and foreman can view payroll
 	},
 	{
 		label: 'Hjälp',

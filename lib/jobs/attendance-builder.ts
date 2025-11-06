@@ -17,16 +17,28 @@ interface TimeEventLike {
   device?: string | null;
 }
 
-export async function buildAttendanceSessions(params: BuildParams = {}) {
+export interface BuildAttendanceParams extends BuildParams {
+  orgId?: string; // Optional org_id filter
+}
+
+export async function buildAttendanceSessions(params: BuildAttendanceParams = {}) {
   const supabase = await createClient();
 
   // Fetch candidate time entries as events (M2: use time_entries as source)
+  // IMPORTANT: Only use approved time_entries for payroll basis calculation
   let query = supabase
     .from('time_entries')
     .select('id, org_id, user_id, project_id, start_at, stop_at')
+    .eq('status', 'approved') // Only approved entries should be used for payroll
+    .not('stop_at', 'is', null) // Only completed entries
     .order('start_at', { ascending: true })
     .limit(5000);
 
+  // Filter by org_id if provided
+  if (params.orgId) {
+    query = query.eq('org_id', params.orgId);
+  }
+  
   if (params.projectId) query = query.eq('project_id', params.projectId);
   if (params.startDate) query = query.gte('start_at', params.startDate);
   if (params.endDate) query = query.lte('start_at', params.endDate);

@@ -21,6 +21,7 @@ export async function GET() {
 				user_id,
 				role,
 				hourly_rate_sek,
+				salary_per_hour_sek,
 				profiles:user_id (
 					id,
 					full_name,

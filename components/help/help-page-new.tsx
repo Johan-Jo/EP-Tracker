@@ -20,6 +20,7 @@ import {
 	Users,
 	Bell,
 	Mic,
+	DollarSign,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -345,6 +346,129 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			],
 		},
 		{
+			title: 'Löneunderlag',
+			description: 'Beräkna, låsa och exportera löneunderlag per person och period',
+			icon: DollarSign,
+			roles: ['admin', 'foreman'],
+			sections: [
+				{
+					title: 'Steg 1: Tidsregistrering',
+					items: [
+						'Användare registrerar tid via dashboard-slider eller manuellt',
+						'Tidsregistreringar skapas med status "Utkast" (draft)',
+						'Varje registrering innehåller: användare, projekt, starttid, stopptid',
+					],
+				},
+				{
+					title: 'Steg 2: Godkänna tidsregistreringar',
+					items: [
+						'Gå till "Godkännanden"-sidan (/dashboard/approvals)',
+						'Välj vecka att granska',
+						'Filtrera på "Väntar" för att se ogodkända registreringar',
+						'Markera de poster du vill godkänna',
+						'Klicka "Godkänn"',
+						'Status ändras till "Godkänd" (approved) - detta krävs för löneunderlag',
+					],
+				},
+				{
+					title: 'Steg 3: Konfigurera löneregler och faktisk lön',
+					items: [
+						'Gå till "Löneunderlag"-sidan',
+						'Klicka på tab "Löneregler"',
+						'Ange normal arbetstid per vecka (standard: 40h)',
+						'Sätt övertidsmultiplikator (standard: 1.5)',
+						'Konfigurera automatisk rast (efter hur många timmar och längd)',
+						'Ange OB-rates för natt, helg och helgdag',
+						'Klicka "Spara regler"',
+						'Viktigt: Ange "Faktisk lön" (timlön) för varje anställd',
+						'Faktisk lön används för att beräkna bruttolön i löneunderlag',
+						'Faktureringsvärde är separat och redigeras i Användarinställningar',
+					],
+				},
+				{
+					title: 'Steg 4: Beräkna löneunderlag',
+					items: [
+						'Gå till tab "Löneunderlag"',
+						'Välj period (start- och slutdatum)',
+						'Klicka "Beräkna om"',
+						'Systemet hämtar närvaroregistreringar eller godkända tidsregistreringar',
+						'Om inga närvaroregistreringar finns, byggs de automatiskt från tidsregistreringar',
+						'Data grupperas per person och vecka',
+						'Beräknar normaltid, övertid, OB-timmar och rastar',
+						'Resultat sparas och visas per person och vecka',
+					],
+				},
+				{
+					title: 'Steg 5: Granska resultat',
+					items: [
+						'Löneunderlag visas på sidan',
+						'För varje person och period visas:',
+						'  • Normaltid (t.ex. 40h)',
+						'  • Övertid (t.ex. 5.5h)',
+						'  • OB-timmar (natt/helg/helgdag)',
+						'  • Rasttimmar',
+						'  • Totalt antal timmar',
+						'  • Bruttolön (beräknad från faktisk lön och timmar)',
+						'Bruttolön beräknas automatiskt om faktisk lön är angiven',
+						'Om bruttolön visas som "Ej angiven": kontrollera att faktisk lön är satt i "Löneregler"',
+						'Kontrollera att beräkningarna stämmer',
+					],
+				},
+				{
+					title: 'Steg 6: Låsa löneunderlag (valfritt)',
+					items: [
+						'Granska beräknade löneunderlag',
+						'Klicka "Lås" på de entries du vill låsa',
+						'Låsta entries kan inte ändras tills de låses upp',
+						'Använd för att säkerställa data är korrekt innan export',
+						'Du kan alltid upplåsa om du behöver göra ändringar',
+					],
+				},
+				{
+					title: 'Steg 7: Exportera löneunderlag',
+					items: [
+						'Klicka "Exportera CSV" i sidhuvudet',
+						'Välj om du vill exportera alla eller endast låsta entries',
+						'CSV-filen innehåller: person, e-post, period, timmar (normaltid, övertid, OB, rast, totalt), bruttolön',
+						'Filformatet är anpassat för Excel (semicolon-separator)',
+						'Öppna i Excel eller importera i lönesystem',
+					],
+				},
+				{
+					title: 'Hur beräkningen fungerar',
+					items: [
+						'Systemet grupperar timmar per person för hela valda perioden',
+						'För varje person beräknas:',
+						'  • Totala timmar = summa av alla sessioner för perioden',
+						'  • OB-timmar = timmar under natt/helg/helgdag',
+						'  • Rasttimmar = automatiska rastar (30 min efter 6h arbete)',
+						'  • Nettotimmar = totala timmar - rasttimmar',
+						'  • Normaltid = min(nettotimmar, normal threshold × antal veckor)',
+						'  • Övertid = max(0, nettotimmar - normal threshold × antal veckor)',
+						'Bruttolön beräknas enligt:',
+						'  • (Normaltid × Faktisk lön)',
+						'  • + (Övertid × Faktisk lön × Övertidsmultiplikator)',
+						'  • + (OB-timmar × Faktisk lön × OB-tillägg)',
+						'Resultat sparas per person per period i payroll_basis tabellen',
+						'Faktisk lön hämtas från memberships.salary_per_hour_sek',
+					],
+				},
+				{
+					title: 'Felhantering',
+					items: [
+						'Om inga löneunderlag hittas:',
+						'  • Kontrollera att tidsregistreringar är godkända',
+						'  • Använd debug-knappen för att se vad som finns i databasen',
+						'  • Kontrollera att perioden är korrekt',
+						'Om "Failed to refresh payroll basis":',
+						'  • Kontrollera konsolen för detaljerade felmeddelanden',
+						'  • Kontrollera att du är Admin eller Foreman',
+						'  • Kontrollera att löneregler är konfigurerade',
+					],
+				},
+			],
+		},
+		{
 			title: 'Offline-läge',
 			description: 'Arbeta utan internetanslutning',
 			icon: Info,
@@ -426,6 +550,14 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			description: 'Granska och godkänn tidrapporter, exportera till lön',
 			icon: CheckSquare,
 			page: '/dashboard/approvals',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'payroll',
+			title: 'Löneunderlag',
+			description: 'Beräkna, låsa och exportera löneunderlag per person och period',
+			icon: DollarSign,
+			page: '/dashboard/payroll',
 			roles: ['admin', 'foreman'],
 		},
 	];
@@ -615,6 +747,97 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			answer:
 				'Rösttranskription och översättning kräver internetanslutning eftersom den använder AI i molnet. Du kan dock spela in ljudet offline, och det kommer automatiskt att bearbetas när du får internetanslutning igen.',
 			roles: ['admin', 'foreman', 'worker', 'finance'],
+		},
+		{
+			id: 'faq-27',
+			question: 'Hur beräknas löneunderlag?',
+			answer:
+				'Löneunderlag beräknas automatiskt från närvaroregistreringar (attendance_session) eller godkända tidsregistreringar (time_entries med status="approved"). Processen: 1) Systemet hämtar alla närvaroregistreringar/tidsregistreringar för perioden, 2) Grupperar dem per person och vecka, 3) Beräknar totala timmar, OB-timmar (natt/helg/helgdag), rasttimmar, 4) Delar upp i normaltid (max 40h/vecka) och övertid, 5) Sparar resultat i payroll_basis tabellen. Du kan konfigurera regler under "Löneregler" på löneunderlag-sidan.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-28',
+			question: 'Varför visas inga löneunderlag när jag klickar på "Beräkna om"?',
+			answer:
+				'Detta kan bero på flera saker: 1) Inga godkända tidsregistreringar för perioden - gå till "Godkännanden"-sidan och godkänn tidsregistreringar först, 2) Felaktig period - kontrollera att start- och slutdatum är korrekt, 3) Inga närvaroregistreringar och inga godkända tidsregistreringar - använd debug-knappen för att se vad som finns i databasen. Systemet försöker automatiskt bygga närvaroregistreringar från tidsregistreringar om inga finns.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-29',
+			question: 'Behöver jag godkänna tidsregistreringar innan löneunderlag beräknas?',
+			answer:
+				'Ja! Löneunderlag-beräkningen använder endast tidsregistreringar med status "approved" (godkänd). Tidsregistreringar med status "draft" (utkast) eller "submitted" (väntar) räknas inte med. Gå till "Godkännanden"-sidan (/dashboard/approvals) och godkänn tidsregistreringar först innan du beräknar löneunderlag.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-30',
+			question: 'Vad är skillnaden mellan närvaroregistreringar och tidsregistreringar?',
+			answer:
+				'Närvaroregistreringar (attendance_session) skapas från QR-scanning på worksites eller automatiskt från tidsregistreringar. Tidsregistreringar (time_entries) är manuella eller timer-baserade registreringar. Systemet försöker först använda närvaroregistreringar för löneunderlag, men om inga finns används godkända tidsregistreringar som fallback. Båda ger samma resultat när de beräknas till löneunderlag.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-31',
+			question: 'Varför ska jag låsa löneunderlag?',
+			answer:
+				'Att låsa löneunderlag förhindrar att beräkningar ändras efter att du har granskat dem. Detta säkerställer att exporterade data matchar vad du har godkänt. När löneunderlag är låst kan du säkert exportera till CSV för import i lönesystemet. Du kan alltid upplåsa om du behöver göra ändringar.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-32',
+			question: 'Vad händer om jag ändrar löneregler efter att ha låst löneunderlag?',
+			answer:
+				'Om du ändrar löneregler efter att löneunderlag är låst, påverkar ändringarna inte de låsta entries. Du måste först upplåsa entries, sedan klicka "Beräkna om" för att applicera nya regler. Efter ny beräkning kan du låsa igen.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-33',
+			question: 'Hur ofta bör jag beräkna löneunderlag?',
+			answer:
+				'Vi rekommenderar att beräkna löneunderlag minst en gång per vecka, eller när du har gjort ändringar i närvaroregistreringar. Du kan också beräkna om när du har ändrat löneregler eller när du behöver uppdatera en specifik period.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-34',
+			question: 'Kan jag exportera löneunderlag för en specifik person?',
+			answer:
+				'Ja, du kan filtrera löneunderlag-sidan efter person genom att använda periodväljaren och sedan exportera. CSV-exporten innehåller alla entries för den valda perioden, så du kan också filtrera i Excel efter person om du vill.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-35',
+			question: 'Hur beräknas bruttolön i löneunderlag?',
+			answer:
+				'Bruttolön beräknas automatiskt från faktisk lön (salary_per_hour_sek) och arbetade timmar. Formeln är: (Normaltid × Faktisk lön) + (Övertid × Faktisk lön × Övertidsmultiplikator) + (OB-timmar × Faktisk lön × OB-tillägg). För att bruttolön ska beräknas måste du först ange "Faktisk lön" för varje anställd under "Löneregler"-fliken. Om bruttolön visas som "Ej angiven" betyder det att faktisk lön inte är angiven för den personen.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-36',
+			question: 'Vad är skillnaden mellan faktisk lön och faktureringsvärde?',
+			answer:
+				'Faktisk lön (salary_per_hour_sek) är den lön som den anställde faktiskt får och används för beräkning av bruttolön i löneunderlag. Faktureringsvärde (hourly_rate_sek) är det belopp som faktureras kunden och redigeras i Användarinställningar. Dessa två värden kan vara olika - faktureringsvärde inkluderar vanligtvis overhead, vinstmarginal etc.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-37',
+			question: 'Varför visas bruttolön som "Ej angiven"?',
+			answer:
+				'Bruttolön visas som "Ej angiven" om: 1) Faktisk lön inte är angiven för personen - gå till "Löneregler"-fliken och ange faktisk lön, 2) Löneunderlag inte har omberäknats efter att faktisk lön angavs - klicka "Beräkna om" för att uppdatera, 3) Det inte finns några timmar att beräkna från. Om du precis har lagt till faktisk lön måste du klicka "Beräkna om" för att beräkna bruttolön för befintliga poster.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-38',
+			question: 'Vad är OB-timmar?',
+			answer:
+				'OB (Overtid/Belöningspengar) är extra ersättning för arbete under särskilda tider: natt (22:00-06:00), helg (lördag/söndag) och helgdagar. Varje OB-timme multipliceras med en konfigurerad rate (standard: natt 1.2x, helg 1.5x, helgdag 2.0x). Dessa timmar räknas separat från övertidstimmar.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-39',
+			question: 'Hur fungerar automatiska rastar?',
+			answer:
+				'Om en närvarosession är längre än den konfigurerade tröskeln (standard: 6 timmar), läggs automatiskt en rast till (standard: 30 minuter). Denna rast dras av från totala arbetstimmar. Du kan konfigurera både tröskel och rastlängd under "Löneregler".',
+			roles: ['admin', 'foreman'],
 		},
 	];
 

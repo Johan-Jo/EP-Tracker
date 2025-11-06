@@ -17,6 +17,7 @@ import {
 	Calendar,
 	QrCode,
 	X,
+	DollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -93,6 +94,12 @@ const menuItems: NavItem[] = [
 		label: 'Godkänn',
 		href: '/dashboard/approvals',
 		icon: CheckSquare,
+		roles: ['admin', 'foreman'],
+	},
+	{
+		label: 'Löneunderlag',
+		href: '/dashboard/payroll',
+		icon: DollarSign,
 		roles: ['admin', 'foreman'],
 	},
 	{

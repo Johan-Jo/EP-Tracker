@@ -49,31 +49,76 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 	const [lockYear, setLockYear] = useState(selectedYear);
 	const supabase = createClient();
 
-	// Fetch time entries for approval
+	// Helper function to calculate ISO week dates (correct calculation)
+	const getWeekDates = (week: number, year: number) => {
+		// ISO week calculation: Week 1 is the week containing Jan 4
+		const jan4 = new Date(year, 0, 4);
+		const firstMonday = new Date(jan4);
+		firstMonday.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7));
+		
+		const weekStart = new Date(firstMonday);
+		weekStart.setDate(firstMonday.getDate() + (week - 1) * 7);
+		
+		const weekEnd = new Date(weekStart);
+		weekEnd.setDate(weekStart.getDate() + 6);
+		
+		return {
+			start: weekStart.toISOString().split('T')[0],
+			end: weekEnd.toISOString().split('T')[0] + 'T23:59:59',
+		};
+	};
+
+	const weekDates = getWeekDates(selectedWeek, selectedYear);
+
+	// Check if selected week is the current week
+	const isCurrentWeek = (() => {
+		const now = new Date();
+		const currentWeekDates = getWeekDates(
+			(() => {
+				// Get ISO week number for current date
+				const target = new Date(now.valueOf());
+				const dayNr = (now.getDay() + 6) % 7;
+				target.setDate(target.getDate() - dayNr + 3);
+				const jan4 = new Date(target.getFullYear(), 0, 4);
+				const dayDiff = (target.getTime() - jan4.getTime()) / 86400000;
+				return 1 + Math.ceil(dayDiff / 7);
+			})(),
+			now.getFullYear()
+		);
+		// Compare week start dates (ignore time)
+		return weekDates.start === currentWeekDates.start;
+	})();
+
+	// Fetch ALL time entries for the period (for summary cards, regardless of statusFilter)
+	const { data: allTimeEntries = [] } = useQuery({
+		queryKey: ['time-approvals-all', orgId, selectedWeek, selectedYear],
+		queryFn: async () => {
+			const { start, end } = weekDates;
+
+			const { data, error } = await supabase
+				.from('time_entries')
+				.select(
+					`
+					*,
+					user:profiles!time_entries_user_id_fkey(full_name),
+					project:projects(name),
+					phase:phases(name)
+				`
+				)
+				.eq('org_id', orgId)
+				.gte('start_at', start)
+				.lte('start_at', end);
+
+			if (error) throw error;
+			return data || [];
+		},
+	});
+
+	// Fetch filtered time entries for approval (based on statusFilter)
 	const { data: timeEntries = [] } = useQuery({
 		queryKey: ['time-approvals', orgId, selectedWeek, selectedYear, statusFilter],
 		queryFn: async () => {
-			// Calculate week start and end dates
-			const getWeekDates = (week: number, year: number) => {
-				const firstDayOfYear = new Date(year, 0, 1);
-				const daysOffset = (week - 1) * 7;
-				const weekStart = new Date(firstDayOfYear.getTime() + daysOffset * 24 * 60 * 60 * 1000);
-				
-				// Adjust to Monday (ISO week)
-				const day = weekStart.getDay();
-				const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1);
-				const monday = new Date(weekStart.setDate(diff));
-				
-				const sunday = new Date(monday);
-				sunday.setDate(monday.getDate() + 6);
-				
-				return {
-					start: monday.toISOString().split('T')[0],
-					end: sunday.toISOString().split('T')[0] + 'T23:59:59',
-				};
-			};
-
-			const { start, end } = getWeekDates(selectedWeek, selectedYear);
+			const { start, end } = weekDates;
 
 			let query = supabase
 				.from('time_entries')
@@ -100,31 +145,87 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 		},
 	});
 
-	// Fetch materials, expenses, and ÄTA for approval
+	// Fetch ALL cost entries for the period (for summary cards, regardless of statusFilter)
+	const { data: allCostEntries = [] } = useQuery({
+		queryKey: ['cost-approvals-all', orgId, selectedWeek, selectedYear],
+		queryFn: async () => {
+			const { start, end } = weekDates;
+
+			const [materialsRes, expensesRes, ataRes] = await Promise.all([
+				supabase
+					.from('materials')
+					.select(
+						`
+						*,
+						user:profiles!materials_user_id_fkey(full_name),
+						project:projects(name)
+					`
+					)
+					.eq('org_id', orgId)
+					.gte('created_at', start)
+					.lte('created_at', end),
+				supabase
+					.from('expenses')
+					.select(
+						`
+						*,
+						user:profiles!expenses_user_id_fkey(full_name),
+						project:projects(name)
+					`
+					)
+					.eq('org_id', orgId)
+					.gte('created_at', start)
+					.lte('created_at', end),
+				supabase
+					.from('atas')
+					.select(
+						`
+						*,
+						user:profiles!atas_user_id_fkey(full_name),
+						project:projects(name)
+					`
+					)
+					.eq('org_id', orgId)
+					.gte('created_at', start)
+					.lte('created_at', end),
+			]);
+
+			if (materialsRes.error) throw materialsRes.error;
+			if (expensesRes.error) throw expensesRes.error;
+			if (ataRes.error) throw ataRes.error;
+
+			const materials = (materialsRes.data || []).map((m: any) => ({
+				...m,
+				type: 'Material',
+				description: m.description,
+				amount: m.total_sek,
+				user: m.user,
+			}));
+
+			const expenses = (expensesRes.data || []).map((e: any) => ({
+				...e,
+				type: 'Utlägg',
+				description: e.description,
+				amount: e.amount_sek,
+			}));
+
+			const ata = (ataRes.data || []).map((a: any) => ({
+				...a,
+				type: 'ÄTA',
+				description: a.title,
+				amount: a.total_sek,
+				user: a.user,
+			}));
+
+			return [...materials, ...expenses, ...ata];
+		},
+	});
+
+	// Fetch filtered cost entries for approval (based on statusFilter)
 	const { data: costEntries = [] } = useQuery({
 		queryKey: ['cost-approvals', orgId, selectedWeek, selectedYear, statusFilter],
 		queryFn: async () => {
-			// Calculate week start and end dates
-			const getWeekDates = (week: number, year: number) => {
-				const firstDayOfYear = new Date(year, 0, 1);
-				const daysOffset = (week - 1) * 7;
-				const weekStart = new Date(firstDayOfYear.getTime() + daysOffset * 24 * 60 * 60 * 1000);
-				
-				// Adjust to Monday (ISO week)
-				const day = weekStart.getDay();
-				const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1);
-				const monday = new Date(weekStart.setDate(diff));
-				
-				const sunday = new Date(monday);
-				sunday.setDate(monday.getDate() + 6);
-				
-				return {
-					start: monday.toISOString().split('T')[0],
-					end: sunday.toISOString().split('T')[0] + 'T23:59:59',
-				};
-			};
-
-			const { start, end } = getWeekDates(selectedWeek, selectedYear);
+			const { start, end } = weekDates;
 
 			// Build queries based on filter
 			let materialsQuery = supabase
@@ -231,12 +332,44 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 		},
 	});
 
-	const pendingTimeReports = timeEntries.filter((e: any) => e.status === 'draft').length;
-	const pendingCosts = costEntries.filter((e: any) => e.status === 'draft').length;
+	// Calculate pending items (draft + submitted = waiting for approval)
+	// Use allTimeEntries and allCostEntries for summary cards (not filtered by statusFilter)
+	const pendingTimeReports = (allTimeEntries || []).filter((e: any) => 
+		e.status === 'draft' || e.status === 'submitted'
+	).length;
+	const pendingCosts = (allCostEntries || []).filter((e: any) => 
+		e.status === 'draft' || e.status === 'submitted'
+	).length;
 	const uniqueUsers = new Set([
-		...timeEntries.filter((e: any) => e.status === 'draft').map((e: any) => e.user?.full_name),
-		...costEntries.filter((e: any) => e.status === 'draft').map((e: any) => e.user?.full_name),
+		...(allTimeEntries || []).filter((e: any) => 
+			e.status === 'draft' || e.status === 'submitted'
+		).map((e: any) => e.user?.full_name).filter(Boolean),
+		...(allCostEntries || []).filter((e: any) => 
+			e.status === 'draft' || e.status === 'submitted'
+		).map((e: any) => e.user?.full_name).filter(Boolean),
 	]).size;
+
+	// Debug logging
+	if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+		console.log('[Approvals Debug]', {
+			weekDates,
+			selectedWeek,
+			selectedYear,
+			allTimeEntriesCount: allTimeEntries?.length || 0,
+			allCostEntriesCount: allCostEntries?.length || 0,
+			pendingTimeReports,
+			pendingCosts,
+			uniqueUsers,
+			timeEntriesStatuses: (allTimeEntries || []).reduce((acc: any, e: any) => {
+				acc[e.status] = (acc[e.status] || 0) + 1;
+				return acc;
+			}, {}),
+			costEntriesStatuses: (allCostEntries || []).reduce((acc: any, e: any) => {
+				acc[e.status] = (acc[e.status] || 0) + 1;
+				return acc;
+			}, {}),
+		});
+	}
 
 	const getWeekDateRange = (week: number, year: number) => {
 		const startDate = new Date(year, 0, 1 + (week - 1) * 7);
@@ -549,7 +682,9 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 									Vecka {selectedWeek}, {selectedYear}
 								</div>
 								<div className='text-xs text-muted-foreground'>{getWeekDateRange(selectedWeek, selectedYear)}</div>
-								<div className='text-xs text-orange-600 font-medium mt-1'>Denna vecka</div>
+								{isCurrentWeek && (
+									<div className='text-xs text-orange-600 font-medium mt-1'>Denna vecka</div>
+								)}
 							</div>
 
 							<Button
@@ -570,7 +705,9 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 									Vecka {selectedWeek}, {selectedYear}
 								</div>
 								<div className='text-xs text-muted-foreground'>{getWeekDateRange(selectedWeek, selectedYear)}</div>
-								<div className='text-xs text-orange-600 font-medium mt-1'>Denna vecka</div>
+								{isCurrentWeek && (
+									<div className='text-xs text-orange-600 font-medium mt-1'>Denna vecka</div>
+								)}
 							</div>
 							
 							<div className='flex items-center gap-2'>
