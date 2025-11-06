@@ -17,8 +17,14 @@ interface AlertSettings {
   notify_on_checkout: boolean;
   checkin_reminder_enabled: boolean;
   checkin_reminder_minutes_before: number;
+  checkin_reminder_for_workers?: boolean;
+  checkin_reminder_for_foreman?: boolean;
+  checkin_reminder_for_admin?: boolean;
   checkout_reminder_enabled: boolean;
   checkout_reminder_minutes_before: number;
+  checkout_reminder_for_workers?: boolean;
+  checkout_reminder_for_foreman?: boolean;
+  checkout_reminder_for_admin?: boolean;
   late_checkin_enabled: boolean;
   late_checkin_minutes_after: number;
   forgotten_checkout_enabled: boolean;
@@ -37,10 +43,16 @@ const defaultAlertSettings: AlertSettings = {
   work_day_end: '16:00',
   notify_on_checkin: true,
   notify_on_checkout: true,
-  checkin_reminder_enabled: false,
+  checkin_reminder_enabled: true,
   checkin_reminder_minutes_before: 15,
-  checkout_reminder_enabled: false,
+  checkin_reminder_for_workers: true,
+  checkin_reminder_for_foreman: true,
+  checkin_reminder_for_admin: true,
+  checkout_reminder_enabled: true,
   checkout_reminder_minutes_before: 15,
+  checkout_reminder_for_workers: true,
+  checkout_reminder_for_foreman: true,
+  checkout_reminder_for_admin: true,
   late_checkin_enabled: false,
   late_checkin_minutes_after: 15,
   forgotten_checkout_enabled: false,
@@ -175,11 +187,11 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
           </div>
         </div>
 
-        {/* Reminders to Workers */}
+        {/* Reminders */}
         <div>
           <h4 className="font-medium mb-3 text-sm text-gray-700 flex items-center gap-2">
             <Bell className="w-4 h-4" />
-            Påminnelser (till Arbetare)
+            Påminnelser
           </h4>
           <div className="space-y-2">
             <div className="flex items-center justify-between p-3 bg-white border rounded-lg">
@@ -191,6 +203,15 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
                     <p className="text-xs text-gray-500">
                       {settings.checkin_reminder_minutes_before} minuter före {settings.work_day_start}
                       {' ('}kl {calculateTime(settings.work_day_start, -settings.checkin_reminder_minutes_before)}{')'}
+                      {settings.checkin_reminder_enabled && (
+                        <span className="ml-2">
+                          • Till: {[
+                            settings.checkin_reminder_for_workers !== false && 'Arbetare',
+                            settings.checkin_reminder_for_foreman !== false && 'Arbetsledare',
+                            settings.checkin_reminder_for_admin !== false && 'Admin'
+                          ].filter(Boolean).join(', ')}
+                        </span>
+                      )}
                     </p>
                   )}
                 </div>
@@ -209,6 +230,15 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
                     <p className="text-xs text-gray-500">
                       {settings.checkout_reminder_minutes_before} minuter före {settings.work_day_end}
                       {' ('}kl {calculateTime(settings.work_day_end, -settings.checkout_reminder_minutes_before)}{')'}
+                      {settings.checkout_reminder_enabled && (
+                        <span className="ml-2">
+                          • Till: {[
+                            settings.checkout_reminder_for_workers !== false && 'Arbetare',
+                            settings.checkout_reminder_for_foreman !== false && 'Arbetsledare',
+                            settings.checkout_reminder_for_admin !== false && 'Admin'
+                          ].filter(Boolean).join(', ')}
+                        </span>
+                      )}
                     </p>
                   )}
                 </div>

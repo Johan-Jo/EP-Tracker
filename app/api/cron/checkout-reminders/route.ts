@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     // Get all projects with check-out reminders enabled
     const { data: projects, error: projectsError } = await adminClient
       .from('projects')
-      .select('id, name, alert_settings')
+      .select('id, name, org_id, alert_settings')
       .not('alert_settings', 'is', null);
 
     if (projectsError) {
@@ -86,20 +86,60 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      // Fetch profiles for all checked-in users
-      const userIds = activeEntries.map(e => e.user_id);
+      // Get all memberships for this organization to check roles
+      const { data: memberships } = await adminClient
+        .from('memberships')
+        .select('user_id, role')
+        .eq('org_id', project.org_id)
+        .eq('is_active', true);
+
+      const membershipsMap = new Map(
+        (memberships || []).map(m => [m.user_id, m.role])
+      );
+
+      // Get assignments to identify workers
+      const { data: assignments } = await adminClient
+        .from('assignments')
+        .select('user_id')
+        .eq('project_id', project.id)
+        .eq('status', 'active')
+        .is('end_date', null);
+
+      const workerIds = new Set((assignments || []).map(a => a.user_id));
+
+      // Filter checked-in users based on role settings
+      const usersToRemind = activeEntries
+        .map(e => e.user_id)
+        .filter(userId => {
+          const role = membershipsMap.get(userId);
+          const isWorker = workerIds.has(userId);
+          
+          if (isWorker) {
+            return alertSettings.checkout_reminder_for_workers !== false;
+          } else if (role === 'foreman') {
+            return alertSettings.checkout_reminder_for_foreman !== false;
+          } else if (role === 'admin') {
+            return alertSettings.checkout_reminder_for_admin !== false;
+          }
+          return false;
+        });
+
+      if (usersToRemind.length === 0) {
+        continue;
+      }
+
+      // Fetch profiles for checked-in users
       const { data: profiles } = await adminClient
         .from('profiles')
         .select('id, full_name, email')
-        .in('id', userIds);
+        .in('id', usersToRemind);
 
       const profilesMap = new Map(
         (profiles || []).map(p => [p.id, p])
       );
 
       // Send reminders to checked-in users
-      for (const entry of activeEntries) {
-        const userId = entry.user_id;
+      for (const userId of usersToRemind) {
         const profile = profilesMap.get(userId);
         const userName = profile?.full_name || profile?.email || 'Användare';
 

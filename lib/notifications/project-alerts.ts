@@ -14,8 +14,14 @@ interface ProjectAlertSettings {
   notify_on_checkout: boolean;
   checkin_reminder_enabled: boolean;
   checkin_reminder_minutes_before: number;
+  checkin_reminder_for_workers?: boolean;
+  checkin_reminder_for_foreman?: boolean;
+  checkin_reminder_for_admin?: boolean;
   checkout_reminder_enabled: boolean;
   checkout_reminder_minutes_before: number;
+  checkout_reminder_for_workers?: boolean;
+  checkout_reminder_for_foreman?: boolean;
+  checkout_reminder_for_admin?: boolean;
   late_checkin_enabled: boolean;
   late_checkin_minutes_after: number;
   forgotten_checkout_enabled: boolean;

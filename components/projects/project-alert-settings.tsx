@@ -14,8 +14,14 @@ interface AlertSettings {
   notify_on_checkout: boolean;
   checkin_reminder_enabled: boolean;
   checkin_reminder_minutes_before: number;
+  checkin_reminder_for_workers: boolean;
+  checkin_reminder_for_foreman: boolean;
+  checkin_reminder_for_admin: boolean;
   checkout_reminder_enabled: boolean;
   checkout_reminder_minutes_before: number;
+  checkout_reminder_for_workers: boolean;
+  checkout_reminder_for_foreman: boolean;
+  checkout_reminder_for_admin: boolean;
   late_checkin_enabled: boolean;
   late_checkin_minutes_after: number;
   forgotten_checkout_enabled: boolean;
@@ -115,19 +121,20 @@ export function ProjectAlertSettings({ settings, onChange, disabled = false }: P
           </div>
         </div>
 
-        {/* Reminders to Workers */}
+        {/* Reminders to Workers, Foreman, and Admin */}
         <div>
           <h4 className="font-medium mb-3 flex items-center gap-2">
             <Bell className="w-4 h-4" />
-            Påminnelser (till Arbetare)
+            Påminnelser
           </h4>
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Check-in Reminders */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label htmlFor="checkin_reminder_enabled">Check-in påminnelse</Label>
                   <p className="text-sm text-muted-foreground">
-                    Påminn arbetare att checka in före starttid
+                    Påminn användare att checka in före starttid
                   </p>
                 </div>
                 <Switch
@@ -138,34 +145,75 @@ export function ProjectAlertSettings({ settings, onChange, disabled = false }: P
                 />
               </div>
               {settings.checkin_reminder_enabled && (
-                <div className="ml-6 space-y-2">
-                  <Label htmlFor="checkin_reminder_minutes_before">Minuter före starttid</Label>
-                  <Input
-                    id="checkin_reminder_minutes_before"
-                    type="number"
-                    min="1"
-                    max="120"
-                    value={settings.checkin_reminder_minutes_before}
-                    onChange={(e) =>
-                      updateSetting('checkin_reminder_minutes_before', parseInt(e.target.value) || 15)
-                    }
-                    disabled={disabled}
-                    className="w-32"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Ex: 15 minuter före {settings.work_day_start} = påminnelse kl{' '}
-                    {calculateTime(settings.work_day_start, -settings.checkin_reminder_minutes_before)}
-                  </p>
+                <div className="ml-6 space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="checkin_reminder_minutes_before">Minuter före starttid</Label>
+                    <Input
+                      id="checkin_reminder_minutes_before"
+                      type="number"
+                      min="1"
+                      max="120"
+                      value={settings.checkin_reminder_minutes_before}
+                      onChange={(e) =>
+                        updateSetting('checkin_reminder_minutes_before', parseInt(e.target.value) || 15)
+                      }
+                      disabled={disabled}
+                      className="w-32"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Ex: 15 minuter före {settings.work_day_start} = påminnelse kl{' '}
+                      {calculateTime(settings.work_day_start, -settings.checkin_reminder_minutes_before)}
+                    </p>
+                  </div>
+                  <div className="space-y-2 pt-2 border-t">
+                    <Label className="text-sm font-medium">Skicka till:</Label>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="checkin_reminder_for_workers" className="text-sm font-normal">
+                          Arbetare
+                        </Label>
+                        <Switch
+                          id="checkin_reminder_for_workers"
+                          checked={settings.checkin_reminder_for_workers ?? true}
+                          onCheckedChange={(checked) => updateSetting('checkin_reminder_for_workers', checked)}
+                          disabled={disabled}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="checkin_reminder_for_foreman" className="text-sm font-normal">
+                          Arbetsledare
+                        </Label>
+                        <Switch
+                          id="checkin_reminder_for_foreman"
+                          checked={settings.checkin_reminder_for_foreman ?? true}
+                          onCheckedChange={(checked) => updateSetting('checkin_reminder_for_foreman', checked)}
+                          disabled={disabled}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="checkin_reminder_for_admin" className="text-sm font-normal">
+                          Admin
+                        </Label>
+                        <Switch
+                          id="checkin_reminder_for_admin"
+                          checked={settings.checkin_reminder_for_admin ?? true}
+                          onCheckedChange={(checked) => updateSetting('checkin_reminder_for_admin', checked)}
+                          disabled={disabled}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
 
+            {/* Check-out Reminders */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label htmlFor="checkout_reminder_enabled">Check-out påminnelse</Label>
                   <p className="text-sm text-muted-foreground">
-                    Påminn arbetare att checka ut före sluttid
+                    Påminn användare att checka ut före sluttid
                   </p>
                 </div>
                 <Switch
@@ -176,24 +224,64 @@ export function ProjectAlertSettings({ settings, onChange, disabled = false }: P
                 />
               </div>
               {settings.checkout_reminder_enabled && (
-                <div className="ml-6 space-y-2">
-                  <Label htmlFor="checkout_reminder_minutes_before">Minuter före sluttid</Label>
-                  <Input
-                    id="checkout_reminder_minutes_before"
-                    type="number"
-                    min="1"
-                    max="120"
-                    value={settings.checkout_reminder_minutes_before}
-                    onChange={(e) =>
-                      updateSetting('checkout_reminder_minutes_before', parseInt(e.target.value) || 15)
-                    }
-                    disabled={disabled}
-                    className="w-32"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Ex: 15 minuter före {settings.work_day_end} = påminnelse kl{' '}
-                    {calculateTime(settings.work_day_end, -settings.checkout_reminder_minutes_before)}
-                  </p>
+                <div className="ml-6 space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="checkout_reminder_minutes_before">Minuter före sluttid</Label>
+                    <Input
+                      id="checkout_reminder_minutes_before"
+                      type="number"
+                      min="1"
+                      max="120"
+                      value={settings.checkout_reminder_minutes_before}
+                      onChange={(e) =>
+                        updateSetting('checkout_reminder_minutes_before', parseInt(e.target.value) || 15)
+                      }
+                      disabled={disabled}
+                      className="w-32"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Ex: 15 minuter före {settings.work_day_end} = påminnelse kl{' '}
+                      {calculateTime(settings.work_day_end, -settings.checkout_reminder_minutes_before)}
+                    </p>
+                  </div>
+                  <div className="space-y-2 pt-2 border-t">
+                    <Label className="text-sm font-medium">Skicka till:</Label>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="checkout_reminder_for_workers" className="text-sm font-normal">
+                          Arbetare
+                        </Label>
+                        <Switch
+                          id="checkout_reminder_for_workers"
+                          checked={settings.checkout_reminder_for_workers ?? true}
+                          onCheckedChange={(checked) => updateSetting('checkout_reminder_for_workers', checked)}
+                          disabled={disabled}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="checkout_reminder_for_foreman" className="text-sm font-normal">
+                          Arbetsledare
+                        </Label>
+                        <Switch
+                          id="checkout_reminder_for_foreman"
+                          checked={settings.checkout_reminder_for_foreman ?? true}
+                          onCheckedChange={(checked) => updateSetting('checkout_reminder_for_foreman', checked)}
+                          disabled={disabled}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="checkout_reminder_for_admin" className="text-sm font-normal">
+                          Admin
+                        </Label>
+                        <Switch
+                          id="checkout_reminder_for_admin"
+                          checked={settings.checkout_reminder_for_admin ?? true}
+                          onCheckedChange={(checked) => updateSetting('checkout_reminder_for_admin', checked)}
+                          disabled={disabled}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

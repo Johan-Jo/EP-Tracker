@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
         continue; // Not time for this reminder yet
       }
 
-      // Get all users assigned to this project
+      // Get all users assigned to this project (workers)
       const { data: assignments, error: assignmentsError } = await adminClient
         .from('assignments')
         .select('user_id')
@@ -77,16 +77,54 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      if (!assignments || assignments.length === 0) {
+      // Get all memberships for this organization (foreman and admin)
+      const { data: memberships, error: membershipsError } = await adminClient
+        .from('memberships')
+        .select('user_id, role')
+        .eq('org_id', project.org_id)
+        .eq('is_active', true)
+        .in('role', ['foreman', 'admin']);
+
+      if (membershipsError) {
+        console.error(`Error fetching memberships for project ${project.id}:`, membershipsError);
+      }
+
+      // Build list of users who should receive reminders based on role settings
+      const usersToRemind: string[] = [];
+
+      // Add workers if enabled
+      if (alertSettings.checkin_reminder_for_workers !== false && assignments) {
+        usersToRemind.push(...assignments.map(a => a.user_id));
+      }
+
+      // Add foreman if enabled
+      if (alertSettings.checkin_reminder_for_foreman !== false && memberships) {
+        const foremanIds = memberships
+          .filter(m => m.role === 'foreman')
+          .map(m => m.user_id);
+        usersToRemind.push(...foremanIds);
+      }
+
+      // Add admin if enabled
+      if (alertSettings.checkin_reminder_for_admin !== false && memberships) {
+        const adminIds = memberships
+          .filter(m => m.role === 'admin')
+          .map(m => m.user_id);
+        usersToRemind.push(...adminIds);
+      }
+
+      // Remove duplicates
+      const uniqueUserIds = Array.from(new Set(usersToRemind));
+
+      if (uniqueUserIds.length === 0) {
         continue;
       }
 
-      // Fetch profiles for all assigned users
-      const userIds = assignments.map(a => a.user_id);
+      // Fetch profiles for all users
       const { data: profiles } = await adminClient
         .from('profiles')
         .select('id, full_name, email')
-        .in('id', userIds);
+        .in('id', uniqueUserIds);
 
       const profilesMap = new Map(
         (profiles || []).map(p => [p.id, p])
@@ -109,9 +147,7 @@ export async function GET(request: NextRequest) {
       const checkedInUserIds = new Set((checkedInUsers || []).map(e => e.user_id));
 
       // Send reminders to users who aren't checked in yet
-      for (const assignment of assignments) {
-        const userId = assignment.user_id;
-        
+      for (const userId of uniqueUserIds) {
         // Skip if already checked in
         if (checkedInUserIds.has(userId)) {
           continue;
