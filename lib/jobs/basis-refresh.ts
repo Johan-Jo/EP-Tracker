@@ -292,7 +292,7 @@ export async function refreshPayrollBasis(
 				check_out_ts: session.check_out_ts,
 			});
 		});
-		console.log(`[Payroll Basis Refresh] Using ${sessions.length} attendance sessions for payroll calculation (no approved time entries found)`);
+		console.log(`[Payroll Basis Refresh] Using ${sessions?.length || 0} attendance sessions for payroll calculation (no approved time entries found)`);
 	}
 	
 	// Fetch salary_per_hour_sek for all persons from memberships
