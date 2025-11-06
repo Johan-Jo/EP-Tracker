@@ -89,7 +89,8 @@ export async function GET(request: NextRequest) {
       // Send reminders to checked-in users
       for (const entry of activeEntries) {
         const userId = entry.user_id;
-        const userName = (entry.profiles as any)?.full_name || (entry.profiles as any)?.email || 'Användare';
+        const profile = profilesMap.get(userId);
+        const userName = profile?.full_name || profile?.email || 'Användare';
 
         try {
           await sendCheckOutReminder({

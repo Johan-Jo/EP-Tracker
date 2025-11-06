@@ -106,7 +106,8 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        const userName = (assignment.profiles as any)?.full_name || (assignment.profiles as any)?.email || 'Användare';
+        const profile = profilesMap.get(userId);
+        const userName = profile?.full_name || profile?.email || 'Användare';
 
         try {
           await sendCheckInReminder({
