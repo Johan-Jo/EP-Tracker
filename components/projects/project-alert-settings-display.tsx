@@ -64,7 +64,23 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
   const settings = alertSettings || defaultAlertSettings;
   const router = useRouter();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editSettings, setEditSettings] = useState<AlertSettings>(settings);
+  
+  // Normalize settings to ensure all required fields are present
+  const normalizeSettings = (settings: AlertSettings): AlertSettings => {
+    return {
+      ...defaultAlertSettings,
+      ...settings,
+      // Ensure all boolean fields are defined
+      checkin_reminder_for_workers: settings.checkin_reminder_for_workers ?? defaultAlertSettings.checkin_reminder_for_workers,
+      checkin_reminder_for_foreman: settings.checkin_reminder_for_foreman ?? defaultAlertSettings.checkin_reminder_for_foreman,
+      checkin_reminder_for_admin: settings.checkin_reminder_for_admin ?? defaultAlertSettings.checkin_reminder_for_admin,
+      checkout_reminder_for_workers: settings.checkout_reminder_for_workers ?? defaultAlertSettings.checkout_reminder_for_workers,
+      checkout_reminder_for_foreman: settings.checkout_reminder_for_foreman ?? defaultAlertSettings.checkout_reminder_for_foreman,
+      checkout_reminder_for_admin: settings.checkout_reminder_for_admin ?? defaultAlertSettings.checkout_reminder_for_admin,
+    };
+  };
+  
+  const [editSettings, setEditSettings] = useState<AlertSettings>(normalizeSettings(settings));
   const [isSaving, setIsSaving] = useState(false);
 
   // Helper to calculate time with offset
@@ -85,7 +101,7 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
   );
 
   const handleOpenEdit = () => {
-    setEditSettings(settings);
+    setEditSettings(normalizeSettings(settings));
     setIsEditDialogOpen(true);
   };
 
