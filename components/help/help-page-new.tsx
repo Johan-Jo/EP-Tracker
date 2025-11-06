@@ -57,6 +57,22 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 					],
 				},
 				{
+					title: 'Checkout-bekräftelse och tidredigering',
+					items: [
+						'När du checkar ut från översiktssidan visas en bekräftelsedialog',
+						'Dialogrutan visar: check-in tid, check-out tid och total arbetad tid',
+						'Följande fråga visas: "Stämmer tiden för din arbetsdag?"',
+						'Klicka "Ja, spara" för att acceptera tiden och gå vidare',
+						'Klicka "Nej, editera" för att justera tiderna',
+						'I redigeringsläge: datum visas som read-only (kan inte ändras)',
+						'Använd +/- knapparna för att justera timmar och minuter',
+						'Du kan också skriva tiden direkt i fälten',
+						'Total arbetad tid uppdateras automatiskt när du ändrar tider',
+						'Efter redigering: klicka "Spara och checka ut"',
+						'Efter checkout: du kan välja att skapa en dagbokspost',
+					],
+				},
+				{
 					title: 'Manuell registrering',
 					items: [
 						'Gå till "Tid"-sidan',
@@ -577,7 +593,14 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			id: 'faq-2',
 			question: 'Vad händer om jag glömmer stoppa timern?',
 			answer:
-				'Timern fortsätter räkna tills du stoppar den manuellt. Du kan redigera start- och stopptid efter att du behöver korrigera tiden.',
+				'Timern fortsätter räkna tills du stoppar den manuellt. När du checkar ut visas en bekräftelsedialog där du kan se och justera både check-in och check-out tid innan du sparar.',
+			roles: ['admin', 'foreman', 'worker', 'finance'],
+		},
+		{
+			id: 'faq-2b',
+			question: 'Hur redigerar jag tiden när jag checkar ut?',
+			answer:
+				'När du checkar ut från översiktssidan visas en dialog med din arbetstid. Klicka "Nej, editera" för att justera tiderna. Du kan använda +/- knapparna för att ändra timmar och minuter, eller skriva tiden direkt. Datumet kan inte ändras, endast tiden. Total arbetad tid uppdateras automatiskt. Perfekt för att rätta till om du glömde checka in/ut eller om tiden behöver justeras.',
 			roles: ['admin', 'foreman', 'worker', 'finance'],
 		},
 		{
