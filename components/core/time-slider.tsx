@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { TimeInput } from '@/components/ui/time-input';
 
 interface TimeSliderProps {
   isActive: boolean;
@@ -42,6 +43,9 @@ export function TimeSlider({
   const [isEditingTime, setIsEditingTime] = useState(false);
   const [editedStartAt, setEditedStartAt] = useState<string>('');
   const [editedStopAt, setEditedStopAt] = useState<string>('');
+  const [editedStartTime, setEditedStartTime] = useState<string>('');
+  const [editedStopTime, setEditedStopTime] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
   const [timeError, setTimeError] = useState<string>('');
   const sliderRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -118,18 +122,29 @@ export function TimeSlider({
           const startDateTime = new Date(startTime);
           const stopDateTime = new Date();
           
-          // Format for datetime-local input (YYYY-MM-DDTHH:mm)
-          const formatDateTimeLocal = (date: Date) => {
+          // Format date (YYYY-MM-DD) - read only
+          const formatDate = (date: Date) => {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            return `${year}-${month}-${day}T${hours}:${minutes}`;
+            return `${year}-${month}-${day}`;
           };
           
-          setEditedStartAt(formatDateTimeLocal(startDateTime));
-          setEditedStopAt(formatDateTimeLocal(stopDateTime));
+          // Format time (HH:mm) - editable
+          const formatTimeOnly = (date: Date) => {
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${hours}:${minutes}`;
+          };
+          
+          // Store full datetime strings for API calls (kept for backward compatibility)
+          setEditedStartAt(startDateTime.toISOString());
+          setEditedStopAt(stopDateTime.toISOString());
+          
+          // Store date and time separately for UI
+          setStartDate(formatDate(startDateTime));
+          setEditedStartTime(formatTimeOnly(startDateTime));
+          setEditedStopTime(formatTimeOnly(stopDateTime));
         }
         setShowCheckOutConfirmDialog(true);
         setPosition(0); // Reset slider position
@@ -165,15 +180,31 @@ export function TimeSlider({
   const handleConfirmCheckOut = async () => {
     // Validate times if editing
     if (isEditingTime) {
-      if (!editedStartAt || !editedStopAt) {
+      if (!editedStartTime || !editedStopTime) {
         setTimeError('Både check-in och check-out måste anges');
         return;
       }
       
-      const start = new Date(editedStartAt);
-      const stop = new Date(editedStopAt);
+      // Combine date with edited times
+      const [startHours, startMinutes] = editedStartTime.split(':').map(Number);
+      const [stopHours, stopMinutes] = editedStopTime.split(':').map(Number);
       
-      if (stop <= start) {
+      const startDateObj = new Date(startDate + 'T' + editedStartTime + ':00');
+      const stopDateObj = new Date(startDate + 'T' + editedStopTime + ':00');
+      
+      // If stop time is earlier than start time, assume it's next day
+      if (stopDateObj <= startDateObj) {
+        const nextDay = new Date(startDateObj);
+        nextDay.setDate(nextDay.getDate() + 1);
+        nextDay.setHours(stopHours, stopMinutes, 0, 0);
+        stopDateObj.setTime(nextDay.getTime());
+      }
+      
+      // Store the combined datetime strings
+      setEditedStartAt(startDateObj.toISOString());
+      setEditedStopAt(stopDateObj.toISOString());
+      
+      if (stopDateObj <= startDateObj && !(stopDateObj.getDate() > startDateObj.getDate())) {
         setTimeError('Check-out måste vara efter check-in');
         return;
       }
@@ -186,12 +217,28 @@ export function TimeSlider({
       const currentProjectId = projectId;
       
       // Use edited times if in edit mode, otherwise use defaults
-      const stopAt = isEditingTime && editedStopAt 
-        ? new Date(editedStopAt).toISOString()
-        : undefined;
-      const startAt = isEditingTime && editedStartAt 
-        ? new Date(editedStartAt).toISOString()
-        : undefined;
+      let stopAt: string | undefined;
+      let startAt: string | undefined;
+      
+      if (isEditingTime) {
+        // Reconstruct datetime strings from date + time
+        const [startHours, startMinutes] = editedStartTime.split(':').map(Number);
+        const [stopHours, stopMinutes] = editedStopTime.split(':').map(Number);
+        
+        const startDateObj = new Date(startDate + 'T' + editedStartTime + ':00');
+        let stopDateObj = new Date(startDate + 'T' + editedStopTime + ':00');
+        
+        // If stop time is earlier than start time, assume it's next day
+        if (stopDateObj <= startDateObj) {
+          const nextDay = new Date(startDateObj);
+          nextDay.setDate(nextDay.getDate() + 1);
+          nextDay.setHours(stopHours, stopMinutes, 0, 0);
+          stopDateObj = nextDay;
+        }
+        
+        stopAt = stopDateObj.toISOString();
+        startAt = startDateObj.toISOString();
+      }
       
       await onCheckOut(stopAt, startAt);
       
@@ -219,6 +266,9 @@ export function TimeSlider({
     setShowCheckOutConfirmDialog(false);
     setIsEditingTime(false);
     setTimeError('');
+    setEditedStartTime('');
+    setEditedStopTime('');
+    setStartDate('');
     setPosition(0);
   };
 
@@ -230,14 +280,32 @@ export function TimeSlider({
   const calculateTotalTime = () => {
     if (!startTime) return '00:00:00';
     
-    const start = isEditingTime && editedStartAt 
-      ? new Date(editedStartAt)
-      : new Date(startTime);
-    const stop = isEditingTime && editedStopAt
-      ? new Date(editedStopAt)
-      : new Date();
+    let start: Date;
+    let stop: Date;
+    
+    if (isEditingTime && editedStartTime && editedStopTime) {
+      // Use edited times combined with the date
+      const [startHours, startMinutes] = editedStartTime.split(':').map(Number);
+      const [stopHours, stopMinutes] = editedStopTime.split(':').map(Number);
+      
+      start = new Date(startDate + 'T' + editedStartTime + ':00');
+      stop = new Date(startDate + 'T' + editedStopTime + ':00');
+      
+      // If stop time is earlier than start time, assume it's next day
+      if (stop <= start) {
+        const nextDay = new Date(start);
+        nextDay.setDate(nextDay.getDate() + 1);
+        nextDay.setHours(stopHours, stopMinutes, 0, 0);
+        stop = nextDay;
+      }
+    } else {
+      start = new Date(startTime);
+      stop = new Date();
+    }
     
     const diff = Math.floor((stop.getTime() - start.getTime()) / 1000);
+    if (diff < 0) return '00:00:00';
+    
     const hours = Math.floor(diff / 3600);
     const minutes = Math.floor((diff % 3600) / 60);
     const seconds = diff % 60;
@@ -397,33 +465,37 @@ export function TimeSlider({
               </div>
             </div>
           ) : (
-            // Edit view - show editable time inputs
+            // Edit view - show editable time inputs (date is read-only)
             <div className="flex flex-col gap-4 mt-4">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="start_at">Check in</Label>
+                  <Label htmlFor="start_date">Datum</Label>
                   <Input
-                    id="start_at"
-                    type="datetime-local"
-                    value={editedStartAt}
-                    onChange={(e) => {
-                      setEditedStartAt(e.target.value);
-                      setTimeError(''); // Clear error when user edits
-                    }}
-                    className="w-full"
+                    id="start_date"
+                    type="date"
+                    value={startDate}
+                    disabled
+                    className="w-full bg-gray-50 cursor-not-allowed"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="stop_at">Check out</Label>
-                  <Input
-                    id="stop_at"
-                    type="datetime-local"
-                    value={editedStopAt}
-                    onChange={(e) => {
-                      setEditedStopAt(e.target.value);
+                <div className="grid grid-cols-2 gap-4">
+                  <TimeInput
+                    value={editedStartTime}
+                    onChange={(value) => {
+                      setEditedStartTime(value);
                       setTimeError(''); // Clear error when user edits
                     }}
-                    className="w-full"
+                    label="Check in"
+                    disabled={isLoading}
+                  />
+                  <TimeInput
+                    value={editedStopTime}
+                    onChange={(value) => {
+                      setEditedStopTime(value);
+                      setTimeError(''); // Clear error when user edits
+                    }}
+                    label="Check out"
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="flex justify-between items-center py-2 bg-orange-50 rounded-lg px-3">
@@ -454,7 +526,7 @@ export function TimeSlider({
                 <Button
                   onClick={handleConfirmCheckOut}
                   className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
-                  disabled={isLoading || !editedStartAt || !editedStopAt || !!timeError}
+                  disabled={isLoading || !editedStartTime || !editedStopTime || !!timeError}
                 >
                   {isLoading ? (
                     <>
