@@ -35,9 +35,16 @@ För bästa upplevelse på mobil:
 
 ### För Alla Användare
 
+#### Incheckningspåminnelse
+- **Vad:** Påminner dig om att checka in när arbetsdagen närmar sig start
+- **När:** X minuter innan projektets arbetsdagsstart (standard: 15 min)
+- **Till:** Arbetare, Arbetsledare och Admin (kan konfigureras per roll)
+- **Exempel:** "Dags att checka in snart! Arbetsdagen startar kl. 07:00"
+
 #### Utcheckningspåminnelse
 - **Vad:** Påminner dig om att checka ut när arbetsdagen närmar sig slut
-- **När:** 15 minuter innan projektets arbetsdagslut
+- **När:** X minuter innan projektets arbetsdagslut (standard: 15 min)
+- **Till:** Arbetare, Arbetsledare och Admin (kan konfigureras per roll)
 - **Exempel:** "Glöm inte checka ut! Arbetsdagen slutar kl. 16:00"
 
 #### Godkännande bekräftat
@@ -111,8 +118,20 @@ Som admin eller arbetsledare kan du ställa in projektspecifika varningar:
 2. Välj **"Varningar"** i menyn
 3. Konfigurera:
    - **Arbetsdag:** Start- och sluttid (t.ex. 07:00-16:00)
-   - **Incheckningspåminnelse:** Hur många minuter innan arbetsdagstart (t.ex. 15 min)
-   - **Utcheckningspåminnelse:** Hur många minuter innan arbetsdagslut (t.ex. 15 min)
+   - **Incheckningspåminnelse:** 
+     - Aktivera/inaktivera påminnelser
+     - Hur många minuter innan arbetsdagstart (t.ex. 15 min)
+     - Välj vilka roller som ska få påminnelser:
+       - ✅ Arbetare (standard: ON)
+       - ✅ Arbetsledare (standard: ON)
+       - ✅ Admin (standard: ON)
+   - **Utcheckningspåminnelse:**
+     - Aktivera/inaktivera påminnelser
+     - Hur många minuter innan arbetsdagslut (t.ex. 15 min)
+     - Välj vilka roller som ska få påminnelser:
+       - ✅ Arbetare (standard: ON)
+       - ✅ Arbetsledare (standard: ON)
+       - ✅ Admin (standard: ON)
    - **Sen incheckning:** Hur många minuter efter start som räknas som sent (t.ex. 15 min)
    - **Glömd utcheckning:** Hur många minuter efter arbetsdagslut innan varning (t.ex. 30 min)
    - **Mottagare:** Vilka roller som får varningar (arbetsledare, admin)
@@ -123,10 +142,12 @@ Som admin eller arbetsledare kan du ställa in projektspecifika varningar:
 
 | Tid | Händelse | Notis |
 |-----|---------|-------|
-| 06:45 | - | Incheckningspåminnelse till arbetare: "Arbetet startar om 15 min" |
+| 06:45 | - | Incheckningspåminnelse till alla roller (standard): "Arbetet startar om 15 min" |
 | 07:20 | Arbetare checkar in | Varning till arbetsledare: "Johan checkade in 20 min sent" |
-| 15:45 | - | Utcheckningspåminnelse till arbetare: "Glöm inte checka ut om 15 min" |
+| 15:45 | - | Utcheckningspåminnelse till alla roller (standard): "Glöm inte checka ut om 15 min" |
 | 16:30 | Arbetare har inte checkat ut | Varning till arbetsledare: "Johan har inte checkat ut (30 min sen)" |
+
+**OBS:** Påminnelser skickas som standard till alla roller (Arbetare, Arbetsledare och Admin). Du kan deaktivera påminnelser för specifika roller i projektets alert-inställningar.
 
 ## Felsökning
 
@@ -243,7 +264,7 @@ För att ta emot notiser när appen är stängd:
 ### För Arbetare
 
 1. **Installera som hemskärmsapp** för pålitliga notiser
-2. **Aktivera utcheckningspåminnelser** för att inte glömma checka ut
+2. **Aktivera inchecknings- och utcheckningspåminnelser** för att inte glömma checka in/ut
 3. **Ställ in tysta timmar** för kvällar och helger
 4. **Kontrollera notishistoriken** om du misstänker missade notiser
 
@@ -251,15 +272,18 @@ För att ta emot notiser när appen är stängd:
 
 1. **Aktivera teamincheckning** för att se när arbetare börjar
 2. **Konfigurera projektvarningar** med rimliga tider (inte för känsligt)
-3. **Prenumerera på veckosammanfattning** för godkännanden
-4. **Använd tysta timmar** för att inte störas utanför arbetstid
+3. **Anpassa påminnelser per roll** - du kan välja att inte få påminnelser om du vill
+4. **Prenumerera på veckosammanfattning** för godkännanden
+5. **Använd tysta timmar** för att inte störas utanför arbetstid
 
 ### För Admins
 
 1. **Testa notiser själv först** innan du rullar ut till teamet
-2. **Utbilda användare** om hemskärmsappar (iOS)
-3. **Övervaka notishistorik** för att identifiera tekniska problem
-4. **Justera projektvarningar** baserat på feedback
+2. **Konfigurera projektvarningar** med rollbaserade inställningar
+3. **Anpassa påminnelser per roll** - standard är att alla får påminnelser, men du kan deaktivera för specifika roller
+4. **Utbilda användare** om hemskärmsappar (iOS)
+5. **Övervaka notishistorik** för att identifiera tekniska problem
+6. **Justera projektvarningar** baserat på feedback
 
 ## Support
 
@@ -272,7 +296,7 @@ Har du fortfarande problem?
 
 ---
 
-**Uppdaterad:** 2025-01-27  
-**Version:** 1.0  
+**Uppdaterad:** 2025-01-31  
+**Version:** 1.1  
 **EPIC:** 25 - Web Push Notifications
 
