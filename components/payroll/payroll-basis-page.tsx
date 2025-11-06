@@ -25,6 +25,7 @@ interface PayrollBasisEntry {
 	ob_hours: number;
 	break_hours: number;
 	total_hours: number;
+	gross_salary_sek: number | null;
 	locked: boolean;
 	locked_by: string | null;
 	locked_at: string | null;
