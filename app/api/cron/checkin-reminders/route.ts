@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       // Get all users assigned to this project
       const { data: assignments, error: assignmentsError } = await adminClient
         .from('assignments')
-        .select('user_id, profiles!inner(full_name, email)')
+        .select('user_id')
         .eq('project_id', project.id)
         .eq('status', 'active')
         .is('end_date', null);
@@ -80,6 +80,17 @@ export async function GET(request: NextRequest) {
       if (!assignments || assignments.length === 0) {
         continue;
       }
+
+      // Fetch profiles for all assigned users
+      const userIds = assignments.map(a => a.user_id);
+      const { data: profiles } = await adminClient
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', userIds);
+
+      const profilesMap = new Map(
+        (profiles || []).map(p => [p.id, p])
+      );
 
       // Check if users are already checked in today (don't remind if already checked in)
       const todayStart = new Date(now);

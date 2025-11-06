@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
 
       const { data: activeEntries, error: entriesError } = await adminClient
         .from('time_entries')
-        .select('user_id, profiles!inner(full_name, email)')
+        .select('user_id')
         .eq('project_id', project.id)
         .gte('start_at', todayStart.toISOString())
         .lte('start_at', todayEnd.toISOString())
@@ -85,6 +85,17 @@ export async function GET(request: NextRequest) {
       if (!activeEntries || activeEntries.length === 0) {
         continue;
       }
+
+      // Fetch profiles for all checked-in users
+      const userIds = activeEntries.map(e => e.user_id);
+      const { data: profiles } = await adminClient
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', userIds);
+
+      const profilesMap = new Map(
+        (profiles || []).map(p => [p.id, p])
+      );
 
       // Send reminders to checked-in users
       for (const entry of activeEntries) {
