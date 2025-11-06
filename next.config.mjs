@@ -34,15 +34,31 @@ const nextConfig = {
 	},
 	
 	// Disable webpack tracing to avoid EPERM errors on Windows
-	webpack: (config, { isServer }) => {
+	webpack: (config, { isServer, dev }) => {
 		config.infrastructureLogging = {
 			level: 'error',
 		};
+		
+		// Fix WebSocket HMR connection issues
+		if (dev && !isServer) {
+			config.devServer = {
+				...config.devServer,
+				client: {
+					webSocketURL: {
+						hostname: 'localhost',
+						pathname: '/_next/webpack-hmr',
+						protocol: 'ws',
+						port: 3000,
+					},
+				},
+			};
+		}
+		
 		return config;
 	},
 	
 	// Reduce server-side processing
-	serverExternalPackages: ['@supabase/supabase-js'],
+	serverExternalPackages: ['@supabase/supabase-js', 'pdfkit'],
 	
 	// Enable modularizeImports for better tree-shaking
 	modularizeImports: {

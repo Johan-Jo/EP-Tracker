@@ -21,7 +21,8 @@ const inviteUserSchema = z.object({
 	email: z.string().email({ message: 'Ogiltig e-postadress' }),
 	full_name: z.string().min(1, { message: 'Namn krävs' }).optional().nullable(),
 	role: membershipRoleEnum,
-	hourly_rate_sek: z.number().min(0, { message: 'Timtaxa måste vara positiv' }).optional().nullable(),
+	hourly_rate_sek: z.number().min(0, { message: 'Timtaxa debitering måste vara positiv' }).optional().nullable(),
+	salary_per_hour_sek: z.number().min(0, { message: 'Timlön måste vara positiv' }).optional().nullable(),
 });
 
 type InviteUserFormValues = z.infer<typeof inviteUserSchema>;
@@ -49,6 +50,7 @@ export function InviteUserForm({ orgId }: InviteUserFormProps) {
 			full_name: '',
 			role: 'worker',
 			hourly_rate_sek: null,
+			salary_per_hour_sek: null,
 		},
 	});
 
@@ -59,10 +61,11 @@ export function InviteUserForm({ orgId }: InviteUserFormProps) {
 		setError(null);
 
 		try {
-			// Convert empty string to null for hourly_rate_sek
+			// Convert empty values to null
 			const payload = {
 				...values,
 				hourly_rate_sek: values.hourly_rate_sek === null || values.hourly_rate_sek === undefined ? null : values.hourly_rate_sek,
+				salary_per_hour_sek: values.salary_per_hour_sek === null || values.salary_per_hour_sek === undefined ? null : values.salary_per_hour_sek,
 			};
 
 			const response = await fetch('/api/users/invite', {
@@ -155,14 +158,14 @@ export function InviteUserForm({ orgId }: InviteUserFormProps) {
 
 			<div className="space-y-2">
 				<label htmlFor="hourly_rate_sek" className="text-sm font-medium">
-					Timtaxa (SEK)
+					Timtaxa debitering (SEK)
 				</label>
 				<Input
 					id="hourly_rate_sek"
 					type="number"
 					step="0.01"
-					placeholder="t.ex. 250"
-					{...form.register('hourly_rate_sek')}
+					placeholder="t.ex. 399"
+					{...form.register('hourly_rate_sek', { valueAsNumber: true })}
 				/>
 				{form.formState.errors.hourly_rate_sek && (
 					<p className="text-sm text-red-600">
@@ -170,7 +173,28 @@ export function InviteUserForm({ orgId }: InviteUserFormProps) {
 					</p>
 				)}
 				<p className="text-sm text-muted-foreground">
-					Valfritt. Används för löneexport och rapporter.
+					Valfritt. Det belopp som faktureras kunden per timme.
+				</p>
+			</div>
+
+			<div className="space-y-2">
+				<label htmlFor="salary_per_hour_sek" className="text-sm font-medium">
+					Timlön (SEK)
+				</label>
+				<Input
+					id="salary_per_hour_sek"
+					type="number"
+					step="0.01"
+					placeholder="t.ex. 250"
+					{...form.register('salary_per_hour_sek', { valueAsNumber: true })}
+				/>
+				{form.formState.errors.salary_per_hour_sek && (
+					<p className="text-sm text-red-600">
+						{form.formState.errors.salary_per_hour_sek.message}
+					</p>
+				)}
+				<p className="text-sm text-muted-foreground">
+					Valfritt. Faktisk lön per timme som används för beräkning av bruttolön.
 				</p>
 			</div>
 

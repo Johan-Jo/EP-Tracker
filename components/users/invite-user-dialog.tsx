@@ -16,7 +16,8 @@ const inviteUserSchema = z.object({
 	email: z.string().email({ message: 'Ogiltig e-postadress' }),
 	full_name: z.string().min(1, { message: 'Namn krävs' }),
 	role: z.enum(['admin', 'foreman', 'worker', 'finance'], { message: 'Roll måste väljas' }),
-	hourly_rate_sek: z.string().optional(),
+	hourly_rate_sek: z.string().optional(), // Timtaxa debitering
+	salary_per_hour_sek: z.string().optional(), // Timlön
 });
 
 type InviteUserFormData = z.infer<typeof inviteUserSchema>;
@@ -62,6 +63,11 @@ export function InviteUserDialog({ open: controlledOpen, onOpenChange, onSuccess
 			// Convert hourly rate to number if provided
 			if (data.hourly_rate_sek && data.hourly_rate_sek.trim() !== '') {
 				payload.hourly_rate_sek = parseFloat(data.hourly_rate_sek);
+			}
+
+			// Convert salary per hour to number if provided
+			if (data.salary_per_hour_sek && data.salary_per_hour_sek.trim() !== '') {
+				payload.salary_per_hour_sek = parseFloat(data.salary_per_hour_sek);
 			}
 
 			const response = await fetch('/api/users/invite', {
@@ -162,13 +168,13 @@ export function InviteUserDialog({ open: controlledOpen, onOpenChange, onSuccess
 						</div>
 
 						<div className="grid gap-2">
-							<Label htmlFor="hourly_rate_sek">Timtaxa (SEK)</Label>
+							<Label htmlFor="hourly_rate_sek">Timtaxa debitering (SEK)</Label>
 							<Input
 								id="hourly_rate_sek"
 								type="number"
 								step="0.01"
 								min="0"
-								placeholder="t.ex. 250"
+								placeholder="t.ex. 399"
 								{...register('hourly_rate_sek')}
 								disabled={isSubmitting}
 							/>
@@ -176,7 +182,26 @@ export function InviteUserDialog({ open: controlledOpen, onOpenChange, onSuccess
 								<p className="text-sm text-destructive">{errors.hourly_rate_sek.message}</p>
 							)}
 							<p className="text-xs text-muted-foreground">
-								Valfritt. Används för löneexport och rapporter.
+								Valfritt. Det belopp som faktureras kunden per timme.
+							</p>
+						</div>
+
+						<div className="grid gap-2">
+							<Label htmlFor="salary_per_hour_sek">Timlön (SEK)</Label>
+							<Input
+								id="salary_per_hour_sek"
+								type="number"
+								step="0.01"
+								min="0"
+								placeholder="t.ex. 250"
+								{...register('salary_per_hour_sek')}
+								disabled={isSubmitting}
+							/>
+							{errors.salary_per_hour_sek && (
+								<p className="text-sm text-destructive">{errors.salary_per_hour_sek.message}</p>
+							)}
+							<p className="text-xs text-muted-foreground">
+								Valfritt. Faktisk lön per timme som används för beräkning av bruttolön.
 							</p>
 						</div>
 					</div>

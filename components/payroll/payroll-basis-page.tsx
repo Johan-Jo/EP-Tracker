@@ -37,17 +37,20 @@ interface PayrollBasisEntry {
 }
 
 export function PayrollBasisPage({ orgId }: PayrollBasisPageProps) {
-	const [periodStart, setPeriodStart] = useState(() => {
-		// Default to first day of current month
+	// Use useEffect to set initial dates to avoid hydration mismatch
+	const getInitialPeriodStart = () => {
 		const now = new Date();
 		return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-	});
-	const [periodEnd, setPeriodEnd] = useState(() => {
-		// Default to last day of current month
+	};
+	
+	const getInitialPeriodEnd = () => {
 		const now = new Date();
 		const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 		return `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
-	});
+	};
+
+	const [periodStart, setPeriodStart] = useState(getInitialPeriodStart);
+	const [periodEnd, setPeriodEnd] = useState(getInitialPeriodEnd);
 
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [lockingEntryIds, setLockingEntryIds] = useState<Set<string>>(new Set());
@@ -163,7 +166,8 @@ export function PayrollBasisPage({ orgId }: PayrollBasisPageProps) {
 
 	const handleExport = async (format: 'csv' | 'pdf' = 'csv') => {
 		try {
-			const lockedOnly = format === 'pdf'; // PDF should only export locked entries
+			// CSV exports all entries, PDF exports only locked entries (finalized data)
+			const lockedOnly = format === 'pdf';
 			const url = `/api/payroll/basis/export?start=${periodStart}&end=${periodEnd}&format=${format}&locked_only=${lockedOnly}`;
 
 			const response = await fetch(url);
@@ -199,7 +203,7 @@ export function PayrollBasisPage({ orgId }: PayrollBasisPageProps) {
 								Visa och hantera löneunderlag per person och period
 							</p>
 						</div>
-						<div className='flex items-center gap-2'>
+						<div className='flex flex-wrap items-center gap-2' suppressHydrationWarning>
 							<Button
 								variant='ghost'
 								size='sm'
@@ -213,23 +217,39 @@ export function PayrollBasisPage({ orgId }: PayrollBasisPageProps) {
 							<Button
 								onClick={() => window.location.href = `/dashboard/payroll/preview?start=${periodStart}&end=${periodEnd}`}
 								variant='outline'
+								size='sm'
 								className='flex items-center gap-2'
 							>
 								<Eye className='w-4 h-4' />
 								Förhandsgranska
 							</Button>
-							<Button
-								onClick={() => handleExport('csv')}
-								variant='outline'
-								className='flex items-center gap-2'
-							>
-								<Download className='w-4 h-4' />
-								Exportera CSV
-							</Button>
+							<div className='flex items-center gap-2'>
+								<Button
+									onClick={() => handleExport('csv')}
+									variant='outline'
+									size='sm'
+									className='flex items-center gap-2'
+								>
+									<Download className='w-4 h-4' />
+									<span className='hidden sm:inline'>Exportera CSV</span>
+									<span className='sm:hidden'>CSV</span>
+								</Button>
+								<Button
+									onClick={() => handleExport('pdf')}
+									variant='outline'
+									size='sm'
+									className='flex items-center gap-2'
+								>
+									<Download className='w-4 h-4' />
+									<span className='hidden sm:inline'>Exportera PDF</span>
+									<span className='sm:hidden'>PDF</span>
+								</Button>
+							</div>
 							<Button
 								onClick={handleRefresh}
 								disabled={isRefreshing}
 								variant='outline'
+								size='sm'
 								className='flex items-center gap-2'
 							>
 								{isRefreshing ? (
@@ -237,7 +257,8 @@ export function PayrollBasisPage({ orgId }: PayrollBasisPageProps) {
 								) : (
 									<RefreshCw className='w-4 h-4' />
 								)}
-								Beräkna om
+								<span className='hidden sm:inline'>Beräkna om</span>
+								<span className='sm:hidden'>Beräkna</span>
 							</Button>
 						</div>
 					</div>

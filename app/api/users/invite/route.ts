@@ -5,7 +5,8 @@ import { z } from 'zod';
 const inviteUserSchema = z.object({
 	email: z.string().email({ message: 'Ogiltig e-postadress' }),
 	role: z.enum(['admin', 'foreman', 'worker', 'finance'], { message: 'Ogiltig roll' }),
-	hourly_rate_sek: z.number().positive().optional().nullable(),
+	hourly_rate_sek: z.number().positive().optional().nullable(), // Timtaxa debitering
+	salary_per_hour_sek: z.number().positive().optional().nullable(), // Timlön
 	full_name: z.string().min(1, { message: 'Namn krävs' }),
 });
 
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
 							is_active: true,
 							role: validatedData.role,
 							hourly_rate_sek: validatedData.hourly_rate_sek,
+							salary_per_hour_sek: validatedData.salary_per_hour_sek,
 							updated_at: new Date().toISOString(),
 						})
 						.eq('id', existingMembership.id);
@@ -116,6 +118,7 @@ export async function POST(request: NextRequest) {
 				user_id: existingProfile.id,
 				role: validatedData.role,
 				hourly_rate_sek: validatedData.hourly_rate_sek,
+				salary_per_hour_sek: validatedData.salary_per_hour_sek,
 				is_active: true,
 			});
 
@@ -208,6 +211,7 @@ export async function POST(request: NextRequest) {
 				.update({
 					role: validatedData.role,
 					hourly_rate_sek: validatedData.hourly_rate_sek,
+					salary_per_hour_sek: validatedData.salary_per_hour_sek,
 					is_active: true,
 					updated_at: new Date().toISOString(),
 				})
@@ -224,6 +228,7 @@ export async function POST(request: NextRequest) {
 				user_id: invitedUserId,
 				role: validatedData.role,
 				hourly_rate_sek: validatedData.hourly_rate_sek,
+				salary_per_hour_sek: validatedData.salary_per_hour_sek,
 				is_active: true,
 			});
 

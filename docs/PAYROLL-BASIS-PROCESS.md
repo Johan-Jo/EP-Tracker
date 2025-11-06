@@ -229,16 +229,24 @@ payroll_basis:
 
 ### 7.1 Exportera CSV
 - **Var:** `/dashboard/payroll` → Klicka på "Exportera CSV"
-- **Vad:** Exporterar alla löneunderlag för vald period till CSV-fil
+- **Vad:** Exporterar alla löneunderlag för vald period till CSV-fil (både låsta och olåsta)
 - **Format:** CSV med semicolon-separator (för Excel-kompatibilitet)
 - **Innehåll:**
   - Person, E-post, Period Start, Period Slut
   - Normaltid, Övertid, OB-timmar, Rast, Totalt
   - Låst-status
+- **Användning:** För granskning, import i lönesystem, eller Excel-analys
 
-### 7.2 Exportera endast låsta (Valfritt)
-- Filtrera exporten till endast låsta löneunderlag
-- Användbart när du vill exportera endast godkända perioder
+### 7.2 Exportera PDF
+- **Var:** `/dashboard/payroll` → Klicka på "Exportera PDF"
+- **Vad:** Exporterar endast låsta löneunderlag för vald period till PDF-fil
+- **Format:** Professionell PDF-rapport med sammanfattning och tabell
+- **Innehåll:**
+  - Sammanfattning med totaler (timmar, bruttolön, antal personer)
+  - Detaljerad tabell med alla låsta poster
+  - Sidnumrering och datumstämplar
+- **Krav:** Poster måste vara låsta innan PDF-export (använd "Lås"-knappen)
+- **Användning:** För arkivering, delning med chefer, eller formell dokumentation
 
 ---
 

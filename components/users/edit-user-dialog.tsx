@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 const editUserSchema = z.object({
 	role: z.enum(['admin', 'foreman', 'worker', 'finance']),
-	hourly_rate_sek: z.string().optional(),
+	hourly_rate_sek: z.string().optional(), // Timtaxa debitering
+	salary_per_hour_sek: z.string().optional(), // Timlön
 });
 
 type EditUserFormData = z.infer<typeof editUserSchema>;
@@ -23,6 +24,7 @@ interface EditUserDialogProps {
 	userId: string;
 	currentRole: string;
 	currentHourlyRate?: number | null;
+	currentSalaryPerHour?: number | null;
 	userName: string;
 	userEmail: string;
 	open?: boolean;
@@ -34,6 +36,7 @@ export function EditUserDialog({
 	userId,
 	currentRole,
 	currentHourlyRate,
+	currentSalaryPerHour,
 	userName,
 	userEmail,
 	open: controlledOpen,
@@ -59,6 +62,7 @@ export function EditUserDialog({
 		defaultValues: {
 			role: currentRole as any,
 			hourly_rate_sek: currentHourlyRate?.toString() || '',
+			salary_per_hour_sek: currentSalaryPerHour?.toString() || '',
 		},
 	});
 
@@ -70,9 +74,10 @@ export function EditUserDialog({
 			reset({
 				role: currentRole as any,
 				hourly_rate_sek: currentHourlyRate?.toString() || '',
+				salary_per_hour_sek: currentSalaryPerHour?.toString() || '',
 			});
 		}
-	}, [open, currentRole, currentHourlyRate, reset]);
+	}, [open, currentRole, currentHourlyRate, currentSalaryPerHour, reset]);
 
 	const onSubmit = async (data: EditUserFormData) => {
 		setIsSubmitting(true);
@@ -87,6 +92,13 @@ export function EditUserDialog({
 				payload.hourly_rate_sek = parseFloat(data.hourly_rate_sek);
 			} else {
 				payload.hourly_rate_sek = null;
+			}
+
+			// Convert salary per hour to number if provided
+			if (data.salary_per_hour_sek && data.salary_per_hour_sek.trim() !== '') {
+				payload.salary_per_hour_sek = parseFloat(data.salary_per_hour_sek);
+			} else {
+				payload.salary_per_hour_sek = null;
 			}
 
 			const response = await fetch(`/api/users/${userId}`, {
@@ -148,7 +160,7 @@ export function EditUserDialog({
 					<DialogHeader>
 						<DialogTitle>Redigera användare</DialogTitle>
 						<DialogDescription>
-							Uppdatera roll och timtaxa för {userName}
+							Uppdatera roll, timtaxa debitering och timlön för {userName}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -198,13 +210,13 @@ export function EditUserDialog({
 						</div>
 
 						<div className="grid gap-2">
-							<Label htmlFor="hourly_rate_sek">Timtaxa (SEK)</Label>
+							<Label htmlFor="hourly_rate_sek">Timtaxa debitering (SEK)</Label>
 							<Input
 								id="hourly_rate_sek"
 								type="number"
 								step="0.01"
 								min="0"
-								placeholder="t.ex. 250"
+								placeholder="t.ex. 399"
 								{...register('hourly_rate_sek')}
 								disabled={isSubmitting || isDeactivating}
 							/>
@@ -212,7 +224,26 @@ export function EditUserDialog({
 								<p className="text-sm text-destructive">{errors.hourly_rate_sek.message}</p>
 							)}
 							<p className="text-xs text-muted-foreground">
-								Används för löneexport och rapporter.
+								Det belopp som faktureras kunden per timme.
+							</p>
+						</div>
+
+						<div className="grid gap-2">
+							<Label htmlFor="salary_per_hour_sek">Timlön (SEK)</Label>
+							<Input
+								id="salary_per_hour_sek"
+								type="number"
+								step="0.01"
+								min="0"
+								placeholder="t.ex. 250"
+								{...register('salary_per_hour_sek')}
+								disabled={isSubmitting || isDeactivating}
+							/>
+							{errors.salary_per_hour_sek && (
+								<p className="text-sm text-destructive">{errors.salary_per_hour_sek.message}</p>
+							)}
+							<p className="text-xs text-muted-foreground">
+								Faktisk lön per timme som används för beräkning av bruttolön.
 							</p>
 						</div>
 

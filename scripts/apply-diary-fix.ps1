@@ -28,3 +28,5 @@ Write-Host "This will update the log_activity() trigger to correctly handle diar
 
 
 
+
+

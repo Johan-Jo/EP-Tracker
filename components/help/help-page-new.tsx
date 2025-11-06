@@ -443,11 +443,15 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 				{
 					title: 'Steg 7: Exportera löneunderlag',
 					items: [
-						'Klicka "Exportera CSV" i sidhuvudet',
-						'Välj om du vill exportera alla eller endast låsta entries',
+						'Klicka "Exportera CSV" eller "Exportera PDF" i sidhuvudet',
+						'CSV-export: Exporterar alla poster för vald period (både låsta och olåsta)',
+						'PDF-export: Exporterar endast låsta poster (finaliserad data)',
+						'För PDF-export måste du först låsa de poster du vill exportera',
 						'CSV-filen innehåller: person, e-post, period, timmar (normaltid, övertid, OB, rast, totalt), bruttolön',
+						'PDF-filen innehåller samma data formaterad som en professionell rapport med sammanfattning',
 						'Filformatet är anpassat för Excel (semicolon-separator)',
-						'Öppna i Excel eller importera i lönesystem',
+						'Öppna CSV i Excel eller importera i lönesystem',
+						'Använd PDF för arkivering eller delning med chefer',
 					],
 				},
 				{
@@ -803,7 +807,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			id: 'faq-31',
 			question: 'Varför ska jag låsa löneunderlag?',
 			answer:
-				'Att låsa löneunderlag förhindrar att beräkningar ändras efter att du har granskat dem. Detta säkerställer att exporterade data matchar vad du har godkänt. När löneunderlag är låst kan du säkert exportera till CSV för import i lönesystemet. Du kan alltid upplåsa om du behöver göra ändringar.',
+				'Att låsa löneunderlag förhindrar att beräkningar ändras efter att du har granskat dem. Detta säkerställer att exporterade data matchar vad du har godkänt. PDF-exporten exporterar endast låsta poster, vilket säkerställer att du exporterar finaliserad data. CSV-exporten exporterar alla poster och kan användas för granskning. Du kan alltid upplåsa om du behöver göra ändringar.',
 			roles: ['admin', 'foreman'],
 		},
 		{
@@ -824,7 +828,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			id: 'faq-34',
 			question: 'Kan jag exportera löneunderlag för en specifik person?',
 			answer:
-				'Ja, du kan filtrera löneunderlag-sidan efter person genom att använda periodväljaren och sedan exportera. CSV-exporten innehåller alla entries för den valda perioden, så du kan också filtrera i Excel efter person om du vill.',
+				'Ja, du kan filtrera löneunderlag-sidan efter person genom att använda periodväljaren och sedan exportera. CSV-exporten innehåller alla entries för den valda perioden (både låsta och olåsta), så du kan också filtrera i Excel efter person om du vill. PDF-exporten exporterar endast låsta poster, så se till att låsa de poster du vill exportera först.',
 			roles: ['admin', 'foreman'],
 		},
 		{

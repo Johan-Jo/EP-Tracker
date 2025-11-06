@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
 
+// Ensure this route runs in Node.js runtime
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 30; // 30 seconds timeout
+
 /**
  * GET /api/payroll/basis
  * 
@@ -41,6 +46,8 @@ export async function GET(request: NextRequest) {
 		const supabase = await createClient();
 
 		// Build query for payroll_basis
+		// Find records where period overlaps with requested period:
+		// period_start <= periodEnd AND period_end >= periodStart
 		let query = supabase
 			.from('payroll_basis')
 			.select(`
@@ -48,27 +55,44 @@ export async function GET(request: NextRequest) {
 				person:profiles!payroll_basis_person_id_fkey(id, full_name, email)
 			`)
 			.eq('org_id', membership.org_id)
-			.gte('period_end', periodStart)
 			.lte('period_start', periodEnd)
-			.order('period_start', { ascending: false })
-			.order('person_id', { ascending: true });
-
+			.gte('period_end', periodStart);
+		
 		// Filter by person if specified
 		if (personId) {
 			query = query.eq('person_id', personId);
 		}
+		
+		// Order and limit to avoid timeout
+		query = query
+			.order('period_start', { ascending: false })
+			.order('person_id', { ascending: true })
+			.limit(1000); // Limit to prevent timeout
 
 		const { data: payrollBasis, error } = await query;
 
 		if (error) {
 			console.error('Error fetching payroll basis:', error);
-			return NextResponse.json({ error: 'Failed to fetch payroll basis' }, { status: 500 });
+			console.error('Query params:', { periodStart, periodEnd, personId, orgId: membership.org_id });
+			console.error('Error details:', JSON.stringify(error, null, 2));
+			return NextResponse.json({ 
+				error: 'Failed to fetch payroll basis',
+				details: error.message,
+				code: error.code,
+				hint: error.hint
+			}, { status: 500 });
 		}
 
 		return NextResponse.json({ payroll_basis: payrollBasis || [] });
 	} catch (error) {
 		console.error('Error in GET /api/payroll/basis:', error);
-		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+		const errorStack = error instanceof Error ? error.stack : undefined;
+		console.error('Error stack:', errorStack);
+		return NextResponse.json({ 
+			error: 'Internal server error',
+			details: errorMessage
+		}, { status: 500 });
 	}
 }
 

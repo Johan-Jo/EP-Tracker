@@ -13,6 +13,7 @@ interface Member {
 	user_id: string;
 	role: 'admin' | 'foreman' | 'finance' | 'worker';
 	hourly_rate_sek: number | null;
+	salary_per_hour_sek: number | null;
 	created_at: string;
 	profiles: {
 		id: string;
@@ -385,7 +386,8 @@ export function UsersPageNew({ members, canInvite, currentUserId }: UsersPageNew
 			<EditUserDialog 
 				userId={editingUser.profiles.id} 
 				currentRole={editingUser.role} 
-				currentHourlyRate={editingUser.hourly_rate_sek} 
+				currentHourlyRate={editingUser.hourly_rate_sek}
+				currentSalaryPerHour={editingUser.salary_per_hour_sek}
 				userName={editingUser.profiles.full_name} 
 				userEmail={editingUser.profiles.email}
 				open={!!editingUser}

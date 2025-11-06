@@ -1,0 +1,118 @@
+
+> ep-tracker@0.1.0 test:e2e
+> jest --config tests/e2e/jest.config.js performance.test.ts
+
+  console.log
+    Ô£à Loaded environment variables from .env.local
+
+      at Object.<anonymous> (tests/e2e/setup.ts:22:10)
+
+  console.log
+    
+    ­ƒôï Test User Configuration:
+
+      at Object.<anonymous> (tests/e2e/setup.ts:50:10)
+
+  console.log
+       Worker: j@johan.com.br
+
+      at Object.<anonymous> (tests/e2e/setup.ts:51:10)
+
+  console.log
+       Admin: oi@johan.com.br
+
+      at Object.<anonymous> (tests/e2e/setup.ts:52:10)
+
+  console.log
+       Foreman: johan270511@gmail.com
+
+      at Object.<anonymous> (tests/e2e/setup.ts:53:10)
+
+  console.log
+       Finance: finance@test.com (default)
+
+      at Object.<anonymous> (tests/e2e/setup.ts:54:10)
+
+  console.log
+
+
+      at Object.<anonymous> (tests/e2e/setup.ts:55:10)
+
+  console.error
+    
+    ÔØî ERROR: Development server is not running!
+
+      58 | 	const isRunning = await checkServer(baseUrl);
+      59 | 	if (!isRunning) {
+    > 60 | 		console.error('\nÔØî ERROR: Development server is not running!');
+         | 		        ^
+      61 | 		console.error(`   Expected server at: ${baseUrl}`);
+      62 | 		console.error('\n   Please start your dev server first:');
+      63 | 		console.error('   npm run dev\n');
+
+      at Object.<anonymous> (tests/e2e/setup.ts:60:11)
+
+  console.error
+       Expected server at: http://localhost:3000
+
+      59 | 	if (!isRunning) {
+      60 | 		console.error('\nÔØî ERROR: Development server is not running!');
+    > 61 | 		console.error(`   Expected server at: ${baseUrl}`);
+         | 		        ^
+      62 | 		console.error('\n   Please start your dev server first:');
+      63 | 		console.error('   npm run dev\n');
+      64 | 		console.error('   Then run the tests again.\n');
+
+      at Object.<anonymous> (tests/e2e/setup.ts:61:11)
+
+  console.error
+    
+       Please start your dev server first:
+
+      60 | 		console.error('\nÔØî ERROR: Development server is not running!');
+      61 | 		console.error(`   Expected server at: ${baseUrl}`);
+    > 62 | 		console.error('\n   Please start your dev server first:');
+         | 		        ^
+      63 | 		console.error('   npm run dev\n');
+      64 | 		console.error('   Then run the tests again.\n');
+      65 | 		process.exit(1);
+
+      at Object.<anonymous> (tests/e2e/setup.ts:62:11)
+
+  console.error
+       npm run dev
+
+      61 | 		console.error(`   Expected server at: ${baseUrl}`);
+      62 | 		console.error('\n   Please start your dev server first:');
+    > 63 | 		console.error('   npm run dev\n');
+         | 		        ^
+      64 | 		console.error('   Then run the tests again.\n');
+      65 | 		process.exit(1);
+      66 | 	}
+
+      at Object.<anonymous> (tests/e2e/setup.ts:63:11)
+
+  console.error
+       Then run the tests again.
+
+      62 | 		console.error('\n   Please start your dev server first:');
+      63 | 		console.error('   npm run dev\n');
+    > 64 | 		console.error('   Then run the tests again.\n');
+         | 		        ^
+      65 | 		process.exit(1);
+      66 | 	}
+      67 | 	console.log(`Ô£à Server is running at ${baseUrl}`);
+
+      at Object.<anonymous> (tests/e2e/setup.ts:64:11)
+
+  ÔùÅ  process.exit called with "1"
+
+      63 | 		console.error('   npm run dev\n');
+      64 | 		console.error('   Then run the tests again.\n');
+    > 65 | 		process.exit(1);
+         | 		        ^
+      66 | 	}
+      67 | 	console.log(`Ô£à Server is running at ${baseUrl}`);
+      68 | });
+
+      at Object.<anonymous> (tests/e2e/setup.ts:65:11)

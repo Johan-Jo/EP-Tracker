@@ -52,6 +52,7 @@ export default async function UsersSettingsPage() {
 			user_id: member.user_id,
 			role: member.role,
 			hourly_rate_sek: member.hourly_rate_sek,
+			salary_per_hour_sek: member.salary_per_hour_sek,
 			created_at: member.created_at,
 			profiles: {
 				id: member.profiles.id,
