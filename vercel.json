@@ -13,6 +13,14 @@
     {
       "path": "/api/cron/checkout-reminders",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/late-checkin-alerts",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/forgotten-checkout-alerts",
+      "schedule": "*/15 * * * *"
     }
   ],
   "functions": {
