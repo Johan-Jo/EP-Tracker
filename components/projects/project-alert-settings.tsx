@@ -6,28 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Clock, Bell, AlertTriangle } from 'lucide-react';
-
-interface AlertSettings {
-  work_day_start: string;
-  work_day_end: string;
-  notify_on_checkin: boolean;
-  notify_on_checkout: boolean;
-  checkin_reminder_enabled: boolean;
-  checkin_reminder_minutes_before: number;
-  checkin_reminder_for_workers: boolean;
-  checkin_reminder_for_foreman: boolean;
-  checkin_reminder_for_admin: boolean;
-  checkout_reminder_enabled: boolean;
-  checkout_reminder_minutes_before: number;
-  checkout_reminder_for_workers: boolean;
-  checkout_reminder_for_foreman: boolean;
-  checkout_reminder_for_admin: boolean;
-  late_checkin_enabled: boolean;
-  late_checkin_minutes_after: number;
-  forgotten_checkout_enabled: boolean;
-  forgotten_checkout_minutes_after: number;
-  alert_recipients: string[];
-}
+import type { AlertSettings } from '@/lib/schemas/project';
 
 interface ProjectAlertSettingsProps {
   settings: AlertSettings;

@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ProjectAlertSettings } from './project-alert-settings';
 import { Bell, Clock, AlertTriangle, Check, X, Edit2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import type { AlertSettings as SchemaAlertSettings } from '@/lib/schemas/project';
 
 interface AlertSettings {
   work_day_start: string;
@@ -66,21 +67,21 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   
   // Normalize settings to ensure all required fields are present
-  const normalizeSettings = (settings: AlertSettings): AlertSettings => {
+  const normalizeSettings = (settings: AlertSettings): SchemaAlertSettings => {
     return {
       ...defaultAlertSettings,
       ...settings,
       // Ensure all boolean fields are defined
-      checkin_reminder_for_workers: settings.checkin_reminder_for_workers ?? defaultAlertSettings.checkin_reminder_for_workers,
-      checkin_reminder_for_foreman: settings.checkin_reminder_for_foreman ?? defaultAlertSettings.checkin_reminder_for_foreman,
-      checkin_reminder_for_admin: settings.checkin_reminder_for_admin ?? defaultAlertSettings.checkin_reminder_for_admin,
-      checkout_reminder_for_workers: settings.checkout_reminder_for_workers ?? defaultAlertSettings.checkout_reminder_for_workers,
-      checkout_reminder_for_foreman: settings.checkout_reminder_for_foreman ?? defaultAlertSettings.checkout_reminder_for_foreman,
-      checkout_reminder_for_admin: settings.checkout_reminder_for_admin ?? defaultAlertSettings.checkout_reminder_for_admin,
+      checkin_reminder_for_workers: settings.checkin_reminder_for_workers ?? defaultAlertSettings.checkin_reminder_for_workers ?? true,
+      checkin_reminder_for_foreman: settings.checkin_reminder_for_foreman ?? defaultAlertSettings.checkin_reminder_for_foreman ?? true,
+      checkin_reminder_for_admin: settings.checkin_reminder_for_admin ?? defaultAlertSettings.checkin_reminder_for_admin ?? true,
+      checkout_reminder_for_workers: settings.checkout_reminder_for_workers ?? defaultAlertSettings.checkout_reminder_for_workers ?? true,
+      checkout_reminder_for_foreman: settings.checkout_reminder_for_foreman ?? defaultAlertSettings.checkout_reminder_for_foreman ?? true,
+      checkout_reminder_for_admin: settings.checkout_reminder_for_admin ?? defaultAlertSettings.checkout_reminder_for_admin ?? true,
     };
   };
   
-  const [editSettings, setEditSettings] = useState<AlertSettings>(normalizeSettings(settings));
+  const [editSettings, setEditSettings] = useState<SchemaAlertSettings>(normalizeSettings(settings));
   const [isSaving, setIsSaving] = useState(false);
 
   // Helper to calculate time with offset
