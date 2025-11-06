@@ -111,6 +111,7 @@ export function PayrollPreviewPage({ orgId, initialStart, initialEnd }: PayrollP
 					break_hours: 0,
 					total_hours: 0,
 					gross_salary_sek: 0,
+					people: 0,
 				},
 			};
 		}
