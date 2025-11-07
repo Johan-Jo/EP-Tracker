@@ -37,7 +37,7 @@ export default async function DashboardLayout({
 	const impersonationSession = await getImpersonationSession();
 
 	return (
-		<div className='min-h-screen bg-gray-50 dark:bg-gray-900'>
+		<div className='min-h-screen bg-gray-50 text-foreground transition-colors dark:bg-gray-900'>
 			{/* Impersonation Banner - shows if super admin is impersonating */}
 			{impersonationSession && (
 				<ImpersonationBanner session={impersonationSession} />

@@ -233,37 +233,63 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
       <div className="p-4 sm:p-6">
         {/* Welcome */}
         <div className="mb-6" data-tour="dashboard-header">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Välkommen, {userName.split(' ')[0]}! <span className="align-middle">👋</span>
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="mt-2 text-gray-600 dark:text-orange-100/70">
             Här är en översikt över dina projekt och aktiviteter.
           </p>
         </div>
 
       {/* Time Check-in/Check-out Slider - EPIC 26: Uses optimistic state */}
-      <div className="mb-6 bg-gradient-to-r from-orange-50 to-orange-100/50 border-2 border-orange-200 rounded-xl p-4" data-tour="time-slider">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="h-8 w-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+      <section
+        className="mb-6 rounded-2xl border border-orange-200 bg-gradient-to-r from-orange-50 to-orange-100/50 p-4 shadow-sm transition-all dark:border-orange-500/30 dark:bg-[#1a120b] dark:shadow-[0_30px_80px_-40px_rgba(249,115,22,0.6)]"
+        data-tour="time-slider"
+      >
+          <div className="mb-3 flex items-center gap-3 text-black dark:text-[#d7a15a]">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-200">
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
               <circle cx="12" cy="12" r="9" />
               <path d="M12 7v5l3 2" />
             </svg>
           </div>
-          <div className="leading-tight flex-1 min-w-0">
-            <div className={optimisticTimeEntry ? "text-sm font-medium" : "text-base font-medium"}>
-              {optimisticTimeEntry ? 'Aktiv tid' : 'Ingen aktiv tid'}
-            </div>
+          <div className="leading-tight">
+            {optimisticTimeEntry && optimisticTimeEntry.start_at && optimisticTimeEntry.projects?.name ? (
+              <>
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-black dark:text-[#d9984d]">
+                  Aktiv tid
+                </p>
+                <p className="text-sm text-orange-700/90 dark:text-orange-100/85">
+                  Du checkade in{' '}
+                  <span className="font-semibold">
+                    {new Date(optimisticTimeEntry.start_at).toLocaleTimeString('sv-SE', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                  {optimisticTimeEntry.projects?.name ? ` • ${optimisticTimeEntry.projects.name}` : ''}
+                </p>
+              </>
+            ) : (
+              <p className="text-lg font-semibold text-black dark:text-[#c47a2c] dark:[text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">
+                Ingen aktiv tid
+              </p>
+            )}
           </div>
         </div>
-        
-        {/* Centered check-in info above timer */}
         {optimisticTimeEntry && optimisticTimeEntry.start_at && optimisticTimeEntry.projects?.name && (
-          <div className="text-center text-sm text-gray-700 mb-2">
-            Du checkade in <span className="font-bold">{new Date(optimisticTimeEntry.start_at).toLocaleTimeString('sv-SE', {
+          <div className="mb-3 text-center text-base font-medium text-[#2b1c11] dark:text-[#ffe0b6] dark:[text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">
+            Du checkade in{' '}
+            <span className="font-semibold text-[#c25b04] dark:text-[#ffc47d]">
+              {new Date(optimisticTimeEntry.start_at).toLocaleTimeString('sv-SE', {
               hour: '2-digit',
-              minute: '2-digit'
-            })}</span>, projekt: <span className="font-bold text-orange-600">{optimisticTimeEntry.projects.name}</span>
+                minute: '2-digit',
+              })}
+            </span>
+            , projekt:{' '}
+            <span className="font-semibold text-[#9a4a02] dark:text-[#ffb06a]">
+              {optimisticTimeEntry.projects.name}
+            </span>
           </div>
         )}
         <TimeSlider
@@ -284,11 +310,11 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
           onCheckOut={handleCheckOut}
           onCheckOutComplete={handleCheckOutComplete}
         />
-      </div>
+      </section>
 
       {/* Quick Start Banner - BLUE GRADIENT */}
       {showQuickStartBanner && (
-        <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 sm:p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200 relative">
+        <section className="relative mb-6 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 via-indigo-50 to-violet-50 p-5 shadow-sm transition-all duration-200 hover:border-blue-300 hover:shadow-lg sm:p-6 dark:border-blue-500/40 dark:from-[#0f172a] dark:via-[#111b2c] dark:to-[#0b0f1f] dark:shadow-[0_20px_60px_-40px_rgba(37,99,235,0.6)]">
           {/* Close button */}
           <button
             onClick={handleDismissQuickStart}
@@ -310,19 +336,19 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
               </div>
               <div className="leading-tight">
                 <div className="font-medium">Kom igång snabbt</div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 dark:text-indigo-100/80">
                   Följ vår snabbguide för att sätta upp ditt första projekt
                 </div>
               </div>
             </div>
             <button 
               onClick={() => router.push('/dashboard?tour=dashboard')}
-              className="inline-flex items-center justify-center h-9 px-4 rounded-lg border border-blue-300 bg-white text-blue-600 text-sm font-medium hover:bg-blue-50 shrink-0"
+              className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-blue-300 bg-white px-4 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50 dark:border-blue-500/40 dark:bg-white/10 dark:text-indigo-100 dark:hover:bg-white/15"
             >
               Starta interaktiv guide
             </button>
           </div>
-        </div>
+        </section>
       )}
 
       {/* Quick actions */}
@@ -333,9 +359,9 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
           {/* SOLID ORANGE CARD */}
           <button
             onClick={() => router.push('/dashboard/projects/new')}
-            className="rounded-xl bg-orange-500 text-white shadow-sm hover:bg-orange-600 transition-all"
+            className="rounded-xl bg-orange-500 text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-orange-600 min-h-[120px] sm:min-h-[128px]"
           >
-            <div className="p-5 sm:p-6 flex items-center gap-4">
+            <div className="flex items-center gap-4 p-5 sm:p-6">
               <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center">
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M12 5v14M5 12h14" />
@@ -350,36 +376,36 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
           
           <button 
             onClick={() => router.push('/dashboard/time')}
-            className="group rounded-xl bg-white border border-gray-200 shadow-sm hover:border-orange-500 hover:shadow-md transition-all"
+            className="group rounded-xl border border-gray-200 bg-white text-gray-900 shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-500/60 hover:shadow-lg dark:border-[#3c2d20]/40 dark:bg-[#16100b] dark:text-orange-100 min-h-[120px] sm:min-h-[128px]"
           >
-            <div className="p-5 sm:p-6 flex items-center gap-4">
-              <div className="h-10 w-10 rounded-xl bg-gray-100 text-gray-600 group-hover:text-orange-500 flex items-center justify-center transition-colors">
+            <div className="flex items-center gap-4 p-5 sm:p-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-600 transition-colors group-hover:bg-orange-500/10 group-hover:text-orange-600 dark:bg-white/10 dark:text-white">
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <circle cx="12" cy="13" r="8" />
                   <path d="M9 2h6M12 9v5" />
                 </svg>
               </div>
               <div className="text-left">
-                <div className="font-medium">Logga tid</div>
-                <div className="text-sm text-gray-600">Registrera arbetstid</div>
+                <div className="font-medium dark:text-white">Logga tid</div>
+                <div className="text-sm text-gray-600 dark:text-white/70">Registrera arbetstid</div>
               </div>
             </div>
           </button>
           
           <button 
             onClick={() => router.push('/dashboard/materials')}
-            className="group rounded-xl bg-white border border-gray-200 shadow-sm hover:border-orange-500 hover:shadow-md transition-all"
+            className="group rounded-xl border border-gray-200 bg-white text-gray-900 shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-500/60 hover:shadow-lg dark:border-[#3c2d20]/40 dark:bg-[#16100b] dark:text-orange-100 min-h-[120px] sm:min-h-[128px]"
           >
-            <div className="p-5 sm:p-6 flex items-center gap-4">
-              <div className="h-10 w-10 rounded-xl bg-gray-100 text-gray-600 group-hover:text-orange-500 flex items-center justify-center transition-colors">
+            <div className="flex items-center gap-4 p-5 sm:p-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-600 transition-colors group-hover:bg-orange-500/10 group-hover:text-orange-600 dark:bg-white/10 dark:text-white">
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M12 2 3 7l9 5 9-5-9-5Z" />
                   <path d="M3 7v10l9 5 9-5V7" />
                 </svg>
               </div>
               <div className="text-left">
-                <div className="font-medium">Lägg till material</div>
-                <div className="text-sm text-gray-600">Hantera material</div>
+                <div className="font-medium dark:text-white">Lägg till material</div>
+                <div className="text-sm text-gray-600 dark:text-white/70">Hantera material</div>
               </div>
             </div>
           </button>
@@ -388,51 +414,65 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
 
       {/* Stats row */}
       <div className="mt-6 grid md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:border-orange-500 hover:shadow-md cursor-pointer transition-all" onClick={() => router.push('/dashboard/projects')}>
+        <div
+          className="cursor-pointer rounded-2xl border border-gray-200 bg-white/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-500 hover:shadow-lg dark:border-[#2f2117] dark:bg-[#1a140f] dark:text-orange-100/90"
+          onClick={() => router.push('/dashboard/projects')}
+        >
           <div className="p-5 sm:p-6">
-            <div className="text-sm text-gray-600">Aktiva Projekt</div>
-            <div className="mt-1 text-2xl font-semibold">{stats.active_projects}</div>
-            <div className="mt-2 text-sm text-gray-600 hover:text-gray-900">Visa alla projekt →</div>
+            <div className="text-sm uppercase tracking-[0.18em] text-gray-500 dark:text-white/70">Aktiva projekt</div>
+            <div className="mt-3 text-3xl font-semibold text-gray-900 dark:text-white">{stats.active_projects}</div>
+            <div className="mt-4 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-white/80 dark:hover:text-white">
+              Visa alla projekt →
+            </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:border-orange-500 hover:shadow-md cursor-pointer transition-all" onClick={() => router.push('/dashboard/time')}>
+        <div
+          className="cursor-pointer rounded-2xl border border-gray-200 bg-white/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-500 hover:shadow-lg dark:border-[#2f2117] dark:bg-[#1a140f] dark:text-orange-100/90"
+          onClick={() => router.push('/dashboard/time')}
+        >
           <div className="p-5 sm:p-6">
-            <div className="text-sm text-gray-600">Tidsrapporter denna vecka</div>
-            <div className="mt-1 text-2xl font-semibold">{stats.total_time_entries_week}</div>
-            <div className="mt-2 text-sm text-gray-600 hover:text-gray-900">Logga tid →</div>
+            <div className="text-sm uppercase tracking-[0.18em] text-gray-500 dark:text-white/70">Tidsrapporter v.</div>
+            <div className="mt-3 text-3xl font-semibold text-gray-900 dark:text-white">{stats.total_time_entries_week}</div>
+            <div className="mt-4 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-white/80 dark:hover:text-white">
+              Logga tid →
+            </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:border-orange-500 hover:shadow-md cursor-pointer transition-all" onClick={() => router.push('/dashboard/materials')}>
+        <div
+          className="cursor-pointer rounded-2xl border border-gray-200 bg-white/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-500 hover:shadow-lg dark:border-[#2f2117] dark:bg-[#1a140f] dark:text-orange-100/90"
+          onClick={() => router.push('/dashboard/materials')}
+        >
           <div className="p-5 sm:p-6">
-            <div className="text-sm text-gray-600">Material & Utgifter denna vecka</div>
-            <div className="mt-1 text-2xl font-semibold">{stats.total_materials_week}</div>
-            <div className="mt-2 text-sm text-gray-600 hover:text-gray-900">Hantera material & utgifter →</div>
+            <div className="text-sm uppercase tracking-[0.18em] text-gray-500 dark:text-white/70">Material & utgifter v.</div>
+            <div className="mt-3 text-3xl font-semibold text-gray-900 dark:text-white">{stats.total_materials_week}</div>
+            <div className="mt-4 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-white/80 dark:hover:text-white">
+              Hantera material & utgifter →
+            </div>
           </div>
         </div>
       </div>
 
       {/* Recent activity */}
-      <div className="mt-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Senaste aktivitet</h2>
-        <div className="bg-white rounded-2xl border border-gray-200">
+      <div className="mt-8">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Senaste aktivitet</h2>
+        <div className="flex flex-col gap-3">
           {recentActivities.length === 0 ? (
-            <div className="p-10 sm:p-14 flex flex-col items-center justify-center text-center">
-              <div className="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center">
-                <svg viewBox="0 0 24 24" className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-gray-200 bg-white/95 p-10 text-center shadow-sm dark:border-[#2f2117] dark:bg-[#1a140f]">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 dark:bg-white/10">
+                <svg viewBox="0 0 24 24" className="h-6 w-6 text-gray-400 dark:text-white/80" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <circle cx="12" cy="12" r="9" />
                   <path d="M12 7v5l3 2" />
                 </svg>
               </div>
-              <div className="mt-4 text-[15px] font-medium">Ingen aktivitet ännu</div>
-              <div className="mt-1 text-sm text-gray-600 max-w-md">
+              <div className="mt-4 text-[15px] font-medium text-gray-900 dark:text-white">Ingen aktivitet ännu</div>
+              <div className="mt-1 max-w-md text-sm text-gray-600 dark:text-white/70">
                 Börja logga tid eller skapa ett projekt för att se din aktivitet här
               </div>
             </div>
           ) : (
             <>
-              <div className="divide-y divide-gray-100">
                 {displayedActivities.map((activity) => {
                   const createdDate = new Date(activity.created_at);
                   
@@ -449,7 +489,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                               <path d="M12 7v5l3 2" />
                             </svg>
                           ),
-                          iconBg: 'bg-orange-100 text-orange-600',
+                          iconBg: 'bg-orange-100 text-orange-600 dark:bg-orange-400/20 dark:text-white',
                           title: 'Tidsrapport',
                           description: activity.description || 'Tidrapport skapad',
                           badge: null,
@@ -464,11 +504,11 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                               <path d="M3 7v10l9 5 9-5V7" />
                             </svg>
                           ),
-                          iconBg: 'bg-blue-100 text-blue-600',
+                          iconBg: 'bg-blue-100 text-blue-600 dark:bg-blue-400/20 dark:text-white',
                           title: 'Material',
                           description: activity.description || 'Material tillagt',
                           badge: activity.data?.qty && activity.data?.unit ? `${activity.data.qty} ${activity.data.unit}` : null,
-                          badgeColor: '',
+                          badgeColor: 'text-blue-600 dark:text-white',
                         };
                       case 'expense':
                         return {
@@ -477,11 +517,11 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                               <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                             </svg>
                           ),
-                          iconBg: 'bg-green-100 text-green-600',
+                          iconBg: 'bg-green-100 text-green-600 dark:bg-green-400/20 dark:text-white',
                           title: 'Utgift',
                           description: activity.description || 'Utgift registrerad',
                           badge: activity.data?.amount_sek ? `${activity.data.amount_sek} kr` : null,
-                          badgeColor: 'text-green-600',
+                          badgeColor: 'text-green-600 dark:text-white',
                         };
                       case 'mileage':
                         return {
@@ -493,11 +533,11 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                               <circle cx="17" cy="17" r="2" />
                             </svg>
                           ),
-                          iconBg: 'bg-teal-100 text-teal-600',
+                          iconBg: 'bg-teal-100 text-teal-600 dark:bg-teal-400/20 dark:text-white',
                           title: 'Milersättning',
                           description: activity.description || 'Milersättning registrerad',
                           badge: activity.data?.distance_km ? `${activity.data.distance_km} km` : null,
-                          badgeColor: 'text-teal-600',
+                          badgeColor: 'text-teal-600 dark:text-white',
                         };
                       case 'ata':
                         return {
@@ -507,7 +547,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                               <polyline points="14 2 14 8 20 8" />
                             </svg>
                           ),
-                          iconBg: 'bg-purple-100 text-purple-600',
+                          iconBg: 'bg-purple-100 text-purple-600 dark:bg-purple-400/20 dark:text-white',
                           title: 'ÄTA',
                           description: activity.description || 'ÄTA skapad',
                           badge: null,
@@ -521,7 +561,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                             </svg>
                           ),
-                          iconBg: 'bg-indigo-100 text-indigo-600',
+                          iconBg: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-400/20 dark:text-white',
                           title: 'Dagbok',
                           description: activity.description || 'Dagboksanteckning skapad',
                           badge: null,
@@ -535,7 +575,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                               <path d="M12 7v5l3 2" />
                             </svg>
                           ),
-                          iconBg: 'bg-gray-100 text-gray-600',
+                          iconBg: 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-white',
                           title: activity.type,
                           description: activity.description || 'Aktivitet',
                           badge: null,
@@ -573,57 +613,56 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                     <div 
                       key={activity.id} 
                       onClick={() => navigationPath && router.push(navigationPath)}
-                      className={`p-4 transition-colors ${navigationPath ? 'hover:bg-gray-50 cursor-pointer' : ''}`}
+                      className={`rounded-2xl border border-gray-200/80 bg-white/95 p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg dark:border-[#2f2117] dark:bg-[#1a140f] dark:text-orange-100/85 ${navigationPath ? 'cursor-pointer hover:border-orange-400/40 dark:hover:border-orange-400/40' : ''}`}
                     >
-                      <div className="flex items-start gap-3">
-                        <div className={`h-9 w-9 rounded-lg ${details.iconBg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                      <div className="flex items-start gap-4">
+                        <div className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${details.iconBg}`}>
                           {details.icon}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-xs font-medium text-gray-500 uppercase">{details.title}</span>
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                            <span className="font-semibold uppercase tracking-wide text-gray-500 dark:text-white/70">
+                              {details.title}
+                            </span>
                                 {activity.user_name && (
-                                  <>
-                                    <span className="text-gray-300">•</span>
-                                    <span className="text-sm font-medium text-gray-900">{activity.user_name}</span>
-                                  </>
+                              <span className="text-gray-900 dark:text-white">{activity.user_name}</span>
                                 )}
                                 {activity.project && (
-                                  <>
-                                    <span className="text-gray-300">•</span>
-                                    <span className="text-sm text-gray-600">{activity.project.name}</span>
-                                  </>
-                                )}
-                              </div>
-                              <div className="text-sm text-gray-900 mt-0.5">
-                                {details.description}
-                              </div>
-                            </div>
-                            {details.badge && (
-                              <div className={`text-sm font-semibold whitespace-nowrap ${details.badgeColor}`}>
-                                {details.badge}
-                              </div>
+                              <span className="text-gray-600 dark:text-white/70">• {activity.project.name}</span>
                             )}
+                            <span className="text-gray-500 dark:text-white/60">
+                              {createdDate.toLocaleDateString('sv-SE', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })}{' '}
+                              {createdDate.toLocaleTimeString('sv-SE', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
                           </div>
+                          <p className="text-sm text-gray-700 dark:text-white/80">{details.description}</p>
+                          {details.badge && (
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full border border-current px-2 py-0.5 text-xs font-semibold ${details.badgeColor}`}
+                            >
+                              {details.badge}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
                   );
                 })}
-              </div>
-              
               {/* Show More button */}
               {recentActivities.length > 5 && (
-                <div className="p-4 border-t border-gray-100">
                   <button
                     onClick={() => setShowAllActivities(!showAllActivities)}
-                    className="w-full text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors"
+                  className="rounded-full border border-orange-200/70 bg-white px-6 py-2 text-sm font-medium text-orange-600 shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-400 hover:text-orange-700 hover:shadow-md dark:border-orange-500/40 dark:bg-[#1a140f] dark:text-orange-200 dark:hover:border-orange-400"
                   >
                     {showAllActivities ? 'Visa färre' : `Visa fler (${recentActivities.length - 5} till)`}
                   </button>
-                </div>
               )}
             </>
           )}

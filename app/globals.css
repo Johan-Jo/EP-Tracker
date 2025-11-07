@@ -1,44 +1,166 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:is(.dark *));
+
 :root {
-  --font-size: 16px;
-  --background: #f8f8f9;
-  --foreground: #1a1a1a;
-  --card: #ffffff;
-  --card-foreground: #1a1a1a;
-  --popover: #ffffff;
-  --popover-foreground: #1a1a1a;
-  --primary: #FF5C00;
-  --primary-foreground: #ffffff;
-  --secondary: #f3f4f6;
-  --secondary-foreground: #1a1a1a;
-  --muted: #f3f4f6;
-  --muted-foreground: #6b7280;
-  --accent: #FFF5F0;
-  --accent-foreground: #FF5C00;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #e5e7eb;
-  --input: #e5e7eb;
-  --input-background: #ffffff;
-  --switch-background: #d1d5db;
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --ring: #FF5C00;
-  --chart-1: #FF5C00;
-  --chart-2: #10b981;
-  --chart-3: #3b82f6;
-  --chart-4: #f59e0b;
-  --chart-5: #8b5cf6;
-  --radius: 0.5rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #1a1a1a;
-  --sidebar-primary: #FF5C00;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #FFF5F0;
-  --sidebar-accent-foreground: #FF5C00;
-  --sidebar-border: #e5e7eb;
-  --sidebar-ring: #FF5C00;
+  /* Typography */
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-size-base: 16px;
+
+  /* Primary Brand - Warm Orange */
+  --color-orange-50: #FFF7ED;
+  --color-orange-100: #FFEDD5;
+  --color-orange-200: #FED7AA;
+  --color-orange-300: #FDBA74;
+  --color-orange-400: #FB923C;
+  --color-orange-500: #F97316;
+  --color-orange-600: #EA580C;
+  --color-orange-700: #C2410C;
+
+  /* Secondary - Deep Blue */
+  --color-blue-50: #EFF6FF;
+  --color-blue-100: #DBEAFE;
+  --color-blue-500: #3B82F6;
+  --color-blue-600: #2563EB;
+  --color-blue-700: #1D4ED8;
+  --color-blue-800: #1E3A8A;
+  --color-blue-900: #1E293B;
+
+  /* Accent - Electric Lime */
+  --color-lime-50: #F7FFE5;
+  --color-lime-100: #EAFFCC;
+  --color-lime-400: #C7FF5E;
+  --color-lime-500: #B8FF3B;
+  --color-lime-600: #9FE02D;
+  --color-lime-700: #7AB81F;
+
+  /* Neutral Warm Gray Scale */
+  --color-gray-50: #FAFAF9;
+  --color-gray-100: #F5F5F4;
+  --color-gray-200: #E7E5E4;
+  --color-gray-300: #D6D3D1;
+  --color-gray-400: #A8A29E;
+  --color-gray-500: #78716C;
+  --color-gray-600: #57534E;
+  --color-gray-700: #44403C;
+  --color-gray-800: #292524;
+  --color-gray-900: #1C1917;
+  --color-gray-950: #0C0A09;
+
+  /* Semantic */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+
+  /* Base Tokens */
+  --background: #FFFFFF;
+  --foreground: var(--color-gray-900);
+  --card: #FFFFFF;
+  --card-foreground: var(--color-gray-900);
+  --popover: #FFFFFF;
+  --popover-foreground: var(--color-gray-900);
+  --primary: var(--color-orange-500);
+  --primary-hover: var(--color-orange-600);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--color-gray-100);
+  --secondary-foreground: var(--color-gray-700);
+  --muted: var(--color-gray-100);
+  --muted-foreground: var(--color-gray-600);
+  --accent: var(--color-orange-500);
+  --accent-foreground: #FFFFFF;
+  --destructive: var(--color-error);
+  --destructive-foreground: #FFFFFF;
+  --border: var(--color-gray-200);
+  --input: var(--color-gray-200);
+  --input-background: #FFFFFF;
+  --ring: var(--color-orange-500);
+  --switch-background: var(--color-gray-200);
+
+  /* Charts & Visuals */
+  --chart-1: var(--color-orange-500);
+  --chart-2: #38BDF8;
+  --chart-3: #A855F7;
+  --chart-4: #22C55E;
+  --chart-5: #FACC15;
+
+  /* Sidebar */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: var(--color-gray-900);
+  --sidebar-primary: var(--color-orange-500);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(249, 115, 22, 0.08);
+  --sidebar-accent-foreground: var(--color-orange-600);
+  --sidebar-border: #E7E5E4;
+  --sidebar-ring: var(--color-orange-500);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow-md: 0 4px 12px -2px rgb(15 23 42 / 0.15);
+  --shadow-lg: 0 20px 45px -15px rgb(15 23 42 / 0.25);
+
+  /* Radii */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+
+  /* Typography scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+
+  /* Line heights */
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+}
+
+.dark {
+  --background: #0A0908;
+  --foreground: #F5F5F4;
+
+  --card: #1C1917;
+  --card-foreground: #F5F5F4;
+  --popover: #1C1917;
+  --popover-foreground: #F5F5F4;
+
+  --primary: var(--color-orange-500);
+  --primary-hover: var(--color-orange-400);
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #292524;
+  --secondary-foreground: #E7E5E4;
+  --muted: #292524;
+  --muted-foreground: #A8A29E;
+  --accent: var(--color-orange-600);
+  --accent-foreground: #FFFFFF;
+  --destructive: #F87171;
+  --destructive-foreground: #0C0A09;
+  --border: #44403C;
+  --input: #44403C;
+  --input-background: #1C1917;
+  --ring: var(--color-orange-500);
+  --switch-background: #44403C;
+
+  --sidebar: #1C1917;
+  --sidebar-foreground: #F5F5F4;
+  --sidebar-primary: var(--color-orange-500);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(234, 88, 12, 0.15);
+  --sidebar-accent-foreground: #F97316;
+  --sidebar-border: #44403C;
+  --sidebar-ring: var(--color-orange-500);
+
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 12px 24px -4px rgb(0 0 0 / 0.5), 0 4px 8px -4px rgb(0 0 0 / 0.3);
 }
 
 @theme inline {
@@ -49,6 +171,7 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -68,10 +191,10 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -88,70 +211,85 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    @apply bg-background text-foreground antialiased;
   }
 
   h1 {
-    font-size: 1.5rem;
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: var(--text-3xl);
+    font-weight: 600;
+    line-height: var(--leading-snug);
   }
 
   h2 {
-    font-size: 1.25rem;
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    line-height: var(--leading-snug);
   }
 
   h3 {
-    font-size: 1.125rem;
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: var(--text-xl);
+    font-weight: 600;
+    line-height: var(--leading-normal);
   }
 
   h4 {
-    font-size: 1rem;
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: var(--text-lg);
+    font-weight: 500;
+    line-height: var(--leading-normal);
   }
 
   p {
-    font-size: 1rem;
-    font-weight: var(--font-weight-normal);
-    line-height: 1.5;
+    font-size: var(--text-base);
+    font-weight: 400;
+    line-height: var(--leading-relaxed);
   }
 
   label {
-    font-size: 1rem;
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    line-height: var(--leading-normal);
   }
 
   button {
-    font-size: 1rem;
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: var(--text-base);
+    font-weight: 500;
+    line-height: var(--leading-normal);
   }
 
   input {
-    font-size: 1rem;
-    font-weight: var(--font-weight-normal);
-    line-height: 1.5;
+    font-size: var(--text-base);
+    font-weight: 400;
+    line-height: var(--leading-normal);
   }
 }
 
 html {
-  font-size: var(--font-size);
+  font-size: var(--font-size-base);
 }
 
-/* Fix date input calendar icon overlap on mobile */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .max-w-reading {
+    max-width: 68ch;
+  }
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-2xl border border-border bg-card text-card-foreground shadow-sm transition-all dark:border-border/60 dark:bg-card;
+  }
+}
+
 @media (max-width: 768px) {
   input[type="date"]::-webkit-calendar-picker-indicator {
     position: relative;
     z-index: 1;
   }
-  
-  /* Ensure date input padding works correctly on mobile */
+
   input[type="date"] {
     padding-left: 0.75rem !important;
   }

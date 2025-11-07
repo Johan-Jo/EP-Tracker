@@ -160,7 +160,9 @@ export function TimerWidget({ userId, orgId, inline = false }: TimerWidgetProps)
 								<p className="text-xs text-muted-foreground">{elapsedTime}</p>
 							</div>
 						) : (
-							<p className="text-sm text-muted-foreground">Ingen aktiv tid</p>
+							<p className="text-base font-semibold text-black dark:text-[#c47a2c] dark:[text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">
+								Ingen aktiv tid
+							</p>
 						)}
 					</div>
 					<div className="flex items-center gap-2">

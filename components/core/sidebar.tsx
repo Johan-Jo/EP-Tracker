@@ -140,29 +140,28 @@ interface SidebarProps {
 	userRole: UserRole;
 }
 
+
 export function Sidebar({ userRole }: SidebarProps) {
 	const pathname = usePathname();
 
-	// Filter items based on user role
 	const visibleNavItems = navItems.filter((item) => item.roles.includes(userRole));
 	const visibleSettingsItems = settingsItems.filter((item) => item.roles.includes(userRole));
 	const showAdminSection = visibleSettingsItems.length > 0;
 
 	return (
-		<aside className='hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-white dark:bg-gray-950'>
+		<aside className='hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col border-r border-[var(--color-sidebar-border)] bg-[var(--color-sidebar)] text-[var(--color-sidebar-foreground)]'>
 			<div className='flex flex-col flex-1 min-h-0'>
-				{/* Header - Logo area */}
-				<div className="px-3 py-2 flex items-center justify-start border-b border-gray-200 bg-white">
-					<Link href="/dashboard" className="flex items-center justify-start">
+				<div className='flex items-center justify-start border-b border-[var(--color-sidebar-border)] bg-[var(--color-sidebar)] px-3 py-[6.5px]'>
+					<Link href='/dashboard' className='flex items-center justify-start'>
 						<img
-							src="/images/EP-Flat.png"
-							alt="EP Tracker"
+							src='/images/EP-Flat.png'
+							alt='EP Tracker'
 							style={{ width: '100%', height: 'auto', maxWidth: '216px', display: 'block' }}
 						/>
 					</Link>
 				</div>
 
-				<nav className='flex-1 px-4 pt-[16px] sm:pt-6 pb-4 space-y-1 overflow-y-auto'>
+				<nav className='flex-1 space-y-1 overflow-y-auto px-4 pb-4 pt-[16px] sm:pt-6'>
 					{visibleNavItems.map((item) => {
 						// For dashboard, exact match. For others, check if pathname starts with href
 						const isActive = item.href === '/dashboard' 
@@ -180,16 +179,16 @@ export function Sidebar({ userRole }: SidebarProps) {
 								<Link
 									href={item.href}
 									className={cn(
-										'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
+										'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
 										isActive
-											? 'bg-orange-50 text-orange-600 font-medium'
-											: 'text-gray-700 hover:bg-gray-50'
+											? 'bg-orange-100 text-orange-900 font-medium shadow-sm dark:bg-orange-900/20 dark:text-orange-100'
+											: 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
 									)}
 								>
 									<Icon
 										className={cn(
 											'flex-shrink-0 h-5 w-5',
-											isActive ? 'text-orange-600' : 'text-gray-400'
+											isActive ? 'text-orange-600 dark:text-orange-300' : 'text-gray-400 dark:text-gray-500'
 										)}
 									/>
 									{item.label}
@@ -207,15 +206,15 @@ export function Sidebar({ userRole }: SidebarProps) {
 													key={subItem.href}
 													href={subItem.href}
 													className={cn(
-														'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
+														'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
 														isSubItemActive
-															? 'bg-orange-100 text-orange-700 font-medium'
-															: 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+															? 'bg-orange-100 text-orange-700 font-medium dark:bg-orange-900/20 dark:text-orange-200'
+															: 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-gray-100'
 													)}
 												>
 													<SubIcon className={cn(
 														'flex-shrink-0 h-4 w-4',
-														isSubItemActive ? 'text-orange-600' : 'text-gray-400'
+														isSubItemActive ? 'text-orange-600 dark:text-orange-300' : 'text-gray-400 dark:text-gray-500'
 													)} />
 													{subItem.label}
 												</Link>
@@ -228,8 +227,8 @@ export function Sidebar({ userRole }: SidebarProps) {
 					})}
 
 					{showAdminSection && (
-						<div className='pt-6 mt-6 border-t border-gray-200'>
-							<p className='px-3 pt-4 mb-2 text-xs font-medium text-gray-400 uppercase tracking-wide'>
+						<div className='mt-6 border-t border-[var(--color-sidebar-border)] pt-6'>
+							<p className='px-3 pt-4 mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground'>
 								ADMINISTRATION
 							</p>
 							{visibleSettingsItems.map((item) => {
@@ -241,16 +240,16 @@ export function Sidebar({ userRole }: SidebarProps) {
 										key={item.href}
 										href={item.href}
 										className={cn(
-											'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
+											'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
 											isActive
-												? 'bg-orange-50 text-orange-600 font-medium'
-												: 'text-gray-700 hover:bg-gray-50'
+												? 'bg-orange-100 text-orange-900 font-medium dark:bg-orange-900/20 dark:text-orange-100'
+												: 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
 										)}
 									>
 										<Icon
 											className={cn(
 												'flex-shrink-0 h-5 w-5',
-												isActive ? 'text-orange-600' : 'text-gray-400'
+												isActive ? 'text-orange-600 dark:text-orange-300' : 'text-gray-400 dark:text-gray-500'
 											)}
 										/>
 										{item.label}

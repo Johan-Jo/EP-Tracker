@@ -352,11 +352,13 @@ export function TimeSlider({
   }, [isDragging, position]);
 
   const bgColor = isActive 
-    ? 'bg-orange-500' 
-    : 'bg-gray-100';
+    ? 'bg-gradient-to-r from-orange-500 to-orange-600 dark:from-[#ff7a29] dark:via-[#ff6315] dark:to-[#ff4d00]' 
+    : 'bg-gray-100 dark:bg-[linear-gradient(115deg,#4b3624_0%,#2d2219_35%,#1d1611_100%)]';
   
-  const textColor = isActive ? 'text-white' : 'text-gray-700';
-  const borderColor = isActive ? 'border-orange-500' : 'border-orange-500';
+  const textColor = isActive
+    ? 'text-white dark:text-white dark:[text-shadow:0_1px_1px_rgba(0,0,0,0.55)]'
+    : 'text-gray-700 dark:text-[#ffe5c7] dark:[text-shadow:0_1px_1px_rgba(0,0,0,0.55)]';
+  const borderColor = isActive ? 'border-orange-500 dark:border-[#ff7a29]' : 'border-orange-300 dark:border-[#ff7a29]/45';
   
   const label = isActive ? 'Swipa för att checka ut' : 'Swipa för att checka in';
 
@@ -547,7 +549,7 @@ export function TimeSlider({
         {/* Timer display when active */}
         {isActive && (
           <div className="flex items-center justify-center py-2">
-            <div className="text-4xl font-mono font-bold text-gray-900 tracking-wider">
+            <div className="text-4xl font-mono font-bold text-[#2f1f13] tracking-wider dark:text-white dark:[text-shadow:0_2px_6px_rgba(0,0,0,0.5)]">
               {elapsedTime}
             </div>
           </div>
@@ -558,27 +560,29 @@ export function TimeSlider({
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setShowDropdown(!showDropdown)}
-            className="w-full flex items-center justify-between px-3 py-2 bg-white border-2 border-gray-200 rounded-lg hover:border-orange-300 transition-colors"
+          className="w-full flex items-center justify-between px-3 py-2 bg-white border-2 border-gray-200 rounded-lg hover:border-orange-300 transition-colors dark:bg-[#1f140d] dark:border-[#ff8a3d]/35 dark:hover:border-[#ff8a3d]/55"
           >
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-gray-700">
+               <span className="text-xs font-medium text-gray-700 dark:text-[#ffe5c7] dark:[text-shadow:0_1px_1px_rgba(0,0,0,0.55)]">
                 {isActive ? 'Arbetar på:' : 'Starta tid för:'}
               </span>
-              <span className="text-sm font-semibold text-orange-600">
+               <span className="text-sm font-semibold text-orange-600 dark:text-[#ffb778] dark:[text-shadow:0_1px_1px_rgba(0,0,0,0.35)]">
                 {selectedProject?.name || 'Välj projekt'}
               </span>
             </div>
-            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform dark:text-white/60 ${showDropdown ? 'rotate-180' : ''}`} />
           </button>
 
           {showDropdown && (
-            <div className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            <div className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border-2 border-gray-200 bg-white shadow-lg dark:border-[#ff8a3d]/35 dark:bg-[#1f140d]">
               {availableProjects.map((project) => (
                 <button
                   key={project.id}
                   onClick={() => handleProjectSelect(project.id)}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-orange-50 transition-colors ${
-                    selectedProjectId === project.id ? 'bg-orange-50 text-orange-600 font-medium' : 'text-gray-700'
+                  className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-orange-50 dark:hover:bg-orange-500/10 ${
+                    selectedProjectId === project.id
+                      ? 'bg-orange-50 text-orange-600 font-medium dark:bg-[#372113] dark:text-[#ffcb96]'
+                      : 'text-gray-700 dark:text-[#ffe6cc]'
                   }`}
                 >
                   {project.name}
@@ -592,10 +596,14 @@ export function TimeSlider({
       {/* Slider */}
       <div
         ref={sliderRef}
-        className={`relative h-14 rounded-full ${bgColor} border-2 ${borderColor} cursor-pointer select-none transition-all duration-300`}
+        className={`relative h-14 overflow-hidden rounded-full ${bgColor} border-2 ${borderColor} cursor-pointer select-none transition-all duration-300`}
       >
+        <div className="pointer-events-none absolute inset-0 z-0 opacity-30 dark:opacity-40 bg-[radial-gradient(circle_at_20%_40%,rgba(255,255,255,0.22),transparent_55%),radial-gradient(circle_at_80%_50%,rgba(255,255,255,0.18),transparent_50%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-1 bg-white/20 dark:bg-white/10" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-1 bg-black/10 dark:bg-black/40" />
+
         {/* Background text */}
-        <div className={`absolute inset-0 flex items-center justify-center ${textColor} font-medium text-sm pointer-events-none z-0`}>
+        <div className={`absolute inset-0 z-10 flex items-center justify-center ${textColor} pointer-events-none text-sm font-medium uppercase tracking-[0.18em]`}>
           {isLoading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
@@ -607,7 +615,7 @@ export function TimeSlider({
 
         {/* Sliding thumb */}
         <div
-          className="absolute top-1/2 -translate-y-1/2 h-12 w-12 bg-white border border-gray-200 rounded-full shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing z-10 overflow-hidden"
+          className="absolute top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-white shadow-md cursor-grab active:cursor-grabbing dark:border-transparent dark:bg-[radial-gradient(circle_at_30%_30%,#ffe3c3_0%,#ff8c38_45%,#cc3d00_100%)] dark:shadow-[0_12px_28px_rgba(255,100,30,0.45)]"
           style={{
             left: `calc(${position * 100}% - ${position * 48}px)`,
             transition: isDragging ? 'none' : 'left 0.3s ease-out'
@@ -622,7 +630,7 @@ export function TimeSlider({
             strokeWidth="2" 
             strokeLinecap="round" 
             strokeLinejoin="round"
-            className="w-6 h-6 text-gray-600"
+            className="h-6 w-6 text-gray-600 dark:text-[#2d1507]"
             style={{
               transform: `scale(${1 + position * 0.2})`
             }}

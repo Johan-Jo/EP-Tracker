@@ -133,20 +133,19 @@ export function MobileNav({ userRole }: MobileNavProps) {
 
 	return (
 		<>
-			{/* Menu Modal */}
 			{isMenuOpen && (
-				<div className='fixed inset-0 z-50 bg-black/50 md:hidden' onClick={() => setIsMenuOpen(false)}>
+				<div className='fixed inset-0 z-50 bg-black/50 backdrop-blur-sm md:hidden dark:bg-black/70' onClick={() => setIsMenuOpen(false)}>
 					<div
-						className='fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl p-6 max-h-[80vh] overflow-y-auto'
+						className='fixed bottom-0 left-0 right-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-[var(--color-card)] p-6 text-[var(--color-card-foreground)] shadow-lg'
 						onClick={(e) => e.stopPropagation()}
 					>
-						<div className='flex items-center justify-between mb-6'>
+						<div className='mb-6 flex items-center justify-between'>
 							<h2 className='text-xl font-semibold'>Meny</h2>
 							<button
 								onClick={() => setIsMenuOpen(false)}
-								className='p-2 rounded-lg hover:bg-gray-100'
+								className='rounded-lg p-2 transition-colors hover:bg-muted dark:hover:bg-gray-800'
 							>
-								<X className='w-5 h-5' />
+								<X className='h-5 w-5' />
 							</button>
 						</div>
 						<div className='grid gap-2'>
@@ -160,13 +159,13 @@ export function MobileNav({ userRole }: MobileNavProps) {
 										href={item.href}
 										onClick={() => setIsMenuOpen(false)}
 										className={cn(
-											'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
+											'flex items-center gap-3 rounded-xl px-4 py-3 transition-colors',
 											isActive
-												? 'bg-orange-50 text-orange-600'
-												: 'hover:bg-gray-100'
+												? 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-200'
+												: 'text-muted-foreground hover:bg-muted dark:text-gray-400 dark:hover:bg-gray-800'
 										)}
 									>
-										<Icon className='w-5 h-5' />
+										<Icon className='h-5 w-5' />
 										<span className='font-medium'>{item.label}</span>
 									</Link>
 								);
@@ -176,9 +175,8 @@ export function MobileNav({ userRole }: MobileNavProps) {
 				</div>
 			)}
 
-			{/* Bottom Navigation */}
-			<nav className='fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 md:hidden'>
-				<div className='flex items-stretch h-16'>
+			<nav className='fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-[var(--color-card)] text-[var(--color-card-foreground)] shadow-[0_-4px_20px_rgba(0,0,0,0.08)] md:hidden dark:border-gray-800 dark:bg-[var(--color-gray-950)]'>
+				<div className='flex h-16 items-stretch'>
 					{visibleMainItems.map((item) => {
 						// Dashboard should be exact match, others can match sub-paths
 						const isActive = item.href === '/dashboard'
@@ -187,45 +185,43 @@ export function MobileNav({ userRole }: MobileNavProps) {
 						const Icon = item.icon;
 
 						return (
-							<Link
-								key={item.href}
-								href={item.href}
-								className='flex flex-col items-center justify-center flex-1 relative'
-							>
-								{/* Active indicator line */}
-								{isActive && (
-									<div className='absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-orange-500 rounded-b-full' />
-								)}
-								<Icon className={cn(
-									'w-6 h-6 mb-1',
-									isActive ? 'text-orange-500' : 'text-gray-400'
-								)} />
-								<span className={cn(
-									'text-xs',
-									isActive ? 'text-orange-500 font-medium' : 'text-gray-600'
-								)}>
-									{item.label}
-								</span>
-							</Link>
+						<Link
+							key={item.href}
+							href={item.href}
+							className='relative flex flex-1 flex-col items-center justify-center'
+						>
+							{isActive && (
+								<div className='absolute top-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-b-full bg-orange-500' />
+							)}
+							<Icon className={cn(
+								'w-6 h-6 mb-1',
+								isActive ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 dark:text-gray-500'
+							)} />
+							<span className={cn(
+								'block text-xs font-medium',
+								isActive ? 'text-orange-600 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400'
+							)}>
+								{item.label}
+							</span>
+						</Link>
 						);
 					})}
 					
 					{/* Menu Button */}
 					<button
 						onClick={() => setIsMenuOpen(true)}
-						className='flex flex-col items-center justify-center flex-1 relative'
+						className='relative flex flex-1 flex-col items-center justify-center'
 					>
-						{/* Active indicator line */}
 						{isMenuActive && (
-							<div className='absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-orange-500 rounded-b-full' />
+							<div className='absolute top-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-b-full bg-orange-500' />
 						)}
 						<Menu className={cn(
 							'w-6 h-6 mb-1',
-							isMenuActive ? 'text-orange-500' : 'text-gray-400'
+							isMenuActive ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 dark:text-gray-500'
 						)} />
 						<span className={cn(
-							'text-xs',
-							isMenuActive ? 'text-orange-500 font-medium' : 'text-gray-600'
+							'block text-xs font-medium',
+							isMenuActive ? 'text-orange-600 dark:text-orange-300' : 'text-gray-600 dark:text-gray-400'
 						)}>
 							Meny
 						</span>

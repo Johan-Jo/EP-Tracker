@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Wifi, WifiOff, RefreshCw, Check, Loader2 } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, Loader2 } from 'lucide-react';
 import { offlineQueue } from '@/lib/sync/offline-queue';
 import toast from 'react-hot-toast';
 
@@ -100,14 +100,18 @@ export function SyncStatus() {
     if (pendingCount === 0 && !isSyncing) {
         return (
             <div className="flex items-center gap-2 text-sm">
-                <span className="inline-flex items-center gap-1 rounded-full border border-[#E5E7EB] px-2 py-1">
-                    <svg viewBox="0 0 8 8" className="h-2.5 w-2.5 text-[#10B981]" aria-hidden="true">
+                <Badge
+                    variant="outline"
+                    className="flex items-center gap-1 rounded-full border-border/50 bg-muted px-3 py-1 text-xs font-medium text-foreground dark:border-white/15 dark:bg-white/5"
+                >
+                    <svg viewBox="0 0 8 8" className="h-2.5 w-2.5 text-emerald-500" aria-hidden="true">
                         <circle cx="4" cy="4" r="4" fill="currentColor" />
                     </svg>
-                    <span className="text-[#374151]">Synkat</span>
-                </span>
+                    Synkat
+                </Badge>
+
                 {lastSyncTime && (
-                    <span className="text-xs text-muted-foreground hidden md:inline">
+                    <span className="hidden text-xs text-muted-foreground md:inline">
                         {lastSyncTime.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                 )}

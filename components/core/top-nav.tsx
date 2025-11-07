@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { SyncStatus } from '@/components/core/sync-status';
+import DarkModeToggle from './dark-mode-toggle';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -58,8 +59,8 @@ export function TopNav({ userEmail, userName }: TopNavProps) {
 	};
 
 	return (
-		<header className='sticky top-0 z-40 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950'>
-			<div className='flex items-center justify-between h-16 px-4 md:px-6'>
+		<header className='relative sticky top-0 z-40 border-b border-[var(--color-sidebar-border)] bg-[var(--color-sidebar)] text-[var(--color-sidebar-foreground)] md:pl-64 md:before:absolute md:before:left-[-2px] md:before:top-0 md:before:h-full md:before:w-[calc(16rem+2px)] md:before:bg-[var(--color-sidebar)] md:before:content-[""] md:before:pointer-events-none md:before:z-10'>
+			<div className='relative z-10 mx-auto flex h-16 w-full max-w-[1920px] items-center justify-between px-4 md:px-6 md:pl-6'>
 		{/* Logo */}
 		<div className='flex items-center gap-4'>
 			<Link href='/dashboard' className='md:hidden'>
@@ -75,17 +76,18 @@ export function TopNav({ userEmail, userName }: TopNavProps) {
 		</div>
 
 				{/* Right side - Sync Status, Notifications & User menu */}
-				<div className='flex items-center gap-3'>
+				<div className='flex items-center gap-3 text-[var(--color-sidebar-foreground)]'>
 					<SyncStatus />
-					
-					<Button variant='ghost' size='icon'>
-						<Bell className='w-5 h-5' />
+					<DarkModeToggle />
+
+					<Button variant='ghost' size='icon' className='text-[var(--color-sidebar-foreground)] hover:bg-white/10'>
+						<Bell className='h-5 w-5' />
 					</Button>
 
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button variant='ghost' className='relative h-8 w-8 rounded-full p-0'>
-								<div className="h-8 w-8 rounded-full bg-[#111827] text-white text-sm font-medium flex items-center justify-center">
+							<Button variant='ghost' className='relative h-8 w-8 rounded-full p-0 text-[var(--color-sidebar-foreground)] hover:bg-white/10'>
+								<div className='flex h-8 w-8 items-center justify-center rounded-full bg-orange-600 text-sm font-medium text-white dark:bg-orange-500'>
 									{initials}
 								</div>
 							</Button>

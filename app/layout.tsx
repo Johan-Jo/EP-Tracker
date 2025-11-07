@@ -5,6 +5,7 @@ import { QueryProvider } from '@/lib/providers/query-provider';
 import { Toaster } from 'react-hot-toast';
 import { ZodInit } from '@/components/core/zod-init';
 import { NotificationHandler } from '@/components/core/notification-handler';
+import ThemeProvider from '@/components/core/theme-provider';
 
 const inter = Inter({
 	subsets: ['latin'],
@@ -36,13 +37,26 @@ export default function RootLayout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
+ const themeScript = `(() => {
+ 	try {
+ 		const storageTheme = window.localStorage.getItem('theme');
+ 		const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+ 		const theme = storageTheme === 'light' || storageTheme === 'dark' ? storageTheme : (prefersDark ? 'dark' : 'light');
+ 		const root = document.documentElement;
+ 		root.classList.toggle('dark', theme === 'dark');
+ 		root.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
+ 	} catch (_) {}
+ })();`;
 	return (
-		<html lang='sv'>
+		<html lang='sv' suppressHydrationWarning>
 			<body className={`${inter.variable} font-sans antialiased`}>
-				<ZodInit />
-				<NotificationHandler />
-				<QueryProvider>{children}</QueryProvider>
-				<Toaster position="top-center" />
+				<script dangerouslySetInnerHTML={{ __html: themeScript }} />
+				<ThemeProvider>
+					<ZodInit />
+					<NotificationHandler />
+					<QueryProvider>{children}</QueryProvider>
+					<Toaster position="top-center" />
+				</ThemeProvider>
 			</body>
 		</html>
 	);
