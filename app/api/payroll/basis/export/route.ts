@@ -182,8 +182,9 @@ export async function GET(request: NextRequest) {
 			});
 
 			const csvBuffer = fs.readFileSync(exportResult.csvPath);
+			const csvBody = bufferToArrayBuffer(csvBuffer);
 
-			return new NextResponse(csvBuffer, {
+			return new NextResponse(csvBody, {
 				headers: {
 					'Content-Type': 'text/csv; charset=utf-8',
 					'Content-Disposition': `attachment; filename="${path.basename(exportResult.csvPath)}"`,
@@ -220,13 +221,14 @@ export async function GET(request: NextRequest) {
 						requireLocked: lockedOnly,
 					}
 				);
+				const pdfBody = bufferToArrayBuffer(pdfBuffer);
 				
 				const personName = targetEntry?.person?.full_name ||
 					payrollBasis?.find((p: any) => p.person_id === targetPersonId)?.person?.full_name || 
 					payrollBasis?.[0]?.person?.full_name || 'medarbetare';
 				const filename = `loneunderlag_${periodStart}_${periodEnd}_${sanitizeFilenameSegment(personName)}.pdf`;
 
-				return new NextResponse(pdfBuffer, {
+				return new NextResponse(pdfBody, {
 					headers: {
 						'Content-Type': 'application/pdf',
 						'Content-Disposition': `attachment; filename="${filename}"`,
@@ -254,5 +256,14 @@ function sanitizeFilenameSegment(value: string | undefined | null): string {
 	const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 	const sanitized = normalized.replace(/[^0-9A-Za-z_-]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
 	return sanitized || 'medarbetare';
+}
+
+function bufferToArrayBuffer(data: Uint8Array | ArrayBuffer): ArrayBuffer {
+	if (data instanceof ArrayBuffer) {
+		return data;
+	}
+	const copy = new Uint8Array(data.byteLength);
+	copy.set(data);
+	return copy.buffer;
 }
 

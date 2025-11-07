@@ -58,7 +58,7 @@ const nextConfig = {
 	},
 	
 	// Reduce server-side processing
-	serverExternalPackages: ['@supabase/supabase-js', 'pdfkit'],
+	serverExternalPackages: ['@supabase/supabase-js', 'pdfkit', 'playwright'],
 	
 	// Enable modularizeImports for better tree-shaking
 	modularizeImports: {
