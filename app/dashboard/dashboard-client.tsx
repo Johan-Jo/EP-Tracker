@@ -255,21 +255,28 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
           </div>
           <div className="leading-tight">
             {optimisticTimeEntry && optimisticTimeEntry.start_at && optimisticTimeEntry.projects?.name ? (
-              <>
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-black dark:text-[#d9984d]">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#3a2613] dark:text-[#7c4515]">
                   Aktiv tid
                 </p>
-                <p className="text-sm text-orange-700/90 dark:text-orange-100/85">
+                <p className="text-base font-semibold text-[#2b1c11] dark:text-[#d4943c]">
                   Du checkade in{' '}
-                  <span className="font-semibold">
+                  <span className="font-semibold text-[#8d4d12] dark:text-[#e6a250]">
                     {new Date(optimisticTimeEntry.start_at).toLocaleTimeString('sv-SE', {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
                   </span>
-                  {optimisticTimeEntry.projects?.name ? ` • ${optimisticTimeEntry.projects.name}` : ''}
+                  {optimisticTimeEntry.projects?.name ? (
+                    <>
+                      , projekt:{' '}
+                      <span className="font-semibold text-[#6f340a] dark:text-[#d7832b]">
+                        {optimisticTimeEntry.projects.name}
+                      </span>
+                    </>
+                  ) : null}
                 </p>
-              </>
+              </div>
             ) : (
               <p className="text-lg font-semibold text-black dark:text-[#c47a2c] dark:[text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">
                 Ingen aktiv tid
@@ -277,21 +284,6 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
             )}
           </div>
         </div>
-        {optimisticTimeEntry && optimisticTimeEntry.start_at && optimisticTimeEntry.projects?.name && (
-          <div className="mb-3 text-center text-base font-medium text-[#2b1c11] dark:text-[#ffe0b6] dark:[text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">
-            Du checkade in{' '}
-            <span className="font-semibold text-[#c25b04] dark:text-[#ffc47d]">
-              {new Date(optimisticTimeEntry.start_at).toLocaleTimeString('sv-SE', {
-              hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </span>
-            , projekt:{' '}
-            <span className="font-semibold text-[#9a4a02] dark:text-[#ffb06a]">
-              {optimisticTimeEntry.projects.name}
-            </span>
-          </div>
-        )}
         <TimeSlider
           isActive={!!optimisticTimeEntry}
           projectName={
