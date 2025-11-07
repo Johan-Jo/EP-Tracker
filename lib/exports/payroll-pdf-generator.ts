@@ -9,6 +9,7 @@ import {
 	PayrollPDFData,
 	maskPersonalNumber,
 	collectPayrollPDFData,
+	CollectPayrollOptions,
 } from '@/lib/exports/payroll-pdf-advanced';
 
 /**
@@ -19,10 +20,11 @@ export async function generateAdvancedPayrollPDF(
 	personId: string,
 	periodStart: string,
 	periodEnd: string,
-	exportTarget: 'Fortnox PAXml' | 'Visma Lön' | 'Both' = 'Both'
+	exportTarget: 'Fortnox PAXml' | 'Visma Lön' | 'Both' = 'Both',
+	options: CollectPayrollOptions = {}
 ): Promise<Buffer> {
 	// Collect all data needed for PDF
-	const data = await collectPayrollPDFData(orgId, personId, periodStart, periodEnd, exportTarget);
+	const data = await collectPayrollPDFData(orgId, personId, periodStart, periodEnd, exportTarget, options);
 	
 	// Transform data to component props
 	const props = transformToComponentProps(data, periodStart, periodEnd);
@@ -66,7 +68,7 @@ export async function generateAdvancedPayrollPDF(
 		await page.waitForTimeout(500);
 		
 		// Generate PDF with page numbers in footer
-		const fileName = `Loneunderlag_${periodStart}_${periodEnd}_${data.employee.name.replace(/\s+/g, '_')}.pdf`;
+		const fileName = `Loneunderlag_${periodStart}_${periodEnd}_${sanitizeFilenameSegment(data.employee.name)}.pdf`;
 		const pdfBuffer = await page.pdf({
 			format: 'A4',
 			margin: {
@@ -194,7 +196,7 @@ function transformToComponentProps(
 				? `${data.attestation.attested_by.name} ${formatDateTime(data.attestation.attested_by.timestamp)}`
 				: undefined,
 			targets,
-			fileName: `Loneunderlag_${periodStart}_${periodEnd}_${data.employee.name.replace(/\s+/g, '_')}.pdf`,
+			fileName: `Loneunderlag_${periodStart}_${periodEnd}_${sanitizeFilenameSegment(data.employee.name)}.pdf`,
 		},
 		employee: {
 			name: data.employee.name,
@@ -262,4 +264,11 @@ function generatePayrollPDFWithPDFKit(data: PayrollPDFData): Promise<Buffer> {
 			reject(error);
 		}
 	});
+}
+
+function sanitizeFilenameSegment(value: string | undefined | null): string {
+	if (!value) return 'medarbetare';
+	const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+	const sanitized = normalized.replace(/[^0-9A-Za-z_-]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+	return sanitized || 'medarbetare';
 }

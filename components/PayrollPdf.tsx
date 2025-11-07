@@ -98,9 +98,11 @@ export default function PayrollPdf({
 					@page { size: A4; margin: 16mm 18mm; }
 					* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 					body { color:#111; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial; line-height:1.35; font-size: 11px; }
-					header, section { break-inside: avoid; }
+					header { break-inside: avoid; }
+					section { break-inside: auto; }
 					table { width:100%; border-collapse: collapse; table-layout: fixed; }
 					thead { display: table-header-group; }
+					tbody tr { break-inside: avoid; }
 					th { font-weight:600; font-size:11px; color:#444; border-bottom:1px solid #E5E7EB; padding:8px 12px; text-align:left; background: white; }
 					td { font-size:11px; color:#111; border-bottom:1px solid #F1F5F9; padding:8px 12px; vertical-align:top; }
 					tr:nth-child(even) td { background:#FAFAFA; }

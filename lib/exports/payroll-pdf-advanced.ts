@@ -429,12 +429,18 @@ export async function generateWageTypeRows(
 /**
  * Collect all data needed for PDF generation
  */
+export interface CollectPayrollOptions {
+	requireLocked?: boolean;
+	payrollBasisId?: string;
+}
+
 export async function collectPayrollPDFData(
 	orgId: string,
 	personId: string,
 	periodStart: string,
 	periodEnd: string,
-	exportTarget: 'Fortnox PAXml' | 'Visma Lön' | 'Both' = 'Both'
+	exportTarget: 'Fortnox PAXml' | 'Visma Lön' | 'Both' = 'Both',
+	options: CollectPayrollOptions = {}
 ): Promise<PayrollPDFData> {
 	const supabase = await createClient();
 	
@@ -461,16 +467,46 @@ export async function collectPayrollPDFData(
 	
 	// Fetch payroll basis - fix period filtering: find records that overlap with requested period
 	// For overlap: period_start <= periodEnd AND period_end >= periodStart
-	const { data: payrollBasis, error: payrollBasisError } = await supabase
+	let payrollBasisQuery = supabase
 		.from('payroll_basis')
 		.select('*, locked_by, locked_at')
 		.eq('org_id', orgId)
 		.eq('person_id', personId)
 		.lte('period_start', periodEnd)
-		.gte('period_end', periodStart)
+		.gte('period_end', periodStart);
+
+	if (options.payrollBasisId) {
+		payrollBasisQuery = payrollBasisQuery.eq('id', options.payrollBasisId);
+	}
+
+	if (options.requireLocked) {
+		payrollBasisQuery = payrollBasisQuery.eq('locked', true);
+	}
+
+	const { data: payrollBasis, error: payrollBasisError } = await payrollBasisQuery
+		.order('locked', { ascending: false })
 		.order('period_start', { ascending: false })
 		.limit(1)
 		.maybeSingle();
+
+	// If we required locked and nothing found, try again without locked filter to avoid empty PDF
+	let finalPayrollBasis = payrollBasis;
+	if (!finalPayrollBasis && options.requireLocked) {
+		const { data: fallbackBasis } = await supabase
+			.from('payroll_basis')
+			.select('*, locked_by, locked_at')
+			.eq('org_id', orgId)
+			.eq('person_id', personId)
+			.lte('period_start', periodEnd)
+			.gte('period_end', periodStart)
+			.order('locked', { ascending: false })
+			.order('period_start', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+		finalPayrollBasis = fallbackBasis || null;
+	}
+
+	const payrollBasisRecord = finalPayrollBasis;
 	
 	if (payrollBasisError) {
 		console.warn('Error fetching payroll_basis for PDF:', payrollBasisError);
@@ -478,26 +514,26 @@ export async function collectPayrollPDFData(
 	}
 	
 	// Use payroll basis period if available (handles periods that span different dates than requested)
-	const effectivePeriodStart = payrollBasis?.period_start || periodStart;
-	const effectivePeriodEnd = payrollBasis?.period_end || periodEnd;
+	const effectivePeriodStart = payrollBasisRecord?.period_start || periodStart;
+	const effectivePeriodEnd = payrollBasisRecord?.period_end || periodEnd;
 	
 	// Generate wage type rows
 	const wageTypeRows = await generateWageTypeRows(orgId, personId, effectivePeriodStart, effectivePeriodEnd);
 	
 	// If no wage type rows exist but we have payroll_basis data, create rows from it
 	let finalWageTypeRows = wageTypeRows;
-	if (wageTypeRows.length === 0 && payrollBasis) {
+	if (wageTypeRows.length === 0 && payrollBasisRecord) {
 		// Fallback: Create wage type rows from payroll_basis aggregated data
-		finalWageTypeRows = createWageTypeRowsFromPayrollBasis(payrollBasis, membership?.salary_per_hour_sek || 0);
+		finalWageTypeRows = createWageTypeRowsFromPayrollBasis(payrollBasisRecord, membership?.salary_per_hour_sek || 0);
 	}
 	
 	// If no wage type rows exist but we have payroll_basis data, create summary from it
 	let summary: PayrollPDFData['summary'];
-	if (finalWageTypeRows.length === 0 && payrollBasis) {
+	if (finalWageTypeRows.length === 0 && payrollBasisRecord) {
 		// Fallback: Create summary from payroll_basis aggregated data
-		summary = createSummaryFromPayrollBasis(payrollBasis);
+		summary = createSummaryFromPayrollBasis(payrollBasisRecord);
 	} else {
-		summary = calculateSummaryFromRows(finalWageTypeRows, payrollBasis);
+		summary = calculateSummaryFromRows(finalWageTypeRows, payrollBasisRecord);
 	}
 	
 	// Calculate project breakdown
@@ -511,27 +547,27 @@ export async function collectPayrollPDFData(
 	
 	// Fetch locked by name if available
 	let lockedByName: string | null = null;
-	if (payrollBasis?.locked_by) {
+	if (payrollBasisRecord?.locked_by) {
 		const { data: lockedProfile } = await supabase
 			.from('profiles')
 			.select('full_name')
-			.eq('id', payrollBasis.locked_by)
+			.eq('id', payrollBasisRecord.locked_by)
 			.single();
 		lockedByName = lockedProfile?.full_name || null;
 	}
 	
 	// Get attestation chain
 	const attestation = {
-		created_by: payrollBasis ? {
+		created_by: payrollBasisRecord ? {
 			name: 'System',
-			timestamp: payrollBasis.created_at,
+			timestamp: payrollBasisRecord.created_at,
 		} : null,
 		reviewed_by: null,
-		attested_by: payrollBasis?.locked_by ? {
+		attested_by: payrollBasisRecord?.locked_by ? {
 			name: lockedByName || 'Okänd',
-			timestamp: payrollBasis.locked_at || '',
+			timestamp: payrollBasisRecord.locked_at || '',
 		} : null,
-		locked: payrollBasis?.locked || false,
+		locked: payrollBasisRecord?.locked || false,
 	};
 	
 	return {
