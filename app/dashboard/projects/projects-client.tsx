@@ -120,7 +120,7 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
   ];
 
   return (
-    <div className="flex-1 overflow-auto pb-20 md:pb-0">
+    <div className="flex-1 overflow-auto bg-gray-50 pb-20 transition-colors dark:bg-[#0A0908] md:pb-0">
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-border/70 bg-[var(--color-card)]/90 backdrop-blur supports-[backdrop-filter]:bg-[var(--color-card)]/75">
         <div className="px-4 py-4 md:px-8 md:py-6">
