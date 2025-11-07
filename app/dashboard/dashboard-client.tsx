@@ -616,10 +616,10 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                             <span className="font-semibold uppercase tracking-wide text-gray-500 dark:text-white/70">
                               {details.title}
                             </span>
-                                {activity.user_name && (
+                            {activity.user_name && (
                               <span className="text-gray-900 dark:text-white">{activity.user_name}</span>
-                                )}
-                                {activity.project && (
+                            )}
+                            {activity.project && (
                               <span className="text-gray-600 dark:text-white/70">• {activity.project.name}</span>
                             )}
                             <span className="text-gray-500 dark:text-white/60">
