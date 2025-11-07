@@ -194,7 +194,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
   };
 
   return (
-    <>
+    <div className="flex-1 overflow-auto bg-gray-50 transition-colors dark:bg-[#0A0908]">
       {/* Diary Prompt Dialog */}
       <Dialog open={showDiaryPromptDialog} onOpenChange={setShowDiaryPromptDialog}>
         <DialogContent>
@@ -665,6 +665,6 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
 
       <PageTourTrigger tourId="dashboard" />
       </div>
-    </>
+    </div>
   );
 }
