@@ -65,17 +65,28 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-green-100 text-green-700 border-green-200';
+        return 'border border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-200';
       case 'planning':
       case 'paused':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
+        return 'border border-blue-200 bg-blue-100 text-blue-700 dark:border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-200';
       case 'completed':
-        return 'bg-gray-100 text-gray-700 border-gray-200';
+        return 'border border-gray-200 bg-gray-100 text-gray-700 dark:border-gray-500/40 dark:bg-white/10 dark:text-gray-200';
       case 'archived':
-        return 'bg-gray-100 text-gray-500 border-gray-200';
+        return 'border border-gray-200 bg-gray-100 text-gray-500 dark:border-gray-600/40 dark:bg-white/5 dark:text-gray-400';
       default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
+        return 'border border-border/60 bg-muted/70 text-muted-foreground dark:border-border/40 dark:bg-white/5 dark:text-muted-foreground/80';
     }
+  };
+
+  const handleStatusChange = (nextStatus: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextStatus === 'all') {
+      params.set('status', 'all');
+    } else {
+      params.set('status', nextStatus);
+    }
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.push(newUrl);
   };
 
   const getStatusText = (status: string) => {
@@ -97,17 +108,25 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
 
   // Count projects by status
   const totalProjects = projects.length;
-  const activeProjects = projects.filter(p => p.status === 'active').length;
-  const planningProjects = projects.filter(p => p.status === 'paused').length;
+  const activeProjects = projects.filter((p) => p.status === 'active').length;
+  const completedProjects = projects.filter((p) => p.status === 'completed').length;
+  const archivedProjects = projects.filter((p) => p.status === 'archived').length;
+
+  const statusOptions = [
+    { key: 'all', label: 'Alla', count: totalProjects },
+    { key: 'active', label: 'Aktiva', count: activeProjects },
+    { key: 'completed', label: 'Avslutade', count: completedProjects },
+    { key: 'archived', label: 'Arkiverade', count: archivedProjects },
+  ];
 
   return (
     <div className="flex-1 overflow-auto pb-20 md:pb-0">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
-        <div className="px-4 md:px-8 py-4 md:py-6">
-          <div className="flex items-center justify-between mb-4">
+      <header className="sticky top-0 z-10 border-b border-border/70 bg-[var(--color-card)]/90 backdrop-blur supports-[backdrop-filter]:bg-[var(--color-card)]/75">
+        <div className="px-4 py-4 md:px-8 md:py-6">
+          <div className="mb-4 flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold mb-1">Projekt</h1>
+              <h1 className="mb-1 text-3xl font-bold text-foreground">Projekt</h1>
               <p className="text-sm text-muted-foreground">
                 Hantera och följ alla dina projekt
               </p>
@@ -128,11 +147,11 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
           {/* Search and Filters */}
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 id="project-search-input"
                 placeholder="Sök projekt..."
-                className="pl-9"
+                className="pl-9 border-border/60 bg-[var(--color-card)]/95 text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-orange-500 dark:border-border/40 dark:bg-[var(--color-card)]/80"
                 defaultValue={search}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -142,9 +161,9 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
                 }}
               />
             </div>
-            <Button 
-              variant="outline" 
-              className="shrink-0"
+            <Button
+              variant="outline"
+              className="shrink-0 border-border/70 bg-[var(--color-card)]/90 text-foreground transition-colors hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-500 dark:border-border/40 dark:bg-[var(--color-card)]/70"
               onClick={() => {
                 const input = document.getElementById('project-search-input') as HTMLInputElement;
                 if (input) {
@@ -157,7 +176,7 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
             {search && (
               <Button 
                 variant="ghost"
-                className="shrink-0"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
                 onClick={clearSearch}
               >
                 Rensa
@@ -168,58 +187,36 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
       </header>
 
       {/* Main Content */}
-      <main className="px-4 md:px-8 py-6 max-w-7xl">
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" data-tour="projects-list">
-          <div className="bg-card border-2 border-border rounded-xl p-4 hover:border-orange-500/30 hover:shadow-md transition-all duration-200">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-orange-100">
-                <FolderKanban className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Totalt</p>
-                <p className="text-2xl font-semibold">{totalProjects}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-card border-2 border-border rounded-xl p-4 hover:border-orange-500/30 hover:shadow-md transition-all duration-200">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100">
-                <FolderKanban className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Aktiva</p>
-                <p className="text-2xl font-semibold">{activeProjects}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-card border-2 border-border rounded-xl p-4 hover:border-orange-500/30 hover:shadow-md transition-all duration-200">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100">
-                <Calendar className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Planering</p>
-                <p className="text-2xl font-semibold">{planningProjects}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-card border-2 border-border rounded-xl p-4 hover:border-orange-500/30 hover:shadow-md transition-all duration-200">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gray-100">
-                <Clock className="w-5 h-5 text-gray-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Faser</p>
-                <p className="text-2xl font-semibold">
-                  {projects.reduce((acc, p) => acc + (p.phases?.[0]?.count || 0), 0)}
-                </p>
-              </div>
-            </div>
-          </div>
+      <main className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">
+        {/* Status Filters */}
+        <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4" data-tour="projects-list">
+          {statusOptions.map((option) => {
+            const isActive = status === option.key || (option.key === 'all' && status === 'all');
+            return (
+              <button
+                key={option.key}
+                onClick={() => handleStatusChange(option.key)}
+                className={[
+                  'relative flex flex-col gap-1 rounded-2xl border px-4 py-4 text-left transition-all duration-200',
+                  'bg-[var(--color-card)]/90 text-foreground hover:-translate-y-0.5 hover:border-orange-500/40 hover:bg-orange-500/10',
+                  'dark:bg-[var(--color-card)]/70 dark:text-white/90',
+                  isActive
+                    ? 'border-orange-500/70 shadow-lg shadow-orange-500/10 dark:border-orange-400/70'
+                    : 'border-border/60 dark:border-border/40',
+                ].join(' ')}
+              >
+                <span
+                  className={[
+                    'text-xs font-semibold uppercase tracking-[0.28em]',
+                    isActive ? 'text-orange-500 dark:text-orange-300' : 'text-muted-foreground',
+                  ].join(' ')}
+                >
+                  {option.label}
+                </span>
+                <span className="text-2xl font-semibold">{option.count}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Projects List */}
@@ -245,17 +242,18 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
               <div
                 key={project.id}
                 onClick={() => router.push(`/dashboard/projects/${project.id}`)}
-                className="group bg-card border-2 border-border rounded-xl p-4 md:p-6 hover:border-orange-500/30 hover:shadow-lg hover:scale-[1.01] transition-all duration-200 cursor-pointer"
+                className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border/60 bg-[var(--color-card)]/95 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-500/40 hover:shadow-xl md:p-6 dark:border-border/40 dark:bg-[var(--color-card)]/80"
               >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100 dark:from-orange-400/10" />
+                <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
                   {/* Project Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className="p-2 rounded-lg bg-orange-100 shrink-0">
-                        <FolderKanban className="w-5 h-5 text-orange-600" />
+                    <div className="mb-3 flex items-start gap-3">
+                      <div className="shrink-0 rounded-lg bg-orange-100/90 p-2 text-orange-600 shadow-sm dark:bg-orange-500/15 dark:text-orange-200">
+                        <FolderKanban className="h-5 w-5" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-lg font-semibold mb-1 truncate">{project.name}</h4>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="mb-1 truncate text-lg font-semibold text-foreground">{project.name}</h4>
                         {project.client_name && (
                           <p className="text-sm text-muted-foreground">Kund: {project.client_name}</p>
                         )}
@@ -272,18 +270,18 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
                           <span className="text-muted-foreground">Framsteg</span>
                           <span className={`font-medium ${
                             ((project.total_hours || 0) / project.budget_hours) > 1 
-                              ? 'text-red-600' 
+                              ? 'text-red-600 dark:text-red-300' 
                               : ''
                           }`}>
                             {Math.round(((project.total_hours || 0) / project.budget_hours) * 100)}%
                           </span>
                         </div>
-                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-2 overflow-hidden rounded-full bg-muted/80 dark:bg-white/10">
                           <div
                             className={`h-full transition-all duration-300 ${
                               ((project.total_hours || 0) / project.budget_hours) > 1
-                                ? 'bg-red-500'
-                                : 'bg-orange-500'
+                                ? 'bg-red-500 dark:bg-red-400'
+                                : 'bg-orange-500 dark:bg-orange-400'
                             }`}
                             style={{ 
                               width: `${Math.min(((project.total_hours || 0) / project.budget_hours) * 100, 100)}%` 
@@ -334,13 +332,13 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
 
                   {/* Status Badge */}
                   <div className="flex items-center gap-3 md:flex-col md:items-end">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium border-2 ${getStatusColor(project.status)}`}>
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(project.status)}`}>
                       {getStatusText(project.status)}
                     </span>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="hover:bg-orange-50 hover:text-orange-600 hover:border-orange-500/50 transition-all duration-200"
+                      className="border-border/70 bg-[var(--color-card)]/90 text-foreground transition-all duration-200 hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-500 dark:border-border/40 dark:bg-[var(--color-card)]/70"
                       onClick={(e) => {
                         e.stopPropagation();
                         router.push(`/dashboard/projects/${project.id}`);
@@ -354,18 +352,19 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
             ))}
           </div>
         ) : (
-          <div className="bg-card border-2 border-border rounded-xl p-12 text-center">
-            <FolderKanban className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <div className="rounded-2xl border border-border/60 bg-[var(--color-card)]/95 p-12 text-center shadow-sm dark:border-border/40 dark:bg-[var(--color-card)]/80">
+            <FolderKanban className="mx-auto mb-4 h-12 w-12 text-muted-foreground/80" />
             {search ? (
               <>
-                <h3 className="text-lg font-semibold mb-2">
+                <h3 className="mb-2 text-lg font-semibold">
                   Inga projekt hittades för &quot;{search}&quot;
                 </h3>
-                <p className="text-muted-foreground mb-4">
+                <p className="mb-4 text-muted-foreground">
                   Prova att söka på något annat eller rensa sökningen
                 </p>
                 <Button 
                   variant="outline"
+                  className="border-border/70 bg-[var(--color-card)]/90 hover:border-orange-500/40 hover:bg-orange-500/10 dark:border-border/40 dark:bg-[var(--color-card)]/70"
                   onClick={clearSearch}
                 >
                   Rensa sökning
@@ -373,13 +372,13 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
               </>
             ) : (
               <>
-                <p className="text-muted-foreground mb-4">
+                <p className="mb-4 text-muted-foreground">
                   {status !== 'active' ? 'Inga projekt hittades med dessa filter' : 'Du har inga projekt än'}
                 </p>
                 {status === 'active' && canCreateProjects && (
                   <Button 
                     onClick={() => router.push('/dashboard/projects/new')}
-                    className="bg-orange-500 hover:bg-orange-600"
+                    className="bg-orange-500 hover:bg-orange-600 shadow-lg shadow-orange-500/30"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Skapa ditt första projekt
