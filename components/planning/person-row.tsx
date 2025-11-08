@@ -46,8 +46,8 @@ export function PersonRow({ name, role, status, avatar }: PersonRowProps) {
 	};
 
 	return (
-		<div className="flex items-center gap-3 rounded-lg bg-white px-3 py-2 text-left transition-colors dark:bg-transparent">
-			<Avatar className="h-10 w-10 shrink-0 border border-border/40 shadow-sm dark:border-[#332018] dark:bg-[#2a1a15]">
+		<div className="flex items-center gap-3 rounded-lg bg-[var(--color-card)] px-3 py-2 text-left transition-colors dark:border-[#2f1d14] dark:bg-[#1d120d]">
+			<Avatar className="h-10 w-10 shrink-0 border border-border/40 shadow-sm dark:border-[#3a251d] dark:bg-[#2a1a15]">
 				{avatar ? (
 					<img src={avatar} alt={name} className="h-full w-full object-cover" />
 				) : (
@@ -58,8 +58,8 @@ export function PersonRow({ name, role, status, avatar }: PersonRowProps) {
 			</Avatar>
 
 			<div className="min-w-0 flex-1">
-				<p className="truncate text-sm font-semibold text-foreground dark:text-white/90">{name}</p>
-				<p className="truncate text-xs text-muted-foreground dark:text-white/60">{role}</p>
+				<p className="truncate text-sm font-semibold text-foreground dark:text-white">{name}</p>
+				<p className="truncate text-xs text-muted-foreground dark:text-white/70">{role}</p>
 			</div>
 
 			<Badge variant="outline" className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-medium ${getStatusColor()}`}>

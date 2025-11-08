@@ -23,8 +23,8 @@ export function ProjectChips({ projects, selectedProjects, onToggle }: ProjectCh
 				type="button"
 				className={[
 					'flex items-center gap-2 rounded-full px-3 py-1 text-sm transition-colors',
-					'border border-border/60 bg-muted/60 text-muted-foreground hover:text-foreground dark:border-[#3a251d] dark:bg-[#2b1a15] dark:text-white/70 dark:hover:text-white',
-					isAllSelected ? 'border-orange-500/50 bg-orange-500/10 text-orange-600 dark:border-orange-400/70 dark:bg-orange-500/15 dark:text-white' : '',
+					'border border-border/60 bg-[var(--color-card)] text-muted-foreground hover:text-foreground dark:border-[#3a251d] dark:bg-[#22140f] dark:text-white/70 dark:hover:text-white',
+					isAllSelected ? 'border-orange-500/60 bg-orange-500/10 text-orange-600 dark:border-orange-400/70 dark:bg-orange-500/20 dark:text-white' : '',
 				].join(' ')}
 				onClick={() => onToggle('all')}
 			>
@@ -39,8 +39,8 @@ export function ProjectChips({ projects, selectedProjects, onToggle }: ProjectCh
 						key={project.id}
 						className={[
 							'flex items-center gap-2 rounded-full px-3 py-1 text-sm transition-colors',
-							'border border-border/60 bg-muted/60 text-muted-foreground hover:text-foreground dark:border-[#3a251d] dark:bg-[#2b1a15] dark:text-white/70 dark:hover:text-white',
-							isSelected ? 'border-orange-500/50 bg-orange-500/10 text-orange-600 dark:border-orange-400/70 dark:bg-orange-500/15 dark:text-white' : '',
+							'border border-border/60 bg-[var(--color-card)] text-muted-foreground hover:text-foreground dark:border-[#3a251d] dark:bg-[#22140f] dark:text-white/70 dark:hover:text-white',
+							isSelected ? 'border-orange-500/60 bg-orange-500/10 text-orange-600 dark:border-orange-400/70 dark:bg-orange-500/20 dark:text-white' : '',
 						].join(' ')}
 						onClick={() => onToggle(project.id)}
 					>
