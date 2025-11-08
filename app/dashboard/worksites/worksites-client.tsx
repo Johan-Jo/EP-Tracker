@@ -71,62 +71,61 @@ export function WorksitesClient({ worksites, canEdit, userId }: WorksitesClientP
 								Kontrollvy
 							</TabsTrigger>
 						</TabsList>
+						<TabsContent value='overview' className='space-y-4'>
+							{worksites && worksites.length > 0 ? (
+								<>
+									<div className='space-y-4'>
+										{worksites.map((worksite) => (
+											<WorksiteCard
+												key={worksite.id}
+												worksite={worksite}
+												canEdit={canEdit}
+												onSelect={() => setSelectedProjectId(worksite.id)}
+												isSelected={selectedProjectId === worksite.id}
+											/>
+										))}
+									</div>
+								</>
+							) : (
+								<Card className='rounded-2xl border-2 border-dashed border-border/60 bg-[var(--color-card)]/60 dark:border-[#3a251d] dark:bg-[#21140f]'>
+									<CardContent className='py-12 text-center text-foreground dark:text-white'>
+										<QrCode className='mx-auto mb-4 h-12 w-12 text-muted-foreground' />
+										<h3 className='mb-2 text-lg font-semibold'>Inga aktiva personalliggare</h3>
+										<p className='mb-4 text-sm text-muted-foreground dark:text-white/70'>
+											Aktivera personalliggare i ett projekt för att se det här
+										</p>
+										<Button onClick={() => window.location.href = '/dashboard/projects'}>
+											Gå till Projekt
+										</Button>
+									</CardContent>
+								</Card>
+							)}
+						</TabsContent>
 
-					<TabsContent value='overview' className='space-y-4'>
-						{worksites && worksites.length > 0 ? (
-							<>
-								<div className='space-y-4'>
-									{worksites.map((worksite) => (
-										<WorksiteCard 
-											key={worksite.id} 
-											worksite={worksite} 
-											canEdit={canEdit}
-											onSelect={() => setSelectedProjectId(worksite.id)}
-											isSelected={selectedProjectId === worksite.id}
-										/>
-									))}
-								</div>
-							</>
-						) : (
-							<Card className='rounded-2xl border-2 border-dashed border-border/60 bg-[var(--color-card)]/60 dark:border-[#3a251d] dark:bg-[#21140f]'>
-								<CardContent className='py-12 text-center text-foreground dark:text-white'>
-									<QrCode className='w-12 h-12 mx-auto text-muted-foreground mb-4' />
-									<h3 className='text-lg font-semibold mb-2'>Inga aktiva personalliggare</h3>
-									<p className='mb-4 text-sm text-muted-foreground dark:text-white/70'>
-										Aktivera personalliggare i ett projekt för att se det här
-									</p>
-									<Button onClick={() => window.location.href = '/dashboard/projects'}>
-										Gå till Projekt
-									</Button>
-								</CardContent>
-							</Card>
-						)}
-					</TabsContent>
+						<TabsContent value='checkin'>
+							{selectedProject ? (
+								<CheckInTab project={selectedProject} userId={userId} />
+							) : (
+								<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm dark:border-[#2d1b15] dark:bg-[#1b120d]'>
+									<CardContent className='py-12 text-center'>
+										<p className='text-muted-foreground dark:text-white/70'>Välj ett projekt från översikten</p>
+									</CardContent>
+								</Card>
+							)}
+						</TabsContent>
 
-					<TabsContent value='checkin'>
-						{selectedProject ? (
-							<CheckInTab project={selectedProject} userId={userId} />
-						) : (
-							<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm dark:border-[#2d1b15] dark:bg-[#1b120d]'>
-								<CardContent className='py-12 text-center'>
-									<p className='text-muted-foreground dark:text-white/70'>Välj ett projekt från översikten</p>
-								</CardContent>
-							</Card>
-						)}
-					</TabsContent>
-
-					<TabsContent value='control'>
-						{selectedProject ? (
-							<ControlTab projectId={selectedProject.id} />
-						) : (
-							<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm dark:border-[#2d1b15] dark:bg-[#1b120d]'>
-								<CardContent className='py-12 text-center'>
-									<p className='text-muted-foreground dark:text-white/70'>Välj ett projekt från översikten</p>
-								</CardContent>
-							</Card>
-						)}
-					</TabsContent>
-				</Tabs>
+						<TabsContent value='control'>
+							{selectedProject ? (
+								<ControlTab projectId={selectedProject.id} />
+							) : (
+								<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm dark:border-[#2d1b15] dark:bg-[#1b120d]'>
+									<CardContent className='py-12 text-center'>
+										<p className='text-muted-foreground dark:text-white/70'>Välj ett projekt från översikten</p>
+									</CardContent>
+								</Card>
+							)}
+						</TabsContent>
+					</Tabs>
 			</div>
 		</div>
 	);
