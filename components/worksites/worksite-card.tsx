@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { QrCode, MapPin, Zap } from 'lucide-react';
+import { QrCode, MapPin, Eye } from 'lucide-react';
 import { QRDialog } from './qr-dialog';
 import { cn } from '@/lib/utils';
 
@@ -67,38 +67,43 @@ export function WorksiteCard({ worksite, canEdit, onSelect, isSelected }: Worksi
 		<>
 			<Card
 				className={cn(
-					'cursor-pointer rounded-2xl border border-border/60 bg-[var(--color-card)] transition-all duration-200 hover:border-orange-400/40 hover:shadow-lg dark:border-[#2d1b15] dark:bg-[#19100d]',
-					isSelected && 'border-orange-500 ring-2 ring-orange-500/30 dark:border-orange-400 dark:ring-orange-400/30'
+					'cursor-pointer rounded-3xl bg-white p-6 text-left text-[var(--color-gray-700)] shadow-[0_18px_34px_-26px_rgba(0,0,0,0.15)] transition-all duration-200 hover:shadow-[0_24px_44px_-30px_rgba(0,0,0,0.2)]',
+					'dark:bg-[#201e1d] dark:text-[#f5eee6] dark:shadow-[0_24px_48px_-26px_rgba(0,0,0,0.85)] dark:hover:shadow-[0_28px_52px_-28px_rgba(0,0,0,0.85)]',
+					isSelected && 'ring-2 ring-[var(--color-orange-400)]/20 dark:ring-[#f6cda0]/25'
 				)}
 				onClick={onSelect}
 			>
-				<CardHeader className='pb-4'>
+				<CardHeader className='px-0 pt-0 pb-6'>
 					<div className='flex items-start justify-between gap-4'>
 						<div className='flex-1 space-y-1'>
-							<CardTitle className='flex items-center gap-2 text-foreground dark:text-white'>
+							<CardTitle className='flex items-center gap-2 text-lg font-semibold tracking-tight text-[var(--color-gray-900)] dark:text-[#f7e3c8]'>
 								{worksite.name}
-								{worksite.status === 'active' && (
-									<Badge className='bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/25 dark:text-emerald-200'>
-										Aktiv
+								{worksite.status && (
+									<Badge className='rounded-full bg-[var(--color-green-100)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-green-700)] dark:bg-[#164524] dark:text-[#d8f5e0]'>
+										{worksite.status === 'active' ? 'Aktiv' : worksite.status}
 									</Badge>
 								)}
 							</CardTitle>
-							<CardDescription className='flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground dark:text-white/70'>
-								{worksite.project_number && <span>Projekt: {worksite.project_number}</span>}
-								{worksite.worksite_code && <span>Plats-ID: {worksite.worksite_code}</span>}
+							<CardDescription className='text-[10px] font-medium uppercase tracking-[0.32em] text-[var(--color-gray-500)] dark:text-[#cbb19e]'>
+								{worksite.project_number && <span>Projekt {worksite.project_number}</span>}
+								{worksite.worksite_code && (
+									<span className='before:mx-3 before:text-[var(--color-gray-400)] before:content-["·"] dark:before:text-[#cbb19e]'>
+										Plats-id {worksite.worksite_code}
+									</span>
+								)}
 							</CardDescription>
 						</div>
 					</div>
 				</CardHeader>
-				<CardContent className='border-t border-border/40 pt-4 text-sm dark:border-[#2d1b15]'>
-					<div className='grid gap-6 md:grid-cols-2'>
+				<CardContent className='space-y-6 border-t border-[var(--color-gray-200)] pt-6 text-sm dark:border-[#2f1f16] dark:text-[#e3d2c0]'>
+					<div className='grid gap-8 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1.3fr)] md:items-start'>
 						{/* Address */}
 						<div className='space-y-3'>
-							<div className='flex items-center gap-2 text-sm font-semibold text-foreground dark:text-white'>
-								<MapPin className='h-4 w-4 text-muted-foreground dark:text-white/60' />
+							<div className='flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--color-gray-500)] dark:text-[#c6af96]'>
+								<MapPin className='h-4 w-4 text-[var(--color-gray-500)] dark:text-[#f5c888]' />
 								Adress
 							</div>
-							<div className='space-y-1 pl-6 text-sm text-muted-foreground dark:text-white/70'>
+							<div className='ml-6 space-y-1 text-[13px] leading-relaxed text-[var(--color-gray-800)] dark:text-[#f5eee6]'>
 								{worksite.address_line1 && <div>{worksite.address_line1}</div>}
 								{worksite.address_line2 && <div>{worksite.address_line2}</div>}
 								{(worksite.city || worksite.country) && (
@@ -108,12 +113,12 @@ export function WorksiteCard({ worksite, canEdit, onSelect, isSelected }: Worksi
 						</div>
 
 						{/* Actions */}
-						<div className='space-y-3'>
-							<div className='flex items-center gap-2 text-sm font-semibold text-foreground dark:text-white'>
-								<Zap className='h-4 w-4 text-muted-foreground dark:text-white/60' />
+						<div className='space-y-3 md:pl-4'>
+							<div className='flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--color-gray-500)] dark:text-[#c6af96]'>
+								<QrCode className='h-4 w-4 text-[var(--color-gray-500)] dark:text-[#f5c888]' />
 								Snabbåtgärder
 							</div>
-							<div className='flex flex-wrap gap-2 pl-6'>
+							<div className='ml-1 flex flex-wrap gap-2'>
 								<Button
 									variant='outline'
 									size='sm'
@@ -121,8 +126,9 @@ export function WorksiteCard({ worksite, canEdit, onSelect, isSelected }: Worksi
 										e.stopPropagation();
 										if (onSelect) onSelect();
 									}}
-									className='border-border/60 text-foreground hover:border-orange-400 hover:text-orange-500 dark:border-[#3a251d] dark:text-white dark:hover:border-orange-400 dark:hover:text-orange-200'
+									className='flex items-center gap-2 rounded-full border border-[var(--color-gray-300)] bg-white px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--color-gray-800)] transition-colors hover:border-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] dark:border-[#e3d3bf]/70 dark:bg-[#252120] dark:text-[#f5eee6] dark:hover:border-[#f3c089] dark:hover:bg-[#2c2625]'
 								>
+									<Eye className='h-3.5 w-3.5' />
 									Välj projekt
 								</Button>
 								{canEdit && (
@@ -134,10 +140,10 @@ export function WorksiteCard({ worksite, canEdit, onSelect, isSelected }: Worksi
 												e.stopPropagation();
 												handleGeneratePlatsQR();
 											}}
-											className='border-border/60 text-foreground hover:border-orange-400 hover:text-orange-500 dark:border-[#3a251d] dark:text-white dark:hover:border-orange-400 dark:hover:text-orange-200'
+											className='flex items-center gap-2 rounded-full border border-[var(--color-gray-300)] bg-white px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--color-gray-800)] transition-colors hover:border-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] dark:border-[#e3d3bf]/70 dark:bg-[#252120] dark:text-[#f5eee6] dark:hover:border-[#f3c089] dark:hover:bg-[#2c2625]'
 										>
-											<QrCode className='mr-1 h-4 w-4' />
-											Plan QR
+											<QrCode className='h-3.5 w-3.5' />
+											Plats-QR
 										</Button>
 										<Button
 											variant='outline'
@@ -147,9 +153,9 @@ export function WorksiteCard({ worksite, canEdit, onSelect, isSelected }: Worksi
 												handleGenerateKontrollQR();
 											}}
 											disabled={isGeneratingToken}
-											className='border-border/60 text-foreground hover:border-orange-400 hover:text-orange-500 disabled:opacity-60 dark:border-[#3a251d] dark:text-white dark:hover:border-orange-400 dark:hover:text-orange-200'
+											className='flex items-center gap-2 rounded-full border border-[var(--color-gray-300)] bg-white px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--color-gray-800)] transition-colors hover:border-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] disabled:opacity-60 dark:border-[#e3d3bf]/70 dark:bg-[#252120] dark:text-[#f5eee6] dark:hover:border-[#f3c089] dark:hover:bg-[#2c2625]'
 										>
-											<QrCode className='mr-1 h-4 w-4' />
+											<QrCode className='h-3.5 w-3.5' />
 											{isGeneratingToken ? 'Genererar...' : 'Kontroll-QR'}
 										</Button>
 									</>

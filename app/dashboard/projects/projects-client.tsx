@@ -120,9 +120,9 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
   ];
 
   return (
-    <div className="flex-1 overflow-auto bg-gray-50 pb-20 transition-colors dark:bg-[#0A0908] md:pb-0">
+    <div className="flex-1 overflow-auto bg-gray-50 pb-20 transition-colors dark:bg-black md:pb-0">
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-border/70 bg-[var(--color-card)]/90 backdrop-blur supports-[backdrop-filter]:bg-[var(--color-card)]/75">
+      <header className="sticky top-0 z-10 border-b border-border/70 bg-[var(--color-card)]/90 backdrop-blur supports-[backdrop-filter]:bg-[var(--color-card)]/75 dark:border-black dark:bg-black dark:supports-[backdrop-filter]:bg-black/85">
         <div className="px-4 py-4 md:px-8 md:py-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -151,7 +151,7 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
               <Input
                 id="project-search-input"
                 placeholder="Sök projekt..."
-                className="pl-9 border-border/60 bg-[var(--color-card)]/95 text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-orange-500 dark:border-border/40 dark:bg-[var(--color-card)]/80"
+                className="pl-9 border-border/60 bg-[var(--color-card)]/95 text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-orange-500 dark:border-[#302015] dark:bg-black"
                 defaultValue={search}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -163,7 +163,7 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
             </div>
             <Button
               variant="outline"
-              className="shrink-0 border-border/70 bg-[var(--color-card)]/90 text-foreground transition-colors hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-500 dark:border-border/40 dark:bg-[var(--color-card)]/70"
+              className="shrink-0 border-border/70 bg-[var(--color-card)]/90 text-foreground transition-colors hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-500 dark:border-[#302015] dark:bg-black"
               onClick={() => {
                 const input = document.getElementById('project-search-input') as HTMLInputElement;
                 if (input) {

@@ -32,46 +32,45 @@ export function WorksitesClient({ worksites, canEdit, userId }: WorksitesClientP
 	const selectedProject = worksites.find(w => w.id === selectedProjectId);
 
 	return (
-		<div className='flex-1 overflow-auto bg-gray-50 pb-20 transition-colors md:pb-0 dark:bg-[#0b0705]'>
-			<div className='relative px-4 py-6 md:px-8'>
-				<div className='pointer-events-none absolute inset-x-4 top-4 h-48 rounded-3xl bg-gradient-to-b from-orange-400/20 via-transparent to-transparent blur-3xl dark:from-orange-500/12 md:inset-x-8' />
-
-				<div className='relative space-y-6'>
+		<div className='flex-1 overflow-auto bg-[var(--color-gray-50)] pb-20 transition-colors md:pb-0 dark:bg-black min-h-screen'>
+			<div className='px-6 py-8 md:px-16 md:py-10'>
+				<div className='max-w-5xl space-y-8 text-[var(--color-gray-900)] dark:text-white'>
 					{/* Header */}
-					<div className='space-y-2'>
-						<h1 className='text-3xl font-semibold tracking-tight text-foreground dark:text-white'>
+					<div>
+						<h1 className='mb-1 text-3xl font-semibold tracking-tight text-[var(--color-gray-900)] dark:text-white'>
 							Personalliggare
 						</h1>
-						<p className='text-sm text-muted-foreground dark:text-white/70'>
+						<p className='text-sm text-[var(--color-gray-600)] dark:text-[#c6af96]'>
 							Översikt över alla projekt med aktiv personalliggare
 						</p>
 					</div>
 
 					{/* Main Content with Tabs */}
-					<Tabs defaultValue='overview' className='space-y-6'>
-						<TabsList className='relative flex h-12 w-full flex-wrap items-center justify-between gap-2 rounded-full border border-border/60 bg-[linear-gradient(135deg,rgba(254,242,225,0.95),rgba(245,214,177,0.8))] px-2 py-1 shadow-[0_12px_30px_-18px_rgba(0,0,0,0.5)] backdrop-blur dark:border-[#3a251d] dark:bg-[linear-gradient(135deg,rgba(58,41,30,0.92),rgba(30,20,15,0.88))] dark:text-white/70'>
-							<TabsTrigger
-								value='overview'
-								className='flex-1 rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-all data-[state=active]:bg-[linear-gradient(120deg,#f4d9b0,#e4b176)] data-[state=active]:text-[#3a2312] data-[state=active]:shadow-[0_10px_32px_-18px_rgba(240,210,167,0.9)] dark:data-[state=active]:text-[#2a1408]'
-							>
+					<Tabs defaultValue='overview' className='w-full space-y-6'>
+						<div className='flex justify-start'>
+							<TabsList className='inline-flex items-center gap-1 rounded-full border border-[var(--color-gray-300)] bg-[var(--color-gray-100)] px-1 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-gray-600)] shadow-[0_18px_32px_-22px_rgba(0,0,0,0.12)] dark:border-[#5b4b3c] dark:bg-[#181715] dark:text-[#d0c2b3] dark:shadow-[0_20px_40px_-24px_rgba(0,0,0,0.9)]'>
+								<TabsTrigger
+									value='overview'
+									className='rounded-full px-7 py-2 text-xs transition-colors data-[state=active]:bg-white data-[state=active]:text-[var(--color-gray-900)] dark:data-[state=active]:bg-[#f5eee6] dark:data-[state=active]:text-[#211c18]'
+								>
 								Översikt
 							</TabsTrigger>
-							<TabsTrigger
-								value='checkin'
-								disabled={!selectedProject}
-								className='flex-1 rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-all data-[state=active]:bg-[linear-gradient(120deg,#f4d9b0,#e4b176)] data-[state=active]:text-[#3a2312] data-[state=active]:shadow-[0_10px_32px_-18px_rgba(240,210,167,0.9)] disabled:opacity-40 dark:data-[state=active]:text-[#2a1408]'
-							>
+								<TabsTrigger
+									value='checkin'
+									className='rounded-full px-7 py-2 text-xs transition-colors data-[state=active]:bg-white data-[state=active]:text-[var(--color-gray-900)] dark:data-[state=active]:bg-[#f5eee6] dark:data-[state=active]:text-[#211c18]'
+								>
 								Check-in
 							</TabsTrigger>
-							<TabsTrigger
-								value='control'
-								disabled={!selectedProject}
-								className='flex-1 rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-all data-[state=active]:bg-[linear-gradient(120deg,#f4d9b0,#e4b176)] data-[state=active]:text-[#3a2312] data-[state=active]:shadow-[0_10px_32px_-18px_rgba(240,210,167,0.9)] disabled:opacity-40 dark:data-[state=active]:text-[#2a1408]'
-							>
+								<TabsTrigger
+									value='control'
+									className='rounded-full px-7 py-2 text-xs transition-colors data-[state=active]:bg-white data-[state=active]:text-[var(--color-gray-900)] dark:data-[state=active]:bg-[#f5eee6] dark:data-[state=active]:text-[#211c18]'
+								>
 								Kontrollvy
 							</TabsTrigger>
-						</TabsList>
-						<TabsContent value='overview' className='space-y-4'>
+							</TabsList>
+						</div>
+
+						<TabsContent value='overview' className='mt-2 space-y-6'>
 							{worksites && worksites.length > 0 ? (
 								<>
 									<div className='space-y-4'>
@@ -87,14 +86,18 @@ export function WorksitesClient({ worksites, canEdit, userId }: WorksitesClientP
 									</div>
 								</>
 							) : (
-								<Card className='rounded-2xl border-2 border-dashed border-border/60 bg-[var(--color-card)]/60 dark:border-[#3a251d] dark:bg-[#21140f]'>
-									<CardContent className='py-12 text-center text-foreground dark:text-white'>
-										<QrCode className='mx-auto mb-4 h-12 w-12 text-muted-foreground' />
-										<h3 className='mb-2 text-lg font-semibold'>Inga aktiva personalliggare</h3>
-										<p className='mb-4 text-sm text-muted-foreground dark:text-white/70'>
+								<Card className='rounded-3xl border border-[var(--color-gray-300)] bg-white/90 shadow-[0_18px_38px_-28px_rgba(0,0,0,0.25)] dark:border-[#3b2a1f] dark:bg-[#1f1a17] dark:text-[#f5eee6] dark:shadow-[0_24px_48px_-28px_rgba(0,0,0,0.75)]'>
+									<CardContent className='py-12 text-center space-y-3'>
+										<QrCode className='mx-auto h-12 w-12 text-[var(--color-gray-400)] dark:text-[#c6af96]' />
+										<h3 className='text-lg font-semibold'>Inga aktiva personalliggare</h3>
+										<p className='text-sm text-[var(--color-gray-600)] dark:text-[#c6af96]'>
 											Aktivera personalliggare i ett projekt för att se det här
 										</p>
-										<Button onClick={() => window.location.href = '/dashboard/projects'}>
+										<Button
+											variant='outline'
+											onClick={() => (window.location.href = '/dashboard/projects')}
+											className='rounded-full border border-[var(--color-gray-300)] px-6 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition-colors hover:border-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] dark:border-[#5b4b3c] dark:bg-[#252120] dark:text-[#f5eee6] dark:hover:border-[#f3c089] dark:hover:bg-[#2c2625]'
+										>
 											Gå till Projekt
 										</Button>
 									</CardContent>

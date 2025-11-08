@@ -64,29 +64,29 @@ export function CheckInTab({ project, userId }: CheckInTabProps) {
 	].filter(Boolean).join(', ');
 
 	return (
-		<div className='space-y-6'>
+		<div className='space-y-6 text-[var(--color-gray-900)] dark:text-[#f5eee6]'>
 			{/* Header */}
 			<div className='space-y-2 text-center'>
-				<h2 className='text-2xl font-bold text-foreground dark:text-white'>Check-in</h2>
-				<Badge variant='outline' className='px-4 py-1 text-lg border border-border/60 bg-[var(--color-card)] dark:border-[#3a251d] dark:bg-[#20130e] dark:text-white'>
+				<h2 className='text-2xl font-semibold text-[var(--color-gray-900)] dark:text-[#f7e3c8]'>Check-in</h2>
+				<Badge variant='outline' className='rounded-full border border-[var(--color-gray-300)] bg-[var(--color-gray-100)] px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-gray-600)] dark:border-[#4a2f21] dark:bg-[#2a1b15] dark:text-[#f1e2d4]'>
 					{project.worksite_code || project.name}
 				</Badge>
 			</div>
 
 			{/* Project Card */}
-			<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm dark:border-[#2d1b15] dark:bg-[#1b120d]'>
-				<CardHeader className='pb-4'>
-					<CardTitle className='text-xl text-foreground dark:text-white'>{project.name}</CardTitle>
+			<Card className='rounded-3xl border border-[var(--color-gray-200)] bg-white shadow-[0_18px_34px_-24px_rgba(0,0,0,0.15)] dark:border-[#3b291d] dark:bg-[#201e1d] dark:shadow-[0_24px_48px_-26px_rgba(0,0,0,0.85)]'>
+				<CardHeader className='pb-3'>
+					<CardTitle className='text-xl font-semibold text-[var(--color-gray-900)] dark:text-[#f7e3c8]'>{project.name}</CardTitle>
 					{address && (
-						<CardDescription className='flex items-center gap-2 pt-2 text-muted-foreground dark:text-white/70'>
-							<MapPin className='w-4 h-4 text-muted-foreground dark:text-white/60' />
+						<CardDescription className='flex items-center gap-2 pt-2 text-sm text-[var(--color-gray-600)] dark:text-[#cdbfb0]'>
+							<MapPin className='h-4 w-4 text-[var(--color-gray-500)] dark:text-[#f2d6bd]' />
 							{address}
 						</CardDescription>
 					)}
 				</CardHeader>
-				<CardContent className='space-y-4 pt-0'>
+				<CardContent className='space-y-4 pt-2 text-[var(--color-gray-700)] dark:text-[#e7ddd0]'>
 					{lastCheckIn ? (
-						<div className='rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4'>
+						<div className='rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 dark:border-emerald-500/35 dark:bg-emerald-500/12'>
 							<div className='flex items-center gap-2 text-emerald-600 dark:text-emerald-200'>
 								<CheckCircle className='w-5 h-5' />
 								<span className='font-medium'>Senast incheckad:</span>
@@ -97,7 +97,7 @@ export function CheckInTab({ project, userId }: CheckInTabProps) {
 						</div>
 					) : (
 						<>
-							<div className='rounded-xl border border-blue-500/30 bg-blue-500/10 p-4'>
+							<div className='rounded-xl border border-blue-500/25 bg-blue-500/10 p-4 dark:border-blue-500/35 dark:bg-blue-500/12'>
 								<div className='flex items-center gap-2 text-blue-700 dark:text-blue-200'>
 									<AlertCircle className='w-5 h-5' />
 									<span className='font-medium'>Välkommen till arbetsplatsen</span>
@@ -108,12 +108,12 @@ export function CheckInTab({ project, userId }: CheckInTabProps) {
 							</div>
 							
 							{/* Show QR code for sharing this check-in page */}
-							<div className='rounded-xl border border-border/60 bg-[var(--color-card)]/70 p-6 dark:border-[#2d1b15] dark:bg-[#21140f]'>
-								<p className='mb-3 text-center text-sm font-medium text-muted-foreground dark:text-white/70'>
+							<div className='rounded-xl border border-[var(--color-gray-200)] bg-white p-6 dark:border-[#3b291d] dark:bg-[#26201b]'>
+								<p className='mb-3 text-center text-[11px] font-medium uppercase tracking-[0.24em] text-[var(--color-gray-500)] dark:text-[#c6af96]'>
 									QR-kod för att dela denna check-in sida
 								</p>
 								<div className='flex justify-center'>
-									<div className='rounded-lg bg-white p-3 shadow-sm'>
+									<div className='rounded-lg bg-white p-3 shadow-[0_12px_30px_-18px_rgba(0,0,0,0.25)] dark:shadow-[0_12px_30px_-18px_rgba(0,0,0,0.55)]'>
 										<QRCode 
 											value={typeof window !== 'undefined' ? `${window.location.origin}/worksites/${project.id}/checkin` : ''} 
 											size={200}
@@ -128,7 +128,7 @@ export function CheckInTab({ project, userId }: CheckInTabProps) {
 						onClick={handleCheckIn}
 						disabled={isCheckingIn}
 						size='lg'
-						className='h-14 w-full text-lg'
+						className='h-14 w-full rounded-full bg-[var(--color-orange-500)] text-lg font-semibold text-white transition-colors hover:bg-[var(--color-orange-600)] dark:bg-[#f3c089] dark:text-[#2f1b0f] dark:hover:bg-[#f5c99a]'
 					>
 						{isCheckingIn ? (
 							<>
@@ -143,18 +143,18 @@ export function CheckInTab({ project, userId }: CheckInTabProps) {
 						)}
 					</Button>
 
-					<div className='mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground dark:text-white/60'>
-						<Clock className='w-4 h-4 text-muted-foreground dark:text-white/50' />
+					<div className='mt-6 flex items-center justify-center gap-2 text-sm text-[var(--color-gray-500)] dark:text-[#cdbfb0]'>
+						<Clock className='h-4 w-4 text-[var(--color-gray-500)] dark:text-[#cdbfb0]' />
 						<span>{format(new Date(), 'PPP HH:mm', { locale: sv })}</span>
 					</div>
 				</CardContent>
 			</Card>
 
 			{/* Info */}
-			<Card className='rounded-2xl border border-orange-500/30 bg-orange-500/10 shadow-sm dark:border-orange-400/40 dark:bg-orange-500/15'>
-				<CardContent className='pt-6'>
-					<p className='text-sm text-orange-700 dark:text-orange-200'>
-						💡 <strong>Tips:</strong> Tryck på "Checka in" för att registrera närvaro. Dela QR-koden ovan för att andra ska kunna checka in på samma sätt.
+			<Card className='rounded-3xl border border-[var(--color-orange-200)] bg-[var(--color-orange-50)] shadow-[0_18px_34px_-24px_rgba(0,0,0,0.12)] dark:border-[#4a2f21] dark:bg-[#2a1b15] dark:text-[#f0d5b5] dark:shadow-[0_24px_48px_-26px_rgba(0,0,0,0.75)]'>
+				<CardContent className='pt-6 text-sm text-[var(--color-orange-700)] dark:text-[#f0d5b5]'>
+					<p>
+						💡 <strong className='text-[var(--color-orange-800)] dark:text-[#ffd9a8]'>Tips:</strong> Tryck på "Checka in" för att registrera närvaro och dela QR-koden ovan för kollegor som saknar åtkomst.
 					</p>
 				</CardContent>
 			</Card>
