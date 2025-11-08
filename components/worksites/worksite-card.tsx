@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { QrCode, MapPin } from 'lucide-react';
+import { QrCode, MapPin, Zap } from 'lucide-react';
 import { QRDialog } from './qr-dialog';
 import { cn } from '@/lib/utils';
 
@@ -110,7 +110,7 @@ export function WorksiteCard({ worksite, canEdit, onSelect, isSelected }: Worksi
 						{/* Actions */}
 						<div className='space-y-3'>
 							<div className='flex items-center gap-2 text-sm font-semibold text-foreground dark:text-white'>
-								<QrCode className='h-4 w-4 text-muted-foreground dark:text-white/60' />
+								<Zap className='h-4 w-4 text-muted-foreground dark:text-white/60' />
 								Snabbåtgärder
 							</div>
 							<div className='flex flex-wrap gap-2 pl-6'>
@@ -137,7 +137,7 @@ export function WorksiteCard({ worksite, canEdit, onSelect, isSelected }: Worksi
 											className='border-border/60 text-foreground hover:border-orange-400 hover:text-orange-500 dark:border-[#3a251d] dark:text-white dark:hover:border-orange-400 dark:hover:text-orange-200'
 										>
 											<QrCode className='mr-1 h-4 w-4' />
-											Plats-QR
+											Plan QR
 										</Button>
 										<Button
 											variant='outline'

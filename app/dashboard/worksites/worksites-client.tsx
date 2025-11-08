@@ -33,10 +33,10 @@ export function WorksitesClient({ worksites, canEdit, userId }: WorksitesClientP
 
 	return (
 		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
-			<div className='px-4 py-6 md:px-8 space-y-6'>
+			<div className='space-y-6 px-4 py-6 md:px-8'>
 				{/* Header */}
 				<div className='space-y-2'>
-					<h1 className='text-3xl font-bold tracking-tight text-foreground dark:text-white'>
+					<h1 className='text-3xl font-semibold tracking-tight text-foreground dark:text-white'>
 						Personalliggare
 					</h1>
 					<p className='text-sm text-muted-foreground dark:text-white/70'>
@@ -46,21 +46,24 @@ export function WorksitesClient({ worksites, canEdit, userId }: WorksitesClientP
 
 				{/* Main Content with Tabs */}
 				<Tabs defaultValue='overview' className='space-y-6'>
-					<TabsList className='flex w-full flex-wrap items-center justify-start gap-2 rounded-full border border-border/60 bg-[var(--color-card)]/80 p-1 text-muted-foreground shadow-sm dark:border-[#3a251d] dark:bg-[#21140f] dark:text-white/70'>
-						<TabsTrigger value='overview' className='rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-none'>
+					<TabsList className='relative flex h-12 w-full flex-wrap items-center justify-between gap-2 rounded-full border border-border/60 bg-[linear-gradient(135deg,rgba(64,45,31,0.75),rgba(38,26,19,0.75))] px-2 py-1 shadow-[0_8px_24px_-16px_rgba(0,0,0,0.6)] backdrop-blur dark:border-[#3a251d] dark:bg-[linear-gradient(135deg,rgba(58,41,30,0.9),rgba(30,20,15,0.9))] dark:text-white/70'>
+						<TabsTrigger
+							value='overview'
+							className='flex-1 rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-all data-[state=active]:bg-[linear-gradient(120deg,#f2d4a6,#e0ae6f)] data-[state=active]:text-[#3a2312] data-[state=active]:shadow-[0_10px_32px_-18px_rgba(240,210,167,0.9)] dark:data-[state=active]:text-[#2a1408]'
+						>
 							Översikt
 						</TabsTrigger>
 						<TabsTrigger
 							value='checkin'
 							disabled={!selectedProject}
-							className='rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-none'
+							className='flex-1 rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-all data-[state=active]:bg-[linear-gradient(120deg,#f2d4a6,#e0ae6f)] data-[state=active]:text-[#3a2312] data-[state=active]:shadow-[0_10px_32px_-18px_rgba(240,210,167,0.9)] disabled:opacity-40 dark:data-[state=active]:text-[#2a1408]'
 						>
 							Check-in
 						</TabsTrigger>
 						<TabsTrigger
 							value='control'
 							disabled={!selectedProject}
-							className='rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-none'
+							className='flex-1 rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-all data-[state=active]:bg-[linear-gradient(120deg,#f2d4a6,#e0ae6f)] data-[state=active]:text-[#3a2312] data-[state=active]:shadow-[0_10px_32px_-18px_rgba(240,210,167,0.9)] disabled:opacity-40 dark:data-[state=active]:text-[#2a1408]'
 						>
 							Kontrollvy
 						</TabsTrigger>
