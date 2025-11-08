@@ -32,62 +32,66 @@ export function AssignmentCard({
 		transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
 	} : undefined;
 
+	const gradientBackground = `linear-gradient(135deg, ${projectColor}1a 0%, ${projectColor}33 60%, rgba(255,255,255,0.85) 100%)`;
+
 	return (
 		<button
 			ref={setNodeRef}
-			style={style}
 			onClick={onClick}
 			{...listeners}
 			{...attributes}
-			className={`group relative w-full text-left bg-card border-2 border-border rounded-lg p-2 hover:border-primary/50 hover:shadow-md transition-all duration-200 cursor-grab active:cursor-grabbing ${
-				isDragging ? 'opacity-50 scale-95' : ''
-			}`}
+			className={[
+				'group relative w-full cursor-grab overflow-hidden rounded-xl border border-border/40 p-3 text-left transition-all duration-200 active:cursor-grabbing',
+				'bg-white/90 hover:-translate-y-0.5 hover:border-orange-500/40 hover:shadow-lg dark:border-white/10 dark:bg-white/10',
+				isDragging ? 'scale-95 opacity-70' : '',
+			].join(' ')}
+			style={{
+				...style,
+				backgroundImage: gradientBackground,
+			}}
 		>
 			{/* Drag Handle - visual indicator only */}
 			<div 
-				className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+				className="pointer-events-none absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
 			>
-				<GripVertical className="w-4 h-4 text-muted-foreground" />
+				<GripVertical className="h-4 w-4 text-muted-foreground" />
 			</div>
 
 			{/* Project Color Strip */}
 			<div
-				className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg"
+				className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
 				style={{ backgroundColor: projectColor }}
 			/>
 
-			<div className="ml-2 space-y-1.5">
+			<div className="ml-1.5 space-y-1.5">
 				{/* Project Name */}
 				<div className="flex items-center gap-1.5">
-					<div
-						className="w-2 h-2 rounded-full shrink-0"
-						style={{ backgroundColor: projectColor }}
-					/>
-					<p className="text-xs truncate">{project}</p>
+					<div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: projectColor }} />
+					<p className="truncate text-sm font-semibold text-[#2b1c11] dark:text-white">{project}</p>
 				</div>
 
 				{/* Time */}
 				<div className="flex items-center gap-1 text-xs text-muted-foreground">
-					<Clock className="w-3 h-3" />
+					<Clock className="h-3 w-3" />
 					<span>{startTime}–{endTime}</span>
 				</div>
 
 				{/* Address */}
 				{address && (
 					<div className="flex items-center gap-1 text-xs text-muted-foreground" title={address}>
-						<MapPin className="w-3 h-3 shrink-0" />
+						<MapPin className="h-3 w-3 shrink-0" />
 						<span className="truncate">{address}</span>
 					</div>
 				)}
 
 				{/* Icon & Person Count */}
 				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-1 text-primary">
-						<Drill className="w-3.5 h-3.5" />
+					<div className="flex items-center gap-1 text-orange-500">
+						<Drill className="h-4 w-4" />
 					</div>
 					{personCount && personCount > 1 && (
 						<div className="flex items-center gap-1 text-xs text-muted-foreground">
-							<Users className="w-3 h-3" />
+							<Users className="h-3.5 w-3.5" />
 							<span>{personCount}</span>
 						</div>
 					)}

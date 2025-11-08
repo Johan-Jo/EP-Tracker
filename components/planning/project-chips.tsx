@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
+import { X } from 'lucide-react';
 
 interface Project {
 	id: string;
@@ -19,28 +19,38 @@ export function ProjectChips({ projects, selectedProjects, onToggle }: ProjectCh
 
 	return (
 		<div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-			<Badge 
-				variant="outline" 
-				className={`bg-card cursor-pointer hover:bg-accent transition-colors ${isAllSelected ? 'border-primary bg-primary/10' : ''}`}
+			<button
+				type="button"
+				className={[
+					'flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm transition-all duration-200',
+					'border-border/60 bg-white/90 text-muted-foreground hover:-translate-y-0.5 hover:border-orange-500/40 hover:bg-orange-500/10 dark:border-border/40 dark:bg-white/5 dark:text-white/70',
+					isAllSelected ? 'border-orange-500/60 bg-[#1f130d] text-white shadow-md dark:bg-white dark:text-[#21140d]' : '',
+				].join(' ')}
 				onClick={() => onToggle('all')}
 			>
 				Alla projekt
-			</Badge>
+				{isAllSelected && <X className="h-3.5 w-3.5" />}
+			</button>
 			{projects.map((project) => {
 				const isSelected = selectedProjects.includes(project.id);
 				return (
-					<Badge
+					<button
+						type="button"
 						key={project.id}
-						variant="outline"
-						className={`bg-card cursor-pointer hover:bg-accent transition-colors ${isSelected ? 'border-primary bg-primary/10' : ''}`}
+						className={[
+							'flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm transition-all duration-200',
+							'border-border/60 bg-white/90 text-muted-foreground hover:-translate-y-0.5 hover:border-orange-500/40 hover:bg-orange-500/10 dark:border-border/40 dark:bg-white/5 dark:text-white/70',
+							isSelected ? 'border-orange-500/60 bg-[#22160e] text-white shadow-md dark:bg-white dark:text-[#22160e]' : '',
+						].join(' ')}
 						onClick={() => onToggle(project.id)}
 					>
 						<div
-							className="w-2 h-2 rounded-full mr-1.5"
+							className="h-2.5 w-2.5 rounded-full"
 							style={{ backgroundColor: project.color }}
 						/>
 						{project.name}
-					</Badge>
+						{isSelected && <X className="h-3.5 w-3.5" />}
+					</button>
 				);
 			})}
 		</div>

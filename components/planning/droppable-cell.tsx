@@ -17,9 +17,11 @@ export function DroppableCell({ id, onClick, children }: DroppableCellProps) {
 		<div
 			ref={setNodeRef}
 			onClick={onClick}
-			className={`p-2 border-r border-border last:border-r-0 min-h-[80px] cursor-pointer transition-colors ${
-				isOver ? 'bg-primary/10 border-2 border-primary border-dashed' : 'hover:bg-accent/50'
-			}`}
+			className={[
+				'relative min-h-[88px] cursor-pointer border-r border-border/50 p-2 transition-colors last:border-r-0',
+				'bg-white/80 hover:bg-orange-500/5 dark:bg-white/5 dark:hover:bg-white/10',
+				isOver ? 'border-2 border-dashed border-orange-500/60 bg-orange-500/10 dark:border-orange-400/60 dark:bg-orange-500/10' : '',
+			].join(' ')}
 		>
 			<div className="space-y-2">
 				{children}

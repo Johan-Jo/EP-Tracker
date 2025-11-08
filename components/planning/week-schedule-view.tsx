@@ -358,146 +358,146 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 		: null;
 
 	return (
-		<DndContext
-			sensors={sensors}
-			collisionDetection={closestCenter}
-			onDragStart={handleDragStart}
-			onDragEnd={handleDragEnd}
-			onDragCancel={handleDragCancel}
-		>
-		<div className="flex flex-col h-full">
-			{/* Header */}
-			<div className="bg-background border-b border-border">
-				<div className="px-6 py-4">
-					<div className="flex items-center justify-between mb-4">
+		<DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+			<div className="flex h-full flex-col gap-6 px-4 pb-10 pt-4 md:px-8">
+				{/* Header */}
+				<div className="rounded-3xl border border-border/60 bg-[var(--color-card)]/95 p-6 shadow-sm transition-colors dark:border-border/40 dark:bg-[var(--color-card)]/75">
+					<div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 						<div>
-							<h1 className="text-2xl font-bold mb-1">Veckoplanering</h1>
-							<p className="text-sm text-muted-foreground">
-								Vecka {weekNumber} • {year}
-							</p>
+							<h1 className="text-2xl font-bold text-foreground dark:text-white">Veckoplanering</h1>
+							<p className="text-sm text-muted-foreground">Vecka {weekNumber} • {year}</p>
 						</div>
 						<Button
 							onClick={() => setShowAddDialog(true)}
-							className="shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:scale-105 transition-all duration-200"
+							className="rounded-full bg-orange-500 px-5 py-2 text-white shadow-lg shadow-orange-500/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-orange-600 hover:shadow-orange-500/40"
 						>
-							<Plus className="w-4 h-4 mr-2" />
+							<Plus className="mr-2 h-4 w-4" />
 							Lägg till uppdrag
 						</Button>
 					</div>
 
 					{/* Project Filter Chips */}
-					<div className="mb-4" data-tour="project-chips">
-						<ProjectChips
-							projects={data.projects}
-							selectedProjects={selectedProjects}
-							onToggle={handleProjectToggle}
-						/>
+					<div className="mb-5" data-tour="project-chips">
+						<ProjectChips projects={data.projects} selectedProjects={selectedProjects} onToggle={handleProjectToggle} />
 					</div>
 
 					{/* Search and Filters */}
-					<div className="flex gap-2">
-						<div className="relative flex-1 max-w-md">
-							<Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+					<div className="flex flex-col gap-2 sm:flex-row" data-tour="planning-search">
+						<div className="relative flex-1">
+							<Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 							<Input
 								placeholder="Sök uppdrag, personal eller projekt..."
-								className="pl-9"
+								className="h-12 rounded-xl border-border/60 bg-white/90 pl-11 text-sm text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-orange-500 dark:border-border/40 dark:bg-white/10 dark:text-white"
 								value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
 							/>
 						</div>
-						<Button variant="outline" className="shrink-0">
-							<Filter className="w-4 h-4 mr-2" />
+						<Button
+							variant="outline"
+							className="h-12 gap-2 rounded-xl border-border/60 bg-white/90 text-sm text-foreground transition-colors hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-500 dark:border-border/40 dark:bg-white/10 dark:text-white"
+						>
+							<Filter className="h-4 w-4" />
 							Filter
 						</Button>
 					</div>
 				</div>
-			</div>
 
 			{/* Week Navigation & Capacity */}
-			<div className="px-6 py-3 bg-accent/50 border-b border-border">
-				<div className="flex items-center gap-4 mb-3" data-tour="week-navigation">
-					<Button variant="outline" size="sm" onClick={handlePreviousWeek}>
-						<ChevronLeft className="w-4 h-4" />
+			<div className="rounded-3xl border border-border/60 bg-[var(--color-card)]/95 px-4 py-5 shadow-sm dark:border-border/40 dark:bg-[var(--color-card)]/75">
+				<div className="mb-4 flex items-center gap-3" data-tour="week-navigation">
+					<Button
+						variant="outline"
+						size="icon"
+						className="h-10 w-10 rounded-full border-border/60 bg-white/90 dark:border-border/40 dark:bg-white/10"
+						onClick={handlePreviousWeek}
+					>
+						<ChevronLeft className="h-4 w-4" />
 					</Button>
-					<div className="flex-1 flex items-center justify-center gap-2">
-						<h3 className="text-base font-medium">
+					<div className="flex flex-1 flex-col items-center text-center">
+						<span className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+							Vecka {weekNumber}
+						</span>
+						<h3 className="text-lg font-semibold text-foreground dark:text-white">
 							{format(weekStart, 'd', { locale: sv })}–{format(weekEnd, 'd MMMM yyyy', { locale: sv })}
 						</h3>
 					</div>
-					<Button variant="outline" size="sm" onClick={handleNextWeek}>
-						<ChevronRight className="w-4 h-4" />
+					<Button
+						variant="outline"
+						size="icon"
+						className="h-10 w-10 rounded-full border-border/60 bg-white/90 dark:border-border/40 dark:bg-white/10"
+						onClick={handleNextWeek}
+					>
+						<ChevronRight className="h-4 w-4" />
 					</Button>
 				</div>
 
 				{/* Capacity Indicators */}
-				<div className="grid grid-cols-7 gap-2">
+				<div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4 md:grid-cols-7">
 					{weekDays.map((day, index) => (
-						<CapacityIndicator
-							key={day.short}
-							day={day.short}
-							needed={capacity[index].needed}
-							assigned={capacity[index].assigned}
-						/>
+						<CapacityIndicator key={day.short} day={day.short} needed={capacity[index].needed} assigned={capacity[index].assigned} />
 					))}
 				</div>
 			</div>
 
 			{/* Schedule Grid */}
-			<div className="flex-1 overflow-auto" data-tour="schedule-grid">
-				<div className="min-w-[1200px]">
-					{/* Header Row */}
-					<div className="sticky top-0 z-10 bg-background border-b border-border grid grid-cols-[200px_repeat(7,1fr)]">
-						<div className="p-3 border-r border-border bg-card">
-							<p className="text-sm font-medium text-muted-foreground">Personal</p>
+			<div className="flex-1 overflow-hidden rounded-3xl border border-border/60 bg-[var(--color-card)]/95 shadow-sm dark:border-border/40 dark:bg-[var(--color-card)]/80" data-tour="schedule-grid">
+				<div className="h-full overflow-auto">
+					<div className="min-w-[1200px]">
+						{/* Header Row */}
+						<div className="sticky top-0 z-10 grid grid-cols-[220px_repeat(7,1fr)] border-b border-border/50 bg-[var(--color-card)]/95 backdrop-blur dark:border-border/40 dark:bg-[var(--color-card)]/80">
+							<div className="border-r border-border/50 p-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:border-border/40">
+								Personal
+							</div>
+							{weekDays.map((day) => (
+								<div key={day.short} className="border-r border-border/50 p-4 text-center last:border-r-0 dark:border-border/40">
+									<p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground dark:text-white/70">
+										{day.short}
+									</p>
+									<p className="mt-1 text-sm font-semibold text-foreground dark:text-white">{day.date}</p>
+								</div>
+							))}
 						</div>
-						{weekDays.map((day) => (
-							<div key={day.short} className="p-3 border-r border-border bg-card last:border-r-0">
-								<p className="text-sm font-medium">{day.short}</p>
-								<p className="text-xs text-muted-foreground">{day.date}</p>
+
+						{/* Person Rows */}
+						{filteredResources.map((person) => (
+							<div
+								key={person.id}
+								className="grid grid-cols-[220px_repeat(7,1fr)] border-b border-border/40 bg-white/80 transition-colors hover:bg-orange-500/5 dark:border-border/30 dark:bg-white/5 dark:hover:bg-white/10"
+							>
+								{/* Person Info */}
+								<div className="sticky left-0 z-10 border-r border-border/40 bg-white/95 p-3 dark:border-border/30 dark:bg-white/10">
+									<PersonRow
+										id={person.id}
+										name={person.full_name || person.email}
+										role={person.role}
+										status={getPersonStatus(person.id)}
+									/>
+								</div>
+
+								{/* Week Cells */}
+								{weekDays.map((day, dayIndex) => (
+									<DroppableCell
+										key={`${person.id}-${dayIndex}`}
+										id={`cell-${person.id}-${dayIndex}`}
+										onClick={() => handleCellClick(person.id, dayIndex)}
+									>
+										{assignmentsByUserDay[person.id]?.[dayIndex]?.map((assignment) => (
+											<AssignmentCard
+												key={assignment.id}
+												{...assignment}
+												onClick={(e) => {
+													e.stopPropagation();
+													const fullAssignment = data.assignments.find(a => a.id === assignment.id);
+													setSelectedAssignment(fullAssignment);
+													setShowAddDialog(true);
+												}}
+											/>
+										))}
+									</DroppableCell>
+								))}
 							</div>
 						))}
 					</div>
-
-					{/* Person Rows */}
-					{filteredResources.map((person) => (
-						<div
-							key={person.id}
-							className="grid grid-cols-[200px_repeat(7,1fr)] border-b border-border hover:bg-accent/30 transition-colors"
-						>
-							{/* Person Info */}
-							<div className="border-r border-border bg-card sticky left-0 z-10">
-								<PersonRow
-									id={person.id}
-									name={person.full_name || person.email}
-									role={person.role}
-									status={getPersonStatus(person.id)}
-								/>
-							</div>
-
-							{/* Week Cells */}
-							{weekDays.map((day, dayIndex) => (
-								<DroppableCell
-									key={`${person.id}-${dayIndex}`}
-									id={`cell-${person.id}-${dayIndex}`}
-									onClick={() => handleCellClick(person.id, dayIndex)}
-								>
-									{assignmentsByUserDay[person.id]?.[dayIndex]?.map((assignment) => (
-										<AssignmentCard
-											key={assignment.id}
-											{...assignment}
-											onClick={(e) => {
-												e.stopPropagation();
-												// Find the full assignment data
-												const fullAssignment = data.assignments.find(a => a.id === assignment.id);
-												setSelectedAssignment(fullAssignment);
-												setShowAddDialog(true);
-											}}
-										/>
-									))}
-								</DroppableCell>
-							))}
-						</div>
-					))}
 				</div>
 			</div>
 
