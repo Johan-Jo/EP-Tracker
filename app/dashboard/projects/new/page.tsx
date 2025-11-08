@@ -51,11 +51,11 @@ export default async function NewProjectPage() {
 				</nav>
 
 					{/* Header */}
-					<div className='bg-gradient-to-r from-orange-50 to-orange-100/50 border border-orange-200 rounded-xl p-6'>
-						<h1 className='text-3xl font-bold tracking-tight text-gray-900'>
+					<div className='rounded-2xl border border-border/60 bg-gradient-to-r from-[#fde8d5] via-[#f6dcc0] to-[#f4d0ad] p-6 shadow-sm dark:border-[#3a251d] dark:from-[#2a1a13] dark:via-[#26140d] dark:to-[#201109]'>
+						<h1 className='text-3xl font-bold tracking-tight text-foreground dark:text-white'>
 							Skapa nytt projekt
 						</h1>
-						<p className='text-gray-600 mt-2'>
+						<p className='mt-2 text-muted-foreground dark:text-white/70'>
 							Fyll i projektets information nedan för att komma igång
 						</p>
 					</div>

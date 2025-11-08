@@ -250,10 +250,10 @@ const [error, setError] = useState<string | null>(null);
 				</Card>
 			)}
 
-			<Card className='border-2 hover:border-gray-300 transition-colors shadow-sm'>
-				<CardHeader className='bg-gray-50/50'>
-					<CardTitle className='text-xl'>Grunduppgifter</CardTitle>
-					<CardDescription>
+			<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm transition-colors dark:border-[#2d1b15] dark:bg-[#1b120d]'>
+				<CardHeader className='rounded-t-2xl bg-muted/40 pb-4 dark:bg-white/5'>
+					<CardTitle className='text-xl text-foreground dark:text-white'>Grunduppgifter</CardTitle>
+					<CardDescription className='text-muted-foreground dark:text-white/70'>
 						Fyll i projektets grundläggande information
 					</CardDescription>
 				</CardHeader>
@@ -417,15 +417,15 @@ const [error, setError] = useState<string | null>(null);
 				</CardContent>
 			</Card>
 
-			<Card className='border-2 hover:border-gray-300 transition-colors shadow-sm'>
-			<CardHeader className='bg-gray-50/50 relative pb-3'>
-		<CardTitle className='text-xl'>Platsinställningar</CardTitle>
+			<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm transition-colors dark:border-[#2d1b15] dark:bg-[#1b120d]'>
+			<CardHeader className='relative rounded-t-2xl bg-muted/40 pb-3 dark:bg-white/5'>
+		<CardTitle className='text-xl text-foreground dark:text-white'>Platsinställningar</CardTitle>
 		{siteLat != null && siteLon != null && !isNaN(Number(siteLat)) && !isNaN(Number(siteLon)) && (
 			<a
 				href={`https://www.waze.com/ul?ll=${Number(siteLat)},${Number(siteLon)}&navigate=yes`}
 				target='_blank'
 				rel='noopener noreferrer'
-				className='absolute top-6 right-6 inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline'
+				className='absolute top-6 right-6 inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-300 dark:hover:text-blue-200'
 			>
 				<Navigation className='w-3.5 h-3.5' />
 				Öppna i Waze
@@ -467,24 +467,24 @@ const [error, setError] = useState<string | null>(null);
 					</CardContent>
 				</Card>
 
-			<Card className='border-2 hover:border-gray-300 transition-colors shadow-sm'>
-				<CardHeader className='bg-gray-50/50'>
-					<CardTitle className='text-xl'>Personalliggare / Platsdata</CardTitle>
-					<CardDescription>
+			<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm transition-colors dark:border-[#2d1b15] dark:bg-[#1b120d]'>
+				<CardHeader className='rounded-t-2xl bg-muted/40 dark:bg-white/5'>
+					<CardTitle className='text-xl text-foreground dark:text-white'>Personalliggare / Platsdata</CardTitle>
+					<CardDescription className='text-muted-foreground dark:text-white/70'>
 						Aktivera personalliggare och fyll i nödvändig platsinformation
 					</CardDescription>
 				</CardHeader>
 				<CardContent className='space-y-4 pt-6'>
-					<div className='flex items-center justify-between border rounded-lg p-3'>
+					<div className='flex items-center justify-between rounded-lg border border-border/60 bg-[var(--color-card)]/70 p-3 dark:border-[#312016] dark:bg-[#25160f]'>
 						<div>
-							<Label htmlFor='worksite_enabled' className='font-medium cursor-pointer'>Aktivera personalliggare</Label>
-							<p className='text-sm text-muted-foreground'>Kräver platsdata nedan</p>
+							<Label htmlFor='worksite_enabled' className='cursor-pointer font-medium text-foreground dark:text-white'>Aktivera personalliggare</Label>
+							<p className='text-sm text-muted-foreground dark:text-white/60'>Kräver platsdata nedan</p>
 						</div>
 						<div>
 						<input
 						 id='worksite_enabled'
 						type='checkbox'
-						className='h-5 w-5'
+						className='h-5 w-5 rounded border border-border/60 bg-background text-orange-500 focus:ring-orange-500 dark:border-[#3a251d] dark:bg-[#1b120d]'
 						{...register('worksite_enabled')}
 						/>
 						</div>
@@ -524,12 +524,12 @@ const [error, setError] = useState<string | null>(null);
 						</div>
 					</div>
 
-					<div className='border rounded-lg p-3 bg-muted/30'>
+					<div className='rounded-lg border border-border/60 bg-muted/40 p-3 dark:border-[#312016] dark:bg-[#23140e]'>
 						<label htmlFor='use_project_address' className='flex items-center gap-2 text-sm font-medium mb-3'>
-						<input id='use_project_address' name='use_project_address' type='checkbox' className='h-4 w-4' checked={useProjectAddress} onChange={(e) => setUseProjectAddress(e.target.checked)} />
+						<input id='use_project_address' name='use_project_address' type='checkbox' className='h-4 w-4 rounded border border-border/60 bg-background text-orange-500 focus:ring-orange-500 dark:border-[#3a251d] dark:bg-[#1b120d]' checked={useProjectAddress} onChange={(e) => setUseProjectAddress(e.target.checked)} />
 							<span>Använd projektets adress</span>
 						</label>
-						<p className='text-xs text-muted-foreground ml-6'>Om ikryssad kopieras adressen från Grunduppgifter ovan och fälten nedan låses</p>
+						<p className='ml-6 text-xs text-muted-foreground dark:text-white/60'>Om ikryssad kopieras adressen från Grunduppgifter ovan och fälten nedan låses</p>
 					</div>
 
 					<div className='grid gap-4 md:grid-cols-2'>
