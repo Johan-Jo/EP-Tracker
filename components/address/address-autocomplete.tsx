@@ -151,15 +151,15 @@ export function AddressAutocomplete({
 				)}
 			</div>
 			{showSuggestions && suggestions.length > 0 && (
-				<ul className='absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto'>
+				<ul className='absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border/60 bg-[var(--color-card)] shadow-lg dark:border-[#3a251d] dark:bg-[#1f140d]'>
 					{suggestions.map((result, idx) => (
 						<li
 							key={idx}
-							className='px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-start gap-2'
+							className='flex cursor-pointer items-start gap-2 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted dark:text-white dark:hover:bg-white/10'
 							onClick={() => handleSelect(result)}
 						>
-							<MapPin className='h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0' />
-							<span className='text-sm'>{result.properties.formatted}</span>
+							<MapPin className='mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground dark:text-white/70' />
+							<span>{result.properties.formatted}</span>
 						</li>
 					))}
 				</ul>
