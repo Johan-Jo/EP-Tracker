@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import L from 'leaflet';
 
 // Dynamically import Leaflet to avoid SSR issues
 const MapContainer = dynamic(
@@ -30,19 +29,28 @@ export function AddressMap({ lat, lon, className = '' }: AddressMapProps) {
 	const [isMounted, setIsMounted] = useState(false);
 
 	useEffect(() => {
+		let isActive = true;
 		setIsMounted(true);
-		// Import Leaflet CSS
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore - CSS import has no types
-		import('leaflet/dist/leaflet.css');
-		
-		// Fix default marker icon issue in Next.js
-		delete (L.Icon.Default.prototype as any)._getIconUrl;
-		L.Icon.Default.mergeOptions({
-			iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-			iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-			shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-		});
+
+	(async () => {
+			const leaflet = await import('leaflet');
+			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+			// @ts-ignore - CSS import has no types
+			await import('leaflet/dist/leaflet.css');
+
+			if (!isActive) return;
+
+			delete (leaflet.Icon.Default.prototype as any)._getIconUrl;
+			leaflet.Icon.Default.mergeOptions({
+				iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+				iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+				shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+			});
+		})();
+
+		return () => {
+			isActive = false;
+		};
 	}, []);
 
 	// Convert to numbers and validate
