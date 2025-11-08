@@ -444,7 +444,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 	const recentEntries = timeEntries || [];
 
 	return (
-		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
+		<div className='flex-1 overflow-auto bg-gray-50 pb-20 transition-colors md:pb-0 dark:bg-[#0A0908]'>
 			{/* Filter Dialog */}
 			<Dialog open={showFilterDialog} onOpenChange={setShowFilterDialog}>
 				<DialogContent>
@@ -578,10 +578,10 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 				</DialogContent>
 			</Dialog>
 			{/* Header */}
-			<header className='sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border'>
-				<div className='px-4 md:px-8 py-4 md:py-6'>
+			<header className='sticky top-0 z-10 bg-[var(--color-card)]/90 backdrop-blur supports-[backdrop-filter]:bg-[var(--color-card)]/75 dark:bg-black dark:supports-[backdrop-filter]:bg-black/80'>
+				<div className='px-4 py-4 md:px-8 md:py-6'>
 					<div>
-						<h1 className='text-3xl font-bold tracking-tight mb-1'>
+						<h1 className='mb-1 text-3xl font-bold text-foreground'>
 							Manuell tidsregistrering
 						</h1>
 						<p className='text-sm text-muted-foreground'>
@@ -592,7 +592,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 			</header>
 
 			{/* Main Content */}
-			<main className='px-4 md:px-8 py-6 max-w-5xl mx-auto'>
+			<main className='mx-auto max-w-5xl px-4 py-6 md:px-8 md:py-8'>
 				{/* Manual Entry Form */}
 				<div className='bg-card border-2 border-border rounded-xl p-6 mb-6 shadow-lg' data-tour="time-form">
 					<div className='flex items-center justify-between mb-6'>
