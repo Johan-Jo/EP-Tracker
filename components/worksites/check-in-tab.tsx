@@ -66,54 +66,54 @@ export function CheckInTab({ project, userId }: CheckInTabProps) {
 	return (
 		<div className='space-y-6'>
 			{/* Header */}
-			<div className='text-center'>
-				<h2 className='text-2xl font-bold text-gray-900 mb-2'>Check-in</h2>
-				<Badge variant='outline' className='text-lg px-4 py-1'>
+			<div className='space-y-2 text-center'>
+				<h2 className='text-2xl font-bold text-foreground dark:text-white'>Check-in</h2>
+				<Badge variant='outline' className='px-4 py-1 text-lg border border-border/60 bg-[var(--color-card)] dark:border-[#3a251d] dark:bg-[#20130e] dark:text-white'>
 					{project.worksite_code || project.name}
 				</Badge>
 			</div>
 
 			{/* Project Card */}
-			<Card>
-				<CardHeader>
-					<CardTitle className='text-xl'>{project.name}</CardTitle>
+			<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm dark:border-[#2d1b15] dark:bg-[#1b120d]'>
+				<CardHeader className='pb-4'>
+					<CardTitle className='text-xl text-foreground dark:text-white'>{project.name}</CardTitle>
 					{address && (
-						<CardDescription className='flex items-center gap-2 pt-2'>
-							<MapPin className='w-4 h-4' />
+						<CardDescription className='flex items-center gap-2 pt-2 text-muted-foreground dark:text-white/70'>
+							<MapPin className='w-4 h-4 text-muted-foreground dark:text-white/60' />
 							{address}
 						</CardDescription>
 					)}
 				</CardHeader>
-				<CardContent>
+				<CardContent className='space-y-4 pt-0'>
 					{lastCheckIn ? (
-						<div className='bg-green-50 border border-green-200 rounded-lg p-4 mb-4'>
-							<div className='flex items-center gap-2 text-green-700'>
+						<div className='rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4'>
+							<div className='flex items-center gap-2 text-emerald-600 dark:text-emerald-200'>
 								<CheckCircle className='w-5 h-5' />
 								<span className='font-medium'>Senast incheckad:</span>
 							</div>
-							<p className='text-green-600 mt-1'>
+							<p className='mt-1 text-emerald-600 dark:text-emerald-200'>
 								{format(new Date(lastCheckIn), 'PPP HH:mm', { locale: sv })}
 							</p>
 						</div>
 					) : (
 						<>
-							<div className='bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4'>
-								<div className='flex items-center gap-2 text-blue-700'>
+							<div className='rounded-xl border border-blue-500/30 bg-blue-500/10 p-4'>
+								<div className='flex items-center gap-2 text-blue-700 dark:text-blue-200'>
 									<AlertCircle className='w-5 h-5' />
 									<span className='font-medium'>Välkommen till arbetsplatsen</span>
 								</div>
-								<p className='text-blue-600 mt-1'>
+								<p className='mt-1 text-blue-600 dark:text-blue-200'>
 									Tryck på knappen nedan för att checka in
 								</p>
 							</div>
 							
 							{/* Show QR code for sharing this check-in page */}
-							<div className='bg-gray-50 border border-gray-200 rounded-lg p-6 mb-4'>
-								<p className='text-center text-sm font-medium text-gray-700 mb-3'>
+							<div className='rounded-xl border border-border/60 bg-[var(--color-card)]/70 p-6 dark:border-[#2d1b15] dark:bg-[#21140f]'>
+								<p className='mb-3 text-center text-sm font-medium text-muted-foreground dark:text-white/70'>
 									QR-kod för att dela denna check-in sida
 								</p>
 								<div className='flex justify-center'>
-									<div className='bg-white p-3 rounded-lg'>
+									<div className='rounded-lg bg-white p-3 shadow-sm'>
 										<QRCode 
 											value={typeof window !== 'undefined' ? `${window.location.origin}/worksites/${project.id}/checkin` : ''} 
 											size={200}
@@ -128,7 +128,7 @@ export function CheckInTab({ project, userId }: CheckInTabProps) {
 						onClick={handleCheckIn}
 						disabled={isCheckingIn}
 						size='lg'
-						className='w-full h-14 text-lg'
+						className='h-14 w-full text-lg'
 					>
 						{isCheckingIn ? (
 							<>
@@ -143,17 +143,17 @@ export function CheckInTab({ project, userId }: CheckInTabProps) {
 						)}
 					</Button>
 
-					<div className='mt-6 flex items-center justify-center gap-2 text-sm text-gray-500'>
-						<Clock className='w-4 h-4' />
+					<div className='mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground dark:text-white/60'>
+						<Clock className='w-4 h-4 text-muted-foreground dark:text-white/50' />
 						<span>{format(new Date(), 'PPP HH:mm', { locale: sv })}</span>
 					</div>
 				</CardContent>
 			</Card>
 
 			{/* Info */}
-			<Card className='bg-orange-50 border-orange-200'>
+			<Card className='rounded-2xl border border-orange-500/30 bg-orange-500/10 shadow-sm dark:border-orange-400/40 dark:bg-orange-500/15'>
 				<CardContent className='pt-6'>
-					<p className='text-sm text-orange-800'>
+					<p className='text-sm text-orange-700 dark:text-orange-200'>
 						💡 <strong>Tips:</strong> Tryck på "Checka in" för att registrera närvaro. Dela QR-koden ovan för att andra ska kunna checka in på samma sätt.
 					</p>
 				</CardContent>

@@ -33,25 +33,35 @@ export function WorksitesClient({ worksites, canEdit, userId }: WorksitesClientP
 
 	return (
 		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
-			<div className='px-4 md:px-8 py-6 space-y-6'>
+			<div className='px-4 py-6 md:px-8 space-y-6'>
 				{/* Header */}
-				<div>
-					<div className='flex items-center justify-between mb-2'>
-						<h1 className='text-3xl md:text-4xl font-bold tracking-tight'>Personalliggare</h1>
-					</div>
-					<p className='text-muted-foreground'>
+				<div className='space-y-2'>
+					<h1 className='text-3xl font-bold tracking-tight text-foreground dark:text-white'>
+						Personalliggare
+					</h1>
+					<p className='text-sm text-muted-foreground dark:text-white/70'>
 						Översikt över alla projekt med aktiv personalliggare
 					</p>
 				</div>
 
 				{/* Main Content with Tabs */}
 				<Tabs defaultValue='overview' className='space-y-6'>
-					<TabsList>
-						<TabsTrigger value='overview'>Översikt</TabsTrigger>
-						<TabsTrigger value='checkin' disabled={!selectedProject}>
+					<TabsList className='flex w-full flex-wrap items-center justify-start gap-2 rounded-full border border-border/60 bg-[var(--color-card)]/80 p-1 text-muted-foreground shadow-sm dark:border-[#3a251d] dark:bg-[#21140f] dark:text-white/70'>
+						<TabsTrigger value='overview' className='rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-none'>
+							Översikt
+						</TabsTrigger>
+						<TabsTrigger
+							value='checkin'
+							disabled={!selectedProject}
+							className='rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-none'
+						>
 							Check-in
 						</TabsTrigger>
-						<TabsTrigger value='control' disabled={!selectedProject}>
+						<TabsTrigger
+							value='control'
+							disabled={!selectedProject}
+							className='rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-none'
+						>
 							Kontrollvy
 						</TabsTrigger>
 					</TabsList>
@@ -72,11 +82,11 @@ export function WorksitesClient({ worksites, canEdit, userId }: WorksitesClientP
 								</div>
 							</>
 						) : (
-							<Card className='border-2 border-dashed'>
-								<CardContent className='py-12 text-center'>
+							<Card className='rounded-2xl border-2 border-dashed border-border/60 bg-[var(--color-card)]/60 dark:border-[#3a251d] dark:bg-[#21140f]'>
+								<CardContent className='py-12 text-center text-foreground dark:text-white'>
 									<QrCode className='w-12 h-12 mx-auto text-muted-foreground mb-4' />
 									<h3 className='text-lg font-semibold mb-2'>Inga aktiva personalliggare</h3>
-									<p className='text-sm text-muted-foreground mb-4'>
+									<p className='mb-4 text-sm text-muted-foreground dark:text-white/70'>
 										Aktivera personalliggare i ett projekt för att se det här
 									</p>
 									<Button onClick={() => window.location.href = '/dashboard/projects'}>
@@ -91,9 +101,9 @@ export function WorksitesClient({ worksites, canEdit, userId }: WorksitesClientP
 						{selectedProject ? (
 							<CheckInTab project={selectedProject} userId={userId} />
 						) : (
-							<Card>
+							<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm dark:border-[#2d1b15] dark:bg-[#1b120d]'>
 								<CardContent className='py-12 text-center'>
-									<p className='text-muted-foreground'>Välj ett projekt från översikten</p>
+									<p className='text-muted-foreground dark:text-white/70'>Välj ett projekt från översikten</p>
 								</CardContent>
 							</Card>
 						)}
@@ -103,9 +113,9 @@ export function WorksitesClient({ worksites, canEdit, userId }: WorksitesClientP
 						{selectedProject ? (
 							<ControlTab projectId={selectedProject.id} />
 						) : (
-							<Card>
+							<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm dark:border-[#2d1b15] dark:bg-[#1b120d]'>
 								<CardContent className='py-12 text-center'>
-									<p className='text-muted-foreground'>Välj ett projekt från översikten</p>
+									<p className='text-muted-foreground dark:text-white/70'>Välj ett projekt från översikten</p>
 								</CardContent>
 							</Card>
 						)}

@@ -10,6 +10,7 @@ import { Download, Loader2, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { CorrectionDialog } from './correction-dialog';
+import { cn } from '@/lib/utils';
 
 interface Session {
 	id: string;
@@ -176,16 +177,24 @@ export function ControlView({ projectId, initialData }: ControlViewProps) {
 	);
 
 	return (
-		<div className='p-6 space-y-6'>
+		<div className='space-y-6 p-6'>
 			{/* Header */}
 			<div className='flex items-center justify-between'>
-				<div>
-					<h1 className='text-2xl font-bold'>Kontrollvy</h1>
-					<p className='text-sm text-muted-foreground'>
+				<div className='space-y-1'>
+					<h1 className='text-2xl font-bold text-foreground dark:text-white'>Kontrollvy</h1>
+					<p className='text-sm text-muted-foreground dark:text-white/70'>
 						Projekt: {initialData?.project?.name} • {initialData?.project?.worksite_code || '—'}
 					</p>
 				</div>
-				<Badge variant={initialData?.active ? 'default' : 'secondary'}>
+				<Badge
+					variant='outline'
+					className={cn(
+						'px-3 py-1 text-xs font-semibold',
+						initialData?.active
+							? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:border-emerald-500/50 dark:bg-emerald-500/20 dark:text-emerald-200'
+							: 'border-border/60 bg-muted/50 text-muted-foreground dark:border-[#3a251d] dark:bg-[#21140f] dark:text-white/70'
+					)}
+				>
 					{initialData?.active ? 'Aktiv' : 'Av'}
 				</Badge>
 			</div>
@@ -193,19 +202,25 @@ export function ControlView({ projectId, initialData }: ControlViewProps) {
 			{/* Tabs */}
 			<Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
 				<div className='flex items-center justify-between mb-4'>
-					<TabsList>
-						<TabsTrigger value='now'>Nu</TabsTrigger>
-						<TabsTrigger value='today'>Idag</TabsTrigger>
-						<TabsTrigger value='period'>Period</TabsTrigger>
+					<TabsList className='flex flex-wrap items-center gap-2 rounded-full border border-border/60 bg-[var(--color-card)]/80 p-1 text-muted-foreground shadow-sm dark:border-[#3a251d] dark:bg-[#21140f] dark:text-white/70'>
+						<TabsTrigger value='now' className='rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-none'>
+							Nu
+						</TabsTrigger>
+						<TabsTrigger value='today' className='rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-none'>
+							Idag
+						</TabsTrigger>
+						<TabsTrigger value='period' className='rounded-full px-4 py-2 text-sm font-medium data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-none'>
+							Period
+						</TabsTrigger>
 					</TabsList>
 					
 					{/* Export buttons */}
 					<div className='flex gap-2'>
-						<Button variant='outline' size='sm' onClick={handleExportPDF}>
+						<Button variant='outline' size='sm' onClick={handleExportPDF} className='border-border/60 text-foreground hover:border-orange-500/40 hover:text-orange-500 dark:border-[#3a251d] dark:text-white dark:hover:border-orange-400 dark:hover:text-orange-200'>
 							<Download className='w-4 h-4 mr-2' />
 							PDF
 						</Button>
-						<Button variant='outline' size='sm' onClick={handleExportCSV}>
+						<Button variant='outline' size='sm' onClick={handleExportCSV} className='border-border/60 text-foreground hover:border-orange-500/40 hover:text-orange-500 dark:border-[#3a251d] dark:text-white dark:hover:border-orange-400 dark:hover:text-orange-200'>
 							<Download className='w-4 h-4 mr-2' />
 							CSV
 						</Button>
@@ -214,31 +229,33 @@ export function ControlView({ projectId, initialData }: ControlViewProps) {
 
 				{/* Period date inputs */}
 				{activeTab === 'period' && (
-					<Card className='mb-4'>
-						<CardHeader>
-							<CardTitle className='text-base'>Välj period</CardTitle>
+					<Card className='mb-4 rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm dark:border-[#2d1b15] dark:bg-[#1b120d]'>
+						<CardHeader className='pb-3'>
+							<CardTitle className='text-base text-foreground dark:text-white'>Välj period</CardTitle>
 						</CardHeader>
-						<CardContent>
+						<CardContent className='space-y-4'>
 							<div className='grid grid-cols-2 gap-4'>
 								<div>
-									<label className='text-sm font-medium mb-2 block'>Från</label>
+									<label className='mb-2 block text-sm font-medium text-foreground dark:text-white/90'>Från</label>
 									<Input
 										type='date'
 										value={periodFrom}
 										onChange={(e) => setPeriodFrom(e.target.value)}
+										className='border-border/60 dark:border-[#3a251d] dark:bg-[#1f140f] dark:text-white'
 									/>
 								</div>
 								<div>
-									<label className='text-sm font-medium mb-2 block'>Till</label>
+									<label className='mb-2 block text-sm font-medium text-foreground dark:text-white/90'>Till</label>
 									<Input
 										type='date'
 										value={periodTo}
 										onChange={(e) => setPeriodTo(e.target.value)}
+										className='border-border/60 dark:border-[#3a251d] dark:bg-[#1f140f] dark:text-white'
 									/>
 								</div>
 							</div>
 							<Button 
-								className='mt-4' 
+								className='mt-2'
 								onClick={fetchSessions}
 								disabled={!periodFrom || !periodTo}
 							>
@@ -251,19 +268,19 @@ export function ControlView({ projectId, initialData }: ControlViewProps) {
 				{/* Search */}
 				<div className='mb-4'>
 					<div className='relative'>
-						<Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+						<Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-white/60' />
 						<Input
 							placeholder='Sök på namn eller företag...'
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
-							className='pl-10'
+							className='pl-10 border-border/60 dark:border-[#3a251d] dark:bg-[#1f140f] dark:text-white'
 						/>
 					</div>
 				</div>
 
 				{/* Sessions table */}
 				<TabsContent value={activeTab} className='space-y-4'>
-					<Card>
+					<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm dark:border-[#2d1b15] dark:bg-[#1b120d]'>
 						<CardContent className='p-0'>
 							{loading ? (
 								<div className='flex items-center justify-center py-12'>
@@ -272,33 +289,33 @@ export function ControlView({ projectId, initialData }: ControlViewProps) {
 							) : filteredSessions.length > 0 ? (
                 <div className='overflow-x-auto'>
 									<table className='w-full text-sm'>
-										<thead className='bg-muted/40 border-b'>
+										<thead className='border-b border-border/50 bg-muted/40 dark:border-[#2d1b15] dark:bg-[#21140f]'>
 											<tr>
-												<th className='text-left p-3 font-medium'>Namn</th>
-												<th className='text-left p-3 font-medium'>Företag</th>
-												<th className='text-left p-3 font-medium'>In</th>
-												<th className='text-left p-3 font-medium'>Ut</th>
-												<th className='text-left p-3 font-medium'>Källa</th>
-                        <th className='text-left p-3 font-medium'>Korrigerad</th>
+												<th className='p-3 text-left font-medium text-foreground dark:text-white'>Namn</th>
+												<th className='p-3 text-left font-medium text-foreground dark:text-white'>Företag</th>
+												<th className='p-3 text-left font-medium text-foreground dark:text-white'>In</th>
+												<th className='p-3 text-left font-medium text-foreground dark:text-white'>Ut</th>
+												<th className='p-3 text-left font-medium text-foreground dark:text-white'>Källa</th>
+                        <th className='p-3 text-left font-medium text-foreground dark:text-white'>Korrigerad</th>
 											</tr>
 										</thead>
-										<tbody>
+										<tbody className='divide-y divide-border/40 dark:divide-[#2d1b15]'>
                       {filteredSessions.map((s) => (
-                        <tr key={s.id} className='border-b hover:bg-muted/20 cursor-pointer' onClick={() => setSelectedSessionId(s.id)}>
-													<td className='p-3'>{s.name || s.id}</td>
-													<td className='p-3'>{s.company || '—'}</td>
-													<td className='p-3'>
+                        <tr key={s.id} className='cursor-pointer transition-colors hover:bg-muted/15 dark:hover:bg-white/5' onClick={() => setSelectedSessionId(s.id)}>
+													<td className='p-3 text-foreground dark:text-white'>{s.name || s.id}</td>
+													<td className='p-3 text-muted-foreground dark:text-white/70'>{s.company || '—'}</td>
+													<td className='p-3 text-muted-foreground dark:text-white/70'>
 														{format(new Date(s.check_in_ts), 'PPpp', { locale: sv })}
 													</td>
-													<td className='p-3'>
+													<td className='p-3 text-muted-foreground dark:text-white/70'>
 														{s.check_out_ts 
 															? format(new Date(s.check_out_ts), 'PPpp', { locale: sv })
 															: '—'
 														}
 													</td>
-													<td className='p-3'>{s.source_last || '—'}</td>
-                          <td className='p-3'>
-                            {s.corrected ? <Badge variant='outline'>Ja</Badge> : 'Nej'}
+													<td className='p-3 text-muted-foreground dark:text-white/70'>{s.source_last || '—'}</td>
+                          <td className='p-3 text-muted-foreground dark:text-white/70'>
+                            {s.corrected ? <Badge variant='outline' className='border-emerald-500/40 text-emerald-600 dark:border-emerald-500/40 dark:text-emerald-200'>Ja</Badge> : 'Nej'}
                           </td>
 												</tr>
 											))}

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { QrCode, MapPin } from 'lucide-react';
 import { QRDialog } from './qr-dialog';
+import { cn } from '@/lib/utils';
 
 interface WorksiteCardProps {
 	worksite: {
@@ -64,36 +65,40 @@ export function WorksiteCard({ worksite, canEdit, onSelect, isSelected }: Worksi
 
 	return (
 		<>
-			<Card className={`border-2 transition-colors cursor-pointer ${isSelected ? 'border-orange-500 bg-orange-50/50' : 'hover:border-gray-300'}`} onClick={onSelect}>
-				<CardHeader>
-					<div className='flex items-start justify-between'>
-						<div className='flex-1'>
-							<CardTitle className='flex items-center gap-2 mb-1'>
+			<Card
+				className={cn(
+					'cursor-pointer rounded-2xl border border-border/60 bg-[var(--color-card)] transition-all duration-200 hover:border-orange-400/40 hover:shadow-lg dark:border-[#2d1b15] dark:bg-[#19100d]',
+					isSelected && 'border-orange-500 ring-2 ring-orange-500/30 dark:border-orange-400 dark:ring-orange-400/30'
+				)}
+				onClick={onSelect}
+			>
+				<CardHeader className='pb-4'>
+					<div className='flex items-start justify-between gap-4'>
+						<div className='flex-1 space-y-1'>
+							<CardTitle className='flex items-center gap-2 text-foreground dark:text-white'>
 								{worksite.name}
 								{worksite.status === 'active' && (
-									<Badge className='bg-green-500 hover:bg-green-600'>Aktiv</Badge>
+									<Badge className='bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/25 dark:text-emerald-200'>
+										Aktiv
+									</Badge>
 								)}
 							</CardTitle>
-							<CardDescription>
-								{worksite.project_number && (
-									<span>Projekt: {worksite.project_number}</span>
-								)}
-								{worksite.worksite_code && (
-									<span className='ml-4'>Plats-ID: {worksite.worksite_code}</span>
-								)}
+							<CardDescription className='flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground dark:text-white/70'>
+								{worksite.project_number && <span>Projekt: {worksite.project_number}</span>}
+								{worksite.worksite_code && <span>Plats-ID: {worksite.worksite_code}</span>}
 							</CardDescription>
 						</div>
 					</div>
 				</CardHeader>
-				<CardContent>
-					<div className='grid gap-4 md:grid-cols-2'>
+				<CardContent className='border-t border-border/40 pt-4 text-sm dark:border-[#2d1b15]'>
+					<div className='grid gap-6 md:grid-cols-2'>
 						{/* Address */}
-						<div className='space-y-2'>
-							<div className='flex items-center gap-2 text-sm font-medium'>
-								<MapPin className='w-4 h-4 text-muted-foreground' />
+						<div className='space-y-3'>
+							<div className='flex items-center gap-2 text-sm font-semibold text-foreground dark:text-white'>
+								<MapPin className='h-4 w-4 text-muted-foreground dark:text-white/60' />
 								Adress
 							</div>
-							<div className='text-sm text-muted-foreground pl-6'>
+							<div className='space-y-1 pl-6 text-sm text-muted-foreground dark:text-white/70'>
 								{worksite.address_line1 && <div>{worksite.address_line1}</div>}
 								{worksite.address_line2 && <div>{worksite.address_line2}</div>}
 								{(worksite.city || worksite.country) && (
@@ -103,19 +108,20 @@ export function WorksiteCard({ worksite, canEdit, onSelect, isSelected }: Worksi
 						</div>
 
 						{/* Actions */}
-						<div className='space-y-2'>
-							<div className='flex items-center gap-2 text-sm font-medium'>
-								<QrCode className='w-4 h-4 text-muted-foreground' />
+						<div className='space-y-3'>
+							<div className='flex items-center gap-2 text-sm font-semibold text-foreground dark:text-white'>
+								<QrCode className='h-4 w-4 text-muted-foreground dark:text-white/60' />
 								Snabbåtgärder
 							</div>
 							<div className='flex flex-wrap gap-2 pl-6'>
-								<Button 
-									variant='outline' 
+								<Button
+									variant='outline'
 									size='sm'
 									onClick={(e) => {
 										e.stopPropagation();
 										if (onSelect) onSelect();
 									}}
+									className='border-border/60 text-foreground hover:border-orange-400 hover:text-orange-500 dark:border-[#3a251d] dark:text-white dark:hover:border-orange-400 dark:hover:text-orange-200'
 								>
 									Välj projekt
 								</Button>
@@ -128,8 +134,9 @@ export function WorksiteCard({ worksite, canEdit, onSelect, isSelected }: Worksi
 												e.stopPropagation();
 												handleGeneratePlatsQR();
 											}}
+											className='border-border/60 text-foreground hover:border-orange-400 hover:text-orange-500 dark:border-[#3a251d] dark:text-white dark:hover:border-orange-400 dark:hover:text-orange-200'
 										>
-											<QrCode className='w-4 h-4 mr-1' />
+											<QrCode className='mr-1 h-4 w-4' />
 											Plats-QR
 										</Button>
 										<Button
@@ -140,8 +147,9 @@ export function WorksiteCard({ worksite, canEdit, onSelect, isSelected }: Worksi
 												handleGenerateKontrollQR();
 											}}
 											disabled={isGeneratingToken}
+											className='border-border/60 text-foreground hover:border-orange-400 hover:text-orange-500 disabled:opacity-60 dark:border-[#3a251d] dark:text-white dark:hover:border-orange-400 dark:hover:text-orange-200'
 										>
-											<QrCode className='w-4 h-4 mr-1' />
+											<QrCode className='mr-1 h-4 w-4' />
 											{isGeneratingToken ? 'Genererar...' : 'Kontroll-QR'}
 										</Button>
 									</>
