@@ -126,6 +126,7 @@ export function WorksitesClient({ worksites, canEdit, userId }: WorksitesClientP
 							)}
 						</TabsContent>
 					</Tabs>
+				</div>
 			</div>
 		</div>
 	);
