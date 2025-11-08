@@ -400,12 +400,12 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 				</div>
 
 			{/* Week Navigation & Capacity */}
-			<div className="rounded-2xl border border-border/60 bg-white px-4 py-5 shadow-sm dark:border-[#2d1b15] dark:bg-[#21140f]">
+			<div className="rounded-2xl border border-border/60 bg-[var(--color-card)] px-4 py-5 shadow-sm dark:border-[#2d1b15] dark:bg-[#1f140f]">
 				<div className="mb-4 flex items-center gap-3" data-tour="week-navigation">
 					<Button
 						variant="outline"
 						size="icon"
-						className="h-10 w-10 rounded-full border border-border/60 bg-white dark:border-[#3a251d] dark:bg-[#2a1a15]"
+						className="h-10 w-10 rounded-full border border-border/60 bg-[var(--color-card)] text-foreground dark:border-[#3a251d] dark:bg-[#2a1a15] dark:text-white"
 						onClick={handlePreviousWeek}
 					>
 						<ChevronLeft className="h-4 w-4" />
@@ -421,7 +421,7 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 					<Button
 						variant="outline"
 						size="icon"
-						className="h-10 w-10 rounded-full border border-border/60 bg-white dark:border-[#3a251d] dark:bg-[#2a1a15]"
+						className="h-10 w-10 rounded-full border border-border/60 bg-[var(--color-card)] text-foreground dark:border-[#3a251d] dark:bg-[#2a1a15] dark:text-white"
 						onClick={handleNextWeek}
 					>
 						<ChevronRight className="h-4 w-4" />
@@ -437,17 +437,17 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 			</div>
 
 			{/* Schedule Grid */}
-			<div className="flex-1 overflow-hidden rounded-2xl border border-border/60 bg-white shadow-sm dark:border-[#2d1b15] dark:bg-[#19100d]" data-tour="schedule-grid">
+			<div className="flex-1 overflow-hidden rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm dark:border-[#2d1b15] dark:bg-[#16100d]" data-tour="schedule-grid">
 				<div className="h-full overflow-auto">
 					<div className="min-w-[1200px]">
 						{/* Header Row */}
-						<div className="sticky top-0 z-10 grid grid-cols-[220px_repeat(7,1fr)] border-b border-border/40 bg-muted/40 backdrop-blur dark:border-[#312016] dark:bg-[#23160f]">
-							<div className="border-r border-border/40 p-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:border-[#312016] dark:text-white/60">
+						<div className="sticky top-0 z-10 grid grid-cols-[220px_repeat(7,1fr)] border-b border-border/40 bg-muted/50 backdrop-blur dark:border-[#312016] dark:bg-[#301d13]">
+							<div className="border-r border-border/40 p-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:border-[#312016] dark:text-white/70">
 								Personal
 							</div>
 							{weekDays.map((day) => (
 								<div key={day.short} className="border-r border-border/40 p-4 text-center last:border-r-0 dark:border-[#312016]">
-									<p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground dark:text-white/60">
+									<p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground dark:text-white/70">
 										{day.short}
 									</p>
 									<p className="mt-1 text-sm font-semibold text-foreground dark:text-white">{day.date}</p>
@@ -459,10 +459,10 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 						{filteredResources.map((person) => (
 							<div
 								key={person.id}
-								className="grid grid-cols-[220px_repeat(7,1fr)] border-b border-border/40 bg-white transition-colors hover:bg-muted/50 dark:border-[#312016] dark:bg-[#1c110d] dark:hover:bg-[#23160f]"
+								className="grid grid-cols-[220px_repeat(7,1fr)] border-b border-border/40 bg-[var(--color-card)] transition-colors hover:bg-muted/50 dark:border-[#312016] dark:bg-[#1b100c] dark:hover:bg-[#20130e]"
 							>
 								{/* Person Info */}
-								<div className="sticky left-0 z-10 border-r border-border/40 bg-white p-3 dark:border-[#312016] dark:bg-[#1c110d]">
+								<div className="sticky left-0 z-10 border-r border-border/40 bg-[var(--color-card)] p-3 dark:border-[#312016] dark:bg-[#1b100c]">
 									<PersonRow
 										id={person.id}
 										name={person.full_name || person.email}
