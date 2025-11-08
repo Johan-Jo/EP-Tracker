@@ -360,41 +360,38 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 	return (
 		<DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
 			<div className="flex h-full flex-col gap-6 px-4 pb-10 pt-4 md:px-8">
-				{/* Header */}
-				<div className="rounded-3xl border border-border/60 bg-[var(--color-card)]/95 p-6 shadow-sm transition-colors dark:border-border/40 dark:bg-[var(--color-card)]/75">
-					<div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+				<div className="space-y-6">
+					<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 						<div>
 							<h1 className="text-2xl font-bold text-foreground dark:text-white">Veckoplanering</h1>
-							<p className="text-sm text-muted-foreground">Vecka {weekNumber} • {year}</p>
+							<p className="text-sm text-muted-foreground dark:text-white/60">Vecka {weekNumber} • {year}</p>
 						</div>
 						<Button
 							onClick={() => setShowAddDialog(true)}
-							className="rounded-full bg-orange-500 px-5 py-2 text-white shadow-lg shadow-orange-500/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-orange-600 hover:shadow-orange-500/40"
+							className="rounded-full bg-orange-500 px-5 py-2 text-white shadow-lg shadow-orange-500/30 transition-colors hover:bg-orange-600 hover:shadow-orange-500/40"
 						>
 							<Plus className="mr-2 h-4 w-4" />
 							Lägg till uppdrag
 						</Button>
 					</div>
 
-					{/* Project Filter Chips */}
-					<div className="mb-5" data-tour="project-chips">
+					<div className="flex flex-wrap gap-2" data-tour="project-chips">
 						<ProjectChips projects={data.projects} selectedProjects={selectedProjects} onToggle={handleProjectToggle} />
 					</div>
 
-					{/* Search and Filters */}
 					<div className="flex flex-col gap-2 sm:flex-row" data-tour="planning-search">
 						<div className="relative flex-1">
-							<Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+							<Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground dark:text-white/50" />
 							<Input
 								placeholder="Sök uppdrag, personal eller projekt..."
-								className="h-12 rounded-xl border-border/60 bg-white/90 pl-11 text-sm text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-orange-500 dark:border-border/40 dark:bg-white/10 dark:text-white"
+								className="h-12 rounded-xl border border-border/60 bg-white pl-11 text-sm text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-orange-500 dark:border-[#3a251d] dark:bg-[#261912] dark:text-white dark:placeholder:text-white/50"
 								value={searchQuery}
 								onChange={(e) => setSearchQuery(e.target.value)}
 							/>
 						</div>
 						<Button
 							variant="outline"
-							className="h-12 gap-2 rounded-xl border-border/60 bg-white/90 text-sm text-foreground transition-colors hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-500 dark:border-border/40 dark:bg-white/10 dark:text-white"
+							className="h-12 gap-2 rounded-xl border border-border/60 bg-muted/40 text-sm text-foreground transition-colors hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-500 dark:border-[#3a251d] dark:bg-[#261912] dark:text-white/80 dark:hover:text-white"
 						>
 							<Filter className="h-4 w-4" />
 							Filter
@@ -403,12 +400,12 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 				</div>
 
 			{/* Week Navigation & Capacity */}
-			<div className="rounded-3xl border border-border/60 bg-[var(--color-card)]/95 px-4 py-5 shadow-sm dark:border-border/40 dark:bg-[var(--color-card)]/75">
+			<div className="rounded-2xl border border-border/60 bg-white px-4 py-5 shadow-sm dark:border-[#2d1b15] dark:bg-[#21140f]">
 				<div className="mb-4 flex items-center gap-3" data-tour="week-navigation">
 					<Button
 						variant="outline"
 						size="icon"
-						className="h-10 w-10 rounded-full border-border/60 bg-white/90 dark:border-border/40 dark:bg-white/10"
+						className="h-10 w-10 rounded-full border border-border/60 bg-white dark:border-[#3a251d] dark:bg-[#2a1a15]"
 						onClick={handlePreviousWeek}
 					>
 						<ChevronLeft className="h-4 w-4" />
@@ -424,7 +421,7 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 					<Button
 						variant="outline"
 						size="icon"
-						className="h-10 w-10 rounded-full border-border/60 bg-white/90 dark:border-border/40 dark:bg-white/10"
+						className="h-10 w-10 rounded-full border border-border/60 bg-white dark:border-[#3a251d] dark:bg-[#2a1a15]"
 						onClick={handleNextWeek}
 					>
 						<ChevronRight className="h-4 w-4" />
@@ -440,17 +437,17 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 			</div>
 
 			{/* Schedule Grid */}
-			<div className="flex-1 overflow-hidden rounded-3xl border border-border/60 bg-[var(--color-card)]/95 shadow-sm dark:border-border/40 dark:bg-[var(--color-card)]/80" data-tour="schedule-grid">
+			<div className="flex-1 overflow-hidden rounded-2xl border border-border/60 bg-white shadow-sm dark:border-[#2d1b15] dark:bg-[#19100d]" data-tour="schedule-grid">
 				<div className="h-full overflow-auto">
 					<div className="min-w-[1200px]">
 						{/* Header Row */}
-						<div className="sticky top-0 z-10 grid grid-cols-[220px_repeat(7,1fr)] border-b border-border/50 bg-[var(--color-card)]/95 backdrop-blur dark:border-border/40 dark:bg-[var(--color-card)]/80">
-							<div className="border-r border-border/50 p-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:border-border/40">
+						<div className="sticky top-0 z-10 grid grid-cols-[220px_repeat(7,1fr)] border-b border-border/40 bg-muted/40 backdrop-blur dark:border-[#312016] dark:bg-[#23160f]">
+							<div className="border-r border-border/40 p-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:border-[#312016] dark:text-white/60">
 								Personal
 							</div>
 							{weekDays.map((day) => (
-								<div key={day.short} className="border-r border-border/50 p-4 text-center last:border-r-0 dark:border-border/40">
-									<p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground dark:text-white/70">
+								<div key={day.short} className="border-r border-border/40 p-4 text-center last:border-r-0 dark:border-[#312016]">
+									<p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground dark:text-white/60">
 										{day.short}
 									</p>
 									<p className="mt-1 text-sm font-semibold text-foreground dark:text-white">{day.date}</p>
@@ -462,10 +459,10 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 						{filteredResources.map((person) => (
 							<div
 								key={person.id}
-								className="grid grid-cols-[220px_repeat(7,1fr)] border-b border-border/40 bg-white/80 transition-colors hover:bg-orange-500/5 dark:border-border/30 dark:bg-white/5 dark:hover:bg-white/10"
+								className="grid grid-cols-[220px_repeat(7,1fr)] border-b border-border/40 bg-white transition-colors hover:bg-muted/50 dark:border-[#312016] dark:bg-[#1c110d] dark:hover:bg-[#23160f]"
 							>
 								{/* Person Info */}
-								<div className="sticky left-0 z-10 border-r border-border/40 bg-white/95 p-3 dark:border-border/30 dark:bg-white/10">
+								<div className="sticky left-0 z-10 border-r border-border/40 bg-white p-3 dark:border-[#312016] dark:bg-[#1c110d]">
 									<PersonRow
 										id={person.id}
 										name={person.full_name || person.email}

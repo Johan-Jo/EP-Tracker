@@ -22,9 +22,9 @@ export function ProjectChips({ projects, selectedProjects, onToggle }: ProjectCh
 			<button
 				type="button"
 				className={[
-					'flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm transition-all duration-200',
-					'border-border/60 bg-white/90 text-muted-foreground hover:-translate-y-0.5 hover:border-orange-500/40 hover:bg-orange-500/10 dark:border-border/40 dark:bg-white/5 dark:text-white/70',
-					isAllSelected ? 'border-orange-500/60 bg-[#1f130d] text-white shadow-md dark:bg-white dark:text-[#21140d]' : '',
+					'flex items-center gap-2 rounded-full px-3 py-1 text-sm transition-colors',
+					'border border-border/60 bg-muted/60 text-muted-foreground hover:text-foreground dark:border-[#3a251d] dark:bg-[#2b1a15] dark:text-white/70 dark:hover:text-white',
+					isAllSelected ? 'border-orange-500/50 bg-orange-500/10 text-orange-600 dark:border-orange-400/70 dark:bg-orange-500/15 dark:text-white' : '',
 				].join(' ')}
 				onClick={() => onToggle('all')}
 			>
@@ -38,9 +38,9 @@ export function ProjectChips({ projects, selectedProjects, onToggle }: ProjectCh
 						type="button"
 						key={project.id}
 						className={[
-							'flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm transition-all duration-200',
-							'border-border/60 bg-white/90 text-muted-foreground hover:-translate-y-0.5 hover:border-orange-500/40 hover:bg-orange-500/10 dark:border-border/40 dark:bg-white/5 dark:text-white/70',
-							isSelected ? 'border-orange-500/60 bg-[#22160e] text-white shadow-md dark:bg-white dark:text-[#22160e]' : '',
+							'flex items-center gap-2 rounded-full px-3 py-1 text-sm transition-colors',
+							'border border-border/60 bg-muted/60 text-muted-foreground hover:text-foreground dark:border-[#3a251d] dark:bg-[#2b1a15] dark:text-white/70 dark:hover:text-white',
+							isSelected ? 'border-orange-500/50 bg-orange-500/10 text-orange-600 dark:border-orange-400/70 dark:bg-orange-500/15 dark:text-white' : '',
 						].join(' ')}
 						onClick={() => onToggle(project.id)}
 					>

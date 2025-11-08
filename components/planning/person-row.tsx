@@ -17,11 +17,11 @@ export function PersonRow({ name, role, status, avatar }: PersonRowProps) {
 	const getStatusColor = () => {
 		switch (status) {
 			case 'available':
-				return 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-200';
+				return 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-200';
 			case 'busy':
-				return 'border border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/30 dark:bg-orange-500/15 dark:text-orange-200';
+				return 'border border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/40 dark:bg-orange-500/15 dark:text-orange-200';
 			case 'vacation':
-				return 'border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-200';
+				return 'border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-200';
 		}
 	};
 
@@ -46,8 +46,8 @@ export function PersonRow({ name, role, status, avatar }: PersonRowProps) {
 	};
 
 	return (
-		<div className="flex items-center gap-3 rounded-xl bg-white/95 px-3 py-2 text-left transition-colors dark:bg-white/5">
-			<Avatar className="h-10 w-10 shrink-0 border border-border/60 shadow-sm dark:border-white/10">
+		<div className="flex items-center gap-3 rounded-lg bg-white px-3 py-2 text-left transition-colors dark:bg-transparent">
+			<Avatar className="h-10 w-10 shrink-0 border border-border/40 shadow-sm dark:border-[#332018] dark:bg-[#2a1a15]">
 				{avatar ? (
 					<img src={avatar} alt={name} className="h-full w-full object-cover" />
 				) : (
@@ -58,8 +58,8 @@ export function PersonRow({ name, role, status, avatar }: PersonRowProps) {
 			</Avatar>
 
 			<div className="min-w-0 flex-1">
-				<p className="truncate text-sm font-semibold text-foreground dark:text-white">{name}</p>
-				<p className="truncate text-xs text-muted-foreground dark:text-white/70">{role}</p>
+				<p className="truncate text-sm font-semibold text-foreground dark:text-white/90">{name}</p>
+				<p className="truncate text-xs text-muted-foreground dark:text-white/60">{role}</p>
 			</div>
 
 			<Badge variant="outline" className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-medium ${getStatusColor()}`}>
