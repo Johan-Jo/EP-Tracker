@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 import { PayrollRulesForm } from './payroll-rules-form';
 import { PayrollSalaryRates } from './payroll-salary-rates';
 
@@ -193,13 +194,13 @@ export function PayrollBasisPage({ orgId }: PayrollBasisPageProps) {
 	};
 
 	return (
-		<div className='flex-1 overflow-auto'>
-			<header className='sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border'>
-				<div className='px-4 md:px-8 py-4 md:py-6'>
-					<div className='flex items-center justify-between'>
+		<div className='flex-1 overflow-auto bg-gray-50 pb-20 transition-colors md:pb-0 dark:bg-[#0A0908] min-h-screen'>
+			<main className='mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8'>
+				<section className='mb-6 space-y-4 text-[var(--color-gray-900)] dark:text-white'>
+					<div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
 						<div>
 							<h1 className='text-3xl font-bold tracking-tight'>Löneunderlag</h1>
-							<p className='text-muted-foreground mt-1'>
+							<p className='text-muted-foreground mt-1 dark:text-white/70'>
 								Visa och hantera löneunderlag per person och period
 							</p>
 						</div>
@@ -262,10 +263,8 @@ export function PayrollBasisPage({ orgId }: PayrollBasisPageProps) {
 							</Button>
 						</div>
 					</div>
-				</div>
-			</header>
+				</section>
 
-			<main className='px-4 md:px-8 py-6 max-w-7xl mx-auto'>
 				<Tabs defaultValue='basis' className='space-y-6'>
 					<TabsList>
 						<TabsTrigger value='basis'>Löneunderlag</TabsTrigger>
@@ -276,32 +275,32 @@ export function PayrollBasisPage({ orgId }: PayrollBasisPageProps) {
 					<TabsContent value='basis' className='space-y-6'>
 						{/* Period Selector */}
 						<Card>
-					<CardHeader>
-						<CardTitle>Välj period</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-							<div>
-								<Label htmlFor='period-start'>Från datum</Label>
-								<Input
-									id='period-start'
-									type='date'
-									value={periodStart}
-									onChange={(e) => setPeriodStart(e.target.value)}
-								/>
+						<CardHeader>
+							<CardTitle>Välj period</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+								<div>
+									<Label htmlFor='period-start'>Från datum</Label>
+									<Input
+										id='period-start'
+										type='date'
+										value={periodStart}
+										onChange={(e) => setPeriodStart(e.target.value)}
+									/>
+								</div>
+								<div>
+									<Label htmlFor='period-end'>Till datum</Label>
+									<Input
+										id='period-end'
+										type='date'
+										value={periodEnd}
+										onChange={(e) => setPeriodEnd(e.target.value)}
+									/>
+								</div>
 							</div>
-							<div>
-								<Label htmlFor='period-end'>Till datum</Label>
-								<Input
-									id='period-end'
-									type='date'
-									value={periodEnd}
-									onChange={(e) => setPeriodEnd(e.target.value)}
-								/>
-							</div>
-						</div>
-					</CardContent>
-				</Card>
+						</CardContent>
+					</Card>
 
 				{/* Payroll Basis List */}
 				{isLoading ? (
