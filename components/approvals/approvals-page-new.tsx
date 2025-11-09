@@ -628,9 +628,9 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 	};
 
 	return (
-		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
+		<div className='flex-1 overflow-auto bg-gray-50 pb-20 transition-colors md:pb-0 dark:bg-[#0A0908] min-h-screen'>
 			{/* Header */}
-			<header className='sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border'>
+			<header className='sticky top-0 z-10 bg-[var(--color-card)]/90 backdrop-blur supports-[backdrop-filter]:bg-[var(--color-card)]/75 dark:bg-black dark:supports-[backdrop-filter]:bg-black/80'>
 				<div className='px-4 md:px-8 py-4 md:py-6'>
 					<div className='flex items-center justify-between mb-4'>
 						<div>
@@ -656,7 +656,7 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 					</div>
 
 					{/* Period Selector */}
-					<div className='bg-orange-50 border-2 border-orange-200 rounded-xl p-3 md:p-4'>
+					<div className='bg-orange-50 border-2 border-orange-200 rounded-xl p-3 md:p-4 dark:border-[#2f3a4a] dark:bg-[#1b1f28]'>
 						<div className='flex items-center gap-2 mb-3'>
 							<Calendar className='w-4 h-4 text-orange-600' />
 							<span className='text-sm font-semibold text-orange-900'>Välj period</span>
@@ -1060,7 +1060,7 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 				</div>
 
 				{/* Period Lock */}
-				<div className='mt-6 bg-orange-50 border-2 border-orange-200 rounded-xl p-6'>
+				<div className='mt-6 bg-orange-50 border-2 border-orange-200 rounded-xl p-6 dark:border-[#2f3a4a] dark:bg-[#202430]'>
 					<div className='flex items-start gap-3'>
 						<Lock className='w-5 h-5 text-orange-600 mt-0.5' />
 						<div className='flex-1'>
@@ -1086,7 +1086,7 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 									{lockedPeriods.map((period: any) => (
 										<div
 											key={period.id}
-											className='flex items-center justify-between p-3 bg-white rounded-lg border border-orange-200'
+											className='flex items-center justify-between p-3 bg-white rounded-lg border border-orange-200 dark:border-[#2f3a4a] dark:bg-[#232835]'
 										>
 											<div>
 												<p className='text-sm font-medium'>
@@ -1114,7 +1114,7 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 				</div>
 
 				{/* Project Lock */}
-				<div className='mt-6 bg-blue-50 border-2 border-blue-200 rounded-xl p-6'>
+				<div className='mt-6 bg-blue-50 border-2 border-blue-200 rounded-xl p-6 dark:border-[#2a3252] dark:bg-[#1b2333]'>
 					<div className='flex items-start gap-3'>
 						<Lock className='w-5 h-5 text-blue-600 mt-0.5' />
 						<div className='flex-1'>
