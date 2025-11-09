@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { createClient } from '@/lib/supabase/server';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
+
+type RouteParams = { id: string };
 
 /**
  * GET /api/super-admin/email-templates/[id]
@@ -9,12 +12,19 @@ import { createClient } from '@/lib/supabase/server';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: RouteContext<RouteParams>
 ) {
   try {
     await requireSuperAdmin();
     
-    const { id } = await params;
+    const { id } = await resolveRouteParams(context);
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Template id is required' },
+        { status: 400 }
+      );
+    }
     const supabase = await createClient();
     
     const { data: template, error } = await supabase
@@ -50,12 +60,19 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: RouteContext<RouteParams>
 ) {
   try {
     await requireSuperAdmin();
     
-    const { id } = await params;
+    const { id } = await resolveRouteParams(context);
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Template id is required' },
+        { status: 400 }
+      );
+    }
     const body = await request.json();
     const { subject_template, body_template, description, is_active } = body;
 

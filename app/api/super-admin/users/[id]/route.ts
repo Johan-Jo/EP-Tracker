@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { createAdminClient } from '@/lib/supabase/server';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
+
+type RouteParams = { id: string };
 
 /**
  * DELETE /api/super-admin/users/[id]
@@ -10,11 +13,18 @@ import { createAdminClient } from '@/lib/supabase/server';
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: RouteContext<RouteParams>
 ) {
   try {
     await requireSuperAdmin();
-    const { id: userId } = await params;
+    const { id: userId } = await resolveRouteParams(context);
+    
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'User id is required' },
+        { status: 400 }
+      );
+    }
     
     const adminClient = createAdminClient();
     

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
 const paramsSchema = z.object({
 	projectId: z.string().uuid(),
@@ -13,10 +14,15 @@ const querySchema = z.object({
     limit: z.coerce.number().int().min(1).max(2000).optional(),
 });
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
+type RouteParams = { projectId: string };
+
+export async function GET(req: NextRequest, context: RouteContext<RouteParams>) {
 	try {
 		const t0 = Date.now();
-		const resolvedParams = await params;
+		const resolvedParams = await resolveRouteParams(context);
+		if (!resolvedParams.projectId) {
+			return NextResponse.json({ error: 'projectId is required' }, { status: 400 });
+		}
 		const parseParams = paramsSchema.safeParse(resolvedParams);
 		if (!parseParams.success) {
 			return NextResponse.json({ error: 'Invalid projectId' }, { status: 400 });

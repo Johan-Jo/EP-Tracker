@@ -10,7 +10,8 @@ import {
 	materialsTourSteps, 
 	approvalsTourSteps,
 	planningTourSteps,
-	planningTodayTourSteps
+	planningTodayTourSteps,
+	checklistsTourSteps,
 } from '@/lib/onboarding/tour-steps';
 
 const tourMap = {
@@ -21,6 +22,7 @@ const tourMap = {
 	'approvals': approvalsTourSteps,
 	'planning': planningTourSteps,
 	'planning-today': planningTodayTourSteps,
+	'checklists': checklistsTourSteps,
 };
 
 interface PageTourTriggerProps {

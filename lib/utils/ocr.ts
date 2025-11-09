@@ -1,4 +1,4 @@
-H/**
+/**
  * Generate a numeric OCR reference using Mod 10 with recursive weighting.
  * Accepts only digits in source string; other characters are stripped.
  */
@@ -20,5 +20,6 @@ export function generateOcrMod10(source: string): string {
 	const checksum = (10 - (sum % 10)) % 10;
 	return `${digits}${checksum}`;
 }
+
 
 

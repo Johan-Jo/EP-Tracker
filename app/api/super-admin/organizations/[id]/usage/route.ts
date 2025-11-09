@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { createClient } from '@/lib/supabase/server';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
+
+type RouteParams = { id: string };
 
 /**
  * GET /api/super-admin/organizations/[id]/usage
@@ -9,11 +12,18 @@ import { createClient } from '@/lib/supabase/server';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: RouteContext<RouteParams>
 ) {
   try {
     await requireSuperAdmin();
-    const { id } = await params;
+    const { id } = await resolveRouteParams(context);
+    
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Organization id is required' },
+        { status: 400 }
+      );
+    }
     
     const supabase = await createClient();
     

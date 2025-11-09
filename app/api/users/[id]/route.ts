@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
 const updateUserSchema = z.object({
 	role: z.enum(['admin', 'foreman', 'worker', 'finance']).optional(),
@@ -10,13 +11,19 @@ const updateUserSchema = z.object({
 	phone: z.string().optional().nullable(),
 });
 
+type RouteParams = { id: string };
+
 export async function PATCH(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
 	try {
 		const supabase = await createClient();
-		const { id: userId } = await params;
+		const { id: userId } = await resolveRouteParams(context);
+
+		if (!userId) {
+			return NextResponse.json({ error: 'User id is required' }, { status: 400 });
+		}
 
 		// Get current user
 		const {
@@ -154,11 +161,15 @@ export async function PATCH(
 
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
 	try {
 		const supabase = await createClient();
-		const { id: userId } = await params;
+		const { id: userId } = await resolveRouteParams(context);
+
+		if (!userId) {
+			return NextResponse.json({ error: 'User id is required' }, { status: 400 });
+		}
 
 		// Get current user
 		const {

@@ -180,7 +180,7 @@ export function ChecklistPageNew({ orgId }: ChecklistPageNewProps) {
 								</p>
 							</div>
 						) : (
-							<div className='space-y-3'>
+							<div className='space-y-3' data-tour='checklists-list'>
 								{filteredChecklists.map((checklist: any) => {
 									const statusConfig = getStatusConfig(checklist);
 									const StatusIcon = statusConfig.icon;

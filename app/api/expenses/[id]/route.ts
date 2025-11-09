@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { updateExpenseSchema } from '@/lib/schemas/expense';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
+
+type RouteParams = { id: string };
 
 // PATCH /api/expenses/[id]
 export async function PATCH(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
 	try {
-		const { id } = await params;
+		const { id } = await resolveRouteParams(context);
+		if (!id) {
+			return NextResponse.json({ error: 'Expense id is required' }, { status: 400 });
+		}
 		const supabase = await createClient();
 		const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -91,10 +97,13 @@ export async function PATCH(
 // DELETE /api/expenses/[id]
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
 	try {
-		const { id } = await params;
+		const { id } = await resolveRouteParams(context);
+		if (!id) {
+			return NextResponse.json({ error: 'Expense id is required' }, { status: 400 });
+		}
 		const supabase = await createClient();
 		const { data: { user }, error: authError } = await supabase.auth.getUser();
 

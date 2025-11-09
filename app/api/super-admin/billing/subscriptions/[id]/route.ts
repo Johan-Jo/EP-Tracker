@@ -3,18 +3,28 @@ import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { createClient } from '@/lib/supabase/server';
 import { changePlanSchema } from '@/lib/schemas/billing';
 import { calculateNextPeriod } from '@/lib/billing/subscriptions';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
 /**
  * Change Subscription Plan
  * PATCH /api/super-admin/billing/subscriptions/[id]
  */
+type RouteParams = { id: string };
+
 export async function PATCH(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
-	const { id } = await params;
   try {
     await requireSuperAdmin();
+    const { id } = await resolveRouteParams(context);
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Subscription id is required' },
+        { status: 400 }
+      );
+    }
     
     const body = await request.json();
     const validation = changePlanSchema.safeParse(body);

@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { updateAssignmentSchema } from '@/lib/schemas/planning';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
+
+type RouteParams = { id: string };
 
 // PATCH /api/assignments/[id] - Update assignment
 export async function PATCH(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
 	try {
-		const { id } = await params;
+		const { id } = await resolveRouteParams(context);
+		if (!id) {
+			return NextResponse.json({ error: 'Assignment id is required' }, { status: 400 });
+		}
 		const supabase = await createClient();
 		const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -86,10 +92,13 @@ export async function PATCH(
 // DELETE /api/assignments/[id] - Delete assignment
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
 	try {
-		const { id } = await params;
+		const { id } = await resolveRouteParams(context);
+		if (!id) {
+			return NextResponse.json({ error: 'Assignment id is required' }, { status: 400 });
+		}
 		const supabase = await createClient();
 		const { data: { user }, error: authError } = await supabase.auth.getUser();
 

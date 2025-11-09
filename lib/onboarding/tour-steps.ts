@@ -129,6 +129,25 @@ export const approvalsTourSteps = [
 	},
 ];
 
+export const checklistsTourSteps = [
+	{
+		id: 'checklists-intro',
+		title: 'Överblick checklistor',
+		description:
+			'Här hittar du alla säkerhets- och kvalitetslistor. Följ status för varje checklista och öppna dem för att uppdatera punkter.',
+		target: 'body',
+		position: 'center' as const,
+	},
+	{
+		id: 'checklists-list',
+		title: 'Detaljer per checklista',
+		description:
+			'I listan ser du projekt, status och hur många punkter som är klara. Klicka på "Visa" för att öppna checklistan och arbeta vidare.',
+		target: '[data-tour="checklists-list"]',
+		position: 'top' as const,
+	},
+];
+
 export const planningTourSteps = [
 	{
 		id: 'planning-welcome',

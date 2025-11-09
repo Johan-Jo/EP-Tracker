@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { Analytics } from '@vercel/analytics/next';
 import { QueryProvider } from '@/lib/providers/query-provider';
 import { Toaster } from 'react-hot-toast';
 import { ZodInit } from '@/components/core/zod-init';
@@ -56,6 +57,7 @@ export default function RootLayout({
 					<NotificationHandler />
 					<QueryProvider>{children}</QueryProvider>
 					<Toaster position="top-center" />
+					<Analytics />
 				</ThemeProvider>
 			</body>
 		</html>

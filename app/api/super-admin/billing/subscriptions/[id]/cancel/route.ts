@@ -2,19 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { createClient } from '@/lib/supabase/server';
 import { cancelSubscriptionSchema } from '@/lib/schemas/billing';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
 /**
  * Cancel Subscription
  * POST /api/super-admin/billing/subscriptions/[id]/cancel
  */
+type RouteParams = { id: string };
+
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
-	const { id } = await params;
-  
   try {
     await requireSuperAdmin();
+    const { id } = await resolveRouteParams(context);
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Subscription id is required' },
+        { status: 400 }
+      );
+    }
     
     const body = await request.json();
     const validation = cancelSubscriptionSchema.safeParse(body);

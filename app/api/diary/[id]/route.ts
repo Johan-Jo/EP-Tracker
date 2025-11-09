@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
+
+type RouteParams = { id: string };
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: RouteContext<RouteParams>
 ) {
   try {
-    const { id } = await params;
+    const { id } = await resolveRouteParams(context);
+    if (!id) {
+      return NextResponse.json({ error: 'Diary id is required' }, { status: 400 });
+    }
     const { user, membership } = await getSession();
     if (!user || !membership) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -104,10 +110,13 @@ export async function PATCH(
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: RouteContext<RouteParams>
 ) {
   try {
-    const { id } = await params;
+    const { id } = await resolveRouteParams(context);
+    if (!id) {
+      return NextResponse.json({ error: 'Diary id is required' }, { status: 400 });
+    }
     const { user, membership } = await getSession();
     if (!user || !membership) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

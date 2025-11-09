@@ -2,19 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { getOrganizationById } from '@/lib/super-admin/organizations';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
 /**
  * GET /api/super-admin/organizations/[id]
  * 
  * Get organization details
  */
+type RouteParams = { id: string };
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: RouteContext<RouteParams>
 ) {
   try {
     await requireSuperAdmin();
-    const { id } = await params;
+    const { id } = await resolveRouteParams(context);
+    
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Organization id is required' },
+        { status: 400 }
+      );
+    }
     
     const organization = await getOrganizationById(id);
     
@@ -53,11 +63,18 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: RouteContext<RouteParams>
 ) {
   try {
     await requireSuperAdmin();
-    const { id } = await params;
+    const { id } = await resolveRouteParams(context);
+    
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Organization id is required' },
+        { status: 400 }
+      );
+    }
     const body = await request.json();
     
     const supabase = await createClient();
@@ -111,11 +128,18 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: RouteContext<RouteParams>
 ) {
   try {
     await requireSuperAdmin();
-    const { id } = await params;
+    const { id } = await resolveRouteParams(context);
+    
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Organization id is required' },
+        { status: 400 }
+      );
+    }
     
     console.log(`[Super Admin] Deleting organization: ${id}`);
     

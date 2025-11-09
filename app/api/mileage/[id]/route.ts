@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { updateMileageSchema } from '@/lib/schemas/mileage';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
+
+type RouteParams = { id: string };
 
 // PATCH /api/mileage/[id]
 export async function PATCH(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
 	try {
-		const { id } = await params;
+		const { id } = await resolveRouteParams(context);
+		if (!id) {
+			return NextResponse.json({ error: 'Mileage id is required' }, { status: 400 });
+		}
 		const supabase = await createClient();
 		const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -91,10 +97,13 @@ export async function PATCH(
 // DELETE /api/mileage/[id]
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
 	try {
-		const { id } = await params;
+		const { id } = await resolveRouteParams(context);
+		if (!id) {
+			return NextResponse.json({ error: 'Mileage id is required' }, { status: 400 });
+		}
 		const supabase = await createClient();
 		const { data: { user }, error: authError } = await supabase.auth.getUser();
 

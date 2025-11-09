@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { updateMaterialSchema } from '@/lib/schemas/material';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
+
+type RouteParams = { id: string };
 
 // PATCH /api/materials/[id] - Update material
 export async function PATCH(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
 	try {
-		const { id } = await params;
+		const { id } = await resolveRouteParams(context);
+		if (!id) {
+			return NextResponse.json({ error: 'Material id is required' }, { status: 400 });
+		}
 		const supabase = await createClient();
 		const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -93,10 +99,13 @@ export async function PATCH(
 // DELETE /api/materials/[id] - Delete material
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
 	try {
-		const { id } = await params;
+		const { id } = await resolveRouteParams(context);
+		if (!id) {
+			return NextResponse.json({ error: 'Material id is required' }, { status: 400 });
+		}
 		const supabase = await createClient();
 		const { data: { user }, error: authError } = await supabase.auth.getUser();
 

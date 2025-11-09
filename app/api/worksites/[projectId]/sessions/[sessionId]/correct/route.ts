@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
 import { createHash } from 'crypto';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
 const bodySchema = z.object({
   field: z.enum(['check_in_ts', 'check_out_ts']),
@@ -10,9 +11,11 @@ const bodySchema = z.object({
   reason: z.string().min(10),
 });
 
+type RouteParams = { projectId: string; sessionId: string };
+
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ projectId: string; sessionId: string }> }
+  context: RouteContext<RouteParams>
 ) {
   try {
     const { user, membership } = await getSession();
@@ -23,7 +26,11 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { projectId, sessionId } = await params;
+    const { projectId, sessionId } = await resolveRouteParams(context);
+
+    if (!projectId || !sessionId) {
+      return NextResponse.json({ error: 'projectId and sessionId are required' }, { status: 400 });
+    }
     const supabase = await createClient();
 
     // Fetch session and verify org/project

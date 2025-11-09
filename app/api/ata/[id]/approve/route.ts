@@ -1,12 +1,18 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
+
+type RouteParams = { id: string };
 
 export async function POST(
 	request: Request,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
 	try {
-		const { id } = await params;
+		const { id } = await resolveRouteParams(context);
+		if (!id) {
+			return NextResponse.json({ error: 'ÄTA-id saknas' }, { status: 400 });
+		}
 		const supabase = await createClient();
 		const {
 			data: { user },

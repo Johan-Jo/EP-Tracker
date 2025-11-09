@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { createClient } from '@/lib/supabase/server';
 import { updatePricingPlanSchema } from '@/lib/schemas/billing';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
+
+type RouteParams = { id: string };
 
 /**
  * Update Pricing Plan
@@ -9,13 +12,18 @@ import { updatePricingPlanSchema } from '@/lib/schemas/billing';
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: RouteContext<RouteParams>
 ) {
   try {
     await requireSuperAdmin();
+    const { id } = await resolveRouteParams(context);
     
-    // Await params in Next.js 15
-    const { id } = await params;
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Plan id is required' },
+        { status: 400 }
+      );
+    }
     
     const body = await request.json();
     const validation = updatePricingPlanSchema.safeParse(body);
@@ -62,13 +70,18 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: RouteContext<RouteParams>
 ) {
   try {
     await requireSuperAdmin();
+    const { id } = await resolveRouteParams(context);
     
-    // Await params in Next.js 15
-    const { id } = await params;
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Plan id is required' },
+        { status: 400 }
+      );
+    }
     
     const supabase = await createClient();
     

@@ -3,15 +3,21 @@ import { createClient } from '@/lib/supabase/server';
 import { updateTimeEntrySchema } from '@/lib/schemas/time-entry';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
 import { notifyOnCheckOut } from '@/lib/notifications/project-alerts'; // EPIC 25 Phase 2: Project alerts
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
 // PATCH /api/time/entries/[id] - Update time entry
 // EPIC 26: Optimized from 4 queries to 2 queries
+type RouteParams = { id: string };
+
 export async function PATCH(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
 	try {
-		const { id } = await params;
+		const { id } = await resolveRouteParams(context);
+		if (!id) {
+			return NextResponse.json({ error: 'Time entry id is required' }, { status: 400 });
+		}
 		
 		// EPIC 26: Use cached session (saves 2 queries)
 		const { user, membership } = await getSession();
@@ -131,10 +137,13 @@ export async function PATCH(
 // EPIC 26: Optimized from 4 queries to 2 queries
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	context: RouteContext<RouteParams>
 ) {
 	try {
-		const { id } = await params;
+		const { id } = await resolveRouteParams(context);
+		if (!id) {
+			return NextResponse.json({ error: 'Time entry id is required' }, { status: 400 });
+		}
 		
 		// EPIC 26: Use cached session (saves 2 queries)
 		const { user, membership } = await getSession();

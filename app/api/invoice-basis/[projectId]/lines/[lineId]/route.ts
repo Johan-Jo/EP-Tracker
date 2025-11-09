@@ -7,6 +7,7 @@ import {
 	InvoiceBasisLine,
 	roundCurrency,
 } from '@/lib/jobs/invoice-basis-refresh';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -46,17 +47,18 @@ function coerceString(value: unknown, field: string): string | undefined {
 	return value;
 }
 
-export async function POST(request: NextRequest, { params }: { params: { projectId: string; lineId: string } }) {
+type RouteParams = { projectId: string; lineId: string };
+
+export async function POST(request: NextRequest, context: RouteContext<RouteParams>) {
 	try {
+		const { projectId, lineId } = await resolveRouteParams(context);
+
 		const { user, membership } = await getSession();
 		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
 		assertRole(membership.role);
-
-		const projectId = params.projectId;
-		const lineId = params.lineId;
 
 		if (!projectId || !lineId) {
 			return NextResponse.json({ error: 'projectId and lineId are required' }, { status: 400 });
@@ -175,7 +177,7 @@ export async function POST(request: NextRequest, { params }: { params: { project
 		}
 
 		if ('attachments' in body) {
-			if (!Array.isArray(body.attachments) || body.attachments.some((item) => typeof item !== 'string')) {
+			if (!Array.isArray(body.attachments) || body.attachments.some((item: unknown) => typeof item !== 'string')) {
 				return NextResponse.json({ error: 'attachments must be an array of strings' }, { status: 400 });
 			}
 			updatedLine.attachments = body.attachments;

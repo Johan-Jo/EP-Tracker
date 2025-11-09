@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/get-session';
 import { createClient } from '@/lib/supabase/server';
 import { refreshInvoiceBasis } from '@/lib/jobs/invoice-basis-refresh';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -14,14 +15,17 @@ function validateDateParam(value: string | null, paramName: string) {
 	}
 }
 
-export async function GET(request: NextRequest, { params }: { params: { projectId: string } }) {
+type RouteParams = { projectId: string };
+
+export async function GET(request: NextRequest, context: RouteContext<RouteParams>) {
 	try {
+		const { projectId } = await resolveRouteParams(context);
+
 		const { user, membership } = await getSession();
 		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const projectId = params.projectId;
 		if (!projectId) {
 			return NextResponse.json({ error: 'projectId is required' }, { status: 400 });
 		}
