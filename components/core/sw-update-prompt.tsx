@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RefreshCw } from 'lucide-react';
@@ -8,10 +8,19 @@ import { RefreshCw } from 'lucide-react';
 export function ServiceWorkerUpdatePrompt() {
     const [showPrompt, setShowPrompt] = useState(false);
     const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
+	const [isUpdating, setIsUpdating] = useState(false);
+	const shouldReloadRef = useRef(false);
 
     useEffect(() => {
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then((reg) => {
+			let mounted = true;
+			let refreshing = false;
+
+			navigator.serviceWorker.ready.then((reg) => {
+				if (!mounted) {
+					return;
+				}
+
                 setRegistration(reg);
 
                 // Listen for updates
@@ -19,9 +28,13 @@ export function ServiceWorkerUpdatePrompt() {
                     const newWorker = reg.installing;
                     if (newWorker) {
                         newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                // New service worker available
-                                setShowPrompt(true);
+							if (!mounted) {
+								return;
+							}
+
+							if (newWorker.state === 'installed' && navigator.serviceWorker.controller && reg.waiting) {
+								// New service worker available and waiting to activate
+								setShowPrompt(true);
                             }
                         });
                     }
@@ -29,19 +42,28 @@ export function ServiceWorkerUpdatePrompt() {
             });
 
             // Listen for controller change (SW activated)
-            let refreshing = false;
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (!refreshing) {
+			const handleControllerChange = () => {
+				if (!refreshing && shouldReloadRef.current) {
                     refreshing = true;
                     window.location.reload();
                 }
-            });
+			};
+
+			navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+
+			return () => {
+				mounted = false;
+				navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+			};
         }
     }, []);
 
     const handleUpdate = () => {
         if (registration?.waiting) {
+			setIsUpdating(true);
             // Tell the service worker to skip waiting
+			setShowPrompt(false);
+			shouldReloadRef.current = true;
             registration.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
     };
@@ -56,10 +78,11 @@ export function ServiceWorkerUpdatePrompt() {
                 <p>En ny version av appen är tillgänglig.</p>
                 <Button
                     size="sm"
+					disabled={isUpdating}
                     onClick={handleUpdate}
                     className="w-full bg-orange-500 hover:bg-orange-600"
                 >
-                    Uppdatera nu
+					{isUpdating ? 'Uppdaterar...' : 'Uppdatera nu'}
                 </Button>
             </AlertDescription>
         </Alert>

@@ -92,8 +92,7 @@ self.addEventListener('install', (event) => {
       .then((cache) => {
         console.log('[SW] Precaching assets');
         return cache.addAll(PRECACHE_ASSETS);
-      })
-      .then(() => self.skipWaiting()) // Activate immediately
+			})
   );
 });
 
@@ -203,4 +202,10 @@ self.addEventListener('fetch', (event) => {
 });
 
 console.log('[SW] EP-Tracker Service Worker loaded - handles push notifications + offline caching');
+
+self.addEventListener('message', (event) => {
+	if (event.data && event.data.type === 'SKIP_WAITING') {
+		self.skipWaiting();
+	}
+});
 
