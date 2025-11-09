@@ -7,6 +7,7 @@ import { Toaster } from 'react-hot-toast';
 import { ZodInit } from '@/components/core/zod-init';
 import { NotificationHandler } from '@/components/core/notification-handler';
 import ThemeProvider from '@/components/core/theme-provider';
+import { AppStartupLoader } from '@/components/core/app-startup-loader';
 
 const inter = Inter({
 	subsets: ['latin'],
@@ -53,6 +54,7 @@ export default function RootLayout({
 			<body className={`${inter.variable} font-sans antialiased`}>
 				<script dangerouslySetInnerHTML={{ __html: themeScript }} />
 				<ThemeProvider>
+					<AppStartupLoader />
 					<ZodInit />
 					<NotificationHandler />
 					<QueryProvider>{children}</QueryProvider>
