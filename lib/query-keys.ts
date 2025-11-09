@@ -109,6 +109,11 @@ export const queryKeys = {
 		members: (orgId: string) => ['organization', 'members', orgId] as const,
 		settings: (orgId: string) => ['organization', 'settings', orgId] as const,
 	},
+
+	invoiceBasis: {
+		detail: (projectId: string, periodStart: string, periodEnd: string) =>
+			['invoice-basis', projectId, periodStart, periodEnd] as const,
+	},
 	
 	users: {
 		all: ['users'] as const,
