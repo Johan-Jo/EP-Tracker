@@ -357,7 +357,13 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 				},
 				{
 					title: 'Faktura-CSV',
-					items: ['Godkänn tid, material, ÄTA', 'Välj period', 'Klicka "Faktura-CSV"', 'Granska CSV-fil', 'Använd för fakturering'],
+					items: [
+						'Godkänn tid, material, ÄTA samt dagbok för perioden',
+						'Gå till "Fakturaunderlag" (/dashboard/invoice-basis)',
+						'Välj projekt och datumintervall, granska och uppdatera rader vid behov',
+						'Lås underlaget (krävs för export)',
+						'Klicka "Ladda ner CSV" – filen är redo för fakturering / Fortnox / Visma',
+					],
 				},
 			],
 		},

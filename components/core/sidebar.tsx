@@ -13,6 +13,7 @@ import {
 	Building2,
 	Users,
 	FileEdit,
+	FileText,
 	BookOpen,
 	HelpCircle,
 	Plus,
@@ -100,6 +101,12 @@ const navItems: NavItem[] = [
 		href: '/dashboard/approvals',
 		icon: CheckSquare,
 		roles: ['admin', 'foreman'], // Only admin and foreman can approve
+	},
+	{
+		label: 'Fakturaunderlag',
+		href: '/dashboard/invoice-basis',
+		icon: FileText,
+		roles: ['admin', 'foreman', 'finance'],
 	},
 	{
 		label: 'Löneunderlag',

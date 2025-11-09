@@ -1,95 +1,77 @@
 # EPIC 34: Fakturaunderlag – vy, låsning, export (M4)
 
 ## Context/Goal
-Förhandsgranska och lås fakturaunderlag per projekt/period med tid, material, utlägg, mil och ÄTA; exportera SIE/CSV/PDF.
+Fakturaunderlaget ska samla tid, material, utlägg, mil, ÄTA och dagbok per projekt/period. Användaren ska kunna:
+
+1. Välja projekt/period och granska samtliga rader.
+2. Redigera header/rader innan låsning.
+3. Låsa underlaget (fakturaserie, nummer, OCR, hash) och exportera CSV (Fortnox/Visma-ready).
+4. Spåra alla ändringar via audit-logg.
+
+UI finns under `Dashboard → Fakturaunderlag` (synligt för admin/arbetsledare/ekonomi).
 
 ## Scope
-- **M4a (Read-only view):** Visa fakturaunderlag per projekt/period
-- **M4b (Editing):** Redigera beskrivningsrader/etiketter
-- **M4c (Export):** Låsning och export (SIE/CSV/PDF)
+- **M4a (View):** Läs vy över fakturaunderlag (`/dashboard/invoice-basis`), auto-refresh från befintlig data.
+- **M4b (Editing):** Inline-redigering av rader + headerfält, audit-logg på alla uppdateringar.
+- **M4c (Lock & Export):** Låsa/oplåsa med OCR + hash, exportera låst snapshot som CSV.
+- **M4d (Compliance/PDF/SIE):** Planerad – ej implementerad i denna iteration.
+- **M4e (Fortnox/Visma integrationer):** Planerad – ej implementerad.
 
 ## Implementation Phases
-- **Phase 1:** M4a - View fakturaunderlag (read-only, aggregate from existing data)
-- **Phase 2:** M4b - Edit lines + labels + attachments
-- **Phase 3:** M4c - Lock workflow + export formats (SIE/CSV/PDF)
+1. `invoice_basis` tabell + refresh-jobb (`lib/jobs/invoice-basis-refresh.ts`) – aggregerar alla linjetyper och totals.
+2. API + hooks för header/radredigering (`POST /header`, `POST /lines/[lineId]`), auditlogg.
+3. Lock/Unlock API (serie/nummer/OCR/hash, auditlogg) och CSV-export som använder låst snapshot.
+4. Dashboard-sida med full UI-flöde + navigation och uppdaterad hjälpsektion.
 
-## Invoice Line Types
-- **Tid:** From `attendance_session` (hours * rate)
-- **Material:** From `materials` table
-- **Utlägg:** From `expenses` table
-- **Mil:** From `mileage_entries` table
-- **ÄTA:** From `ata_entries` table
-- **Bilagor:** Links to photos/invoices
+## Invoice Line Types (lines_json)
+- `time` – godkända `time_entries`, timtaxa från `memberships.hourly_rate_sek`.
+- `material` – godkända `materials`.
+- `expense` – godkända `expenses`.
+- `mileage` – godkända `mileage`.
+- `ata` – godkända `ata`.
+- `diary` – sanerade dagbokssammanfattningar (text-rader utan belopp).
+- `attachments` – URL:er till foton/kvitton när tillgängligt.
 
 ## Data model & Migrations
-- `invoice_basis` (materialiserad vy eller tabell):
-  - `id`, `project_id`, `period_start`, `period_end`
-  - `lines_json` (spec), `totals`
-  - `locked boolean`, `locked_by`, `locked_at`
+- `supabase/migrations/20251108000001_invoice_basis_table.sql`
+  - Headerfält: serie/nummer, datum, OCR, referenser, reverse charge, ROT/RUT, adresser, dimensioner.
+  - Payload: `lines_json` (lines + diary), `totals` (per momssats + total).
+  - Låsstatus: `locked`, `locked_by`, `locked_at`, `hash_signature`.
 
 ## Jobs/Schedulers
 
 ### Invoice Basis Refresh
-**Location:** `lib/jobs/basis-refresh.ts` (extended)
-**Function:** `refreshInvoiceBasis(projectId, periodStart, periodEnd)`
+- **Location:** `lib/jobs/invoice-basis-refresh.ts`
+- **Function:** `refreshInvoiceBasis({ orgId, projectId, periodStart, periodEnd })`
+- **Flow:**
+  1. Hämtar godkända poster i hela perioden.
+  2. Beräknar rader, moms, totals och dagbokssammanfattningar.
+  3. Upsertar `invoice_basis` (så länge den inte är låst).
+  4. Returnerar snapshot som används av API/UI.
 
-**Logic:**
-1. Fetch data for period:
-   - `attendance_session` → time lines (hours * rate)
-   - `materials` → material lines
-   - `expenses` → expense lines
-   - `mileage_entries` → mileage lines
-   - `ata_entries` → ATA lines
-2. Aggregate per line type
-3. Calculate totals (subtotal, VAT, grand total)
-4. Store/update `invoice_basis` record
+## API Routes (huvudflöde)
 
-## API Routes
+| Endpoint | Beskrivning | Auth | Audit |
+| --- | --- | --- | --- |
+| `GET /api/invoice-basis/[projectId]?periodStart=YYYY-MM-DD&periodEnd=YYYY-MM-DD` | Hämtar (och refreshar) invoice_basis | Admin/Foreman/Finance | – |
+| `POST /api/invoice-basis/[projectId]/header` | Uppdaterar headerfält, auto-beräknar förfallodatum | Admin/Foreman | ✅ |
+| `POST /api/invoice-basis/[projectId]/lines/[lineId]` | Uppdaterar rad (artikel, konto, moms, á-pris, etc.) | Admin/Foreman | ✅ |
+| `POST /api/invoice-basis/[projectId]/lock` | Tilldelar serie/nummer/OCR, beräknar hash, låser | Admin | ✅ |
+| `POST /api/invoice-basis/[projectId]/unlock` | Låser upp (kräver motivering) | Admin | ✅ |
+| `GET /api/exports/invoice?projectId=...&start=...&end=...` | Exporterar låst snapshot som CSV | Admin/Foreman/Finance | Loggas via integration_batches |
 
-### GET `/api/invoice-basis/[projectId]`
-**Location:** `app/api/invoice-basis/[projectId]/route.ts`
-- Query params: `periodStart`, `periodEnd`
-- Returns: `invoice_basis` with lines + totals
-- Auth: Project access required
+> OBS: CSV kräver `locked = true`. PDF/SIE reserverat för framtida iteration.
 
-### POST `/api/invoice-basis/[projectId]/lines/[lineId]`
-**Location:** `app/api/invoice-basis/[projectId]/lines/[lineId]/route.ts`
-- Body: `{ description?, label?, amount? }`
-- Auth: Foreman/admin
-- Updates: Edit line details (only if not locked)
+## Security, Audit & Navigation
+- RLS per organisation/projekt (endast medlemmar ser underlag).
+- Låsning krävs innan export och verhindert fler ändringar.
+- Audit-logg (`audit_log`) registrerar header/line-ändringar, lock/unlock.
+- UI nås via sidomenyn: *Fakturaunderlag* (ikon `FileText`).
+- Hjälpsidan (`/dashboard/help`) uppdaterad med nytt arbetsflöde.
 
-### POST `/api/invoice-basis/[projectId]/lock`
-**Location:** `app/api/invoice-basis/[projectId]/lock/route.ts`
-- Body: `{ periodStart, periodEnd }`
-- Auth: Admin
-- Returns: `{ success, locked_at }`
-- Side effects: Mark as locked, prevent further edits
-
-### POST `/api/invoice-basis/[projectId]/unlock`
-**Location:** `app/api/invoice-basis/[projectId]/unlock/route.ts`
-- Auth: Superadmin only
-- Returns: `{ success }`
-- Side effects: Unlock + trigger notification
-
-### GET `/api/exports/invoice`
-**Location:** `app/api/exports/invoice/route.ts`
-- Query params: `projectId`, `periodStart`, `periodEnd`, `format` (csv|sie|pdf)
-- Auth: Admin
-- Validation: Must be locked
-- Returns: File download
-
-### GET `/api/exports/ledger`
-**Location:** `app/api/exports/ledger/route.ts`
-- Query params: `projectId`, `periodStart`, `periodEnd`
-- Auth: Admin
-- Returns: SIE-format ledger file
-
-## Security & RLS
-- RLS per kund + projekt; låsning krävs före export.
-
-## Acceptance
-- I1: Alla radtyper ingår; bilagor klickbara.
-- I2: Låsning krävs innan export.
-
-## Dependencies & Milestone
-- Del av M4.
+## Acceptance (levererat)
+- I1. `invoice_basis` konsumerar alla linjetyper + dagbok.
+- I2. UI möjliggör redigering, låsning, export och tydlig status.
+- I3. CSV-export ger 100% låst snapshot (inkl. moms, totals, fakturainfo).
+- I4. Audit-logg på samtliga muterande operationer.
+- I5. Navigering och hjälptexter matchar den nya sidan.

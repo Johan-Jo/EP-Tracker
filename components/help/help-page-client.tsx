@@ -225,11 +225,11 @@ export function HelpPageClient({ userRole }: HelpPageClientProps) {
                                     <div className="text-sm space-y-2">
                                         <h4 className="font-medium">Faktura-CSV:</h4>
                                         <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                                            <li>Godkänn tid, material, ÄTA</li>
-                                            <li>Välj period</li>
-                                            <li>Klicka &quot;Faktura-CSV&quot;</li>
-                                            <li>Granska CSV-fil</li>
-                                            <li>Använd för fakturering</li>
+                                            <li>Godkänn tid, material, ÄTA samt dagbok för perioden</li>
+                                            <li>Öppna &quot;Fakturaunderlag&quot; (/dashboard/invoice-basis)</li>
+                                            <li>Välj projekt och datum, uppdatera rader/huvuduppgifter vid behov</li>
+                                            <li>Lås underlaget</li>
+                                            <li>Klicka &quot;Ladda ner CSV&quot; för att använda i Fortnox/Visma</li>
                                         </ol>
                                     </div>
                                 </CardContent>
