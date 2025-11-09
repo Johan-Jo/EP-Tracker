@@ -123,6 +123,7 @@ interface MobileNavProps {
 export function MobileNav({ userRole }: MobileNavProps) {
 	const pathname = usePathname();
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
+	const [pressedItem, setPressedItem] = useState<string | null>(null);
 
 	// Filter items based on user role
 	const visibleMainItems = mainNavItems.filter((item) => item.roles.includes(userRole));
@@ -188,11 +189,25 @@ export function MobileNav({ userRole }: MobileNavProps) {
 						<Link
 							key={item.href}
 							href={item.href}
-							className='relative flex flex-1 flex-col items-center justify-center'
+							onPointerDown={() => setPressedItem(item.href)}
+							onPointerUp={() => setPressedItem(null)}
+							onPointerLeave={() => setPressedItem(null)}
+							className={cn(
+								'relative flex flex-1 flex-col items-center justify-center transition-transform duration-150',
+								pressedItem === item.href ? 'scale-95' : 'scale-100'
+							)}
 						>
 							{isActive && (
 								<div className='absolute top-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-b-full bg-orange-500' />
 							)}
+							<span
+								className={cn(
+									'absolute inset-0 rounded-t-xl transition-colors',
+									pressedItem === item.href
+										? 'bg-orange-500/10 dark:bg-orange-400/10'
+										: 'bg-transparent'
+								)}
+							/>
 							<Icon className={cn(
 								'w-6 h-6 mb-1',
 								isActive ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 dark:text-gray-500'
@@ -210,11 +225,25 @@ export function MobileNav({ userRole }: MobileNavProps) {
 					{/* Menu Button */}
 					<button
 						onClick={() => setIsMenuOpen(true)}
-						className='relative flex flex-1 flex-col items-center justify-center'
+						onPointerDown={() => setPressedItem('menu')}
+						onPointerUp={() => setPressedItem(null)}
+						onPointerLeave={() => setPressedItem(null)}
+						className={cn(
+							'relative flex flex-1 flex-col items-center justify-center transition-transform duration-150',
+							pressedItem === 'menu' ? 'scale-95' : 'scale-100'
+						)}
 					>
 						{isMenuActive && (
 							<div className='absolute top-0 left-1/2 h-1 w-12 -translate-x-1/2 rounded-b-full bg-orange-500' />
 						)}
+						<span
+							className={cn(
+								'absolute inset-0 rounded-t-xl transition-colors',
+								pressedItem === 'menu'
+									? 'bg-orange-500/10 dark:bg-orange-400/10'
+									: 'bg-transparent'
+							)}
+						/>
 						<Menu className={cn(
 							'w-6 h-6 mb-1',
 							isMenuActive ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 dark:text-gray-500'

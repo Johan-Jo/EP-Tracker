@@ -73,10 +73,7 @@ export function AppStartupLoader() {
 	const isDarkMode = theme === 'dark';
 
 	const backgroundClass = useMemo(
-		() =>
-			isDarkMode
-				? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
-				: 'bg-gradient-to-br from-white via-slate-50 to-slate-100',
+		() => (isDarkMode ? 'bg-black' : 'bg-white'),
 		[isDarkMode],
 	);
 
