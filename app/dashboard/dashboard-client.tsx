@@ -8,6 +8,7 @@ import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { HelpCircle } from 'lucide-react';
 
 interface DashboardClientProps {
   userName: string;
@@ -194,7 +195,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
   };
 
   return (
-    <div className="flex-1 overflow-auto bg-gray-50 transition-colors dark:bg-[#0A0908]">
+    <div className="flex-1 overflow-auto bg-gray-50 transition-colors dark:bg-[#0A0908] min-h-screen">
       {/* Diary Prompt Dialog */}
       <Dialog open={showDiaryPromptDialog} onOpenChange={setShowDiaryPromptDialog}>
         <DialogContent>
@@ -230,118 +231,154 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
         </DialogContent>
       </Dialog>
 
-      <div className="p-4 sm:p-6">
-        {/* Welcome */}
-        <div className="mb-6" data-tour="dashboard-header">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Välkommen, {userName.split(' ')[0]}! <span className="align-middle">👋</span>
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-orange-100/70">
-            Här är en översikt över dina projekt och aktiviteter.
-          </p>
-        </div>
-
-      {/* Time Check-in/Check-out Slider - EPIC 26: Uses optimistic state */}
-      <section
-        className="mb-6 rounded-2xl border border-orange-200 bg-gradient-to-r from-orange-50 to-orange-100/50 p-4 shadow-sm transition-all dark:border-orange-500/30 dark:bg-[#1a120b] dark:shadow-[0_30px_80px_-40px_rgba(249,115,22,0.6)]"
-        data-tour="time-slider"
-      >
-          <div className="mb-3 flex items-center gap-3 text-black dark:text-[#d7a15a]">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-200">
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 7v5l3 2" />
-            </svg>
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8">
+        <section className="mb-6 space-y-4 text-[var(--color-gray-900)] dark:text-white">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Hej {userName || 'vän'} 👋</h1>
+              <p className="text-sm text-muted-foreground dark:text-white/70">Här hittar du en snabb överblick över organisationens aktivitet.</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/dashboard/help')}
+              className="flex items-center gap-2"
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span className="hidden sm:inline">Hjälp & guider</span>
+              <span className="sm:hidden">Hjälp</span>
+            </Button>
           </div>
-          <div className="leading-tight">
-            {optimisticTimeEntry && optimisticTimeEntry.start_at && optimisticTimeEntry.projects?.name ? (
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#3a2613] dark:text-[#7c4515]">
-                  Aktiv tid
-                </p>
-                <p className="text-base font-semibold text-[#2b1c11] dark:text-[#d4943c]">
-                  Du checkade in{' '}
-                  <span className="font-semibold text-[#8d4d12] dark:text-[#e6a250]">
-                    {new Date(optimisticTimeEntry.start_at).toLocaleTimeString('sv-SE', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                  {optimisticTimeEntry.projects?.name ? (
-                    <>
-                      , projekt:{' '}
-                      <span className="font-semibold text-[#6f340a] dark:text-[#d7832b]">
-                        {optimisticTimeEntry.projects.name}
-                      </span>
-                    </>
-                  ) : null}
-                </p>
-              </div>
-            ) : (
-              <p className="text-lg font-semibold text-black dark:text-[#c47a2c] dark:[text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">
-                Ingen aktiv tid
-              </p>
-            )}
-          </div>
-        </div>
-        <TimeSlider
-          isActive={!!optimisticTimeEntry}
-          projectName={
-            optimisticTimeEntry 
-              ? optimisticTimeEntry.projects?.name 
-              : recentProject?.name
-          }
-          projectId={
-            optimisticTimeEntry 
-              ? optimisticTimeEntry.projects?.id 
-              : recentProject?.id
-          }
-          startTime={optimisticTimeEntry?.start_at}
-          availableProjects={allProjects}
-          onCheckIn={handleCheckIn}
-          onCheckOut={handleCheckOut}
-          onCheckOutComplete={handleCheckOutComplete}
-        />
-      </section>
-
-      {/* Quick Start Banner - BLUE GRADIENT */}
-      {showQuickStartBanner && (
-        <section className="relative mb-6 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 via-indigo-50 to-violet-50 p-5 shadow-sm transition-all duration-200 hover:border-blue-300 hover:shadow-lg sm:p-6 dark:border-blue-500/40 dark:from-[#0f172a] dark:via-[#111b2c] dark:to-[#0b0f1f] dark:shadow-[0_20px_60px_-40px_rgba(37,99,235,0.6)]">
-          {/* Close button */}
-          <button
-            onClick={handleDismissQuickStart}
-            className="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-blue-100 transition-colors"
-            aria-label="Stäng"
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pr-8">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M12 9v4M12 17h.01" />
-                </svg>
-              </div>
-              <div className="leading-tight">
-                <div className="font-medium">Kom igång snabbt</div>
-                <div className="text-sm text-gray-600 dark:text-indigo-100/80">
-                  Följ vår snabbguide för att sätta upp ditt första projekt
+          {showQuickStartBanner && (
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 md:p-6 dark:border-[#3a251d] dark:bg-[#221610]">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-orange-900 dark:text-[#f3c089]">Kom igång med EP Tracker</h2>
+                  <p className="text-sm text-muted-foreground dark:text-white/70">Snabbguide till att sätta upp projekt, check-in och dagbok.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={() => router.push('/dashboard/projects/new')} size="sm" className="bg-orange-500 hover:bg-orange-600 text-white">
+                    Skapa projekt
+                  </Button>
+                  <Button onClick={() => router.push('/dashboard/diary/new')} size="sm" variant="outline" className="border-orange-400 text-orange-600">
+                    Starta dagbok
+                  </Button>
+                  <Button onClick={handleDismissQuickStart} size="sm" variant="ghost">
+                    Visa inte igen
+                  </Button>
                 </div>
               </div>
             </div>
-            <button 
-              onClick={() => router.push('/dashboard?tour=dashboard')}
-              className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-blue-300 bg-white px-4 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50 dark:border-blue-500/40 dark:bg-white/10 dark:text-indigo-100 dark:hover:bg-white/15"
-            >
-              Starta interaktiv guide
-            </button>
-          </div>
+          )}
         </section>
-      )}
+
+        <section className="space-y-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div className="rounded-2xl border border-border/60 bg-card shadow-sm transition-colors dark:border-[#2e3744] dark:bg-[#171c22]">
+            <div className="p-5">
+              <p className="text-sm text-muted-foreground">Aktiva projekt</p>
+              <p className="mt-2 text-2xl font-semibold">{stats.active_projects}</p>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-card shadow-sm transition-colors dark:border-[#2e3744] dark:bg-[#171c22]">
+            <div className="p-5">
+              <p className="text-sm text-muted-foreground">Timmar denna vecka</p>
+              <p className="mt-2 text-2xl font-semibold">{stats.total_hours_week}h</p>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-card shadow-sm transition-colors dark:border-[#2e3744] dark:bg-[#171c22]">
+            <div className="p-5">
+              <p className="text-sm text-muted-foreground">Material & utgifter</p>
+              <p className="mt-2 text-2xl font-semibold">{stats.total_materials_week} kr</p>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-card shadow-sm transition-colors dark:border-[#2e3744] dark:bg-[#171c22]">
+            <div className="p-5">
+              <p className="text-sm text-muted-foreground">Registreringar</p>
+              <p className="mt-2 text-2xl font-semibold">{stats.total_time_entries_week}</p>
+            </div>
+          </div>
+        </div>
+ 
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-border/60 bg-card shadow-sm transition-colors dark:border-[#2e3744] dark:bg-[#181d24]">
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <div>
+                <h2 className="text-lg font-semibold">Snabbstart</h2>
+                <p className="text-sm text-muted-foreground">Sätt upp ditt första projekt</p>
+              </div>
+              <Link href="/dashboard/projects/new">
+                <Button variant="outline" size="sm" className="h-8">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 mr-1" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Nytt projekt
+                </Button>
+              </Link>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-muted-foreground">
+                Skapa ett nytt projekt för att börja spåra din tid och material.
+              </p>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-card shadow-sm transition-colors dark:border-[#2e3744] dark:bg-[#181d24]">
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <div>
+                <h2 className="text-lg font-semibold">Pågående tidtagning</h2>
+                <p className="text-sm text-muted-foreground">Registrera din aktivitet</p>
+              </div>
+              <Link href="/dashboard/time">
+                <Button variant="outline" size="sm" className="h-8">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 mr-1" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="12" cy="13" r="8" />
+                  </svg>
+                  Logga tid
+                </Button>
+              </Link>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-muted-foreground">
+                Starta en ny tidtagning för att registrera din arbetstid.
+              </p>
+            </div>
+          </div>
+        </div>
+        </section>
+
+        <Dialog open={showDiaryPromptDialog} onOpenChange={setShowDiaryPromptDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Bra jobbat! 👏</DialogTitle>
+              <DialogDescription>
+                Du har checkat ut från projektet.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-3 mt-4">
+              <p className="text-sm text-muted-foreground">
+                Vill du skapa en dagbokspost om detta projekt nu?
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDiaryPromptDialog(false)}
+                  className="flex-1"
+                >
+                  Inte nu
+                </Button>
+                <Link 
+                  href={`/dashboard/diary/new?project_id=${completedProjectId}`}
+                  className="flex-1"
+                  onClick={() => setShowDiaryPromptDialog(false)}
+                >
+                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+                    Skapa dagbokspost
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
       {/* Quick actions */}
       <div className="mt-6" data-tour="quick-actions">
@@ -401,48 +438,6 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
               </div>
             </div>
           </button>
-        </div>
-      </div>
-
-      {/* Stats row */}
-      <div className="mt-6 grid md:grid-cols-3 gap-4">
-        <div
-          className="cursor-pointer rounded-2xl border border-gray-200 bg-white/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-500 hover:shadow-lg dark:border-[#2f2117] dark:bg-[#1a140f] dark:text-orange-100/90"
-          onClick={() => router.push('/dashboard/projects')}
-        >
-          <div className="p-5 sm:p-6">
-            <div className="text-sm uppercase tracking-[0.18em] text-gray-500 dark:text-white/70">Aktiva projekt</div>
-            <div className="mt-3 text-3xl font-semibold text-gray-900 dark:text-white">{stats.active_projects}</div>
-            <div className="mt-4 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-white/80 dark:hover:text-white">
-              Visa alla projekt →
-            </div>
-          </div>
-        </div>
-
-        <div
-          className="cursor-pointer rounded-2xl border border-gray-200 bg-white/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-500 hover:shadow-lg dark:border-[#2f2117] dark:bg-[#1a140f] dark:text-orange-100/90"
-          onClick={() => router.push('/dashboard/time')}
-        >
-          <div className="p-5 sm:p-6">
-            <div className="text-sm uppercase tracking-[0.18em] text-gray-500 dark:text-white/70">Tidsrapporter v.</div>
-            <div className="mt-3 text-3xl font-semibold text-gray-900 dark:text-white">{stats.total_time_entries_week}</div>
-            <div className="mt-4 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-white/80 dark:hover:text-white">
-              Logga tid →
-            </div>
-          </div>
-        </div>
-
-        <div
-          className="cursor-pointer rounded-2xl border border-gray-200 bg-white/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-orange-500 hover:shadow-lg dark:border-[#2f2117] dark:bg-[#1a140f] dark:text-orange-100/90"
-          onClick={() => router.push('/dashboard/materials')}
-        >
-          <div className="p-5 sm:p-6">
-            <div className="text-sm uppercase tracking-[0.18em] text-gray-500 dark:text-white/70">Material & utgifter v.</div>
-            <div className="mt-3 text-3xl font-semibold text-gray-900 dark:text-white">{stats.total_materials_week}</div>
-            <div className="mt-4 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-white/80 dark:hover:text-white">
-              Hantera material & utgifter →
-            </div>
-          </div>
         </div>
       </div>
 
@@ -664,7 +659,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
       <div className="h-10" />
 
       <PageTourTrigger tourId="dashboard" />
-      </div>
+      </main>
     </div>
   );
 }
