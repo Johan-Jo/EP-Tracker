@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Calendar, Clock, Save, Filter, Loader2, Trash2, BookOpen, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, Save, Filter, Loader2, Trash2, BookOpen, CheckCircle2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 // Removed textarea for description; diary prompt will be used instead
@@ -645,12 +645,16 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 										setSelectedProject(value);
 									}}
 								>
-									<SelectTrigger className='h-11'>
+									<SelectTrigger className='h-11 justify-between text-left'>
 										<SelectValue placeholder='Välj projekt' />
 									</SelectTrigger>
-									<SelectContent>
+									<SelectContent className='border border-border/60 bg-[var(--color-card)] text-[var(--color-gray-900)] dark:border-[#3b291d] dark:bg-[#1a120d] dark:text-white'>
 										{projects?.map((project) => (
-											<SelectItem key={project.id} value={project.id}>
+											<SelectItem
+												key={project.id}
+												value={project.id}
+												className='text-sm data-[state=checked]:bg-orange-500/15 data-[state=checked]:text-orange-600 dark:data-[state=checked]:bg-[#3a251c] dark:data-[state=checked]:text-[#f8ddba]'
+											>
 												{project.name}
 											</SelectItem>
 										))}
@@ -891,53 +895,51 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 													size='sm'
 													className={
 														hasDiaryEntry(entry)
-															? 'bg-green-50 hover:bg-green-100 text-green-700 border-green-300 transition-all duration-200'
-															: 'hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 transition-all duration-200'
+															? 'flex h-9 w-9 items-center justify-center rounded-full border-green-300 bg-green-50 text-green-700 transition-all duration-200 hover:bg-green-100 md:w-auto md:px-4 md:gap-2'
+															: 'flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 md:w-auto md:px-4 md:gap-2'
 													}
 													onClick={() => handleDiaryClick(entry)}
 													disabled={diaryLoadingMap[entry.id] || !entry.project_id}
-													title={
-														entry.project_id
-															? hasDiaryEntry(entry)
-																? 'Dagbok finns - öppna för redigering'
-																: 'Skapa dagbok för detta datum'
-															: 'Inget projekt kopplat'
-													}
+													title='Dagbok'
 												>
 													{diaryLoadingMap[entry.id] ? (
-														<Loader2 className='w-4 h-4 animate-spin' />
+														<Loader2 className='h-4 w-4 animate-spin' />
 													) : (
 														<>
 															{hasDiaryEntry(entry) ? (
-																<CheckCircle2 className='w-4 h-4 mr-1' />
+																<CheckCircle2 className='h-4 w-4' />
 															) : (
-																<BookOpen className='w-4 h-4 mr-1' />
+																<BookOpen className='h-4 w-4' />
 															)}
-															Dagbok
+															<span className='hidden md:inline'>Dagbok</span>
 														</>
 													)}
 												</Button>
-												
+
 												{entry.status === 'draft' && (
 													<>
 														<Button
 															variant='outline'
 															size='sm'
-															className='hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 transition-all duration-200'
+															className='flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 md:w-auto md:px-4 md:gap-2'
 															onClick={() => {
 																setEditingEntry(entry);
 																window.scrollTo({ top: 0, behavior: 'smooth' });
 															}}
+															title='Ändra'
 														>
-															Ändra
+															<Pencil className='h-4 w-4' />
+															<span className='hidden md:inline'>Ändra</span>
 														</Button>
 														<Button
 															variant='outline'
 															size='sm'
-															className='hover:bg-red-50 hover:text-red-700 hover:border-red-300 transition-all duration-200'
+															className='flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:border-red-300 hover:bg-red-50 hover:text-red-700 md:w-auto md:px-4 md:gap-2'
 															onClick={() => handleDelete(entry.id)}
+															title='Ta bort'
 														>
-															<Trash2 className='w-4 h-4' />
+															<Trash2 className='h-4 w-4' />
+															<span className='hidden md:inline'>Ta bort</span>
 														</Button>
 													</>
 												)}
