@@ -138,39 +138,177 @@ export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 		)
 		: 0;
 
+	const entriesContent = (() => {
+		if (queryError) {
+			return (
+				<div className='bg-destructive/10 border border-destructive rounded-xl p-6 md:p-8 text-center'>
+					<p className='text-destructive text-sm md:text-base'>
+						Fel vid hämtning av dagboksposter: {queryError instanceof Error ? queryError.message : 'Okänt fel'}
+					</p>
+					<p className='text-xs md:text-sm text-muted-foreground mt-2'>
+						Prova att ladda om sidan eller kontakta support om problemet kvarstår.
+					</p>
+				</div>
+			);
+		}
+
+		if (isLoading) {
+			return (
+				<div className='flex items-center justify-center py-12'>
+					<div className='text-muted-foreground'>Laddar dagboksposter...</div>
+				</div>
+			);
+		}
+
+		if (filteredEntries.length === 0) {
+			return (
+				<div className='bg-card rounded-xl border border-border p-6 md:p-8 text-center'>
+					<div className='inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full bg-muted mb-3 md:mb-4'>
+						<FileText className='w-6 h-6 md:w-8 md:h-8 text-muted-foreground' />
+					</div>
+					<p className='text-muted-foreground text-sm md:text-base'>
+						{searchQuery
+							? 'Inga dagboksposter hittades'
+							: projectInfo
+								? `Inga dagboksposter för ${projectInfo.name}`
+								: 'Inga dagboksposter ännu'}
+					</p>
+					<p className='text-xs md:text-sm text-muted-foreground mt-2'>
+						{searchQuery ? 'Prova att söka efter något annat' : 'Skapa din första dagbokspost för att komma igång'}
+					</p>
+				</div>
+			);
+		}
+
+		return (
+			<div className='space-y-3'>
+				{filteredEntries.map((entry: any) => {
+					const WeatherIcon = getWeatherIcon(entry.weather);
+					const weatherColor = getWeatherColor(entry.weather);
+
+					return (
+						<div
+							key={entry.id}
+							className='bg-card border-2 border-border rounded-xl p-4 md:p-5 hover:border-primary/30 hover:shadow-lg hover:scale-[1.01] transition-all duration-200'
+						>
+							{/* Header with date, weather, and stats */}
+							<div className='flex flex-wrap items-center gap-3 mb-3 pb-3 border-b border-border'>
+								<div className='flex items-center gap-2 px-3 py-1.5 bg-accent rounded-lg'>
+									<Calendar className='w-4 h-4 text-primary' />
+									<span className='text-sm'>{formatPlainDate(entry.date, 'sv-SE', 'medium')}</span>
+								</div>
+
+								{entry.weather && (
+									<div className='flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg'>
+										<WeatherIcon className={`w-4 h-4 ${weatherColor}`} />
+										{entry.temperature_c !== null && (
+											<span className='text-sm text-muted-foreground'>{entry.temperature_c}°C</span>
+										)}
+									</div>
+								)}
+
+								{entry.crew_count !== null && entry.crew_count > 0 && (
+									<div className='flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg'>
+										<Users className='w-4 h-4 text-muted-foreground' />
+										<span className='text-sm text-muted-foreground'>{entry.crew_count}</span>
+									</div>
+								)}
+
+								{entry.photoCount > 0 && (
+									<div className='flex items-center gap-2 px-3 py-1.5 bg-purple-50 rounded-lg'>
+										<ImageIcon className='w-4 h-4 text-purple-600' />
+										<span className='text-sm text-purple-600'>{entry.photoCount}</span>
+									</div>
+								)}
+
+								<div className='ml-auto flex items-center gap-2'>
+									<Button
+										variant='outline'
+										size='sm'
+										className='hover:bg-accent hover:text-accent-foreground hover:border-primary/50 transition-all duration-200'
+										asChild
+									>
+										<Link href={`/dashboard/diary/${entry.id}`}>
+											<Eye className='w-4 h-4 mr-1' />
+											Visa
+										</Link>
+									</Button>
+									<Button
+										variant='outline'
+										size='sm'
+										className='hover:bg-accent hover:text-accent-foreground hover:border-primary/50 transition-all duration-200'
+										asChild
+									>
+										<Link href={`/dashboard/diary/${entry.id}?edit=1`}>
+											<Pencil className='w-4 h-4' />
+										</Link>
+									</Button>
+								</div>
+							</div>
+
+							{/* Content */}
+							<div className='mb-3'>
+								<h4 className='text-lg font-semibold mb-2'>
+									Dagbok - {formatSwedishFull(entry.date)}
+								</h4>
+								{entry.work_performed && (
+									<p className='text-sm text-muted-foreground mb-2 line-clamp-2'>
+										{entry.work_performed}
+									</p>
+								)}
+								<p className='text-sm text-muted-foreground'>
+									Projekt: <span className='font-bold'>{entry.project?.project_number ? `${entry.project.project_number} - ` : ''}{entry.project?.name}</span>
+								</p>
+							</div>
+
+							{/* Footer */}
+							{entry.signature_name && (
+								<div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground pt-3 border-t border-border'>
+									<span>Signerad av: {entry.signature_name}</span>
+									<span>•</span>
+									<span>{new Date(entry.signature_timestamp).toLocaleString('sv-SE')}</span>
+									<span>•</span>
+									<span>Skapad: {new Date(entry.created_at).toLocaleDateString('sv-SE')}</span>
+								</div>
+							)}
+						</div>
+					);
+				})}
+			</div>
+		);
+	})();
+
 	return (
-		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
-			{/* Header */}
-			<header className='sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border'>
-				<div className='px-4 md:px-8 py-4 md:py-6'>
-					<div className='flex items-center justify-between mb-4'>
+		<div className='flex-1 overflow-auto bg-gray-50 pb-20 transition-colors md:pb-0 dark:bg-[#0A0908]'>
+			{/* Main Content */}
+			<main className='mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8'>
+				<section className='mb-6 space-y-4 text-[var(--color-gray-900)] dark:text-white'>
+					<div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
 						<div>
-							<h1 className='text-3xl font-bold tracking-tight mb-1'>Dagbok</h1>
-							<p className='text-sm text-muted-foreground'>
+							<h1 className='text-3xl font-bold tracking-tight'>Dagbok</h1>
+							<p className='text-sm text-muted-foreground dark:text-white/70'>
 								AFC-stil dagboksposter för dina projekt
 							</p>
 							{projectInfo && (
-								<div className='mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg text-sm'>
-									<FileText className='w-4 h-4' />
+								<div className='mt-2 inline-flex items-center gap-2 rounded-lg bg-orange-100 px-3 py-1.5 text-sm text-orange-700'>
+									<FileText className='h-4 w-4' />
 									<span>Filtrerar: {projectInfo.name}</span>
 								</div>
 							)}
 						</div>
-					<Button 
-						asChild
-						className='shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:scale-105 transition-all duration-200'
-					>
-						<Link href={projectId ? `/dashboard/diary/new?project_id=${projectId}` : '/dashboard/diary/new'}>
-							<Plus className='w-4 h-4 mr-2' />
-							Ny dagbokspost
-						</Link>
-					</Button>
+						<Button
+							asChild
+							className='bg-orange-500 text-white shadow-lg shadow-primary/30 transition-all duration-200 hover:scale-105 hover:bg-orange-600 hover:shadow-xl hover:shadow-primary/40'
+						>
+							<Link href={projectId ? `/dashboard/diary/new?project_id=${projectId}` : '/dashboard/diary/new'}>
+								<Plus className='mr-2 h-4 w-4' />
+								Ny dagbokspost
+							</Link>
+						</Button>
 					</div>
-
-					{/* Search */}
 					<div className='flex gap-2'>
 						<div className='relative flex-1'>
-							<Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground' />
+							<Search className='absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
 							<Input
 								placeholder='Sök dagboksposter...'
 								className='pl-9'
@@ -179,193 +317,66 @@ export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 							/>
 						</div>
 					</div>
-				</div>
-			</header>
+				</section>
 
-			{/* Main Content */}
-			<main className='px-4 md:px-8 py-6 max-w-7xl'>
-				{/* Stats */}
-				<div className='grid grid-cols-1 md:grid-cols-4 gap-4 mb-6'>
-					<div className='bg-card border-2 border-border rounded-xl p-4 hover:border-primary/30 hover:shadow-md transition-all duration-200'>
-						<div className='flex items-center gap-3'>
-							<div className='p-2 rounded-lg bg-accent'>
-								<FileText className='w-5 h-5 text-primary' />
+				<section className='space-y-6'>
+					{/* Stats */}
+					<div className='grid grid-cols-1 gap-4 md:grid-cols-4'>
+						<div className='bg-card border-2 border-border rounded-xl p-4 hover:border-primary/30 hover:shadow-md transition-all duration-200'>
+							<div className='flex items-center gap-3'>
+								<div className='p-2 rounded-lg bg-accent'>
+									<FileText className='w-5 h-5 text-primary' />
+								</div>
+								<div>
+									<p className='text-sm text-muted-foreground'>Totalt poster</p>
+									<p className='text-xl'>{totalEntries} st</p>
+								</div>
 							</div>
-							<div>
-								<p className='text-sm text-muted-foreground'>Totalt poster</p>
-								<p className='text-xl'>{totalEntries} st</p>
+						</div>
+
+						<div className='bg-card border-2 border-border rounded-xl p-4 hover:border-primary/30 hover:shadow-md transition-all duration-200'>
+							<div className='flex items-center gap-3'>
+								<div className='p-2 rounded-lg bg-blue-100'>
+									<Calendar className='w-5 h-5 text-blue-600' />
+								</div>
+								<div>
+									<p className='text-sm text-muted-foreground'>Denna vecka</p>
+									<p className='text-xl'>{thisWeekEntries} st</p>
+								</div>
+							</div>
+						</div>
+
+						<div className='bg-card border-2 border-border rounded-xl p-4 hover:border-primary/30 hover:shadow-md transition-all duration-200'>
+							<div className='flex items-center gap-3'>
+								<div className='p-2 rounded-lg bg-green-100'>
+									<Users className='w-5 h-5 text-green-600' />
+								</div>
+								<div>
+									<p className='text-sm text-muted-foreground'>Total bemanning</p>
+									<p className='text-xl'>{totalCrew} pers</p>
+								</div>
+							</div>
+						</div>
+
+						<div className='bg-card border-2 border-border rounded-xl p-4 hover:border-primary/30 hover:shadow-md transition-all duration-200'>
+							<div className='flex items-center gap-3'>
+								<div className='p-2 rounded-lg bg-yellow-100'>
+									<Sun className='w-5 h-5 text-yellow-600' />
+								</div>
+								<div>
+									<p className='text-sm text-muted-foreground'>Medeltemperatur</p>
+									<p className='text-xl'>{avgTemp}°C</p>
+								</div>
 							</div>
 						</div>
 					</div>
 
-					<div className='bg-card border-2 border-border rounded-xl p-4 hover:border-primary/30 hover:shadow-md transition-all duration-200'>
-						<div className='flex items-center gap-3'>
-							<div className='p-2 rounded-lg bg-blue-100'>
-								<Calendar className='w-5 h-5 text-blue-600' />
-							</div>
-							<div>
-								<p className='text-sm text-muted-foreground'>Denna vecka</p>
-								<p className='text-xl'>{thisWeekEntries} st</p>
-							</div>
-						</div>
+					{/* Logbook Entries */}
+					<div>
+						<h3 className='text-xl font-semibold mb-4'>Dagboksposter</h3>
+						{entriesContent}
 					</div>
-
-					<div className='bg-card border-2 border-border rounded-xl p-4 hover:border-primary/30 hover:shadow-md transition-all duration-200'>
-						<div className='flex items-center gap-3'>
-							<div className='p-2 rounded-lg bg-green-100'>
-								<Users className='w-5 h-5 text-green-600' />
-							</div>
-							<div>
-								<p className='text-sm text-muted-foreground'>Total bemanning</p>
-								<p className='text-xl'>{totalCrew} pers</p>
-							</div>
-						</div>
-					</div>
-
-					<div className='bg-card border-2 border-border rounded-xl p-4 hover:border-primary/30 hover:shadow-md transition-all duration-200'>
-						<div className='flex items-center gap-3'>
-							<div className='p-2 rounded-lg bg-yellow-100'>
-								<Sun className='w-5 h-5 text-yellow-600' />
-							</div>
-							<div>
-								<p className='text-sm text-muted-foreground'>Medeltemperatur</p>
-								<p className='text-xl'>{avgTemp}°C</p>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				{/* Logbook Entries */}
-				<div>
-					<h3 className='text-xl font-semibold mb-4'>Dagboksposter</h3>
-					{queryError ? (
-						<div className='bg-destructive/10 border border-destructive rounded-xl p-6 md:p-8 text-center'>
-							<p className='text-destructive text-sm md:text-base'>
-								Fel vid hämtning av dagboksposter: {queryError instanceof Error ? queryError.message : 'Okänt fel'}
-							</p>
-							<p className='text-xs md:text-sm text-muted-foreground mt-2'>
-								Prova att ladda om sidan eller kontakta support om problemet kvarstår.
-							</p>
-						</div>
-					) : isLoading ? (
-						<div className='flex items-center justify-center py-12'>
-							<div className='text-muted-foreground'>Laddar dagboksposter...</div>
-						</div>
-					) : filteredEntries.length === 0 ? (
-						<div className='bg-card rounded-xl border border-border p-6 md:p-8 text-center'>
-							<div className='inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full bg-muted mb-3 md:mb-4'>
-								<FileText className='w-6 h-6 md:w-8 md:h-8 text-muted-foreground' />
-							</div>
-							<p className='text-muted-foreground text-sm md:text-base'>
-								{searchQuery 
-									? 'Inga dagboksposter hittades' 
-									: projectInfo 
-										? `Inga dagboksposter för ${projectInfo.name}` 
-										: 'Inga dagboksposter ännu'}
-							</p>
-							<p className='text-xs md:text-sm text-muted-foreground mt-2'>
-								{searchQuery 
-									? 'Prova att söka efter något annat' 
-									: 'Skapa din första dagbokspost för att komma igång'}
-							</p>
-						</div>
-					) : (
-						<div className='space-y-3'>
-							{filteredEntries.map((entry: any) => {
-								const WeatherIcon = getWeatherIcon(entry.weather);
-								const weatherColor = getWeatherColor(entry.weather);
-								
-								return (
-									<div
-										key={entry.id}
-										className='bg-card border-2 border-border rounded-xl p-4 md:p-5 hover:border-primary/30 hover:shadow-lg hover:scale-[1.01] transition-all duration-200'
-									>
-										{/* Header with date, weather, and stats */}
-										<div className='flex flex-wrap items-center gap-3 mb-3 pb-3 border-b border-border'>
-											<div className='flex items-center gap-2 px-3 py-1.5 bg-accent rounded-lg'>
-												<Calendar className='w-4 h-4 text-primary' />
-												<span className='text-sm'>{formatPlainDate(entry.date, 'sv-SE', 'medium')}</span>
-											</div>
-											
-											{entry.weather && (
-												<div className='flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg'>
-													<WeatherIcon className={`w-4 h-4 ${weatherColor}`} />
-													{entry.temperature_c !== null && (
-														<span className='text-sm text-muted-foreground'>{entry.temperature_c}°C</span>
-													)}
-												</div>
-											)}
-											
-											{entry.crew_count !== null && entry.crew_count > 0 && (
-												<div className='flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg'>
-													<Users className='w-4 h-4 text-muted-foreground' />
-													<span className='text-sm text-muted-foreground'>{entry.crew_count}</span>
-												</div>
-											)}
-
-											{entry.photoCount > 0 && (
-												<div className='flex items-center gap-2 px-3 py-1.5 bg-purple-50 rounded-lg'>
-													<ImageIcon className='w-4 h-4 text-purple-600' />
-													<span className='text-sm text-purple-600'>{entry.photoCount}</span>
-												</div>
-											)}
-
-											<div className='ml-auto flex items-center gap-2'>
-                                                    <Button
-													variant='outline'
-													size='sm'
-													className='hover:bg-accent hover:text-accent-foreground hover:border-primary/50 transition-all duration-200'
-													asChild
-												>
-													<Link href={`/dashboard/diary/${entry.id}`}>
-														<Eye className='w-4 h-4 mr-1' />
-														Visa
-													</Link>
-												</Button>
-                                                    <Button
-                                                        variant='outline'
-                                                        size='sm'
-                                                        className='hover:bg-accent hover:text-accent-foreground hover:border-primary/50 transition-all duration-200'
-                                                        asChild
-                                                    >
-													<Link href={`/dashboard/diary/${entry.id}?edit=1`}>
-														<Pencil className='w-4 h-4' />
-													</Link>
-												</Button>
-											</div>
-										</div>
-
-										{/* Content */}
-										<div className='mb-3'>
-											<h4 className='text-lg font-semibold mb-2'>
-												Dagbok - {formatSwedishFull(entry.date)}
-											</h4>
-											{entry.work_performed && (
-												<p className='text-sm text-muted-foreground mb-2 line-clamp-2'>
-													{entry.work_performed}
-												</p>
-											)}
-											<p className='text-sm text-muted-foreground'>
-												Projekt: <span className='font-bold'>{entry.project?.project_number ? `${entry.project.project_number} - ` : ''}{entry.project?.name}</span>
-											</p>
-										</div>
-
-									{/* Footer */}
-									{entry.signature_name && (
-										<div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground pt-3 border-t border-border'>
-											<span>Signerad av: {entry.signature_name}</span>
-											<span>•</span>
-											<span>{new Date(entry.signature_timestamp).toLocaleString('sv-SE')}</span>
-											<span>•</span>
-											<span>Skapad: {new Date(entry.created_at).toLocaleDateString('sv-SE')}</span>
-											</div>
-										)}
-									</div>
-								);
-							})}
-						</div>
-					)}
-				</div>
+				</section>
 			</main>
 		</div>
 	);
