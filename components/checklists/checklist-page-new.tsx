@@ -75,7 +75,7 @@ export function ChecklistPageNew({ orgId }: ChecklistPageNewProps) {
 	}).length;
 
 	return (
-		<div className='flex-1 overflow-auto bg-gray-50 pb-20 transition-colors md:pb-0 dark:bg-[#0A0908]'>
+		<div className='flex-1 overflow-auto bg-gray-50 pb-20 transition-colors md:pb-0 dark:bg-[#0A0908] min-h-screen'>
 			{/* Main Content */}
 			<main className='mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8'>
 				<section className='mb-6 space-y-4 text-[var(--color-gray-900)] dark:text-white'>
