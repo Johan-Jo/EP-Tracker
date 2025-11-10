@@ -1,20 +1,10 @@
-/**
- * EPIC 33 Phase 2: Payroll Basis Refresh Job
- * 
- * Calculates payroll basis from attendance_session and time_entries
- * Applies rules: breaks, overtime, OB rates
- * 
- * Location: lib/jobs/basis-refresh.ts
- * Trigger: Manual, after lock/unlock, after corrections, after rule changes
- */
-
 import { createClient } from '@/lib/supabase/server';
 
 interface PayrollRules {
-	normal_hours_threshold: number; // hours/week for overtime (default 40)
-	auto_break_duration: number; // minutes (default 30)
-	auto_break_after_hours: number; // hours before auto-break (default 6.0)
-	overtime_multiplier: number; // multiplier for overtime (default 1.5)
+	normal_hours_threshold: number;
+	auto_break_duration: number; // minutes
+	auto_break_after_hours: number;
+	overtime_multiplier: number;
 	ob_rates: {
 		night?: number;
 		weekend?: number;
@@ -36,9 +26,373 @@ interface PayrollBasisResult {
 	gross_salary_sek: number;
 }
 
-/**
- * Get payroll rules for an organization, with defaults if not configured
- */
+type Session = {
+	check_in: string;
+	check_out: string;
+	project_id?: string;
+};
+
+type Interval = {
+	start: Date;
+	end: Date;
+};
+
+const HOUR = 3_600_000;
+
+const toDate = (value: string) => new Date(value);
+
+const durH = (start: Date, end: Date) => Math.max(0, (end.getTime() - start.getTime()) / HOUR);
+
+function isWeekend(date: Date): boolean {
+	const day = date.getDay();
+	return day === 0 || day === 6;
+}
+
+function isNight(date: Date): boolean {
+	const hour = date.getHours();
+	return hour >= 22 || hour < 6;
+}
+
+function isHoliday(_date: Date): boolean {
+	// TODO: Replace with proper Swedish holiday calendar if available
+	return false;
+}
+
+function clipToPeriod(interval: Interval, from: Date, to: Date): Interval | null {
+	const start = new Date(Math.max(interval.start.getTime(), from.getTime()));
+	const end = new Date(Math.min(interval.end.getTime(), to.getTime()));
+	return end > start ? { start, end } : null;
+}
+
+function mergeOverlaps(intervals: Interval[]): Interval[] {
+	if (intervals.length === 0) {
+		return [];
+	}
+
+	const sorted = intervals
+		.map((interval) => ({ start: new Date(interval.start), end: new Date(interval.end) }))
+		.sort((a, b) => a.start.getTime() - b.start.getTime());
+
+	const merged: Interval[] = [sorted[0]];
+
+	for (let i = 1; i < sorted.length; i += 1) {
+		const current = sorted[i];
+		const last = merged[merged.length - 1];
+
+		if (current.start.getTime() <= last.end.getTime()) {
+			if (current.end.getTime() > last.end.getTime()) {
+				last.end = new Date(current.end);
+			}
+		} else {
+			merged.push({ start: new Date(current.start), end: new Date(current.end) });
+		}
+	}
+
+	return merged;
+}
+
+function subtractMinutesSmart(intervals: Interval[], minutes: number, isOB: (date: Date) => boolean): Interval[] {
+	if (minutes <= 0 || intervals.length === 0) {
+		return mergeOverlaps(intervals);
+	}
+
+	const totalDurationMs = intervals.reduce((sum, interval) => sum + Math.max(0, interval.end.getTime() - interval.start.getTime()), 0);
+	const totalRemoveMs = minutes * 60_000;
+
+	if (totalDurationMs === 0 || totalRemoveMs <= 0) {
+		return mergeOverlaps(intervals);
+	}
+
+	if (totalRemoveMs >= totalDurationMs) {
+		return [];
+	}
+
+	const clone = intervals.map((interval) => ({ start: new Date(interval.start), end: new Date(interval.end) }));
+	let toRemoveMs = totalRemoveMs;
+
+	const CHUNK = 15 * 60_000;
+	type Chunk = { start: number; end: number; ob: boolean; idx: number };
+
+	const chunks: Chunk[] = [];
+
+	clone.forEach((interval, idx) => {
+		let cursor = interval.start.getTime();
+		while (cursor < interval.end.getTime()) {
+			const chunkEnd = Math.min(interval.end.getTime(), cursor + CHUNK);
+			const midpoint = new Date((cursor + chunkEnd) / 2);
+			chunks.push({ start: cursor, end: chunkEnd, ob: isOB(midpoint), idx });
+			cursor = chunkEnd;
+		}
+	});
+
+	const adjustIntervalStart = (chunk: Chunk, amount: number) => {
+		const interval = clone[chunk.idx];
+		if (!interval) {
+			return 0;
+		}
+
+		const available = Math.max(0, interval.end.getTime() - interval.start.getTime());
+		if (available <= 0) {
+			return 0;
+		}
+
+		const toTake = Math.min(amount, available);
+		interval.start = new Date(interval.start.getTime() + toTake);
+		return toTake;
+	};
+
+	for (const chunk of chunks) {
+		if (toRemoveMs <= 0) {
+			break;
+		}
+		if (chunk.ob) {
+			continue;
+		}
+		const chunkLength = chunk.end - chunk.start;
+		const removed = adjustIntervalStart(chunk, Math.min(chunkLength, toRemoveMs));
+		toRemoveMs -= removed;
+	}
+
+	if (toRemoveMs > 0) {
+		const obChunks = chunks.filter((chunk) => chunk.ob);
+		const totalObMs = obChunks.reduce((sum, chunk) => sum + (chunk.end - chunk.start), 0) || 1;
+
+		for (const chunk of obChunks) {
+			if (toRemoveMs <= 0) {
+				break;
+			}
+			const chunkLength = chunk.end - chunk.start;
+			const share = (chunkLength / totalObMs) * toRemoveMs;
+			const removed = adjustIntervalStart(chunk, Math.min(chunkLength, share, toRemoveMs));
+			toRemoveMs -= removed;
+		}
+	}
+
+	return mergeOverlaps(clone.filter((interval) => interval.end.getTime() > interval.start.getTime()));
+}
+
+function calcOBOnIntervals(intervals: Interval[], obRates: PayrollRules['ob_rates']) {
+	let actualHours = 0;
+	let weightedMultiplierSum = 0;
+
+	for (const interval of intervals) {
+		let cursor = new Date(interval.start);
+		while (cursor < interval.end) {
+			const hourEnd = new Date(Math.min(interval.end.getTime(), cursor.getTime() + HOUR));
+			const length = durH(cursor, hourEnd);
+			let multiplier: number | null = null;
+
+			if (isHoliday(cursor) && obRates.holiday) {
+				multiplier = obRates.holiday;
+			} else if (isWeekend(cursor) && obRates.weekend) {
+				multiplier = obRates.weekend;
+			} else if (isNight(cursor) && obRates.night) {
+				multiplier = obRates.night;
+			}
+
+			if (multiplier && multiplier > 1 && length > 0) {
+				actualHours += length;
+				weightedMultiplierSum += length * multiplier;
+			}
+
+			cursor = hourEnd;
+		}
+	}
+
+	const averageMultiplier = actualHours > 0 ? weightedMultiplierSum / actualHours : 1;
+	return { actualHours, averageMultiplier };
+}
+
+function isoWeekId(date: Date) {
+	const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+	const dayNumber = utcDate.getUTCDay() || 7;
+	utcDate.setUTCDate(utcDate.getUTCDate() + 4 - dayNumber);
+	const yearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1));
+	const weekNumber = Math.ceil((((utcDate.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+	return `${utcDate.getUTCFullYear()}-W${String(weekNumber).padStart(2, '0')}`;
+}
+
+function splitWeeklyOvertime(intervals: Interval[], weeklyNorm: number) {
+	if (intervals.length === 0) {
+		return { hoursNorm: 0, hoursOvertime: 0 };
+	}
+
+	const byWeek = new Map<string, number>();
+
+	for (const interval of intervals) {
+		let cursor = new Date(interval.start);
+		while (cursor < interval.end) {
+			const dayEnd = new Date(cursor);
+			dayEnd.setHours(23, 59, 59, 999);
+			const segmentEnd = new Date(Math.min(dayEnd.getTime(), interval.end.getTime()));
+			const hours = durH(cursor, segmentEnd);
+
+			if (hours > 0) {
+				const key = isoWeekId(cursor);
+				byWeek.set(key, (byWeek.get(key) ?? 0) + hours);
+			}
+
+			cursor = new Date(segmentEnd.getTime());
+			cursor.setMilliseconds(cursor.getMilliseconds() + 1);
+		}
+	}
+
+	let hoursNorm = 0;
+	let hoursOvertime = 0;
+	const weeklyThreshold = weeklyNorm > 0 ? weeklyNorm : 40;
+
+	for (const totalHours of byWeek.values()) {
+		hoursNorm += Math.min(totalHours, weeklyThreshold);
+		hoursOvertime += Math.max(0, totalHours - weeklyThreshold);
+	}
+
+	return { hoursNorm, hoursOvertime };
+}
+
+export async function refreshPayrollBasis(
+	orgId: string,
+	periodStart: string,
+	periodEnd: string,
+	personIds?: string[],
+): Promise<void> {
+	const supabase = await createClient();
+	const rules = await getPayrollRules(orgId);
+
+	const personSessions = await fetchSessionsForOrg(
+		supabase,
+		orgId,
+		periodStart,
+		periodEnd,
+		personIds,
+	);
+
+	if (personSessions.size === 0) {
+		throw new Error('No data found for the selected period.');
+	}
+
+	const personIdsArray = Array.from(personSessions.keys());
+	const salaryMap = await getSalaryMap(supabase, orgId, personIdsArray);
+
+	const periodFrom = new Date(`${periodStart}T00:00:00Z`);
+	const periodTo = new Date(`${periodEnd}T23:59:59.999Z`);
+
+	const results: PayrollBasisResult[] = [];
+
+	for (const [personId, sessions] of personSessions.entries()) {
+		const rawIntervals: Interval[] = [];
+
+		sessions.forEach((session) => {
+			if (!session.check_out) {
+				return;
+			}
+			const clipped = clipToPeriod(
+				{ start: toDate(session.check_in), end: toDate(session.check_out) },
+				periodFrom,
+				periodTo,
+			);
+			if (clipped) {
+				rawIntervals.push(clipped);
+			}
+		});
+
+		if (rawIntervals.length === 0) {
+			continue;
+		}
+
+		const merged = mergeOverlaps(rawIntervals);
+		const rawHours = merged.reduce((sum, interval) => sum + durH(interval.start, interval.end), 0);
+
+		let adjustedIntervals = merged;
+		const breakMinutes = rules.auto_break_duration ?? 0;
+		const meetsBreakThreshold = rawHours >= (rules.auto_break_after_hours ?? 0);
+
+		if (meetsBreakThreshold && breakMinutes > 0) {
+			const isOB = (date: Date) =>
+				(isHoliday(date) && !!rules.ob_rates?.holiday) ||
+				(isWeekend(date) && !!rules.ob_rates?.weekend) ||
+				(isNight(date) && !!rules.ob_rates?.night);
+			adjustedIntervals = subtractMinutesSmart(merged, breakMinutes, isOB);
+		}
+
+		const netHours = adjustedIntervals.reduce((sum, interval) => sum + durH(interval.start, interval.end), 0);
+		const breakHours = Math.max(0, rawHours - netHours);
+
+		const obStats = calcOBOnIntervals(adjustedIntervals, rules.ob_rates || {});
+		const averageObMultiplier = obStats.averageMultiplier || 1;
+		const obExtraMultiplier = Math.max(0, averageObMultiplier - 1);
+
+		const { hoursNorm, hoursOvertime } = splitWeeklyOvertime(
+			adjustedIntervals,
+			rules.normal_hours_threshold ?? 40,
+		);
+
+		const hourlySalary = salaryMap.get(personId) ?? 0;
+		let grossSalary = 0;
+
+		if (hourlySalary > 0) {
+			grossSalary += hoursNorm * hourlySalary;
+			grossSalary += hoursOvertime * hourlySalary * (rules.overtime_multiplier ?? 1.5);
+
+			if (obStats.actualHours > 0 && obExtraMultiplier > 0) {
+				grossSalary += obStats.actualHours * hourlySalary * obExtraMultiplier;
+			}
+		}
+
+		results.push({
+			person_id: personId,
+			period_start: periodStart,
+			period_end: periodEnd,
+			hours_norm: Number(hoursNorm.toFixed(2)),
+			hours_overtime: Number(hoursOvertime.toFixed(2)),
+			ob_hours: Number(obStats.actualHours.toFixed(2)),
+			ob_hours_actual: Number(obStats.actualHours.toFixed(2)),
+			ob_hours_multiplier: Number(averageObMultiplier.toFixed(4)),
+			break_hours: Number(breakHours.toFixed(2)),
+			total_hours: Number(netHours.toFixed(2)),
+			gross_salary_sek: Number(grossSalary.toFixed(2)),
+		});
+	}
+
+	if (results.length === 0) {
+		throw new Error('No payroll basis could be calculated. Ensure there are approved time entries or attendance sessions.');
+	}
+
+	const deleteResult = await supabase
+		.from('payroll_basis')
+		.delete()
+		.eq('org_id', orgId)
+		.gte('period_start', periodStart)
+		.lte('period_end', periodEnd);
+
+	if (deleteResult.error) {
+		throw new Error(`Failed to reset existing payroll basis: ${deleteResult.error.message}`);
+	}
+
+	const insertPayload = results.map((result) => ({
+		org_id: orgId,
+		person_id: result.person_id,
+		period_start: result.period_start,
+		period_end: result.period_end,
+		hours_norm: result.hours_norm,
+		hours_overtime: result.hours_overtime,
+		ob_hours: result.ob_hours,
+		ob_hours_actual: result.ob_hours_actual,
+		ob_hours_multiplier: result.ob_hours_multiplier,
+		break_hours: result.break_hours,
+		total_hours: result.total_hours,
+		gross_salary_sek: result.gross_salary_sek,
+		locked: false,
+		locked_by: null,
+		locked_at: null,
+	}));
+
+	const insertResult = await supabase.from('payroll_basis').insert(insertPayload);
+
+	if (insertResult.error) {
+		throw new Error(`Failed to save payroll basis: ${insertResult.error.message}`);
+	}
+}
+
 async function getPayrollRules(orgId: string): Promise<PayrollRules> {
 	const supabase = await createClient();
 	
@@ -52,237 +406,40 @@ async function getPayrollRules(orgId: string): Promise<PayrollRules> {
 		return {
 			normal_hours_threshold: rules.normal_hours_threshold || 40,
 			auto_break_duration: rules.auto_break_duration || 30,
-			auto_break_after_hours: rules.auto_break_after_hours || 6.0,
+			auto_break_after_hours: rules.auto_break_after_hours || 6,
 			overtime_multiplier: rules.overtime_multiplier || 1.5,
 			ob_rates: rules.ob_rates || { night: 1.2, weekend: 1.5, holiday: 2.0 },
 		};
 	}
 	
-	// Return defaults if no rules configured
 	return {
 		normal_hours_threshold: 40,
 		auto_break_duration: 30,
-		auto_break_after_hours: 6.0,
+		auto_break_after_hours: 6,
 		overtime_multiplier: 1.5,
 		ob_rates: { night: 1.2, weekend: 1.5, holiday: 2.0 },
 	};
 }
 
-/**
- * Check if a date is a weekend (Saturday or Sunday)
- */
-function isWeekend(date: Date): boolean {
-	const day = date.getDay();
-	return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
-}
-
-/**
- * Check if a time is during night hours (22:00 - 06:00)
- */
-function isNightTime(date: Date): boolean {
-	const hour = date.getHours();
-	return hour >= 22 || hour < 6;
-}
-
-/**
- * Check if a date is a Swedish holiday (simplified - can be enhanced)
- * TODO: Add proper Swedish holiday calculation
- */
-function isHoliday(date: Date): boolean {
-	// Simplified - should check against Swedish holidays
-	// For now, return false
-	return false;
-}
-
-/**
- * Calculate OB hours for a time period
- */
-function calculateOBHours(
-	start: Date,
-	end: Date,
-	obRates: PayrollRules['ob_rates']
-): { actualHours: number; weightedMultiplierSum: number } {
-	let actualHours = 0;
-	let weightedMultiplierSum = 0;
-
-	const current = new Date(start);
-	while (current < end) {
-		const hourEnd = new Date(current);
-		hourEnd.setHours(hourEnd.getHours() + 1);
-		if (hourEnd > end) hourEnd.setTime(end.getTime());
-		const durationHours = (hourEnd.getTime() - current.getTime()) / (1000 * 60 * 60);
-
-		let appliedRate: number | null = null;
-		if (isHoliday(current) && obRates.holiday) {
-			appliedRate = obRates.holiday;
-		} else if (isWeekend(current) && obRates.weekend) {
-			appliedRate = obRates.weekend;
-		} else if (isNightTime(current) && obRates.night) {
-			appliedRate = obRates.night;
-		}
-
-		if (appliedRate && appliedRate > 1) {
-			actualHours += durationHours;
-			weightedMultiplierSum += durationHours * appliedRate;
-		}
-
-		current.setTime(hourEnd.getTime());
-	}
-
-	return { actualHours, weightedMultiplierSum };
-}
-
-/**
- * Calculate break hours for a session (legacy - kept for backward compatibility)
- */
-function calculateBreakHours(
-	sessionHours: number,
-	rules: PayrollRules
-): number {
-	// Auto-break: 30 min if session > 6 hours
-	if (sessionHours > rules.auto_break_after_hours) {
-		return rules.auto_break_duration / 60; // Convert minutes to hours
-	}
-	return 0;
-}
-
-/**
- * Calculate break hours per project per day
- * Rule: If work time is more than 5 hours in a project per day, discount 1 hour for breaks
- * 
- * @param entries Array of entries with project_id, check_in_ts, check_out_ts
- * @returns Total break hours for all project-day combinations
- */
-function calculateBreakHoursPerProjectPerDay(
-	entries: Array<{ project_id: string; check_in_ts: string; check_out_ts: string | null }>
-): number {
-	// Group entries by person-project-day
-	const projectDayMap = new Map<string, number>(); // key: "projectId|date", value: total hours
-	
-	entries.forEach((entry) => {
-		if (!entry.check_out_ts) {
-			return; // Skip incomplete entries
-		}
-		
-		const checkIn = new Date(entry.check_in_ts);
-		const checkOut = new Date(entry.check_out_ts);
-		const dateKey = checkIn.toISOString().split('T')[0]; // YYYY-MM-DD
-		const projectDayKey = `${entry.project_id}|${dateKey}`;
-		
-		const sessionHours = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
-		
-		if (sessionHours > 0) {
-			const currentHours = projectDayMap.get(projectDayKey) || 0;
-			projectDayMap.set(projectDayKey, currentHours + sessionHours);
-		}
-	});
-	
-	// Calculate breaks: 1 hour per project per day if > 5 hours
-	let totalBreakHours = 0;
-	projectDayMap.forEach((totalHours) => {
-		if (totalHours > 5) {
-			totalBreakHours += 1; // 1 hour break per project per day
-		}
-	});
-	
-	return totalBreakHours;
-}
-
-/**
- * Get start of week (Monday) for a date
- */
-function getWeekStart(date: Date): Date {
-	const d = new Date(date);
-	const day = d.getDay();
-	const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Monday
-	return new Date(d.setDate(diff));
-}
-
-/**
- * Refresh payroll basis for an organization and period
- * 
- * @param orgId Organization ID
- * @param periodStart Period start date (YYYY-MM-DD)
- * @param periodEnd Period end date (YYYY-MM-DD)
- * @param personIds Optional array of person IDs to process (if empty, processes all)
- */
-export async function refreshPayrollBasis(
+async function fetchSessionsForOrg(
+	supabase: any,
 	orgId: string,
 	periodStart: string,
 	periodEnd: string,
-	personIds?: string[]
-): Promise<void> {
-	const supabase = await createClient();
-	
-	// Get payroll rules
-	const rules = await getPayrollRules(orgId);
-	
-	// Try to fetch attendance sessions, but don't fail if table doesn't exist
-	// This allows the system to work even if attendance_session migration hasn't run yet
-	let sessions: any[] | null = null;
-	let sessionsError: any = null;
-	
-	try {
-		const { data: existingSessions } = await supabase
-			.from('attendance_session')
-			.select('id')
-			.eq('org_id', orgId)
-			.gte('check_in_ts', `${periodStart}T00:00:00Z`)
-			.lte('check_in_ts', `${periodEnd}T23:59:59Z`)
-			.limit(1);
-		
-		// If no attendance sessions exist, try to build them from time_entries
-		if (!existingSessions || existingSessions.length === 0) {
-			try {
-				const { buildAttendanceSessions } = await import('@/lib/jobs/attendance-builder');
-				await buildAttendanceSessions({
-					orgId: orgId, // Pass org_id to filter correctly
-					startDate: `${periodStart}T00:00:00Z`,
-					endDate: `${periodEnd}T23:59:59Z`,
-				});
-			} catch (buildError) {
-				// Continue even if build fails - we'll fall back to time_entries
-				console.warn('Failed to build attendance sessions, will use time_entries:', buildError);
-			}
-		}
-		
-		// Fetch all attendance sessions for the period
-		let attendanceQuery = supabase
-			.from('attendance_session')
-			.select('*')
-			.eq('org_id', orgId)
-			.gte('check_in_ts', `${periodStart}T00:00:00Z`)
-			.lte('check_in_ts', `${periodEnd}T23:59:59Z`)
-			.not('check_out_ts', 'is', null); // Only completed sessions
-		
-		if (personIds && personIds.length > 0) {
-			attendanceQuery = attendanceQuery.in('person_id', personIds);
-		}
-		
-		const result = await attendanceQuery;
-		sessions = result.data;
-		sessionsError = result.error;
-	} catch (tableError: any) {
-		// If table doesn't exist, that's okay - we'll use time_entries instead
-		console.warn('attendance_session table not available, will use time_entries:', tableError.message);
-		sessions = null;
-		sessionsError = null; // Don't treat missing table as an error
-	}
-	
-	// Only throw error if table exists but query failed for another reason
-	if (sessionsError && !sessionsError.message?.includes('schema cache')) {
-		throw new Error(`Failed to fetch attendance sessions: ${sessionsError.message}`);
-	}
-	
-	// Also fetch approved time_entries as fallback if no attendance_session data
+	personIds?: string[],
+) {
+	const sessionsMap = new Map<string, Session[]>();
+	const startTs = `${periodStart}T00:00:00Z`;
+	const endTs = `${periodEnd}T23:59:59Z`;
+
 	let timeEntriesQuery = supabase
 		.from('time_entries')
-		.select('*')
+		.select('user_id, start_at, stop_at, status, project_id')
 		.eq('org_id', orgId)
 		.eq('status', 'approved')
-		.gte('start_at', `${periodStart}T00:00:00Z`)
-		.lte('start_at', `${periodEnd}T23:59:59Z`)
-		.not('stop_at', 'is', null); // Only completed entries
+		.gte('start_at', startTs)
+		.lte('start_at', endTs)
+		.not('stop_at', 'is', null);
 	
 	if (personIds && personIds.length > 0) {
 		timeEntriesQuery = timeEntriesQuery.in('user_id', personIds);
@@ -294,230 +451,103 @@ export async function refreshPayrollBasis(
 		throw new Error(`Failed to fetch time entries: ${timeEntriesError.message}`);
 	}
 	
-	// IMPORTANT: Always prioritize approved time_entries for payroll basis calculation
-	// attendance_session might contain non-approved entries, so we should use approved time_entries if they exist
-	const hasAttendanceData = sessions && sessions.length > 0;
-	const hasTimeEntryData = timeEntries && timeEntries.length > 0;
-	
-	// Log what we found for debugging
-	console.log(`[Payroll Basis Refresh] Found ${sessions?.length || 0} attendance sessions and ${timeEntries?.length || 0} approved time entries for period ${periodStart} to ${periodEnd}`);
-	
-	if (!hasAttendanceData && !hasTimeEntryData) {
-		// No data to calculate from - throw error with helpful message
-		throw new Error('No data found for the selected period. Please ensure there are attendance sessions or approved time entries.');
-	}
-	
-	// Group sessions/entries by person_id ONLY (summarize for entire period, not per week)
-	// According to Swedish payroll standards, löneunderlag should be summarized per worker per period
-	const personSessionsMap = new Map<string, any[]>();
-	
-	// ALWAYS prioritize approved time_entries over attendance_session
-	// This ensures we only use approved entries for payroll calculation
-	if (hasTimeEntryData) {
-		(timeEntries || [])
-			.filter((entry: any) => entry.status === 'approved' && entry.stop_at !== null) // Double-check: only approved and completed
-			.forEach((entry: any) => {
-				const personId = entry.user_id;
-				if (!personSessionsMap.has(personId)) {
-					personSessionsMap.set(personId, []);
+	timeEntries?.forEach((entry: any) => {
+		if (!entry.stop_at) {
+			return;
+		}
+		pushSession(sessionsMap, entry.user_id, {
+			check_in: entry.start_at,
+			check_out: entry.stop_at,
+			project_id: entry.project_id ?? undefined,
+		});
+	});
+
+	try {
+		let attendanceQuery = supabase
+			.from('attendance_session')
+			.select('person_id, check_in_ts, check_out_ts, project_id')
+			.eq('org_id', orgId)
+			.gte('check_in_ts', startTs)
+			.lte('check_in_ts', endTs)
+			.not('check_out_ts', 'is', null);
+
+		if (personIds && personIds.length > 0) {
+			attendanceQuery = attendanceQuery.in('person_id', personIds);
+		}
+
+		const { data: attendanceSessions, error: attendanceError } = await attendanceQuery;
+
+		if (attendanceError) {
+			if (!attendanceError.message?.includes('schema')) {
+				throw new Error(`Failed to fetch attendance sessions: ${attendanceError.message}`);
+			}
+		} else {
+			attendanceSessions?.forEach((session: any) => {
+				if (!session.check_out_ts) {
+					return;
 				}
-				personSessionsMap.get(personId)!.push({
-					project_id: entry.project_id,
-					check_in_ts: entry.start_at,
-					check_out_ts: entry.stop_at,
+
+				if (sessionsMap.has(session.person_id) && (sessionsMap.get(session.person_id)?.length || 0) > 0) {
+					return;
+				}
+
+				pushSession(sessionsMap, session.person_id, {
+					check_in: session.check_in_ts,
+					check_out: session.check_out_ts,
+					project_id: session.project_id ?? undefined,
 				});
 			});
-		console.log(`[Payroll Basis Refresh] Using ${timeEntries.length} approved time entries for payroll calculation`);
-	} else if (hasAttendanceData) {
-		// Fallback to attendance_session only if no approved time_entries exist
-		(sessions || []).forEach((session: any) => {
-			const personId = session.person_id;
-			if (!personSessionsMap.has(personId)) {
-				personSessionsMap.set(personId, []);
-			}
-			personSessionsMap.get(personId)!.push({
-				project_id: session.project_id,
-				check_in_ts: session.check_in_ts,
-				check_out_ts: session.check_out_ts,
-			});
-		});
-		console.log(`[Payroll Basis Refresh] Using ${sessions?.length || 0} attendance sessions for payroll calculation (no approved time entries found)`);
+		}
+	} catch (error: any) {
+		if (!error?.message?.includes('schema')) {
+			throw error;
+		}
 	}
-	
-	// Fetch salary_per_hour_sek for all persons from memberships
-	const personIdsArray = Array.from(personSessionsMap.keys());
-	let memberships: any[] | null = null;
-	let membershipsError: any = null;
-	
-	if (personIdsArray.length > 0) {
-		const { data, error } = await supabase
-			.from('memberships')
-			.select('user_id, salary_per_hour_sek')
-			.eq('org_id', orgId)
-			.eq('is_active', true)
-			.in('user_id', personIdsArray);
-		
-		memberships = data;
-		membershipsError = error;
+
+	return sessionsMap;
+}
+
+async function getSalaryMap(supabase: any, orgId: string, personIds: string[]) {
+	if (personIds.length === 0) {
+		return new Map<string, number>();
 	}
-	
-	if (membershipsError) {
-		console.warn('Failed to fetch memberships for salary calculation:', membershipsError);
+
+	const { data, error } = await supabase
+		.from('memberships')
+		.select('user_id, salary_per_hour_sek')
+		.eq('org_id', orgId)
+		.eq('is_active', true)
+		.in('user_id', personIds);
+
+	if (error) {
+		throw new Error(`Failed to fetch salary information: ${error.message}`);
 	}
-	
-	// Create a map of person_id -> salary_per_hour_sek
-	const salaryMap = new Map<string, number>();
-	memberships?.forEach((m: any) => {
-		if (m.salary_per_hour_sek !== null && m.salary_per_hour_sek !== undefined) {
-			salaryMap.set(m.user_id, Number(m.salary_per_hour_sek));
+
+	const map = new Map<string, number>();
+	data?.forEach((membership: any) => {
+		if (membership.salary_per_hour_sek !== null && membership.salary_per_hour_sek !== undefined) {
+			map.set(membership.user_id, Number(membership.salary_per_hour_sek));
 		}
 	});
-	
-	// Calculate payroll basis for each person for the ENTIRE period
-	// Swedish standard: One summary per worker per selected period
-	const results: PayrollBasisResult[] = [];
-	const periodStartDate = new Date(periodStart);
-	const periodEndDate = new Date(periodEnd);
-	
-	// Calculate number of weeks in the period for overtime calculation
-	const weeksInPeriod = Math.ceil((periodEndDate.getTime() - periodStartDate.getTime()) / (1000 * 60 * 60 * 24 * 7));
-	const totalNormalHoursThreshold = rules.normal_hours_threshold * weeksInPeriod;
-	
-	for (const [personId, sessions] of personSessionsMap.entries()) {
-		// Filter sessions within the selected period
-		const periodSessions = sessions.filter((session: any) => {
-			const checkIn = new Date(session.check_in_ts);
-			return checkIn >= periodStartDate && checkIn <= periodEndDate;
-		});
-		
-		// Calculate break hours per project per day (new rule: 1 hour if > 5 hours per project per day)
-		const totalBreakHours = calculateBreakHoursPerProjectPerDay(periodSessions);
-		
-		// Calculate totals for entire period
-		let totalHours = 0;
-		let totalOBHoursActual = 0;
-		let totalOBWeightedMultiplierSum = 0;
-		
-		periodSessions.forEach((session: any) => {
-			const checkIn = new Date(session.check_in_ts);
-			const checkOut = session.check_out_ts ? new Date(session.check_out_ts) : null;
-			
-			if (!checkOut) {
-				// Skip incomplete sessions/entries
-				return;
-			}
-			
-			const sessionHours = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
-			
-			// Only count positive hours
-			if (sessionHours > 0) {
-				totalHours += sessionHours;
-				const obResult = calculateOBHours(checkIn, checkOut, rules.ob_rates);
-				totalOBHoursActual += obResult.actualHours;
-				totalOBWeightedMultiplierSum += obResult.weightedMultiplierSum;
-			}
-		});
-		
-		// Calculate overtime based on total hours for the entire period
-		// Swedish standard: Övertid = total timmar - (normal timmar/vecka × antal veckor)
-		const netHours = totalHours - totalBreakHours;
-		const hoursNorm = Math.min(netHours, totalNormalHoursThreshold);
-		const hoursOvertime = Math.max(0, netHours - totalNormalHoursThreshold);
-		
-		// Calculate gross salary
-		// Formula: (normaltid × timlön) + (övertid × timlön × övertidsmultiplikator) + (OB-timmar × timlön × OB-tillägg)
-		const salaryPerHour = salaryMap.get(personId) || 0;
-		let grossSalary = 0;
-		
-		const averageObMultiplierRaw =
-			totalOBHoursActual > 0 && totalOBWeightedMultiplierSum > 0
-				? totalOBWeightedMultiplierSum / totalOBHoursActual
-				: 1;
-		const obExtraMultiplier = averageObMultiplierRaw > 1 ? averageObMultiplierRaw - 1 : 0;
 
-		console.log(
-			`[Payroll Basis Refresh] Calculating gross salary for person ${personId}: salaryPerHour=${salaryPerHour}, hoursNorm=${hoursNorm}, hoursOvertime=${hoursOvertime}, totalOBHoursActual=${totalOBHoursActual}, averageObMultiplier=${averageObMultiplierRaw}`
-		);
-		
-		if (salaryPerHour > 0) {
-			// Normal hours: hours_norm × salary_per_hour_sek
-			grossSalary += hoursNorm * salaryPerHour;
-			
-			// Overtime hours: hours_overtime × salary_per_hour_sek × overtime_multiplier
-			grossSalary += hoursOvertime * salaryPerHour * rules.overtime_multiplier;
-			
-			// OB hours: Calculate average OB rate from rules
-			// OB-tillägg är ett procentuellt tillägg på grundlönen
-			// Vi använder genomsnittlig OB-rate om flera är satta, annars 0
-			// OB-tillägg: endast tillägget över grundlönen
-			if (totalOBHoursActual > 0 && obExtraMultiplier > 0) {
-				grossSalary += totalOBHoursActual * salaryPerHour * obExtraMultiplier;
-			}
-			
-			console.log(`[Payroll Basis Refresh] Calculated gross salary: ${grossSalary.toFixed(2)} SEK`);
-		} else {
-			console.log(`[Payroll Basis Refresh] No salary_per_hour_sek set for person ${personId}, gross salary will be 0`);
-		}
-		
-		// Create ONE result per person for the entire selected period
-		results.push({
-			person_id: personId,
-			period_start: periodStart,
-			period_end: periodEnd,
-			hours_norm: Number(hoursNorm.toFixed(2)),
-			hours_overtime: Number(hoursOvertime.toFixed(2)),
-			ob_hours: Number(totalOBHoursActual.toFixed(2)),
-			ob_hours_actual: Number(totalOBHoursActual.toFixed(2)),
-			ob_hours_multiplier: Number(averageObMultiplierRaw.toFixed(4)),
-			break_hours: Number(totalBreakHours.toFixed(2)),
-			total_hours: Number(netHours.toFixed(2)),
-			gross_salary_sek: Number(grossSalary.toFixed(2)),
-		});
-	}
-	
-	// Upsert payroll_basis records
-	if (results.length === 0) {
-		console.warn(`No payroll basis results calculated. Found ${sessions?.length || 0} attendance sessions and ${timeEntries?.length || 0} approved time entries.`);
-		throw new Error('No payroll basis could be calculated. Ensure there are approved time entries or attendance sessions for the period.');
-	}
-
-	// Delete existing payroll_basis entries for this period before inserting new ones
-	// This ensures we replace weekly entries with period-summarized entries
-	await supabase
-		.from('payroll_basis')
-		.delete()
-		.eq('org_id', orgId)
-		.gte('period_start', periodStart)
-		.lte('period_end', periodEnd);
-	
-		// Insert new summarized entries (one per person per period)
-		for (const result of results) {
-			const { error: upsertError } = await supabase
-				.from('payroll_basis')
-				.insert({
-					org_id: orgId,
-					person_id: result.person_id,
-					period_start: result.period_start,
-					period_end: result.period_end,
-					hours_norm: result.hours_norm,
-					hours_overtime: result.hours_overtime,
-					ob_hours: result.ob_hours,
-					ob_hours_actual: result.ob_hours_actual,
-					ob_hours_multiplier: result.ob_hours_multiplier,
-					break_hours: result.break_hours,
-					total_hours: result.total_hours,
-					gross_salary_sek: result.gross_salary_sek,
-					locked: false, // Reset lock when recalculating
-					locked_by: null,
-					locked_at: null,
-				});
-		
-		if (upsertError) {
-			console.error(`Failed to insert payroll basis for ${result.person_id}:`, upsertError);
-			throw new Error(`Failed to save payroll basis: ${upsertError.message}`);
-		}
-	}
-
-	console.log(`Successfully calculated and saved ${results.length} payroll basis records for period ${periodStart} to ${periodEnd}`);
+	return map;
 }
+
+function pushSession(map: Map<string, Session[]>, personId: string, session: Session) {
+	if (!session.check_out) {
+		return;
+	}
+
+	if (!map.has(personId)) {
+		map.set(personId, []);
+	}
+
+	map.get(personId)!.push(session);
+}
+
+export const _internals_for_test = {
+	subtractMinutesSmart,
+	calcOBOnIntervals,
+	splitWeeklyOvertime,
+};
 
