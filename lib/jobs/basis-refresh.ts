@@ -29,6 +29,8 @@ interface PayrollBasisResult {
 	hours_norm: number;
 	hours_overtime: number;
 	ob_hours: number;
+	ob_hours_actual: number;
+	ob_hours_multiplier: number;
 	break_hours: number;
 	total_hours: number;
 	gross_salary_sek: number;
@@ -99,32 +101,35 @@ function calculateOBHours(
 	start: Date,
 	end: Date,
 	obRates: PayrollRules['ob_rates']
-): number {
-	const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-	let obHours = 0;
-	
-	// Check each hour in the period
+): { actualHours: number; weightedMultiplierSum: number } {
+	let actualHours = 0;
+	let weightedMultiplierSum = 0;
+
 	const current = new Date(start);
 	while (current < end) {
 		const hourEnd = new Date(current);
 		hourEnd.setHours(hourEnd.getHours() + 1);
 		if (hourEnd > end) hourEnd.setTime(end.getTime());
-		
-		// Check if this hour qualifies for OB
+		const durationHours = (hourEnd.getTime() - current.getTime()) / (1000 * 60 * 60);
+
+		let appliedRate: number | null = null;
 		if (isHoliday(current) && obRates.holiday) {
-			obHours += 1 * obRates.holiday;
+			appliedRate = obRates.holiday;
 		} else if (isWeekend(current) && obRates.weekend) {
-			obHours += 1 * obRates.weekend;
+			appliedRate = obRates.weekend;
 		} else if (isNightTime(current) && obRates.night) {
-			obHours += 1 * obRates.night;
-		} else {
-			obHours += 1; // Regular hour
+			appliedRate = obRates.night;
 		}
-		
-		current.setHours(current.getHours() + 1);
+
+		if (appliedRate && appliedRate > 1) {
+			actualHours += durationHours;
+			weightedMultiplierSum += durationHours * appliedRate;
+		}
+
+		current.setTime(hourEnd.getTime());
 	}
-	
-	return obHours;
+
+	return { actualHours, weightedMultiplierSum };
 }
 
 /**
@@ -390,7 +395,8 @@ export async function refreshPayrollBasis(
 		
 		// Calculate totals for entire period
 		let totalHours = 0;
-		let totalOBHours = 0;
+		let totalOBHoursActual = 0;
+		let totalOBWeightedMultiplierSum = 0;
 		
 		periodSessions.forEach((session: any) => {
 			const checkIn = new Date(session.check_in_ts);
@@ -406,7 +412,9 @@ export async function refreshPayrollBasis(
 			// Only count positive hours
 			if (sessionHours > 0) {
 				totalHours += sessionHours;
-				totalOBHours += calculateOBHours(checkIn, checkOut, rules.ob_rates);
+				const obResult = calculateOBHours(checkIn, checkOut, rules.ob_rates);
+				totalOBHoursActual += obResult.actualHours;
+				totalOBWeightedMultiplierSum += obResult.weightedMultiplierSum;
 			}
 		});
 		
@@ -421,7 +429,15 @@ export async function refreshPayrollBasis(
 		const salaryPerHour = salaryMap.get(personId) || 0;
 		let grossSalary = 0;
 		
-		console.log(`[Payroll Basis Refresh] Calculating gross salary for person ${personId}: salaryPerHour=${salaryPerHour}, hoursNorm=${hoursNorm}, hoursOvertime=${hoursOvertime}, totalOBHours=${totalOBHours}`);
+		const averageObMultiplierRaw =
+			totalOBHoursActual > 0 && totalOBWeightedMultiplierSum > 0
+				? totalOBWeightedMultiplierSum / totalOBHoursActual
+				: 1;
+		const obExtraMultiplier = averageObMultiplierRaw > 1 ? averageObMultiplierRaw - 1 : 0;
+
+		console.log(
+			`[Payroll Basis Refresh] Calculating gross salary for person ${personId}: salaryPerHour=${salaryPerHour}, hoursNorm=${hoursNorm}, hoursOvertime=${hoursOvertime}, totalOBHoursActual=${totalOBHoursActual}, averageObMultiplier=${averageObMultiplierRaw}`
+		);
 		
 		if (salaryPerHour > 0) {
 			// Normal hours: hours_norm × salary_per_hour_sek
@@ -433,22 +449,9 @@ export async function refreshPayrollBasis(
 			// OB hours: Calculate average OB rate from rules
 			// OB-tillägg är ett procentuellt tillägg på grundlönen
 			// Vi använder genomsnittlig OB-rate om flera är satta, annars 0
-			const obRatesArray = [
-				rules.ob_rates.night,
-				rules.ob_rates.weekend,
-				rules.ob_rates.holiday,
-			].filter((rate): rate is number => rate !== undefined && rate !== null);
-			
-			const avgOBRate = obRatesArray.length > 0
-				? obRatesArray.reduce((sum, rate) => sum + rate, 0) / obRatesArray.length
-				: 0;
-			
-			// OB-tillägg: ob_hours × salary_per_hour_sek × avgOBRate
-			// OBS: ob_hours är timmar som jobbats under OB-tid
-			// OB-timmarna kan överlappa med normal tid eller övertid, så vi lägger bara till tillägget
-			// Grundlönen för OB-timmarna redan ingår i normal tid/övertid
-			if (totalOBHours > 0 && avgOBRate > 0) {
-				grossSalary += totalOBHours * salaryPerHour * avgOBRate;
+			// OB-tillägg: endast tillägget över grundlönen
+			if (totalOBHoursActual > 0 && obExtraMultiplier > 0) {
+				grossSalary += totalOBHoursActual * salaryPerHour * obExtraMultiplier;
 			}
 			
 			console.log(`[Payroll Basis Refresh] Calculated gross salary: ${grossSalary.toFixed(2)} SEK`);
@@ -463,7 +466,9 @@ export async function refreshPayrollBasis(
 			period_end: periodEnd,
 			hours_norm: Number(hoursNorm.toFixed(2)),
 			hours_overtime: Number(hoursOvertime.toFixed(2)),
-			ob_hours: Number(totalOBHours.toFixed(2)),
+			ob_hours: Number(totalOBHoursActual.toFixed(2)),
+			ob_hours_actual: Number(totalOBHoursActual.toFixed(2)),
+			ob_hours_multiplier: Number(averageObMultiplierRaw.toFixed(4)),
 			break_hours: Number(totalBreakHours.toFixed(2)),
 			total_hours: Number(netHours.toFixed(2)),
 			gross_salary_sek: Number(grossSalary.toFixed(2)),
@@ -497,6 +502,8 @@ export async function refreshPayrollBasis(
 					hours_norm: result.hours_norm,
 					hours_overtime: result.hours_overtime,
 					ob_hours: result.ob_hours,
+					ob_hours_actual: result.ob_hours_actual,
+					ob_hours_multiplier: result.ob_hours_multiplier,
 					break_hours: result.break_hours,
 					total_hours: result.total_hours,
 					gross_salary_sek: result.gross_salary_sek,

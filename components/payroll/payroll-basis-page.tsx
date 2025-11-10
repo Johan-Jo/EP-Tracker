@@ -365,7 +365,9 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 									/>
 
 									<div className='space-y-3 sm:hidden'>
-										{filteredData.map((row) => (
+										{filteredData.map((row) => {
+											const obHours = row.ob_hours_actual ?? row.ob_hours ?? 0;
+											return (
 											<article
 												key={row.id}
 												className='rounded-2xl border border-white/10 bg-white/5 p-3 shadow-sm dark:border-white/5 dark:bg-white/5'
@@ -390,8 +392,8 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 															{!isZeroHours(row.hours_overtime) && (
 																<span className='rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-300'>ÖT {fmtH(row.hours_overtime)}</span>
 															)}
-															{!isZeroHours(row.ob_hours) && (
-																<span className='rounded-full bg-sky-500/15 px-2 py-0.5 text-sky-300'>OB {fmtH(row.ob_hours)}</span>
+															{!isZeroHours(obHours) && (
+																<span className='rounded-full bg-sky-500/15 px-2 py-0.5 text-sky-300'>OB {fmtH(obHours)}</span>
 															)}
 															{!isZeroHours(row.hours_norm) && (
 																<span className='rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-300'>
@@ -420,7 +422,7 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 													<div className='text-right text-[15px] font-semibold'>{fmtMoneySEK(row.gross_salary_sek)}</div>
 												</div>
 
-												{(!isZeroHours(row.hours_norm) || !isZeroHours(row.hours_overtime) || !isZeroHours(row.ob_hours)) && (
+												{(!isZeroHours(row.hours_norm) || !isZeroHours(row.hours_overtime) || !isZeroHours(obHours)) && (
 													<div className='mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 tabular text-[13px]'>
 														{!isZeroHours(row.hours_norm) && (
 															<>
@@ -434,10 +436,10 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 																<div className='text-right'>{fmtH(row.hours_overtime)}</div>
 															</>
 														)}
-														{!isZeroHours(row.ob_hours) && (
+														{!isZeroHours(obHours) && (
 															<>
 																<div className='text-slate-400'>OB</div>
-																<div className='text-right'>{fmtH(row.ob_hours)}</div>
+																<div className='text-right'>{fmtH(obHours)}</div>
 															</>
 														)}
 													</div>
@@ -461,7 +463,8 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 													</button>
 												</div>
 											</article>
-										))}
+										);
+										})}
 
 										{filteredData.length > 0 && (
 											<div className='sticky-actions safe-bottom mt-3 -mx-6 px-6 py-3'>
@@ -692,7 +695,9 @@ function Table({ data, selected, selectedCount, allSelected, toggleAll, toggleSe
 								{isZeroHours(row.hours_overtime) ? '–' : fmtH(row.hours_overtime)}
 							</td>
 							<td className='whitespace-nowrap py-2 pr-4 text-slate-500'>
-								{isZeroHours(row.ob_hours) ? '–' : fmtH(row.ob_hours)}
+								{isZeroHours((row.ob_hours_actual ?? row.ob_hours) ?? 0)
+									? '–'
+									: fmtH((row.ob_hours_actual ?? row.ob_hours) ?? 0)}
 							</td>
 							<td className='whitespace-nowrap py-2 pr-4 text-slate-500'>
 								{isZeroHours(row.break_hours) ? '–' : fmtH(row.break_hours)}

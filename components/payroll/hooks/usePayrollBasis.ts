@@ -10,6 +10,8 @@ export type PayrollBasisEntry = {
 	hours_norm: number;
 	hours_overtime: number;
 	ob_hours: number;
+	ob_hours_actual: number | null;
+	ob_hours_multiplier: number | null;
 	break_hours: number;
 	total_hours: number;
 	gross_salary_sek: number | null;
