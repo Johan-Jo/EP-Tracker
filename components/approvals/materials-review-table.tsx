@@ -15,7 +15,7 @@ import {
     TableRow 
 } from '@/components/ui/table';
 import { Check, X, Loader2, Package, Receipt, Car } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 type Material = {
     id: string;

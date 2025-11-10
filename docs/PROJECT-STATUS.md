@@ -23,6 +23,9 @@
 **Overall Progress:** 100% (All EPICs 1-24 complete)
 **Status:** Production Ready + Planning System Complete
 
+### Latest Update (2025-11-10)
+- Payroll UX överhaul (desktop + mobil): trestegsflöde, responsiva kort, sticky bulk-actions samt mobilvänliga exports. Förhandsgranskning/preview-sidan och hela dashboarden har svart canvas för konsekvent dark mode.
+
 ---
 
 ## ✅ EPIC 1: Project Setup & Infrastructure (COMPLETE)

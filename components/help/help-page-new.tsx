@@ -26,7 +26,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 interface HelpPageNewProps {
 	userRole: 'admin' | 'foreman' | 'worker' | 'finance';
@@ -408,6 +408,14 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			icon: DollarSign,
 			roles: ['admin', 'foreman'],
 			sections: [
+				{
+					title: 'Snabbguide (3 steg)',
+					items: [
+						'Steg 1 – Beräkna: Välj period och klicka Beräkna. Systemet räknar fram löneunderlag per person.',
+						'Steg 2 – Granska & lås: Kontrollera timmar och belopp. Lås poster som är klara, lås upp om något blev fel.',
+						'Steg 3 – Exportera: PDF innehåller endast låsta poster. CSV/PAXml kan exportera Alla, Låsta eller Markerade poster. PAXml rekommenderas för Fortnox Lön.',
+					],
+				},
 				{
 					title: 'Steg 1: Tidsregistrering',
 					items: [

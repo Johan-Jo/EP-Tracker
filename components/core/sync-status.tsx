@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Wifi, WifiOff, RefreshCw, Loader2 } from 'lucide-react';
 import { offlineQueue } from '@/lib/sync/offline-queue';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 export function SyncStatus() {
     const [isOnline, setIsOnline] = useState(true);

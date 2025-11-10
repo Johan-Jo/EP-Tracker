@@ -284,6 +284,35 @@ html {
   }
 }
 
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 0.75rem;
+  align-items: center;
+}
+
+.kv > div:nth-child(odd) {
+  color: rgb(156 163 175);
+}
+
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+}
+
+.sticky-actions {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: color-mix(in oklab, var(--background) 92%, black 8%);
+  backdrop-filter: blur(6px);
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+}
+
 @media (max-width: 768px) {
   input[type="date"]::-webkit-calendar-picker-indicator {
     position: relative;

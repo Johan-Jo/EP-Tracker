@@ -22,7 +22,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Check, X, MessageSquare, Loader2, Search } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { RequestChangesDialog } from './request-changes-dialog';
 
 type TimeEntry = {

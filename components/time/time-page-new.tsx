@@ -15,7 +15,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createTimeEntrySchema, type CreateTimeEntryInput } from '@/lib/schemas/time-entry';
 import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Link from 'next/link';
 

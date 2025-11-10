@@ -15,7 +15,7 @@ import { ImagePlus, X, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { SignatureInput } from '@/components/shared/signature-input';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 const ataSchema = z.object({
 	project_id: z.string().uuid('Välj ett projekt'),

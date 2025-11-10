@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Mic, Square, Pause, Play, Loader2 } from 'lucide-react';
 import { VoiceActivityDetector } from '@/lib/voice/vad';
 import { useVoiceStore } from '@/lib/stores/voice-store';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 interface VoiceRecorderProps {
   onComplete?: (voiceLogId: string, translatedText: string) => void;

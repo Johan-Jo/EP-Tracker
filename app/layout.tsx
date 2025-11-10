@@ -3,7 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { Analytics } from '@vercel/analytics/next';
 import { QueryProvider } from '@/lib/providers/query-provider';
-import { Toaster } from 'react-hot-toast';
+import { Toaster } from 'sonner';
 import { ZodInit } from '@/components/core/zod-init';
 import { NotificationHandler } from '@/components/core/notification-handler';
 import ThemeProvider from '@/components/core/theme-provider';
@@ -58,7 +58,7 @@ export default function RootLayout({
 					<ZodInit />
 					<NotificationHandler />
 					<QueryProvider>{children}</QueryProvider>
-					<Toaster position="top-center" />
+					<Toaster position="top-right" richColors />
 					<Analytics />
 				</ThemeProvider>
 			</body>

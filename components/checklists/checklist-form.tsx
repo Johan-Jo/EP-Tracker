@@ -14,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { createClient } from '@/lib/supabase/client';
 import { SignatureInput } from '@/components/shared/signature-input';
 import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 const checklistSchema = z.object({
 	project_id: z.string().uuid('Välj ett projekt'),

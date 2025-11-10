@@ -35,11 +35,22 @@ export async function GET(request: NextRequest) {
 		}
 
 		const searchParams = request.nextUrl.searchParams;
-		const periodStart = searchParams.get('start');
-		const periodEnd = searchParams.get('end');
-		const format = searchParams.get('format') || 'csv';
+	const periodStart = searchParams.get('start');
+	const periodEnd = searchParams.get('end');
+	const format = searchParams.get('format') || 'csv';
 		const personId = searchParams.get('person_id');
-		const lockedOnly = searchParams.get('locked_only') === 'true';
+	let lockedOnly = searchParams.get('locked_only') === 'true';
+	const selectedIdsParam = searchParams.get('selected_ids');
+	const selectedIds = selectedIdsParam
+		? selectedIdsParam
+				.split(',')
+				.map((id) => id.trim())
+				.filter((id) => id.length > 0)
+		: [];
+
+	if (format === 'pdf') {
+		lockedOnly = true;
+	}
 
 		if (!periodStart || !periodEnd) {
 			return NextResponse.json(
@@ -48,9 +59,9 @@ export async function GET(request: NextRequest) {
 			);
 		}
 
-		if (format !== 'csv' && format !== 'pdf') {
+	if (format !== 'csv' && format !== 'pdf' && format !== 'paxml') {
 			return NextResponse.json(
-				{ error: 'format must be "csv" or "pdf"' },
+			{ error: 'format must be "csv", "paxml" eller "pdf"' },
 				{ status: 400 }
 			);
 		}
@@ -94,8 +105,26 @@ export async function GET(request: NextRequest) {
 			);
 		}
 
+		let entries = payrollBasis;
+
+		if (selectedIds.length > 0) {
+			const selectedSet = new Set(selectedIds);
+			entries = entries.filter((entry: any) => selectedSet.has(entry.id));
+		}
+
+		if (lockedOnly) {
+			entries = entries.filter((entry: any) => entry.locked);
+		}
+
+		if (!entries || entries.length === 0) {
+			return NextResponse.json(
+				{ error: 'No payroll basis data matched the selected filter' },
+				{ status: 404 }
+			);
+		}
+
 		// Generate export based on format
-		if (format === 'csv') {
+		if (format === 'csv' || format === 'paxml') {
 			const [{ exportPayrollFiles }, { collectPayrollPDFData }] = await Promise.all([
 				import('@/exporters/csvToPaxml'),
 				import('@/lib/exports/payroll-pdf-advanced'),
@@ -103,11 +132,7 @@ export async function GET(request: NextRequest) {
 
 			const csvRows: CsvRow[] = [];
 
-			for (const entry of payrollBasis) {
-				if (lockedOnly && !entry.locked) {
-					continue;
-				}
-
+			for (const entry of entries) {
 				const csvData = await collectPayrollPDFData(
 					membership.org_id,
 					entry.person_id,
@@ -116,7 +141,7 @@ export async function GET(request: NextRequest) {
 					'Both',
 					{
 						payrollBasisId: entry.id,
-						requireLocked: true,
+						requireLocked: lockedOnly,
 					}
 				);
 
@@ -163,8 +188,8 @@ export async function GET(request: NextRequest) {
 
 			const targetDir = path.join(process.cwd(), 'exports');
 			const baseName =
-				personId && payrollBasis.length === 1 && payrollBasis[0]?.person?.full_name
-					? `loneunderlag_${periodStart}_${periodEnd}_${sanitizeFilenameSegment(payrollBasis[0].person.full_name)}`
+				personId && entries.length === 1 && entries[0]?.person?.full_name
+					? `loneunderlag_${periodStart}_${periodEnd}_${sanitizeFilenameSegment(entries[0].person.full_name)}`
 					: `loneunderlag_${periodStart}_${periodEnd}_samtliga`;
 
 			const exportResult = exportPayrollFiles({
@@ -181,13 +206,15 @@ export async function GET(request: NextRequest) {
 				directory: targetDir,
 			});
 
-			const csvBuffer = fs.readFileSync(exportResult.csvPath);
-			const csvBody = bufferToArrayBuffer(csvBuffer);
+			const targetPath = format === 'csv' ? exportResult.csvPath : exportResult.xmlPath;
+			const downloadBuffer = fs.readFileSync(targetPath);
+			const downloadBody = bufferToArrayBuffer(downloadBuffer);
+			const filename = path.basename(targetPath);
 
-			return new NextResponse(csvBody, {
+			return new NextResponse(downloadBody, {
 				headers: {
-					'Content-Type': 'text/csv; charset=utf-8',
-					'Content-Disposition': `attachment; filename="${path.basename(exportResult.csvPath)}"`,
+					'Content-Type': format === 'csv' ? 'text/csv; charset=utf-8' : 'application/xml; charset=utf-8',
+					'Content-Disposition': `attachment; filename="${filename}"`,
 				},
 			});
 		} else {
@@ -197,7 +224,7 @@ export async function GET(request: NextRequest) {
 				const exportTarget = searchParams.get('export_target') as 'Fortnox PAXml' | 'Visma Lön' | 'Both' || 'Both';
 				
 				// Determine which person to generate PDF for
-				const targetPersonId = personId || (payrollBasis && payrollBasis.length > 0 ? payrollBasis[0]?.person_id : null);
+				const targetPersonId = personId || (entries && entries.length > 0 ? entries[0]?.person_id : null);
 				
 				if (!targetPersonId) {
 					return NextResponse.json(
@@ -207,8 +234,8 @@ export async function GET(request: NextRequest) {
 				}
 				
 				const targetEntry =
-					payrollBasis.find((p: any) => p.person_id === targetPersonId && (!lockedOnly || p.locked)) ||
-					payrollBasis.find((p: any) => p.person_id === targetPersonId);
+					entries.find((p: any) => p.person_id === targetPersonId && (!lockedOnly || p.locked)) ||
+					entries.find((p: any) => p.person_id === targetPersonId);
 
 				const pdfBuffer = await generateAdvancedPayrollPDF(
 					membership.org_id,
@@ -224,8 +251,8 @@ export async function GET(request: NextRequest) {
 				const pdfBody = bufferToArrayBuffer(pdfBuffer);
 				
 				const personName = targetEntry?.person?.full_name ||
-					payrollBasis?.find((p: any) => p.person_id === targetPersonId)?.person?.full_name || 
-					payrollBasis?.[0]?.person?.full_name || 'medarbetare';
+					entries?.find((p: any) => p.person_id === targetPersonId)?.person?.full_name || 
+					entries?.[0]?.person?.full_name || 'medarbetare';
 				const filename = `loneunderlag_${periodStart}_${periodEnd}_${sanitizeFilenameSegment(personName)}.pdf`;
 
 				return new NextResponse(pdfBody, {

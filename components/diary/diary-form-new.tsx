@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, X, ArrowLeft, Sun, Cloud, CloudRain, CloudSnow, Wind, Mic } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { VoiceRecorder } from '@/components/voice/voice-recorder';
 import { useVoiceStore } from '@/lib/stores/voice-store';

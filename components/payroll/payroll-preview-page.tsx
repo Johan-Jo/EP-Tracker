@@ -126,7 +126,7 @@ export function PayrollPreviewPage({ orgId, initialStart, initialEnd }: PayrollP
 	}, {} as Record<string, { person: PayrollBasisEntry['person']; entries: PayrollBasisEntry[]; totals: typeof totals }>);
 
 	return (
-		<div className='flex-1 overflow-auto'>
+		<div className='flex-1 overflow-auto bg-black text-foreground transition-colors dark:bg-black'>
 			<header className='sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border'>
 				<div className='px-4 md:px-8 py-4 md:py-6'>
 					<div className='flex items-center justify-between'>

@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { ManageTeamDialog } from '@/components/projects/manage-team-dialog';
 
 interface ProjectSummaryViewProps {

@@ -3,6 +3,13 @@
 ## Översikt
 Denna guide förklarar hela processen från tidsregistrering till löneunderlag-beräkning i EP-Tracker.
 
+### Snabböversikt (nytt UI november 2025)
+- **Stegband högst upp:** 1) Beräkna period → 2) Granska & lås → 3) Exportera.
+- **Periodväljare:** Månadsknapparna “Denna månad” + “Föreg. månad” fyller datum automatiskt.
+- **Filter & sök:** Sökfält + statusfilter (Alla/Låsta/Olåsta) + checkboxar för massval.
+- **Toasts:** Alla åtgärder visar icke-blockerande sonner-notiser (t.ex. “Löneunderlag beräknat”, “Poster låsta”, “Export klar”).
+- **Exportmeny:** CSV, PAXml och PDF finns under samma knapp. CSV/PAXml kan exportera Alla, Endast låsta eller Endast markerade. PDF hämtar alltid enbart låsta poster.
+
 ---
 
 ## Steg 1: Tidsregistrering
@@ -126,11 +133,13 @@ attendance_session:
 ## Steg 5: Beräkna löneunderlag
 
 ### 5.1 Välj period
-- **Var:** `/dashboard/payroll` → Tab "Löneunderlag"
-- **Vad:** Välj start- och slutdatum för perioden du vill beräkna
-- **Exempel:** 2025-01-01 till 2025-01-31
+- **Var:** `/dashboard/payroll` → fliken **Guidat flöde**
+- **Vad:** Ange datum med datumfälten eller använd snabbknapparna “Denna månad” / “Föreg. månad”.
+- **Tips:** Perioden kan ändras när som helst – UI:n refetchar automatiskt löneunderlaget när du trycker **Beräkna**.
 
-### 5.2 Klicka på "Beräkna om"
+### 5.2 Klicka på "Beräkna"
+- **UI:** Knappen finns bredvid Export-menyn i kortet “Steg 1 – Beräkna”.
+- **Feedback:** En grön toast bekräftar “Löneunderlag beräknat” (eller röd toast vid fel). Statusetiketten i stegbandet hoppar till “Granska & lås” när data finns.
 - **Vad händer i bakgrunden:**
 
 #### 5.2.1 Hämta data
@@ -214,39 +223,33 @@ payroll_basis:
   - Period (vecka)
   - Normaltid, övertid, OB-timmar, rast, totalt
 
-### 6.2 Låsa löneunderlag (Valfritt)
-- **Vad:** Låsa löneunderlag för att förhindra ändringar
-- **Varför:** När du är klar med granskning och vill exportera
-- **Vad händer:**
+### 6.2 Låsa löneunderlag (valfritt men krävs för PDF)
+- **UI:** Använd verktygsraden ovanför tabellen för “Lås alla”, “Lås upp alla”, “Lås markerade” osv. Checkboxar per rad gör det enkelt att markera ett urval.
+- **Varför:** PDF-exporten är hårdkodad till låsta poster. Låsning ger även visuell status (gröna “Låst”-taggar) och hindrar oavsiktliga uppdateringar.
+- **Vad händer i databasen:**
   - `locked` sätts till `true`
   - `locked_by` sätts till din ID
   - `locked_at` sätts till aktuellt datum/tid
-  - Löneunderlag kan inte längre ändras (tills det låses upp)
+  - Löneunderlag kan inte längre ändras förrän du låser upp
+- **Feedback:** Varje masshandling visar en toast (“Poster låsta” / “Poster upplåsta”).
 
 ---
 
 ## Steg 7: Exportera löneunderlag
 
-### 7.1 Exportera CSV
-- **Var:** `/dashboard/payroll` → Klicka på "Exportera CSV"
-- **Vad:** Exporterar alla löneunderlag för vald period till CSV-fil (både låsta och olåsta)
-- **Format:** CSV med semicolon-separator (för Excel-kompatibilitet)
-- **Innehåll:**
-  - Person, E-post, Period Start, Period Slut
-  - Normaltid, Övertid, OB-timmar, Rast, Totalt
-  - Låst-status
-- **Användning:** För granskning, import i lönesystem, eller Excel-analys
-
-### 7.2 Exportera PDF
-- **Var:** `/dashboard/payroll` → Klicka på "Exportera PDF"
-- **Vad:** Exporterar endast låsta löneunderlag för vald period till PDF-fil
-- **Format:** Professionell PDF-rapport med sammanfattning och tabell
-- **Innehåll:**
-  - Sammanfattning med totaler (timmar, bruttolön, antal personer)
-  - Detaljerad tabell med alla låsta poster
-  - Sidnumrering och datumstämplar
-- **Krav:** Poster måste vara låsta innan PDF-export (använd "Lås"-knappen)
-- **Användning:** För arkivering, delning med chefer, eller formell dokumentation
+### 7.1 Exportera CSV / PAXml / PDF (ny exportmeny)
+- **Var:** Samma kort som “Steg 1 – Beräkna”. Klicka på **Exportera** för att öppna menyn.
+- **CSV:**
+  - Välj **Alla**, **Endast låsta** eller **Endast markerade**.
+  - Filen genereras server-side (semicolon; UTF-8) och sparas också som `exports/loneunderlag_*.csv`.
+  - Toast “Export klar” visas när nedladdningen triggas.
+- **PAXml:**
+  - Samma urvalslogik som CSV (Alla/Låsta/Markerade).
+  - PAXml-filen genereras från samma dataset; rekommenderad för Fortnox Lön.
+- **PDF:**
+  - Visar alltid låsta poster – backend ignorerar andra valider. Se till att dina poster är låsta först.
+  - Filnamn: `loneunderlag_<period>_<namn>.pdf`.
+- **Standardtext under knapparna:** “PDF innehåller alltid endast låsta poster. CSV/PAXml kan exportera Alla, Låsta eller Markerade.”
 
 ---
 
@@ -288,7 +291,7 @@ payroll_basis:
 - [ ] 5. "Beräkna om" är klickad
 - [ ] 6. Löneunderlag visas korrekt
 - [ ] 7. (Valfritt) Löneunderlag är låst
-- [ ] 8. (Valfritt) Löneunderlag är exporterat
+- [ ] 8. (Valfritt) Löneunderlag är exporterat (CSV/PAXml/PDF)
 
 ---
 
