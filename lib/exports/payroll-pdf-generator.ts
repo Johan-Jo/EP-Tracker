@@ -11,6 +11,7 @@ import {
 	collectPayrollPDFData,
 	CollectPayrollOptions,
 } from '@/lib/exports/payroll-pdf-advanced';
+import { launchChromium } from '@/lib/exports/launch-chromium';
 
 /**
  * Generate advanced payroll PDF document using Playwright
@@ -45,11 +46,7 @@ export async function generateAdvancedPayrollPDF(
 	
 	// Use Playwright to generate PDF
 	try {
-		const { chromium } = await import('playwright');
-		const browser = await chromium.launch({
-			headless: true,
-			args: ['--no-sandbox', '--disable-setuid-sandbox'],
-		});
+		const browser = await launchChromium();
 		
 		const page = await browser.newPage();
 		
