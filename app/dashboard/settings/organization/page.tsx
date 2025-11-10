@@ -32,6 +32,18 @@ export default async function OrganizationSettingsPage() {
 			organization={{
 				id: organization.id,
 				name: organization.name,
+				org_number: organization.org_number ?? null,
+				phone: organization.phone ?? null,
+				address: organization.address ?? null,
+				postal_code: organization.postal_code ?? null,
+				city: organization.city ?? null,
+				vat_registered: organization.vat_registered ?? false,
+				vat_number: organization.vat_number ?? null,
+				default_vat_rate: organization.default_vat_rate ?? null,
+				default_work_day_start: organization.default_work_day_start ?? null,
+				default_work_day_end: organization.default_work_day_end ?? null,
+				standard_work_hours_per_day: organization.standard_work_hours_per_day ?? null,
+				standard_breaks: organization.standard_breaks ?? [],
 				created_at: organization.created_at,
 			}}
 		/>
