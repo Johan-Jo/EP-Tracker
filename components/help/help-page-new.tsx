@@ -21,6 +21,7 @@ import {
 	Bell,
 	Mic,
 	DollarSign,
+	Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -41,6 +42,40 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 	};
 
 	const allGuides = [
+		{
+			title: 'Organisationsinställningar',
+			description: 'Håll kontaktuppgifter, adress och standardtider uppdaterade',
+			icon: Building2,
+			roles: ['admin'],
+			sections: [
+				{
+					title: 'Adress via Geoapify',
+					items: [
+						'Öppna "Inställningar → Organisation".',
+						'Skriv organisationens adress i fältet "Adress". Förslag hämtas från Geoapify.',
+						'Välj ett av sökförslagen. Postnummer och ort fylls i automatiskt och kan inte ändras manuellt.',
+						'Behöver du ny adress? Sök igen och välj ett nytt förslag.',
+					],
+				},
+				{
+					title: 'Standardarbetstid & raster',
+					items: [
+						'Starttid, sluttid och ordinarie arbetstid är förifyllt till 07:00 – 16:00 (8 timmar).',
+						'Lunchen är förvald till 11:00–12:00. Justera vid behov för din organisation.',
+						'Klicka "Lägg till rast" för fler pauser eller ta bort med papperskorgen.',
+						'Spara för att uppdatera nya projekt och planeringens standardvärden.',
+					],
+				},
+				{
+					title: 'Momsuppgifter',
+					items: [
+						'Aktivera reglaget om bolaget är momsregistrerat.',
+						'Fyll i VAT-nummer och standard momssats. Dessa används i rapporter och exportfiler.',
+						'Kom ihåg att spara efter varje ändring.',
+					],
+				},
+			],
+		},
 		{
 			title: 'Tidsrapportering',
 			description: 'Lär dig att registrera arbetstid',
