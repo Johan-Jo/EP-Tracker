@@ -22,7 +22,7 @@ const coerceOptionalNumber = (options?: { min?: number; minMessage?: string }) =
 			return val;
 		},
 		z
-			.number({ invalid_type_error: 'Ange ett giltigt tal', required_error: 'Värdet måste vara ett tal' })
+			.number({ message: 'Värdet måste vara ett tal' })
 			.refine(
 				(value) => (options?.min !== undefined ? value >= options.min : true),
 				{
