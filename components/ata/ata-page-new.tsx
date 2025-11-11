@@ -107,15 +107,21 @@ export function AtaPageNew({ orgId, userRole, projectId }: AtaPageNewProps) {
 		}
 	};
 
+	const resolveAtaAmount = (ata: any): number => {
+		const amount = ata?.fixed_amount_sek ?? ata?.total_sek ?? 0;
+		const numeric = typeof amount === 'number' ? amount : Number(amount);
+		return Number.isFinite(numeric) ? numeric : 0;
+	};
+
 	// Calculate stats
-	const totalAmount = ataRecords.reduce((sum: number, ata: any) => sum + (ata.total_sek || 0), 0);
+	const totalAmount = ataRecords.reduce((sum: number, ata: any) => sum + resolveAtaAmount(ata), 0);
 	const pendingCount = ataRecords.filter((ata: any) => ata.status === 'pending_approval').length;
 	const approvedAmount = ataRecords
 		.filter((ata: any) => ata.status === 'approved' || ata.status === 'invoiced')
-		.reduce((sum: number, ata: any) => sum + (ata.total_sek || 0), 0);
+		.reduce((sum: number, ata: any) => sum + resolveAtaAmount(ata), 0);
 	const invoicedAmount = ataRecords
 		.filter((ata: any) => ata.status === 'invoiced')
-		.reduce((sum: number, ata: any) => sum + (ata.total_sek || 0), 0);
+		.reduce((sum: number, ata: any) => sum + resolveAtaAmount(ata), 0);
 
 	// Filter ATA records based on search
 	const filteredRecords = ataRecords.filter((ata: any) => {
@@ -258,77 +264,91 @@ export function AtaPageNew({ orgId, userRole, projectId }: AtaPageNewProps) {
 						</div>
 					) : (
 						<div className='space-y-3'>
-							{filteredRecords.map((ata: any) => (
-								<div
-									key={ata.id}
-									className='bg-card border-2 border-border rounded-xl p-4 md:p-5 hover:border-orange-300 hover:shadow-lg hover:scale-[1.01] transition-all duration-200'
-								>
-									<div className='flex flex-col md:flex-row gap-4'>
-										{/* Icon & Info */}
-										<div className='flex-1 min-w-0'>
-											<div className='flex items-start gap-3 mb-3'>
-												<div className='p-2 rounded-lg shrink-0 bg-orange-50'>
-													<FileText className='w-5 h-5 text-orange-600' />
-												</div>
-												<div className='flex-1 min-w-0'>
-													<div className='flex items-center gap-2 mb-1'>
-														{ata.ata_number && (
-															<Badge variant='outline' className='text-xs'>
-																{ata.ata_number}
-															</Badge>
-														)}
-														<Badge
-															className={`text-xs font-medium border-2 ${getStatusColor(
-																ata.status
-															)}`}
-														>
-															{getStatusText(ata.status)}
-														</Badge>
-													</div>
-													<h4 className='font-semibold mb-1 truncate'>{ata.title}</h4>
-													{ata.description && (
-														<p className='text-sm text-muted-foreground mb-2 line-clamp-2'>
-															{ata.description}
-														</p>
-													)}
-													<div className='flex flex-wrap gap-x-4 gap-y-1 text-sm'>
-														<span className='text-muted-foreground'>
-															{ata.project?.name || 'Inget projekt'}
-														</span>
-														{ata.qty && ata.unit && ata.unit_price_sek && (
-															<span className='text-muted-foreground'>
-																{ata.qty} {ata.unit} × {ata.unit_price_sek.toLocaleString('sv-SE')}{' '}
-																kr
-															</span>
-														)}
-														<span className='text-muted-foreground'>
-															{new Date(ata.created_at).toLocaleDateString('sv-SE')}
-														</span>
-													</div>
-												</div>
-											</div>
-										</div>
+							{filteredRecords.map((ata: any) => {
+								const amount = resolveAtaAmount(ata);
+								const billingLabel = ata.billing_type === 'FAST' ? 'FAST' : 'LÖPANDE';
+								const billingBadgeClasses =
+									ata.billing_type === 'FAST'
+										? 'bg-orange-500/20 text-orange-700 border-orange-300 dark:bg-[#3a251c] dark:text-[#f8ddba] dark:border-[#4a2f22]'
+										: 'bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-700';
 
-										{/* Price & Actions */}
-										<div className='flex items-center justify-between md:flex-col md:items-end gap-3'>
-											<div className='text-right'>
-												<p className='text-sm text-muted-foreground'>Totalt</p>
-												<p className='text-xl'>
-													{(ata.total_sek || 0).toLocaleString('sv-SE')} kr
-												</p>
+								return (
+									<div
+										key={ata.id}
+										className='bg-card border-2 border-border rounded-xl p-4 md:p-5 hover:border-orange-300 hover:shadow-lg hover:scale-[1.01] transition-all duration-200'
+									>
+										<div className='flex flex-col md:flex-row gap-4'>
+											{/* Icon & Info */}
+											<div className='flex-1 min-w-0'>
+												<div className='flex items-start gap-3 mb-3'>
+													<div className='p-2 rounded-lg shrink-0 bg-orange-50'>
+														<FileText className='w-5 h-5 text-orange-600' />
+													</div>
+													<div className='flex-1 min-w-0'>
+														<div className='flex items-center gap-2 mb-1'>
+															<span
+																className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${billingBadgeClasses}`}
+															>
+																{billingLabel}
+															</span>
+															{ata.ata_number && (
+																<Badge variant='outline' className='text-xs'>
+																	{ata.ata_number}
+																</Badge>
+															)}
+															<Badge
+																className={`text-xs font-medium border-2 ${getStatusColor(
+																	ata.status
+																)}`}
+															>
+																{getStatusText(ata.status)}
+															</Badge>
+														</div>
+														<h4 className='font-semibold mb-1 truncate'>{ata.title}</h4>
+														{ata.description && (
+															<p className='text-sm text-muted-foreground mb-2 line-clamp-2'>
+																{ata.description}
+															</p>
+														)}
+														<div className='flex flex-wrap gap-x-4 gap-y-1 text-sm'>
+															<span className='text-muted-foreground'>
+																{ata.project?.name || 'Inget projekt'}
+															</span>
+															{ata.billing_type !== 'FAST' && ata.qty && ata.unit && ata.unit_price_sek && (
+																<span className='text-muted-foreground'>
+																	{ata.qty} {ata.unit} × {ata.unit_price_sek.toLocaleString('sv-SE')}{' '}
+																	kr
+																</span>
+															)}
+															<span className='text-muted-foreground'>
+																{new Date(ata.created_at).toLocaleDateString('sv-SE')}
+															</span>
+														</div>
+													</div>
+												</div>
 											</div>
-											<Button
-												variant='outline'
-												size='sm'
-												asChild
-												className='hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 transition-all duration-200'
-											>
-												<Link href={`/dashboard/ata/${ata.id}`}>Visa detaljer</Link>
-											</Button>
+
+											{/* Price & Actions */}
+											<div className='flex items-center justify-between md:flex-col md:items-end gap-3'>
+												<div className='text-right'>
+													<p className='text-sm text-muted-foreground'>Totalt</p>
+													<p className='text-xl'>
+														{amount.toLocaleString('sv-SE')} kr
+													</p>
+												</div>
+												<Button
+													variant='outline'
+													size='sm'
+													asChild
+													className='hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300 transition-all duration-200'
+												>
+													<Link href={`/dashboard/ata/${ata.id}`}>Visa detaljer</Link>
+												</Button>
+											</div>
 										</div>
 									</div>
-								</div>
-							))}
+								); 
+							})}
 						</div>
 					)}
 				</div>

@@ -19,6 +19,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
 import { GalleryViewer } from '@/components/shared/gallery-viewer';
 import Image from 'next/image';
+import type { BillingType } from '@/lib/schemas/billing-types';
 
 interface AtaDetailClientProps {
 	ataId: string;
@@ -110,10 +111,24 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 	const config = statusConfig[ata.status as keyof typeof statusConfig];
 	const StatusIcon = config.icon;
 
-	// Calculate total
-	const qty = parseFloat(ata.qty || '0');
-	const unitPrice = parseFloat(ata.unit_price_sek || '0');
-	const total = qty * unitPrice;
+	const toNumber = (value: unknown): number => {
+		if (value === undefined || value === null) return 0;
+		if (typeof value === 'number') return value;
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? parsed : 0;
+	};
+
+	const billingType = (ata.billing_type as BillingType) ?? 'LOPANDE';
+	const billingLabel = billingType === 'FAST' ? 'FAST' : 'LÖPANDE';
+	const billingBadgeClasses =
+		billingType === 'FAST'
+			? 'bg-orange-500/20 text-orange-700 border-orange-300'
+			: 'bg-slate-200 text-slate-700 border-slate-300';
+
+	const qty = toNumber(ata.qty);
+	const unitPrice = toNumber(ata.unit_price_sek);
+	const fixedAmount = toNumber(ata.fixed_amount_sek);
+	const total = billingType === 'FAST' ? fixedAmount : qty * unitPrice;
 
 	return (
 		<div className='max-w-5xl space-y-6'>
@@ -131,6 +146,9 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 										{ata.ata_number}
 									</Badge>
 								)}
+								<Badge className={`border-2 uppercase tracking-wide ${billingBadgeClasses}`}>
+									{billingLabel}
+								</Badge>
 								<Badge className={`border-2 ${config.color}`}>
 									<StatusIcon className='h-3 w-3 mr-1' />
 									{config.label}
@@ -177,15 +195,27 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 						</div>
 					)}
 
-					<div className='bg-white rounded-xl p-4'>
-						<div className='flex items-center gap-2 mb-2'>
-							<Package className='w-4 h-4 text-muted-foreground' />
-							<span className='text-sm text-muted-foreground'>Antal</span>
+					{billingType === 'FAST' ? (
+						<div className='bg-white rounded-xl p-4'>
+							<div className='flex items-center gap-2 mb-2'>
+								<DollarSign className='w-4 h-4 text-muted-foreground' />
+								<span className='text-sm text-muted-foreground'>Fast belopp</span>
+							</div>
+							<p className='font-medium'>
+								{fixedAmount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+							</p>
 						</div>
-						<p className='font-medium'>
-							{qty} {ata.unit || 'st'}
-						</p>
-					</div>
+					) : (
+						<div className='bg-white rounded-xl p-4'>
+							<div className='flex items-center gap-2 mb-2'>
+								<Package className='w-4 h-4 text-muted-foreground' />
+								<span className='text-sm text-muted-foreground'>Antal</span>
+							</div>
+							<p className='font-medium'>
+								{qty.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} {ata.unit || 'st'}
+							</p>
+						</div>
+					)}
 				</div>
 			</div>
 
@@ -207,20 +237,39 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 					<h2 className='text-xl font-semibold text-orange-900'>Kostnadsuppgifter</h2>
 				</div>
 				<div className='grid grid-cols-2 md:grid-cols-3 gap-4'>
-					<div className='bg-white rounded-xl p-4'>
-						<p className='text-sm text-muted-foreground mb-1'>À-pris</p>
-						<p className='text-2xl text-gray-900'>{unitPrice.toLocaleString('sv-SE')} kr</p>
-					</div>
-					<div className='bg-white rounded-xl p-4'>
-						<p className='text-sm text-muted-foreground mb-1'>Antal</p>
-						<p className='text-2xl text-gray-900'>
-							{qty} {ata.unit || 'st'}
-						</p>
-					</div>
-					<div className='bg-white rounded-xl p-4 md:col-span-1 col-span-2'>
-						<p className='text-sm text-muted-foreground mb-1'>Totalt</p>
-						<p className='text-2xl text-gray-900'>{total.toLocaleString('sv-SE')} kr</p>
-					</div>
+					{billingType === 'FAST' ? (
+						<>
+							<div className='bg-white rounded-xl p-4 md:col-span-1 col-span-2'>
+								<p className='text-sm text-muted-foreground mb-1'>Fast belopp</p>
+								<p className='text-2xl text-gray-900'>{fixedAmount.toLocaleString('sv-SE')} kr</p>
+							</div>
+							<div className='bg-white rounded-xl p-4 md:col-span-1 col-span-2'>
+								<p className='text-sm text-muted-foreground mb-1'>Totalt</p>
+								<p className='text-2xl text-gray-900'>{total.toLocaleString('sv-SE')} kr</p>
+							</div>
+						</>
+					) : (
+						<>
+							<div className='bg-white rounded-xl p-4'>
+								<p className='text-sm text-muted-foreground mb-1'>À-pris</p>
+								<p className='text-2xl text-gray-900'>
+									{unitPrice.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+								</p>
+							</div>
+							<div className='bg-white rounded-xl p-4'>
+								<p className='text-sm text-muted-foreground mb-1'>Antal</p>
+								<p className='text-2xl text-gray-900'>
+									{qty.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} {ata.unit || 'st'}
+								</p>
+							</div>
+							<div className='bg-white rounded-xl p-4 md:col-span-1 col-span-2'>
+								<p className='text-sm text-muted-foreground mb-1'>Totalt</p>
+								<p className='text-2xl text-gray-900'>
+									{total.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+								</p>
+							</div>
+						</>
+					)}
 				</div>
 			</div>
 

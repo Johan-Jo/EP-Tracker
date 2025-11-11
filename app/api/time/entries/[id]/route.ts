@@ -57,7 +57,7 @@ export async function PATCH(
 		// EPIC 26: Fetch and check permissions in one query
 		const { data: existingEntry, error: fetchError } = await supabase
 			.from('time_entries')
-			.select('id, user_id, org_id, status, start_at, stop_at, project_id, billing_type, fixed_block_id')
+			.select('id, user_id, org_id, status, start_at, stop_at, project_id, billing_type, fixed_block_id, ata_id')
 			.eq('id', id)
 			.eq('org_id', membership.org_id)
 			.single();
@@ -148,10 +148,14 @@ export async function PATCH(
 			updateFields.billing_type = data.billing_type;
 			updateFields.fixed_block_id =
 				data.billing_type === 'FAST' ? data.fixed_block_id ?? existingEntry.fixed_block_id ?? null : null;
+			updateFields.ata_id = data.billing_type === 'FAST' ? data.ata_id ?? existingEntry.ata_id ?? null : null;
 		} else if (data.fixed_block_id !== undefined) {
 			const effectiveType = data.billing_type ?? existingEntry.billing_type ?? 'LOPANDE';
 			updateFields.fixed_block_id =
 				effectiveType === 'FAST' ? data.fixed_block_id : null;
+		}
+		if (data.ata_id !== undefined) {
+			updateFields.ata_id = data.ata_id;
 		}
 		
 		const { data: entry, error: updateError } = await supabase

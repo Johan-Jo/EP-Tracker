@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { SignatureInput } from '@/components/shared/signature-input';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import type { BillingType } from '@/lib/schemas/billing-types';
 
 interface AtaApprovalDialogProps {
 	ata: {
@@ -18,6 +19,8 @@ interface AtaApprovalDialogProps {
 		ata_number?: string | null;
 		description?: string | null;
 		total_sek?: number | null;
+		fixed_amount_sek?: number | null;
+		billing_type?: BillingType;
 		status: string;
 	};
 	open: boolean;
@@ -102,11 +105,17 @@ export function AtaApprovalDialog({ ata, open, onOpenChange }: AtaApprovalDialog
 								</p>
 							</div>
 
-							{ata.total_sek && ata.total_sek > 0 && (
+							{ata.billing_type && (
+								<p className="text-sm text-muted-foreground">
+									Debitering: {ata.billing_type === 'FAST' ? 'Fast' : 'Löpande'}
+								</p>
+							)}
+
+							{(ata.fixed_amount_sek || ata.total_sek) && (
 								<div className="pt-4 border-t">
 									<h4 className="text-sm font-semibold text-muted-foreground mb-2">Totalt belopp</h4>
 									<p className="text-3xl font-bold text-primary">
-										{ata.total_sek.toLocaleString('sv-SE', {
+										{(ata.fixed_amount_sek ?? ata.total_sek ?? 0).toLocaleString('sv-SE', {
 											minimumFractionDigits: 2,
 											maximumFractionDigits: 2,
 										})}{' '}

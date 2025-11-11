@@ -9,6 +9,7 @@ import { FileText, Eye, CheckCircle, XCircle, Clock, ClipboardCheck } from 'luci
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { AtaApprovalDialog } from './ata-approval-dialog';
+import type { BillingType } from '@/lib/schemas/billing-types';
 
 interface Ata {
 	id: string;
@@ -19,6 +20,8 @@ interface Ata {
 	unit: string | null;
 	unit_price_sek: number | null;
 	total_sek: number | null;
+	fixed_amount_sek: number | null;
+	billing_type: BillingType;
 	status: 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'invoiced';
 	created_at: string;
 	project: {
@@ -39,6 +42,11 @@ const statusConfig = {
 	approved: { label: 'Godkänd', icon: CheckCircle, variant: 'default' as const },
 	rejected: { label: 'Avvisad', icon: XCircle, variant: 'destructive' as const },
 	invoiced: { label: 'Fakturerad', icon: CheckCircle, variant: 'default' as const },
+};
+
+const billingBadgeStyles: Record<BillingType, string> = {
+	FAST: 'bg-orange-500/20 text-orange-700 border-orange-300 dark:bg-[#3a251c] dark:text-[#f8ddba] dark:border-[#4a2f22]',
+	LOPANDE: 'bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-700',
 };
 
 export function AtaList({ projectId, orgId, userRole }: AtaListProps) {
@@ -107,6 +115,8 @@ export function AtaList({ projectId, orgId, userRole }: AtaListProps) {
 				{ataList.map((ata) => {
 				const config = statusConfig[ata.status];
 				const StatusIcon = config.icon;
+				const totalAmount = ata.fixed_amount_sek ?? ata.total_sek ?? 0;
+				const billingLabel = ata.billing_type === 'FAST' ? 'FAST' : 'LÖPANDE';
 
 				return (
 					<Card key={ata.id} className="hover:shadow-md transition-shadow">
@@ -117,6 +127,11 @@ export function AtaList({ projectId, orgId, userRole }: AtaListProps) {
 										{ata.ata_number && (
 											<Badge variant="outline">{ata.ata_number}</Badge>
 										)}
+										<span
+											className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${billingBadgeStyles[ata.billing_type]}`}
+										>
+											{billingLabel}
+										</span>
 										<Badge variant={config.variant} className="flex items-center gap-1">
 											<StatusIcon className="h-3 w-3" />
 											{config.label}
@@ -154,20 +169,25 @@ export function AtaList({ projectId, orgId, userRole }: AtaListProps) {
 									<p className="text-muted-foreground">
 										Projekt: {ata.project.project_number ? `${ata.project.project_number} - ` : ''}{ata.project.name}
 									</p>
-									{ata.qty && ata.unit && ata.unit_price_sek && (
+									{ata.billing_type === 'LOPANDE' && ata.qty && ata.unit && ata.unit_price_sek && (
 										<p className="text-muted-foreground">
 											{ata.qty} {ata.unit} × {ata.unit_price_sek.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} SEK
+										</p>
+									)}
+									{ata.billing_type === 'FAST' && ata.fixed_amount_sek !== null && (
+										<p className="text-muted-foreground">
+											Fast belopp: {ata.fixed_amount_sek.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} SEK
 										</p>
 									)}
 									<p className="text-xs text-muted-foreground">
 										Skapad: {new Date(ata.created_at).toLocaleDateString('sv-SE')}
 									</p>
 								</div>
-								{ata.total_sek && (
+								{totalAmount > 0 && (
 									<div className="text-right">
 										<p className="text-xs text-muted-foreground">Totalt:</p>
 										<p className="text-lg font-bold">
-											{ata.total_sek.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} SEK
+											{totalAmount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} SEK
 										</p>
 									</div>
 								)}

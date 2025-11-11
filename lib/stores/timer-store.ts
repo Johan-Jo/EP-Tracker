@@ -12,6 +12,7 @@ export interface TimerEntry {
 	task_label?: string;
 	billing_type?: BillingType;
 	fixed_block_id?: string | null;
+	ata_id?: string | null;
 	start_at: string;
 }
 
@@ -88,7 +89,8 @@ export const useTimerStore = create<TimerState>()(
 								e.project_id === entry.project_id &&
 								e.phase_id === entry.phase_id &&
 								e.billing_type === entry.billing_type &&
-								e.fixed_block_id === entry.fixed_block_id
+								e.fixed_block_id === entry.fixed_block_id &&
+								e.ata_id === entry.ata_id
 							)
 					);
 					

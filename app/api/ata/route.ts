@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
+import { ataInputSchema } from '@/lib/schemas/ata';
 
 export async function GET(request: NextRequest) {
 	const { user, membership } = await getSession();
@@ -45,12 +46,44 @@ export async function POST(request: NextRequest) {
 	}
 
 	const supabase = await createClient();
-	const body = await request.json();
+	const rawBody = await request.json();
+
+	const parsed = ataInputSchema.safeParse(rawBody);
+
+	if (!parsed.success) {
+		return NextResponse.json(
+			{
+				error: 'Validation error',
+				details: parsed.error.flatten(),
+			},
+			{ status: 400 },
+		);
+	}
+
+	const body = parsed.data;
+	const fixedAmount = body.billing_type === 'FAST' ? body.fixed_amount_sek ?? null : null;
+	const signedAt =
+		body.signed_at instanceof Date
+			? body.signed_at.toISOString()
+			: body.signed_at
+			? new Date(body.signed_at).toISOString()
+			: null;
 
 	const { data, error } = await supabase
 		.from('ata')
 		.insert({
-			...body,
+			project_id: body.project_id,
+			title: body.title,
+			description: body.description ?? null,
+			qty: body.qty ?? null,
+			unit: body.unit ?? null,
+			unit_price_sek: body.unit_price_sek ?? null,
+			ata_number: body.ata_number ?? null,
+			status: body.status,
+			billing_type: body.billing_type,
+			fixed_amount_sek: fixedAmount,
+			signed_by_name: body.signed_by_name ?? null,
+			signed_at: signedAt,
 			org_id: membership.org_id,
 			created_by: user.id,
 		})

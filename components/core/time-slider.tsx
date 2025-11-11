@@ -25,14 +25,23 @@ type FixedBlockOption = {
   status: 'open' | 'closed';
 };
 
+type AtaOption = {
+  id: string;
+  title: string;
+  ata_number: string | null;
+  billing_type: BillingType;
+  status: string;
+};
+
 interface TimeSliderProps {
   isActive: boolean;
   projectName?: string;
   projectId?: string;
   startTime?: string;
   activeBillingType?: BillingType | null;
+  activeAtaId?: string | null;
   availableProjects?: ProjectOption[];
-  onCheckIn: (projectId: string, billingType: BillingType, fixedBlockId?: string | null) => Promise<void>;
+  onCheckIn: (payload: { projectId: string; billingType: BillingType; fixedBlockId?: string | null; ataId?: string | null }) => Promise<void>;
   onCheckOut: (customStopAt?: string, customStartAt?: string) => Promise<void>;
   onCheckOutComplete?: (projectId: string) => void;
   onProjectChange?: (projectId: string) => void;
@@ -44,6 +53,7 @@ export function TimeSlider({
   projectId,
   startTime,
   activeBillingType = null,
+  activeAtaId = null,
   availableProjects = [],
   onCheckIn, 
   onCheckOut,
@@ -56,9 +66,13 @@ export function TimeSlider({
   const [selectedProjectId, setSelectedProjectId] = useState(projectId);
   const [selectedBillingType, setSelectedBillingType] = useState<BillingType | null>(null);
   const [selectedFixedBlockId, setSelectedFixedBlockId] = useState<string>('');
+  const [selectedAtaId, setSelectedAtaId] = useState<string | null>(activeAtaId);
   const [fixedBlocks, setFixedBlocks] = useState<FixedBlockOption[]>([]);
   const [fixedBlocksLoading, setFixedBlocksLoading] = useState(false);
   const [fixedBlocksError, setFixedBlocksError] = useState<string | null>(null);
+  const [atas, setAtas] = useState<AtaOption[]>([]);
+  const [atasLoading, setAtasLoading] = useState(false);
+  const [atasError, setAtasError] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [showDropdown, setShowDropdown] = useState(false);
   const [billingSelectionError, setBillingSelectionError] = useState<string | null>(null);
@@ -88,14 +102,18 @@ export function TimeSlider({
     if (!selectedProjectDetails) {
       setSelectedBillingType(null);
       setSelectedFixedBlockId('');
+      setSelectedAtaId(null);
       setFixedBlocks([]);
+      setAtas([]);
       setFixedBlocksError(null);
+      setAtasError(null);
       setBillingSelectionError(null);
       return;
     }
 
     if (isActive && activeBillingType) {
       setSelectedBillingType(activeBillingType);
+      setSelectedAtaId(activeAtaId ?? null);
       setBillingSelectionError(null);
       return;
     }
@@ -228,6 +246,67 @@ useEffect(() => {
     setSelectedProjectId(projectId);
   }, [projectId]);
 
+  useEffect(() => {
+    if (!selectedProjectDetails) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadAtas = async () => {
+      setAtasLoading(true);
+      setAtasError(null);
+      try {
+        const response = await fetch(`/api/ata?project_id=${selectedProjectDetails.id}`);
+        if (!response.ok) {
+          throw new Error('Kunde inte hämta ÄTA');
+        }
+        const json = await response.json();
+        const mapped: AtaOption[] = (json.ata || [])
+          .filter((ata: any) => ata.status !== 'rejected')
+          .map((ata: any) => ({
+            id: ata.id,
+            title: ata.title,
+            ata_number: ata.ata_number ?? null,
+            billing_type: ata.billing_type as BillingType,
+            status: ata.status,
+          }));
+
+        if (cancelled) return;
+        setAtas(mapped);
+
+        if (mapped.length === 0) {
+          setSelectedAtaId(null);
+        } else if (isActive && activeAtaId && mapped.some((ata) => ata.id === activeAtaId)) {
+          setSelectedAtaId(activeAtaId);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to load ÄTA', error);
+          setAtas([]);
+          setAtasError(error instanceof Error ? error.message : 'Kunde inte hämta ÄTA');
+        }
+      } finally {
+        if (!cancelled) {
+          setAtasLoading(false);
+        }
+      }
+    };
+
+    loadAtas();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProjectDetails?.id, isActive, activeAtaId]);
+
+  useEffect(() => {
+    if (!selectedAtaId) return;
+    if (!atas.some((ata) => ata.id === selectedAtaId)) {
+      setSelectedAtaId(null);
+    }
+  }, [atas, selectedAtaId]);
+
   const requiresBillingSelection =
     !isActive &&
     selectedProjectDetails?.billing_mode === 'BOTH' &&
@@ -311,17 +390,27 @@ useEffect(() => {
             setIsLoading(false);
             return;
           }
-          const billingToUse = selectedBillingType;
+          const billingToUse = selectedBillingType ?? selectedProjectDetails?.default_time_billing_type ?? 'LOPANDE';
 
           if (!billingToUse) {
-            setBillingSelectionError('Välj debiteringsform för att starta tid.');
+            setBillingSelectionError('Välj debitering innan du checkar in.');
             setPosition(0);
             setIsLoading(false);
             return;
           }
 
+          if (!selectedProjectId) {
+            setShowNoProjectDialog(true);
+            setPosition(0);
+            setIsLoading(false);
+            return;
+          }
+
+          const requiresFixedBlockSelection =
+            billingToUse === 'FAST' && fixedBlocks.length > 0;
+
           if (
-            billingToUse === 'FAST' &&
+            requiresFixedBlockSelection &&
             (!selectedFixedBlockId || fixedBlocks.length === 0)
           ) {
             alert('Välj en fast post innan du checkar in på fast debitering.');
@@ -330,11 +419,15 @@ useEffect(() => {
             return;
           }
 
-          await onCheckIn(
-            selectedProjectId,
-            billingToUse,
-            billingToUse === 'FAST' ? selectedFixedBlockId : null,
-          );
+          await onCheckIn({
+            projectId: selectedProjectId,
+            billingType: billingToUse,
+            fixedBlockId:
+              billingToUse === 'FAST' && fixedBlocks.length > 0
+                ? selectedFixedBlockId
+                : null,
+            ataId: selectedAtaId,
+          });
         } catch (error) {
           console.error('Error checking in:', error);
         } finally {
@@ -494,9 +587,12 @@ useEffect(() => {
   const handleProjectSelect = (id: string) => {
     setSelectedProjectId(id);
     setShowDropdown(false);
-  setSelectedFixedBlockId('');
-  setFixedBlocks([]);
-  setFixedBlocksError(null);
+    setSelectedFixedBlockId('');
+    setFixedBlocks([]);
+    setFixedBlocksError(null);
+    setSelectedAtaId(null);
+    setAtas([]);
+    setAtasError(null);
     onProjectChange?.(id);
   };
 
@@ -829,6 +925,41 @@ const showFixedBlockPicker =
                   Debitering: {selectedProjectDetails.billing_mode === 'FAST_ONLY' ? 'Fast' : 'Löpande'}
                 </div>
               )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-gray-700 dark:text-[#ffe5c7]">
+                  ÄTA (valfritt)
+                </label>
+                {atasLoading ? (
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Hämtar ÄTA...
+                  </div>
+                ) : atas.length > 0 ? (
+                  <Select
+                    value={selectedAtaId ?? ''}
+                    onValueChange={(value) => {
+                      const normalized = value === '' ? null : value;
+                      setSelectedAtaId(normalized);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Välj ÄTA" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Ingen ÄTA</SelectItem>
+                      {atas.map((ata) => (
+                        <SelectItem key={ata.id} value={ata.id}>
+                          {ata.ata_number ? `${ata.ata_number} – ` : ''}
+                          {ata.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">Inga ÄTA i detta projekt ännu.</p>
+                )}
+                {atasError && <p className="text-[11px] text-red-600">{atasError}</p>}
+              </div>
 
               {showFixedBlockPicker && (
                 <div className="space-y-1">

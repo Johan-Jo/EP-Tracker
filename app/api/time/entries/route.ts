@@ -182,6 +182,7 @@ export async function POST(request: NextRequest) {
 				notes: data.notes,
 				billing_type: data.billing_type ?? 'LOPANDE',
 				fixed_block_id: data.billing_type === 'FAST' ? data.fixed_block_id ?? null : null,
+				ata_id: data.ata_id ?? null,
 				status: 'draft',
 			})
 			.select('*')

@@ -78,7 +78,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
   }, [activeTimeEntry]);
 
   // EPIC 26: Optimistic check-in - INSTANT UI, background sync!
-  const handleCheckIn = async (projectId: string, billingType: BillingType, fixedBlockId?: string | null) => {
+  const handleCheckIn = async ({ projectId, billingType, fixedBlockId, ataId }: { projectId: string; billingType: BillingType; fixedBlockId?: string | null; ataId?: string | null }) => {
     const project = allProjects.find(p => p.id === projectId);
     const tempId = `temp-${Date.now()}`;
     const startTime = new Date().toISOString();
@@ -90,6 +90,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
       billing_type: billingType,
       projects: project ? { id: project.id, name: project.name } : null,
       fixed_block_id: fixedBlockId ?? null,
+      ata_id: ataId ?? null,
     });
 
     // 🔄 Background sync - user doesn't wait for this!
@@ -101,6 +102,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
         start_at: startTime,
         billing_type: billingType,
         fixed_block_id: fixedBlockId ?? null,
+        ata_id: ataId ?? null,
       }),
     })
       .then(async (response) => {
@@ -116,6 +118,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
           start_at: data.entry.start_at,
           billing_type: data.entry.billing_type,
           fixed_block_id: data.entry.fixed_block_id,
+          ata_id: data.entry.ata_id,
           projects: project ? { id: project.id, name: project.name } : null,
         });
         // Invalidate time entries queries so time page shows new entry
@@ -315,6 +318,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
           }
           startTime={optimisticTimeEntry?.start_at}
           activeBillingType={optimisticTimeEntry?.billing_type ?? null}
+          activeAtaId={optimisticTimeEntry?.ata_id ?? null}
           availableProjects={allProjects}
           onCheckIn={handleCheckIn}
           onCheckOut={handleCheckOut}

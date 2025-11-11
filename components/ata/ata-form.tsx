@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,18 +16,103 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { SignatureInput } from '@/components/shared/signature-input';
 import { toast } from 'sonner';
+import { billingTypeEnum, billingTypeOptions, type BillingType } from '@/lib/schemas/billing-types';
 
-const ataSchema = z.object({
-	project_id: z.string().uuid('Välj ett projekt'),
-	title: z.string().min(1, 'Titel krävs'),
-	description: z.string().optional(),
-	qty: z.string().optional(),
-	unit: z.string().optional(),
-	unit_price_sek: z.string().optional(),
-	ata_number: z.string().optional(),
-});
+const ataFormSchema = z
+	.object({
+		project_id: z.string().uuid({ message: 'Välj ett projekt' }),
+		title: z.string().min(1, 'Titel krävs'),
+		description: z.string().optional().nullable(),
+		qty: z.string().optional(),
+		unit: z.string().optional().nullable(),
+		unit_price_sek: z.string().optional(),
+		ata_number: z.string().optional().nullable(),
+		billing_type: z.union([billingTypeEnum, z.literal('')]),
+		fixed_amount_sek: z.string().optional(),
+	})
+	.superRefine((data, ctx) => {
+		if (!data.billing_type || data.billing_type === '') {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Välj debitering',
+				path: ['billing_type'],
+			});
+		}
 
-type AtaFormData = z.infer<typeof ataSchema>;
+		if (data.billing_type === 'FAST') {
+			const parsedFixed = parseNumberString(data.fixed_amount_sek);
+			if (!data.fixed_amount_sek || data.fixed_amount_sek.trim() === '') {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Fast belopp krävs',
+					path: ['fixed_amount_sek'],
+				});
+			} else if (parsedFixed === null || !Number.isFinite(parsedFixed) || parsedFixed <= 0) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Ange ett giltigt fast belopp större än 0',
+					path: ['fixed_amount_sek'],
+				});
+			}
+		}
+
+		if (data.billing_type === 'LOPANDE') {
+			if (data.qty && parseNumberString(data.qty) === null) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Ange ett giltigt tal',
+					path: ['qty'],
+				});
+			}
+			if (data.unit_price_sek && parseNumberString(data.unit_price_sek) === null) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Ange ett giltigt à-pris',
+					path: ['unit_price_sek'],
+				});
+			}
+			if (data.unit && data.unit.length > 10) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Enhet får vara max 10 tecken',
+					path: ['unit'],
+				});
+			}
+		}
+	});
+
+type AtaFormValues = z.infer<typeof ataFormSchema>;
+
+type CreateAtaPayload = {
+	project_id: string;
+	title: string;
+	description: string | null;
+	qty: number | null;
+	unit: string | null;
+	unit_price_sek: number | null;
+	ata_number: string | null;
+	billing_type: BillingType;
+	fixed_amount_sek: number | null;
+	status: 'draft' | 'pending_approval';
+	signed_by_name?: string | null;
+	signed_at?: string | null;
+};
+
+interface ProjectOption {
+	id: string;
+	name: string;
+	project_number: string | null;
+	billing_mode: 'FAST_ONLY' | 'LOPANDE_ONLY' | 'BOTH';
+	default_ata_billing_type: BillingType;
+}
+
+const parseNumberString = (value?: string | null): number | null => {
+	if (value === undefined || value === null) return null;
+	const normalized = value.replace(',', '.').trim();
+	if (normalized === '') return null;
+	const parsed = Number(normalized);
+	return Number.isFinite(parsed) ? parsed : null;
+};
 
 interface AtaFormProps {
 	projectId?: string;
@@ -52,26 +137,31 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 		formState: { errors },
 		watch,
 		setValue,
-	} = useForm<AtaFormData>({
-		resolver: zodResolver(ataSchema),
+	} = useForm<AtaFormValues>({
+		resolver: zodResolver(ataFormSchema),
 		defaultValues: {
 			project_id: projectId || '',
+			title: '',
+			description: '',
+			qty: '',
+			unit: '',
+			unit_price_sek: '',
+			ata_number: '',
+			billing_type: '',
+			fixed_amount_sek: '',
 		},
 	});
 
 	const createAtaMutation = useMutation({
-		mutationFn: async (data: AtaFormData) => {
-			// Determine status based on whether it's submitted for approval
-			const status = submitAsPending ? 'pending_approval' : 'draft';
-			
-			// Create ÄTA entry with signature if provided
+		mutationFn: async (payload: CreateAtaPayload) => {
 			const ataData = {
-				...data,
-				status,
-				...(signature && {
-					signed_by_name: signature.name,
-					signed_at: signature.timestamp,
-				}),
+				...payload,
+				qty: payload.qty ?? null,
+				unit: payload.unit ?? null,
+				unit_price_sek: payload.unit_price_sek ?? null,
+				fixed_amount_sek: payload.billing_type === 'FAST' ? payload.fixed_amount_sek ?? null : null,
+				signed_by_name: payload.signed_by_name ?? null,
+				signed_at: payload.signed_at ?? null,
 			};
 
 			const response = await fetch('/api/ata', {
@@ -94,10 +184,11 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 
 			return ata;
 		},
-		onSuccess: () => {
-			const message = submitAsPending 
-				? 'ÄTA skickad för godkännande!' 
-				: 'ÄTA sparad som utkast!';
+		onSuccess: (_result, variables) => {
+			const message =
+				variables.status === 'pending_approval'
+					? 'ÄTA skickad för godkännande!'
+					: 'ÄTA sparad som utkast!';
 			toast.success(message);
 			queryClient.invalidateQueries({ queryKey: ['ata'] });
 			if (onSuccess) {
@@ -179,28 +270,100 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 		setPhotosPreviews(photosPreviews.filter((_, i) => i !== index));
 	};
 
-	const onSubmit = (data: AtaFormData) => {
-		createAtaMutation.mutate(data);
-	};
-
-	const qty = watch('qty');
-	const unitPrice = watch('unit_price_sek');
-	const total = qty && unitPrice ? Number(qty) * Number(unitPrice) : 0;
-
 	const selectedProjectId = watch('project_id');
+	const billingType = watch('billing_type');
+	const qtyValue = watch('qty');
+	const unitPriceValue = watch('unit_price_sek');
+	const unitValue = watch('unit');
+	const fixedAmountValue = watch('fixed_amount_sek');
+
+	const qtyNumber = parseNumberString(qtyValue);
+	const unitPriceNumber = parseNumberString(unitPriceValue);
+	const fixedAmountNumber = parseNumberString(fixedAmountValue);
+
+	const calculatedTotal =
+		billingType === 'FAST'
+			? fixedAmountNumber ?? null
+			: qtyNumber !== null && unitPriceNumber !== null
+			? qtyNumber * unitPriceNumber
+			: null;
+
+	const showTotalCard = calculatedTotal !== null && Number.isFinite(calculatedTotal) && calculatedTotal > 0;
 
 	// Fetch projects
-	const { data: projects } = useQuery({
+	const { data: projects } = useQuery<ProjectOption[]>({
 		queryKey: ['projects'],
 		queryFn: async () => {
 			const { data, error } = await supabase
 				.from('projects')
-				.select('id, name, project_number')
+				.select('id, name, project_number, billing_mode, default_ata_billing_type')
 				.order('name');
 			if (error) throw error;
 			return data || [];
 		},
 	});
+
+	const selectedProjectDetails = useMemo(
+		() => projects?.find((project) => project.id === selectedProjectId) ?? null,
+		[projects, selectedProjectId],
+	);
+
+	const effectiveBillingMode = selectedProjectDetails?.billing_mode ?? 'LOPANDE_ONLY';
+
+	useEffect(() => {
+		if (!selectedProjectId) {
+			if (billingType !== '') {
+				setValue('billing_type', '', { shouldDirty: true });
+			}
+			return;
+		}
+
+		const mode = selectedProjectDetails?.billing_mode ?? 'LOPANDE_ONLY';
+
+		if (mode === 'FAST_ONLY' && billingType !== 'FAST') {
+			setValue('billing_type', 'FAST', { shouldDirty: true });
+		} else if (mode === 'LOPANDE_ONLY' && billingType !== 'LOPANDE') {
+			setValue('billing_type', 'LOPANDE', { shouldDirty: true });
+		} else if (mode === 'BOTH' && (!billingType || billingType === '')) {
+			setValue('billing_type', selectedProjectDetails?.default_ata_billing_type ?? 'LOPANDE', {
+				shouldDirty: false,
+			});
+		}
+	}, [selectedProjectId, selectedProjectDetails, billingType, setValue]);
+
+	useEffect(() => {
+		if (billingType === 'FAST') {
+			if (qtyValue) setValue('qty', '', { shouldDirty: true });
+			if (unitPriceValue) setValue('unit_price_sek', '', { shouldDirty: true });
+			if (unitValue) setValue('unit', '', { shouldDirty: true });
+		} else if (billingType === 'LOPANDE') {
+			if (fixedAmountValue) setValue('fixed_amount_sek', '', { shouldDirty: true });
+		}
+	}, [billingType, qtyValue, unitPriceValue, unitValue, fixedAmountValue, setValue]);
+
+	const onSubmit = (data: AtaFormValues) => {
+		const resolvedBillingType: BillingType =
+			data.billing_type && data.billing_type !== ''
+				? (data.billing_type as BillingType)
+				: selectedProjectDetails?.default_ata_billing_type ?? 'LOPANDE';
+
+		const payload: CreateAtaPayload = {
+			project_id: data.project_id,
+			title: data.title,
+			description: data.description?.trim() ? data.description.trim() : null,
+			qty: resolvedBillingType === 'FAST' ? null : parseNumberString(data.qty),
+			unit: resolvedBillingType === 'FAST' ? null : data.unit?.trim() || null,
+			unit_price_sek: resolvedBillingType === 'FAST' ? null : parseNumberString(data.unit_price_sek),
+			ata_number: data.ata_number?.trim() || null,
+			billing_type: resolvedBillingType,
+			fixed_amount_sek: resolvedBillingType === 'FAST' ? parseNumberString(data.fixed_amount_sek) : null,
+			status: submitAsPending ? 'pending_approval' : 'draft',
+			signed_by_name: signature?.name ?? null,
+			signed_at: signature?.timestamp ?? null,
+		};
+
+		createAtaMutation.mutate(payload);
+	};
 
 	return (
 		<form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -209,7 +372,7 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 					<Label htmlFor="project_id">Projekt *</Label>
 					<Select
 						value={selectedProjectId || ''}
-						onValueChange={(value) => setValue('project_id', value)}
+						onValueChange={(value) => setValue('project_id', value, { shouldDirty: true, shouldValidate: true })}
 					>
 						<SelectTrigger>
 							<SelectValue placeholder="Välj projekt" />
@@ -217,7 +380,8 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 						<SelectContent>
 							{projects?.map((project) => (
 								<SelectItem key={project.id} value={project.id}>
-									{project.project_number ? `${project.project_number} - ` : ''}{project.name}
+									{project.project_number ? `${project.project_number} - ` : ''}
+									{project.name}
 								</SelectItem>
 							))}
 						</SelectContent>
@@ -227,82 +391,121 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 					)}
 				</div>
 
+				{selectedProjectId && (
+					<div>
+						<Label>Debitering *</Label>
+						{effectiveBillingMode === 'BOTH' ? (
+							<Select
+								value={billingType || undefined}
+								onValueChange={(value) =>
+									setValue('billing_type', value as BillingType, {
+										shouldDirty: true,
+										shouldValidate: true,
+									})
+								}
+							>
+								<SelectTrigger>
+									<SelectValue placeholder="Välj debitering" />
+								</SelectTrigger>
+								<SelectContent>
+									{billingTypeOptions.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						) : (
+							<div className="rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+								Debitering: {effectiveBillingMode === 'FAST_ONLY' ? 'Fast' : 'Löpande'}
+							</div>
+						)}
+						{errors.billing_type && (
+							<p className="text-sm text-destructive mt-1">{errors.billing_type.message}</p>
+						)}
+						{billingType === 'FAST' && (
+							<p className="text-xs text-muted-foreground mt-1">
+								Fast belopp kopplas till huvudprojektets fasta budget och visas som en fast rad på
+								fakturaunderlaget.
+							</p>
+						)}
+					</div>
+				)}
+
 				<div>
 					<Label htmlFor="ata_number">ÄTA-nummer (valfritt)</Label>
-					<Input
-						id="ata_number"
-						{...register('ata_number')}
-						placeholder="t.ex. ÄTA-001"
-					/>
+					<Input id="ata_number" {...register('ata_number')} placeholder="t.ex. ÄTA-001" />
 				</div>
 
 				<div>
 					<Label htmlFor="title">Titel *</Label>
-					<Input
-						id="title"
-						{...register('title')}
-						placeholder="t.ex. Extra eluttag i kök"
-					/>
-					{errors.title && (
-						<p className="text-sm text-destructive mt-1">{errors.title.message}</p>
-					)}
+					<Input id="title" {...register('title')} placeholder="t.ex. Extra eluttag i kök" />
+					{errors.title && <p className="text-sm text-destructive mt-1">{errors.title.message}</p>}
 				</div>
 
 				<div>
 					<Label htmlFor="description">Beskrivning</Label>
-					<Textarea
-						id="description"
-						{...register('description')}
-						placeholder="Beskriv arbetet i detalj..."
-						rows={4}
-					/>
+					<Textarea id="description" {...register('description')} placeholder="Beskriv arbetet i detalj..." rows={4} />
 				</div>
 
-				<div className="grid grid-cols-3 gap-4">
+				{billingType === 'FAST' ? (
 					<div>
-						<Label htmlFor="qty">Kvantitet</Label>
+						<Label htmlFor="fixed_amount_sek">Fast belopp (SEK) *</Label>
 						<Input
-							id="qty"
+							id="fixed_amount_sek"
 							type="number"
 							step="0.01"
-							{...register('qty')}
-							placeholder="0"
-						/>
-						{errors.qty && (
-							<p className="text-sm text-destructive mt-1">{errors.qty.message}</p>
-						)}
-					</div>
-
-					<div>
-						<Label htmlFor="unit">Enhet</Label>
-						<Input
-							id="unit"
-							{...register('unit')}
-							placeholder="st, m², tim"
-						/>
-					</div>
-
-					<div>
-						<Label htmlFor="unit_price_sek">À-pris (SEK)</Label>
-						<Input
-							id="unit_price_sek"
-							type="number"
-							step="0.01"
-							{...register('unit_price_sek')}
+							inputMode="decimal"
+							{...register('fixed_amount_sek')}
 							placeholder="0.00"
 						/>
-						{errors.unit_price_sek && (
-							<p className="text-sm text-destructive mt-1">{errors.unit_price_sek.message}</p>
+						{errors.fixed_amount_sek && (
+							<p className="text-sm text-destructive mt-1">{errors.fixed_amount_sek.message}</p>
 						)}
+						<p className="text-xs text-muted-foreground mt-1">Ange totalbeloppet inklusive moms.</p>
 					</div>
-				</div>
+				) : (
+					<div className="grid grid-cols-3 gap-4">
+						<div>
+							<Label htmlFor="qty">Kvantitet</Label>
+							<Input id="qty" type="number" step="0.01" {...register('qty')} placeholder="0" />
+							{errors.qty && <p className="text-sm text-destructive mt-1">{errors.qty.message}</p>}
+						</div>
 
-				{total > 0 && (
+						<div>
+							<Label htmlFor="unit">Enhet</Label>
+							<Input id="unit" {...register('unit')} placeholder="st, m², tim" />
+						</div>
+
+						<div>
+							<Label htmlFor="unit_price_sek">À-pris (SEK)</Label>
+							<Input
+								id="unit_price_sek"
+								type="number"
+								step="0.01"
+								inputMode="decimal"
+								{...register('unit_price_sek')}
+								placeholder="0.00"
+							/>
+							{errors.unit_price_sek && (
+								<p className="text-sm text-destructive mt-1">{errors.unit_price_sek.message}</p>
+							)}
+						</div>
+					</div>
+				)}
+
+				{showTotalCard && calculatedTotal !== null && (
 					<Card className="bg-muted">
 						<CardContent className="p-4">
 							<div className="flex justify-between items-center">
 								<span className="text-sm font-medium">Totalt:</span>
-								<span className="text-lg font-bold">{total.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} SEK</span>
+								<span className="text-lg font-bold">
+									{calculatedTotal.toLocaleString('sv-SE', {
+										minimumFractionDigits: 2,
+										maximumFractionDigits: 2,
+									})}{' '}
+									SEK
+								</span>
 							</div>
 						</CardContent>
 					</Card>

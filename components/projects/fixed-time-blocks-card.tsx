@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
+import { z } from 'zod';
 import {
 	Card,
 	CardContent,
@@ -50,7 +51,7 @@ interface FixedTimeBlocksCardProps {
 	projectHourlyRateSek: number | null;
 }
 
-type FormState = FixedTimeBlockInput;
+type FormState = z.input<typeof fixedTimeBlockSchema>;
 
 function formatAmount(amount: number | null | undefined) {
 	if (!amount) return '–';
@@ -122,7 +123,7 @@ export function FixedTimeBlocksCard({
 	}, [billingMode]);
 
 	const createMutation = useMutation({
-		mutationFn: async (payload: FormState) => {
+		mutationFn: async (payload: FixedTimeBlockInput) => {
 			const res = await fetch('/api/fixed-time-blocks', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -199,15 +200,18 @@ export function FixedTimeBlocksCard({
 	};
 
 	const handleSubmit = form.handleSubmit((values) => {
+		const parsed = fixedTimeBlockSchema.parse(values);
+
 		if (editingBlock) {
-			const parsed = fixedTimeBlockUpdateSchema.safeParse(values);
-			if (!parsed.success) {
+			const updateParsed = fixedTimeBlockUpdateSchema.safeParse(parsed);
+
+			if (!updateParsed.success) {
 				form.setError('name', { message: 'Kontrollera formuläret' });
 				return;
 			}
-			updateMutation.mutate({ id: editingBlock.id, ...parsed.data });
+			updateMutation.mutate({ id: editingBlock.id, ...updateParsed.data });
 		} else {
-			createMutation.mutate(values);
+			createMutation.mutate(parsed);
 		}
 	});
 

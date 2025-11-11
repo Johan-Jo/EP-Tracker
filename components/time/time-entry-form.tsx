@@ -33,6 +33,13 @@ type FixedBlockOption = {
 	status: 'open' | 'closed';
 };
 
+type AtaOption = {
+	id: string;
+	title: string;
+	ata_number: string | null;
+	billing_type: BillingType;
+};
+
 type TimeEntryFormValues = Omit<CreateTimeEntryInput, 'billing_type' | 'fixed_block_id'> & {
 	billing_type: '' | BillingType;
 	fixed_block_id: string | null;
@@ -77,12 +84,14 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 					notes: initialData.notes,
 					billing_type: initialData.billing_type ?? 'LOPANDE',
 					fixed_block_id: initialData.fixed_block_id ?? null,
+					ata_id: initialData.ata_id ?? null,
 			  }
 			: {
 					project_id: '',
 					start_at: new Date().toISOString().slice(0, 16),
 					billing_type: '',
 					fixed_block_id: null,
+					ata_id: null,
 			  },
 	});
 
@@ -99,6 +108,7 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 				notes: initialData.notes,
 				billing_type: initialData.billing_type ?? 'LOPANDE',
 				fixed_block_id: initialData.fixed_block_id ?? null,
+				ata_id: initialData.ata_id ?? null,
 			});
 		}
 	}, [initialData, reset]);
@@ -190,9 +200,41 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 			(effectiveBillingMode === 'FAST_ONLY' || effectiveBillingMode === 'BOTH'),
 	});
 
+	const {
+		data: atas = [],
+		isLoading: atasLoading,
+		error: atasError,
+	} = useQuery<AtaOption[]>({
+		queryKey: ['atas', selectedProjectId],
+		queryFn: async () => {
+			if (!selectedProjectId) return [];
+			const { data, error } = await supabase
+				.from('ata')
+				.select('id, title, ata_number, billing_type, status, org_id')
+				.eq('project_id', selectedProjectId)
+				.eq('org_id', orgId)
+				.not('status', 'eq', 'rejected')
+				.order('created_at', { ascending: false });
+
+			if (error) throw error;
+			return (
+				data || []
+			).map((ata) => ({
+				id: ata.id,
+				title: ata.title,
+				ata_number: ata.ata_number,
+				billing_type: ata.billing_type as BillingType,
+			}));
+		},
+		enabled: !!selectedProjectId,
+	});
+
+	const atasErrorMessage = atasError instanceof Error ? atasError.message : undefined;
+
 	const billingType = watch('billing_type') as TimeEntryFormValues['billing_type'];
-	const fixedBlockId = watch('fixed_block_id') as TimeEntryFormValues['fixed_block_id'];
-	const hasFixedBlocks = fixedBlocks.length > 0;
+const fixedBlockId = watch('fixed_block_id') as string | null | undefined;
+const ataId = watch('ata_id') as string | null | undefined;
+const hasFixedBlocks = fixedBlocks.length > 0;
 
 useEffect(() => {
 	if (process.env.NODE_ENV !== 'production') {
@@ -200,6 +242,7 @@ useEffect(() => {
 			projectId: selectedProjectId ?? null,
 			billingType,
 			fixedBlockId,
+			ataId,
 			projectsCount: projects?.length ?? 0,
 			hasProjectDetails: Boolean(selectedProjectDetails),
 			effectiveBillingMode,
@@ -213,6 +256,9 @@ useEffect(() => {
 		}
 		if (fixedBlockId) {
 			setValue('fixed_block_id', null, { shouldDirty: true });
+		}
+		if (ataId) {
+			setValue('ata_id', null, { shouldDirty: false });
 		}
 		setBillingInteractionRequired(false);
 		return;
@@ -253,7 +299,30 @@ useEffect(() => {
 	if (billingType !== 'FAST' && fixedBlockId) {
 		setValue('fixed_block_id', null, { shouldDirty: true });
 	}
-}, [selectedProjectId, selectedProjectDetails, billingType, fixedBlockId, setValue]);
+
+	if (billingType !== 'FAST' && ataId) {
+		const selectedAta = atas.find((ata) => ata.id === ataId);
+		if (!selectedAta || selectedAta.billing_type === 'FAST') {
+			setValue('ata_id', null, { shouldDirty: true });
+		}
+	}
+}, [selectedProjectId, selectedProjectDetails, billingType, fixedBlockId, ataId, atas, setValue]);
+
+useEffect(() => {
+	if (!selectedProjectId || !ataId) return;
+	const selectedAta = atas.find((ata) => ata.id === ataId);
+	if (!selectedAta) {
+		setValue('ata_id', null, { shouldDirty: true });
+		return;
+	}
+
+	if (selectedAta.billing_type === 'FAST' && billingType !== 'FAST') {
+		setValue('billing_type', 'FAST', { shouldDirty: true });
+	}
+	if (selectedAta.billing_type === 'LOPANDE' && billingType !== 'LOPANDE') {
+		setValue('billing_type', 'LOPANDE', { shouldDirty: true });
+	}
+}, [selectedProjectId, ataId, atas, billingType, setValue]);
 
 	const fixedBlocksErrorMessage =
 		fixedBlocksError instanceof Error ? fixedBlocksError.message : undefined;
@@ -263,6 +332,7 @@ useEffect(() => {
 			...data,
 			billing_type: (data.billing_type === '' ? 'LOPANDE' : data.billing_type) as BillingType,
 			fixed_block_id: data.fixed_block_id ?? null,
+			ata_id: data.ata_id ?? null,
 		};
 
 		setIsSubmitting(true);
@@ -297,6 +367,7 @@ useEffect(() => {
 					stop_at: null,
 					billing_type: 'LOPANDE',
 					fixed_block_id: null,
+					ata_id: null,
 				});
 
 				// Show success message
@@ -540,6 +611,43 @@ useEffect(() => {
 								<p className="text-xs text-muted-foreground">
 									Fast tid måste kopplas till en fast fakturapost.
 								</p>
+							)}
+						</div>
+					)}
+
+					{/* ATA Selection (Optional) */}
+					{selectedProjectId && (
+						<div>
+							<Label htmlFor="ata_id">ÄTA (valfritt)</Label>
+							{atasLoading ? (
+								<div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+									<Loader2 className="w-4 h-4 animate-spin" /> Hämtar ÄTA...
+								</div>
+							) : atas.length > 0 ? (
+								<Select
+									value={ataId ?? ''}
+									onValueChange={(value) => {
+										const normalized = value === '' ? null : value;
+										setValue('ata_id', normalized, { shouldDirty: true, shouldValidate: true });
+									}}
+								>
+									<SelectTrigger id="ata_id">
+										<SelectValue placeholder="Välj ÄTA" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="">Ingen ÄTA</SelectItem>
+										{atas.map((ata) => (
+											<SelectItem key={ata.id} value={ata.id}>
+												{ata.ata_number ? `${ata.ata_number} – ` : ''}{ata.title}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							) : (
+								<p className="text-sm text-muted-foreground mt-1">Inga ÄTA i detta projekt ännu.</p>
+							)}
+							{atasErrorMessage && (
+								<p className="text-sm text-destructive mt-1">{atasErrorMessage}</p>
 							)}
 						</div>
 					)}
