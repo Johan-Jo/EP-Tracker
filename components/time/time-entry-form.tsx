@@ -18,6 +18,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import Link from 'next/link';
 import { billingTypeOptions, type BillingType } from '@/lib/schemas/billing-types';
 
+const NO_ATA_SELECT_VALUE = '__no_ata__';
+const NO_PHASE_SELECT_VALUE = '__no_phase__';
+const NO_WORK_ORDER_SELECT_VALUE = '__no_work_order__';
+
 type ProjectOption = {
 	id: string;
 	name: string;
@@ -609,7 +613,7 @@ useEffect(() => {
 							)}
 							{hasFixedBlocks && (
 								<p className="text-xs text-muted-foreground">
-									Fast tid måste kopplas till en fast fakturapost.
+									Fast tid måste kopplas till en fast post eller ÄTA.
 								</p>
 							)}
 						</div>
@@ -625,9 +629,9 @@ useEffect(() => {
 								</div>
 							) : atas.length > 0 ? (
 								<Select
-									value={ataId ?? ''}
+									value={ataId ?? NO_ATA_SELECT_VALUE}
 									onValueChange={(value) => {
-										const normalized = value === '' ? null : value;
+										const normalized = value === NO_ATA_SELECT_VALUE ? null : value;
 										setValue('ata_id', normalized, { shouldDirty: true, shouldValidate: true });
 									}}
 								>
@@ -635,7 +639,7 @@ useEffect(() => {
 										<SelectValue placeholder="Välj ÄTA" />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="">Ingen ÄTA</SelectItem>
+										<SelectItem value={NO_ATA_SELECT_VALUE}>Ingen ÄTA</SelectItem>
 										{atas.map((ata) => (
 											<SelectItem key={ata.id} value={ata.id}>
 												{ata.ata_number ? `${ata.ata_number} – ` : ''}{ata.title}
@@ -658,14 +662,16 @@ useEffect(() => {
 							<Label htmlFor="phase_id">Fas (valfritt)</Label>
 							<Select
 								name="phase_id"
-								value={watch('phase_id') || ''}
-								onValueChange={(value) => setValue('phase_id', value || null)}
+								value={watch('phase_id') ?? NO_PHASE_SELECT_VALUE}
+								onValueChange={(value) =>
+									setValue('phase_id', value === NO_PHASE_SELECT_VALUE ? null : value)
+								}
 							>
 								<SelectTrigger id="phase_id">
 									<SelectValue placeholder="Välj fas" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="">Ingen fas</SelectItem>
+									<SelectItem value={NO_PHASE_SELECT_VALUE}>Ingen fas</SelectItem>
 									{phases?.map((phase) => (
 										<SelectItem key={phase.id} value={phase.id}>
 											{phase.name}
@@ -700,14 +706,16 @@ useEffect(() => {
 							<Label htmlFor="work_order_id">Arbetsorder (valfritt)</Label>
 							<Select
 								name="work_order_id"
-								value={watch('work_order_id') || ''}
-								onValueChange={(value) => setValue('work_order_id', value || null)}
+								value={watch('work_order_id') ?? NO_WORK_ORDER_SELECT_VALUE}
+								onValueChange={(value) =>
+									setValue('work_order_id', value === NO_WORK_ORDER_SELECT_VALUE ? null : value)
+								}
 							>
 								<SelectTrigger id="work_order_id">
 									<SelectValue placeholder="Välj arbetsorder" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="">Ingen arbetsorder</SelectItem>
+									<SelectItem value={NO_WORK_ORDER_SELECT_VALUE}>Ingen arbetsorder</SelectItem>
 									{workOrders?.map((wo) => (
 										<SelectItem key={wo.id} value={wo.id}>
 											{wo.name}

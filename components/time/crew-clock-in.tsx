@@ -14,6 +14,8 @@ import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
+const NO_PHASE_SELECT_VALUE = '__no_phase__';
+
 interface CrewClockInProps {
 	orgId: string;
 	onSuccess?: () => void;
@@ -225,14 +227,16 @@ export function CrewClockIn({ orgId, onSuccess }: CrewClockInProps) {
 						<div className="space-y-2">
 							<Label>Fas (valfritt)</Label>
 							<Select
-								value={watch('phase_id') || ''}
-								onValueChange={(value) => setValue('phase_id', value || null)}
+								value={watch('phase_id') ?? NO_PHASE_SELECT_VALUE}
+								onValueChange={(value) =>
+									setValue('phase_id', value === NO_PHASE_SELECT_VALUE ? null : value)
+								}
 							>
 								<SelectTrigger>
 									<SelectValue placeholder="Välj fas" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="">Ingen fas</SelectItem>
+									<SelectItem value={NO_PHASE_SELECT_VALUE}>Ingen fas</SelectItem>
 									{phases?.map((phase) => (
 										<SelectItem key={phase.id} value={phase.id}>
 											{phase.name}

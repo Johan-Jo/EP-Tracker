@@ -16,6 +16,8 @@ import { Package, Loader2, Camera, X } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 
+const NO_PHASE_SELECT_VALUE = '__no_phase__';
+
 // Lazy load PhotoGalleryViewer - only loads when user opens gallery
 const PhotoGalleryViewer = dynamic(() => import('@/components/ui/photo-gallery-viewer').then(m => ({ default: m.PhotoGalleryViewer })), {
 	ssr: false,
@@ -265,14 +267,16 @@ export function MaterialForm({ orgId, onSuccess, onCancel, initialData }: Materi
 							<Label htmlFor="phase_id">Fas (valfritt)</Label>
 							<Select
 								name="phase_id"
-								value={watch('phase_id') || ''}
-								onValueChange={(value) => setValue('phase_id', value || null)}
+								value={watch('phase_id') ?? NO_PHASE_SELECT_VALUE}
+								onValueChange={(value) =>
+									setValue('phase_id', value === NO_PHASE_SELECT_VALUE ? null : value)
+								}
 							>
 								<SelectTrigger id="phase_id">
 									<SelectValue placeholder="Välj fas" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="">Ingen fas</SelectItem>
+									<SelectItem value={NO_PHASE_SELECT_VALUE}>Ingen fas</SelectItem>
 									{phases?.map((phase) => (
 										<SelectItem key={phase.id} value={phase.id}>
 											{phase.name}

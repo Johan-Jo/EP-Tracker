@@ -10,6 +10,10 @@ import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { billingTypeOptions, type BillingType } from '@/lib/schemas/billing-types';
 
+const NO_PHASE_SELECT_VALUE = '__no_phase__';
+const NO_FIXED_BLOCK_SELECT_VALUE = '__no_fixed_block__';
+const NO_FIXED_BLOCK_DISABLED_VALUE = '__no_fixed_block_disabled__';
+
 type ProjectOption = {
 	id: string;
 	name: string;
@@ -35,9 +39,9 @@ export function TimerWidget({ userId, orgId, inline = false }: TimerWidgetProps)
 	const { isRunning, currentEntry, startTimer, stopTimer } = useTimerStore();
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [selectedProject, setSelectedProject] = useState<string>('');
-	const [selectedPhase, setSelectedPhase] = useState<string>('');
+	const [selectedPhase, setSelectedPhase] = useState<string>(NO_PHASE_SELECT_VALUE);
 	const [selectedBillingType, setSelectedBillingType] = useState<BillingType>('LOPANDE');
-	const [selectedFixedBlock, setSelectedFixedBlock] = useState<string>('');
+	const [selectedFixedBlock, setSelectedFixedBlock] = useState<string>(NO_FIXED_BLOCK_SELECT_VALUE);
 	const [fixedBlocks, setFixedBlocks] = useState<FixedBlockOption[]>([]);
 	const [fixedBlocksLoading, setFixedBlocksLoading] = useState(false);
 	const [fixedBlocksError, setFixedBlocksError] = useState<string | null>(null);
@@ -69,9 +73,10 @@ export function TimerWidget({ userId, orgId, inline = false }: TimerWidgetProps)
 	useEffect(() => {
 		if (!selectedProjectDetails) {
 			setSelectedBillingType('LOPANDE');
-		setSelectedFixedBlock('');
-		setFixedBlocks([]);
-		setFixedBlocksError(null);
+			setSelectedFixedBlock(NO_FIXED_BLOCK_SELECT_VALUE);
+			setSelectedPhase(NO_PHASE_SELECT_VALUE);
+			setFixedBlocks([]);
+			setFixedBlocksError(null);
 			return;
 		}
 
@@ -97,7 +102,7 @@ useEffect(() => {
 			selectedProjectDetails.billing_mode !== 'BOTH')
 	) {
 		setFixedBlocks([]);
-		setSelectedFixedBlock('');
+		setSelectedFixedBlock(NO_FIXED_BLOCK_SELECT_VALUE);
 		setFixedBlocksError(null);
 		return;
 	}
@@ -133,7 +138,7 @@ useEffect(() => {
 
 useEffect(() => {
 	if (selectedBillingType !== 'FAST') {
-		setSelectedFixedBlock('');
+		setSelectedFixedBlock(NO_FIXED_BLOCK_SELECT_VALUE);
 	}
 }, [selectedBillingType]);
 
@@ -192,7 +197,7 @@ useEffect(() => {
 
 		if (
 			selectedBillingType === 'FAST' &&
-			(!selectedFixedBlock || fixedBlocks.length === 0)
+			(selectedFixedBlock === NO_FIXED_BLOCK_SELECT_VALUE || fixedBlocks.length === 0)
 		) {
 			alert('Välj en fast post innan du startar tid på detta projekt.');
 			return;
@@ -205,9 +210,14 @@ useEffect(() => {
 			id: entryId,
 			project_id: selectedProject,
 			project_name: project.name,
-			phase_id: selectedPhase || undefined,
+			phase_id: selectedPhase === NO_PHASE_SELECT_VALUE ? undefined : selectedPhase,
 			billing_type: selectedBillingType,
-			fixed_block_id: selectedBillingType === 'FAST' ? selectedFixedBlock || undefined : undefined,
+			fixed_block_id:
+				selectedBillingType === 'FAST'
+					? selectedFixedBlock === NO_FIXED_BLOCK_SELECT_VALUE
+						? undefined
+						: selectedFixedBlock
+					: undefined,
 		});
 
 		// Create time entry in database (draft, no stop time)
@@ -217,10 +227,15 @@ useEffect(() => {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					project_id: selectedProject,
-					phase_id: selectedPhase || null,
+					phase_id: selectedPhase === NO_PHASE_SELECT_VALUE ? null : selectedPhase,
 					start_at: new Date().toISOString(),
 					billing_type: selectedBillingType,
-					fixed_block_id: selectedBillingType === 'FAST' ? selectedFixedBlock || null : null,
+					fixed_block_id:
+						selectedBillingType === 'FAST'
+							? selectedFixedBlock === NO_FIXED_BLOCK_SELECT_VALUE
+								? null
+								: selectedFixedBlock
+							: null,
 				}),
 			});
 		} catch (error) {
@@ -337,7 +352,8 @@ useEffect(() => {
 										value={selectedProject}
 										onValueChange={(value) => {
 											setSelectedProject(value);
-											setSelectedFixedBlock('');
+											setSelectedPhase(NO_PHASE_SELECT_VALUE);
+											setSelectedFixedBlock(NO_FIXED_BLOCK_SELECT_VALUE);
 											setFixedBlocks([]);
 											setFixedBlocksError(null);
 										}}
@@ -363,8 +379,8 @@ useEffect(() => {
 											<SelectTrigger>
 												<SelectValue placeholder="Välj fas" />
 											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="">Ingen fas</SelectItem>
+												<SelectContent>
+												<SelectItem value={NO_PHASE_SELECT_VALUE}>Ingen fas</SelectItem>
 												{phases?.map((phase) => (
 													<SelectItem key={phase.id} value={phase.id}>
 														{phase.name}
@@ -422,7 +438,7 @@ useEffect(() => {
 													<SelectTrigger>
 														<SelectValue placeholder="Välj fast post" />
 													</SelectTrigger>
-													<SelectContent>
+												<SelectContent>
 														{fixedBlocks.length > 0 ? (
 															fixedBlocks.map((block) => (
 																<SelectItem key={block.id} value={block.id}>
@@ -430,7 +446,7 @@ useEffect(() => {
 																</SelectItem>
 															))
 														) : (
-															<SelectItem value="" disabled>
+															<SelectItem value={NO_FIXED_BLOCK_DISABLED_VALUE} disabled>
 																Inga fasta poster – skapa i projektet
 															</SelectItem>
 														)}
@@ -453,7 +469,9 @@ useEffect(() => {
 								disabled={
 									!selectedProject ||
 									(selectedBillingType === 'FAST' &&
-										(fixedBlocksLoading || fixedBlocks.length === 0 || !selectedFixedBlock))
+										(fixedBlocksLoading ||
+											fixedBlocks.length === 0 ||
+											selectedFixedBlock === NO_FIXED_BLOCK_SELECT_VALUE))
 								}
 							>
 								<Play className="w-4 h-4 mr-2" />

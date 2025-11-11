@@ -47,7 +47,9 @@ interface TimeSliderProps {
   onProjectChange?: (projectId: string) => void;
 }
 
-export function TimeSlider({ 
+const NO_ATA_SELECT_VALUE = '__no_ata__';
+
+export function TimeSlider({
   isActive, 
   projectName, 
   projectId,
@@ -306,6 +308,12 @@ useEffect(() => {
       setSelectedAtaId(null);
     }
   }, [atas, selectedAtaId]);
+
+  useEffect(() => {
+    if (!isActive) {
+      setSelectedAtaId(null);
+    }
+  }, [isActive, selectedProjectId]);
 
   const requiresBillingSelection =
     !isActive &&
@@ -936,9 +944,9 @@ const showFixedBlockPicker =
                   </div>
                 ) : atas.length > 0 ? (
                   <Select
-                    value={selectedAtaId ?? ''}
+                    value={selectedAtaId ?? NO_ATA_SELECT_VALUE}
                     onValueChange={(value) => {
-                      const normalized = value === '' ? null : value;
+                      const normalized = value === NO_ATA_SELECT_VALUE ? null : value;
                       setSelectedAtaId(normalized);
                     }}
                   >
@@ -946,7 +954,7 @@ const showFixedBlockPicker =
                       <SelectValue placeholder="Välj ÄTA" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Ingen ÄTA</SelectItem>
+                      <SelectItem value={NO_ATA_SELECT_VALUE}>Ingen ÄTA</SelectItem>
                       {atas.map((ata) => (
                         <SelectItem key={ata.id} value={ata.id}>
                           {ata.ata_number ? `${ata.ata_number} – ` : ''}
@@ -997,7 +1005,7 @@ const showFixedBlockPicker =
                     <p className="text-xs text-red-600">{fixedBlocksError}</p>
                   )}
                   <p className="text-[11px] text-muted-foreground">
-                    Fast tid måste kopplas till en fast post.
+                    Fast tid måste kopplas till en fast post eller ÄTA.
                   </p>
                 </div>
               )}

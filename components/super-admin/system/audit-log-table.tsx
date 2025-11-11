@@ -10,6 +10,9 @@ import { Download, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import type { AuditLog } from '@/lib/super-admin/audit-logs';
 
+const ALL_ACTIONS_SELECT_VALUE = '__all_actions__';
+const ALL_RESOURCE_TYPES_SELECT_VALUE = '__all_resource_types__';
+
 interface AuditLogTableProps {
 	initialLogs: AuditLog[];
 	initialTotal: number;
@@ -149,12 +152,15 @@ export function AuditLogTable({ initialLogs, initialTotal, availableActions, ava
 				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 					<div className="space-y-2">
 						<Label htmlFor="action">Action</Label>
-						<Select value={action} onValueChange={setAction}>
+						<Select
+							value={action || ALL_ACTIONS_SELECT_VALUE}
+							onValueChange={(value) => setAction(value === ALL_ACTIONS_SELECT_VALUE ? '' : value)}
+						>
 							<SelectTrigger id="action">
 								<SelectValue placeholder="Alla" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="">Alla</SelectItem>
+								<SelectItem value={ALL_ACTIONS_SELECT_VALUE}>Alla</SelectItem>
 								{availableActions.map(a => (
 									<SelectItem key={a} value={a}>{a}</SelectItem>
 								))}
@@ -163,12 +169,17 @@ export function AuditLogTable({ initialLogs, initialTotal, availableActions, ava
 					</div>
 					<div className="space-y-2">
 						<Label htmlFor="resource_type">Resurstyp</Label>
-						<Select value={resourceType} onValueChange={setResourceType}>
+						<Select
+							value={resourceType || ALL_RESOURCE_TYPES_SELECT_VALUE}
+							onValueChange={(value) =>
+								setResourceType(value === ALL_RESOURCE_TYPES_SELECT_VALUE ? '' : value)
+							}
+						>
 							<SelectTrigger id="resource_type">
 								<SelectValue placeholder="Alla" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="">Alla</SelectItem>
+								<SelectItem value={ALL_RESOURCE_TYPES_SELECT_VALUE}>Alla</SelectItem>
 								{availableResourceTypes.map(rt => (
 									<SelectItem key={rt} value={rt}>{rt}</SelectItem>
 								))}
