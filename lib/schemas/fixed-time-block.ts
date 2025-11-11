@@ -10,10 +10,10 @@ export const fixedTimeBlockSchema = z
 		name: z.string().min(1, 'Namn krävs').max(200, 'Namnet är för långt'),
 		description: z.string().max(1000).optional().nullable(),
 		amount_sek: z
-			.number({ invalid_type_error: 'Belopp måste vara ett tal' })
+			.number({ message: 'Belopp måste vara ett tal' })
 			.positive('Belopp måste vara större än 0'),
 		vat_pct: z
-			.number({ invalid_type_error: 'Moms måste vara ett tal' })
+			.number({ message: 'Moms måste vara ett tal' })
 			.min(0, 'Moms kan inte vara negativ')
 			.max(100, 'Moms kan inte överstiga 100%')
 			.default(25),
