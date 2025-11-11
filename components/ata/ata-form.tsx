@@ -31,7 +31,7 @@ const ataFormSchema = z
 		fixed_amount_sek: z.string().optional(),
 	})
 	.superRefine((data, ctx) => {
-		if (!data.billing_type || data.billing_type === '') {
+		if (!data.billing_type) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Välj debitering',
