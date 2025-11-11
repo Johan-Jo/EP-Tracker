@@ -23,6 +23,7 @@ interface DashboardClientProps {
     start_at: string;
     billing_type?: BillingType | null;
     fixed_block_id?: string | null;
+    ata_id?: string | null;
     projects: { id: string; name: string } | null;
   } | null;
   recentProject?: {
