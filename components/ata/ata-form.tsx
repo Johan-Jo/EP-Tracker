@@ -343,7 +343,7 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 
 	const onSubmit = (data: AtaFormValues) => {
 		const resolvedBillingType: BillingType =
-			data.billing_type && data.billing_type !== ''
+			data.billing_type
 				? (data.billing_type as BillingType)
 				: selectedProjectDetails?.default_ata_billing_type ?? 'LOPANDE';
 
