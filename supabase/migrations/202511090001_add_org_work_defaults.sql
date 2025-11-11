@@ -22,3 +22,4 @@ COMMENT ON COLUMN organizations.vat_number IS 'Momsregistreringsnummer (VAT)';
 COMMENT ON COLUMN organizations.default_vat_rate IS 'Standard momssats i procent';
 
 
+

@@ -3,3 +3,4 @@ ALTER TABLE time_entries
 
 CREATE INDEX IF NOT EXISTS idx_time_entries_ata_id
 	ON time_entries (ata_id);
+
