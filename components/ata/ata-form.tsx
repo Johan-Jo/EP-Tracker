@@ -324,7 +324,7 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 			setValue('billing_type', 'FAST', { shouldDirty: true });
 		} else if (mode === 'LOPANDE_ONLY' && billingType !== 'LOPANDE') {
 			setValue('billing_type', 'LOPANDE', { shouldDirty: true });
-		} else if (mode === 'BOTH' && (!billingType || billingType === '')) {
+		} else if (mode === 'BOTH' && !billingType) {
 			setValue('billing_type', selectedProjectDetails?.default_ata_billing_type ?? 'LOPANDE', {
 				shouldDirty: false,
 			});
