@@ -11,6 +11,7 @@ import { WorkOrdersList } from '@/components/projects/work-orders-list';
 import { ProjectTeamTab } from '@/components/projects/project-team-tab';
 import { ProjectSummaryView } from '@/components/projects/project-summary-view';
 import { ProjectAlertSettingsDisplay } from '@/components/projects/project-alert-settings-display';
+import { FixedTimeBlocksCard } from '@/components/projects/fixed-time-blocks-card';
 
 interface PageProps {
 	params: Promise<{ id: string }>;
@@ -269,6 +270,14 @@ export default async function ProjectDetailPage(props: PageProps) {
 						canEdit={canEdit}
 					/>
 				)}
+
+				<FixedTimeBlocksCard
+					projectId={project.id}
+					canEdit={canEdit}
+					billingMode={project.billing_mode}
+					quotedAmountSek={project.quoted_amount_sek}
+					projectHourlyRateSek={project.project_hourly_rate_sek}
+				/>
 			</div>
 
 			{/* Legacy tabs (hidden for now, can be removed later) */}

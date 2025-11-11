@@ -5,6 +5,19 @@ import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached sess
 import { notifyOnCheckOut } from '@/lib/notifications/project-alerts'; // EPIC 25 Phase 2: Project alerts
 import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
+const MAX_MINUTES_PER_DAY = 24 * 60;
+
+function calculateDurationMinutes(startISO: string, stopISO?: string | null, fallbackMinutes?: number | null) {
+	if (!stopISO) return 0;
+	const start = new Date(startISO);
+	const stop = new Date(stopISO);
+	const diff = stop.getTime() - start.getTime();
+	if (Number.isNaN(diff) || diff <= 0) {
+		return Math.max(0, fallbackMinutes ?? 0);
+	}
+	return Math.round(diff / 60000);
+}
+
 // PATCH /api/time/entries/[id] - Update time entry
 // EPIC 26: Optimized from 4 queries to 2 queries
 type RouteParams = { id: string };
@@ -44,7 +57,7 @@ export async function PATCH(
 		// EPIC 26: Fetch and check permissions in one query
 		const { data: existingEntry, error: fetchError } = await supabase
 			.from('time_entries')
-			.select('id, user_id, org_id, status, start_at, stop_at, project_id')
+			.select('id, user_id, org_id, status, start_at, stop_at, project_id, billing_type, fixed_block_id')
 			.eq('id', id)
 			.eq('org_id', membership.org_id)
 			.single();
@@ -68,6 +81,53 @@ export async function PATCH(
 			return NextResponse.json({ error: 'Cannot edit approved time entries' }, { status: 403 });
 		}
 
+		const nextStartAt = data.start_at ?? existingEntry.start_at;
+		const nextStopAt = data.stop_at ?? existingEntry.stop_at;
+
+		if (nextStopAt) {
+			const newEntryMinutes = calculateDurationMinutes(nextStartAt, nextStopAt);
+
+			if (newEntryMinutes > MAX_MINUTES_PER_DAY) {
+				return NextResponse.json(
+					{ error: 'En användare kan inte registrera mer än 24 timmar på ett dygn.' },
+					{ status: 400 },
+				);
+			}
+
+			const dayStart = new Date(nextStartAt);
+			dayStart.setHours(0, 0, 0, 0);
+			const dayEnd = new Date(dayStart);
+			dayEnd.setDate(dayEnd.getDate() + 1);
+
+			const { data: otherEntries, error: dayError } = await supabase
+				.from('time_entries')
+				.select('id, start_at, stop_at, duration_min')
+				.eq('org_id', membership.org_id)
+				.eq('user_id', existingEntry.user_id)
+				.gte('start_at', dayStart.toISOString())
+				.lt('start_at', dayEnd.toISOString())
+				.neq('id', id);
+
+			if (dayError) {
+				return NextResponse.json({ error: dayError.message }, { status: 500 });
+			}
+
+			const accumulatedMinutes =
+				(otherEntries || []).reduce((sum, entry) => {
+					return (
+						sum +
+						calculateDurationMinutes(entry.start_at, entry.stop_at, entry.duration_min ?? 0)
+					);
+				}, 0) + newEntryMinutes;
+
+			if (accumulatedMinutes > MAX_MINUTES_PER_DAY) {
+				return NextResponse.json(
+					{ error: 'Summan av registrerad arbetstid får inte överstiga 24 timmar för samma dag.' },
+					{ status: 400 },
+				);
+			}
+		}
+
 		// EPIC 26: Update time entry without JOINs for maximum speed
 		// Client already has project/phase data, just return updated entry
 		// Only include fields that are actually provided in the update
@@ -84,6 +144,15 @@ export async function PATCH(
 		if (data.stop_at !== undefined) updateFields.stop_at = data.stop_at;
 		if (data.notes !== undefined) updateFields.notes = data.notes;
 		if (data.status !== undefined) updateFields.status = data.status;
+		if (data.billing_type !== undefined) {
+			updateFields.billing_type = data.billing_type;
+			updateFields.fixed_block_id =
+				data.billing_type === 'FAST' ? data.fixed_block_id ?? existingEntry.fixed_block_id ?? null : null;
+		} else if (data.fixed_block_id !== undefined) {
+			const effectiveType = data.billing_type ?? existingEntry.billing_type ?? 'LOPANDE';
+			updateFields.fixed_block_id =
+				effectiveType === 'FAST' ? data.fixed_block_id : null;
+		}
 		
 		const { data: entry, error: updateError } = await supabase
 			.from('time_entries')

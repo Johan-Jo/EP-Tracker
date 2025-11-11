@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { BillingType } from '@/lib/schemas/billing-types';
 
 export interface TimerEntry {
 	id: string;
@@ -9,6 +10,8 @@ export interface TimerEntry {
 	phase_name?: string;
 	work_order_id?: string;
 	task_label?: string;
+	billing_type?: BillingType;
+	fixed_block_id?: string | null;
 	start_at: string;
 }
 
@@ -35,6 +38,7 @@ export const useTimerStore = create<TimerState>()(
 				const startTime = new Date().toISOString();
 				const fullEntry = {
 					...entry,
+					billing_type: entry.billing_type ?? 'LOPANDE',
 					start_at: startTime,
 				};
 				
@@ -79,7 +83,13 @@ export const useTimerStore = create<TimerState>()(
 				set((state) => {
 					// Keep only unique entries (by project_id + phase_id combination)
 					const filtered = state.recentEntries.filter(
-						e => !(e.project_id === entry.project_id && e.phase_id === entry.phase_id)
+						e =>
+							!(
+								e.project_id === entry.project_id &&
+								e.phase_id === entry.phase_id &&
+								e.billing_type === entry.billing_type &&
+								e.fixed_block_id === entry.fixed_block_id
+							)
 					);
 					
 					// Add new entry at the start, keep max 10

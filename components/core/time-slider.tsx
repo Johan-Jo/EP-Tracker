@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronRight, Loader2, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -8,14 +8,31 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TimeInput } from '@/components/ui/time-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { billingTypeOptions, type BillingType } from '@/lib/schemas/billing-types';
+
+type ProjectOption = {
+  id: string;
+  name: string;
+  billing_mode: 'FAST_ONLY' | 'LOPANDE_ONLY' | 'BOTH';
+  default_time_billing_type: BillingType;
+};
+
+type FixedBlockOption = {
+  id: string;
+  name: string;
+  amount_sek: number;
+  status: 'open' | 'closed';
+};
 
 interface TimeSliderProps {
   isActive: boolean;
   projectName?: string;
   projectId?: string;
   startTime?: string;
-  availableProjects?: Array<{ id: string; name: string }>;
-  onCheckIn: (projectId: string) => Promise<void>;
+  activeBillingType?: BillingType | null;
+  availableProjects?: ProjectOption[];
+  onCheckIn: (projectId: string, billingType: BillingType, fixedBlockId?: string | null) => Promise<void>;
   onCheckOut: (customStopAt?: string, customStartAt?: string) => Promise<void>;
   onCheckOutComplete?: (projectId: string) => void;
   onProjectChange?: (projectId: string) => void;
@@ -26,6 +43,7 @@ export function TimeSlider({
   projectName, 
   projectId,
   startTime,
+  activeBillingType = null,
   availableProjects = [],
   onCheckIn, 
   onCheckOut,
@@ -36,8 +54,14 @@ export function TimeSlider({
   const [position, setPosition] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState(projectId);
+  const [selectedBillingType, setSelectedBillingType] = useState<BillingType | null>(null);
+  const [selectedFixedBlockId, setSelectedFixedBlockId] = useState<string>('');
+  const [fixedBlocks, setFixedBlocks] = useState<FixedBlockOption[]>([]);
+  const [fixedBlocksLoading, setFixedBlocksLoading] = useState(false);
+  const [fixedBlocksError, setFixedBlocksError] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [billingSelectionError, setBillingSelectionError] = useState<string | null>(null);
   const [showNoProjectDialog, setShowNoProjectDialog] = useState(false);
   const [showCheckOutConfirmDialog, setShowCheckOutConfirmDialog] = useState(false);
   const [isEditingTime, setIsEditingTime] = useState(false);
@@ -50,6 +74,115 @@ export function TimeSlider({
   const sliderRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const threshold = 0.7; // 70% to trigger action
+
+  const selectedProjectDetails = useMemo(
+    () => availableProjects.find((p) => p.id === selectedProjectId) ?? null,
+    [availableProjects, selectedProjectId],
+  );
+
+  const billingPreferenceKey = useMemo(() => {
+    return selectedProjectDetails ? `project-billing-pref:${selectedProjectDetails.id}` : null;
+  }, [selectedProjectDetails?.id]);
+
+  useEffect(() => {
+    if (!selectedProjectDetails) {
+      setSelectedBillingType(null);
+      setSelectedFixedBlockId('');
+      setFixedBlocks([]);
+      setFixedBlocksError(null);
+      setBillingSelectionError(null);
+      return;
+    }
+
+    if (isActive && activeBillingType) {
+      setSelectedBillingType(activeBillingType);
+      setBillingSelectionError(null);
+      return;
+    }
+
+    switch (selectedProjectDetails.billing_mode) {
+      case 'FAST_ONLY':
+        setSelectedBillingType('FAST');
+        setBillingSelectionError(null);
+        break;
+      case 'LOPANDE_ONLY':
+        setSelectedBillingType('LOPANDE');
+        setBillingSelectionError(null);
+        break;
+      case 'BOTH':
+        if (billingPreferenceKey && typeof window !== 'undefined') {
+          const stored = window.localStorage.getItem(billingPreferenceKey);
+          if (stored === 'FAST' || stored === 'LOPANDE') {
+            setSelectedBillingType(stored as BillingType);
+            setBillingSelectionError(null);
+            break;
+          }
+        }
+        setSelectedBillingType(null);
+        setBillingSelectionError(null);
+        break;
+      default:
+        setSelectedBillingType('LOPANDE');
+        setBillingSelectionError(null);
+    }
+  }, [selectedProjectDetails, billingPreferenceKey, isActive, activeBillingType]);
+
+  useEffect(() => {
+    if (!billingPreferenceKey) return;
+    if (selectedProjectDetails?.billing_mode !== 'BOTH') return;
+    if (selectedBillingType === 'FAST' || selectedBillingType === 'LOPANDE') {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(billingPreferenceKey, selectedBillingType);
+      }
+    }
+  }, [selectedBillingType, billingPreferenceKey, selectedProjectDetails?.billing_mode]);
+
+useEffect(() => {
+  if (
+    !selectedProjectDetails ||
+    (selectedProjectDetails.billing_mode !== 'FAST_ONLY' &&
+      selectedProjectDetails.billing_mode !== 'BOTH')
+  ) {
+    setFixedBlocks([]);
+    setSelectedFixedBlockId('');
+    setFixedBlocksError(null);
+    return;
+  }
+
+  let isCancelled = false;
+  const loadFixedBlocks = async () => {
+    try {
+      setFixedBlocksLoading(true);
+      setFixedBlocksError(null);
+      const response = await fetch(`/api/fixed-time-blocks?projectId=${selectedProjectDetails.id}`);
+      if (!response.ok) throw new Error('Kunde inte hämta fasta poster');
+      const json = await response.json();
+      if (!isCancelled) {
+        setFixedBlocks(json.blocks || []);
+      }
+    } catch (error) {
+      if (!isCancelled) {
+        console.error(error);
+        setFixedBlocksError(error instanceof Error ? error.message : 'Ett fel uppstod');
+        setFixedBlocks([]);
+      }
+    } finally {
+      if (!isCancelled) setFixedBlocksLoading(false);
+    }
+  };
+
+  loadFixedBlocks();
+
+  return () => {
+    isCancelled = true;
+  };
+}, [selectedProjectDetails]);
+
+useEffect(() => {
+  if (selectedBillingType !== 'FAST') {
+    setSelectedFixedBlockId('');
+  }
+}, [selectedBillingType]);
 
   // Calculate elapsed time
   useEffect(() => {
@@ -95,7 +228,21 @@ export function TimeSlider({
     setSelectedProjectId(projectId);
   }, [projectId]);
 
+  const requiresBillingSelection =
+    !isActive &&
+    selectedProjectDetails?.billing_mode === 'BOTH' &&
+    !selectedBillingType;
+
+  const sliderDisabled =
+    (!isActive && !selectedProjectId) || requiresBillingSelection;
+
   const handleStart = (clientX: number) => {
+    if (sliderDisabled) {
+      if (!selectedBillingType && selectedProjectDetails?.billing_mode === 'BOTH') {
+        setBillingSelectionError('Välj debiteringsform för att starta tid.');
+      }
+      return;
+    }
     setIsDragging(true);
   };
 
@@ -164,7 +311,30 @@ export function TimeSlider({
             setIsLoading(false);
             return;
           }
-          await onCheckIn(selectedProjectId);
+          const billingToUse = selectedBillingType;
+
+          if (!billingToUse) {
+            setBillingSelectionError('Välj debiteringsform för att starta tid.');
+            setPosition(0);
+            setIsLoading(false);
+            return;
+          }
+
+          if (
+            billingToUse === 'FAST' &&
+            (!selectedFixedBlockId || fixedBlocks.length === 0)
+          ) {
+            alert('Välj en fast post innan du checkar in på fast debitering.');
+            setPosition(0);
+            setIsLoading(false);
+            return;
+          }
+
+          await onCheckIn(
+            selectedProjectId,
+            billingToUse,
+            billingToUse === 'FAST' ? selectedFixedBlockId : null,
+          );
         } catch (error) {
           console.error('Error checking in:', error);
         } finally {
@@ -324,11 +494,28 @@ export function TimeSlider({
   const handleProjectSelect = (id: string) => {
     setSelectedProjectId(id);
     setShowDropdown(false);
+  setSelectedFixedBlockId('');
+  setFixedBlocks([]);
+  setFixedBlocksError(null);
     onProjectChange?.(id);
   };
 
-  const selectedProject = availableProjects.find(p => p.id === selectedProjectId) || 
-    (projectName && projectId ? { id: projectId, name: projectName } : null);
+  const selectedProject =
+    selectedProjectDetails ||
+    (projectName && projectId
+      ? {
+          id: projectId,
+          name: projectName,
+          billing_mode: activeBillingType === 'FAST' ? 'FAST_ONLY' : 'LOPANDE_ONLY',
+          default_time_billing_type: activeBillingType ?? 'LOPANDE',
+        }
+      : null);
+
+const showFixedBlockPicker =
+  !!selectedProjectDetails &&
+  selectedBillingType === 'FAST' &&
+  (selectedProjectDetails.billing_mode === 'FAST_ONLY' ||
+    selectedProjectDetails.billing_mode === 'BOTH');
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX);
@@ -360,7 +547,11 @@ export function TimeSlider({
     : 'text-gray-700 dark:text-[#ffe5c7] dark:[text-shadow:0_1px_1px_rgba(0,0,0,0.55)]';
   const borderColor = isActive ? 'border-orange-500 dark:border-[#ff7a29]' : 'border-orange-300 dark:border-[#ff7a29]/45';
   
-  const label = isActive ? 'Swipa för att checka ut' : 'Swipa för att checka in';
+  const label = isActive
+    ? 'Swipa för att checka ut'
+    : requiresBillingSelection
+    ? 'Välj debiteringsform'
+    : 'Swipa för att checka in';
 
   return (
     <>
@@ -557,37 +748,128 @@ export function TimeSlider({
 
       {/* Project selector dropdown */}
       {!isActive && availableProjects.length > 0 && (
-        <div className="relative" ref={dropdownRef}>
-          <button
-            onClick={() => setShowDropdown(!showDropdown)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-white border-2 border-gray-200 rounded-lg hover:border-orange-300 transition-colors dark:bg-[#1f140d] dark:border-[#ff8a3d]/35 dark:hover:border-[#ff8a3d]/55"
-          >
-            <div className="flex items-center gap-2">
-               <span className="text-xs font-medium text-gray-700 dark:text-[#ffe5c7] dark:[text-shadow:0_1px_1px_rgba(0,0,0,0.55)]">
-                {isActive ? 'Arbetar på:' : 'Starta tid för:'}
-              </span>
-               <span className="text-sm font-semibold text-orange-600 dark:text-[#ffb778] dark:[text-shadow:0_1px_1px_rgba(0,0,0,0.35)]">
-                {selectedProject?.name || 'Välj projekt'}
-              </span>
-            </div>
-            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform dark:text-white/60 ${showDropdown ? 'rotate-180' : ''}`} />
-          </button>
+        <div className="space-y-3">
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="w-full flex items-center justify-between px-3 py-2 bg-white border-2 border-gray-200 rounded-lg hover:border-orange-300 transition-colors dark:bg-[#1f140d] dark:border-[#ff8a3d]/35 dark:hover:border-[#ff8a3d]/55"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-gray-700 dark:text-[#ffe5c7] dark:[text-shadow:0_1px_1px_rgba(0,0,0,0.55)]">
+                  {isActive ? 'Arbetar på:' : 'Starta tid för:'}
+                </span>
+                <span className="text-sm font-semibold text-orange-600 dark:text-[#ffb778] dark:[text-shadow:0_1px_1px_rgba(0,0,0,0.35)]">
+                  {selectedProject?.name || 'Välj projekt'}
+                </span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform dark:text-white/60 ${showDropdown ? 'rotate-180' : ''}`} />
+            </button>
 
-          {showDropdown && (
-            <div className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border-2 border-gray-200 bg-white shadow-lg dark:border-[#ff8a3d]/35 dark:bg-[#1f140d]">
-              {availableProjects.map((project) => (
-                <button
-                  key={project.id}
-                  onClick={() => handleProjectSelect(project.id)}
-                  className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-orange-50 dark:hover:bg-orange-500/10 ${
-                    selectedProjectId === project.id
-                      ? 'bg-orange-50 text-orange-600 font-medium dark:bg-[#372113] dark:text-[#ffcb96]'
-                      : 'text-gray-700 dark:text-[#ffe6cc]'
-                  }`}
-                >
-                  {project.name}
-                </button>
-              ))}
+            {showDropdown && (
+              <div className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border-2 border-gray-200 bg-white shadow-lg dark:border-[#ff8a3d]/35 dark:bg-[#1f140d]">
+                {availableProjects.map((project) => (
+                  <button
+                    key={project.id}
+                    onClick={() => handleProjectSelect(project.id)}
+                    className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-orange-50 dark:hover:bg-orange-500/10 ${
+                      selectedProjectId === project.id
+                        ? 'bg-orange-50 text-orange-600 font-medium dark:bg-[#372113] dark:text-[#ffcb96]'
+                        : 'text-gray-700 dark:text-[#ffe6cc]'
+                    }`}
+                  >
+                    {project.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {selectedProjectDetails && (
+            <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-3 text-sm shadow-sm dark:border-[#ff8a3d]/30 dark:bg-[#1f140d]">
+              <div className="flex items-center justify-between text-xs uppercase tracking-[0.16em] text-gray-500 dark:text-[#f5cca8]/70">
+                <span>Projekt</span>
+                <span>
+                  {selectedProjectDetails.billing_mode === 'FAST_ONLY'
+                    ? 'Fast'
+                    : selectedProjectDetails.billing_mode === 'LOPANDE_ONLY'
+                    ? 'Löpande'
+                    : 'Löpande & Fast'}
+                </span>
+              </div>
+
+              {selectedProjectDetails.billing_mode === 'BOTH' ? (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700 dark:text-[#ffe5c7]">
+                    Debitering
+                  </label>
+                  <Select
+                    value={selectedBillingType ?? undefined}
+                    onValueChange={(value) => {
+                      setSelectedBillingType(value as BillingType);
+                      setBillingSelectionError(null);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Välj debitering" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {billingTypeOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {billingSelectionError && (
+                    <p className="text-[11px] text-destructive">{billingSelectionError}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                  Debitering: {selectedProjectDetails.billing_mode === 'FAST_ONLY' ? 'Fast' : 'Löpande'}
+                </div>
+              )}
+
+              {showFixedBlockPicker && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700 dark:text-[#ffe5c7]">
+                    Fast post
+                  </label>
+                  <Select
+                    value={selectedFixedBlockId ?? undefined}
+                    onValueChange={setSelectedFixedBlockId}
+                    disabled={fixedBlocksLoading || fixedBlocks.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Välj fast post" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fixedBlocksLoading && (
+                        <SelectItem value="__loading" disabled>
+                          Laddar...
+                        </SelectItem>
+                      )}
+                      {!fixedBlocksLoading && fixedBlocks.length > 0 ? (
+                        fixedBlocks.map((block) => (
+                          <SelectItem key={block.id} value={block.id}>
+                            {block.name} ({Math.round(Number(block.amount_sek || 0))} SEK)
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="__no_blocks_available" disabled>
+                          Inga fasta poster – skapa i projektet
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {fixedBlocksError && (
+                    <p className="text-xs text-red-600">{fixedBlocksError}</p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    Fast tid måste kopplas till en fast post.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -596,7 +878,9 @@ export function TimeSlider({
       {/* Slider */}
       <div
         ref={sliderRef}
-        className={`relative h-14 overflow-hidden rounded-full ${bgColor} border-2 ${borderColor} cursor-pointer select-none transition-all duration-300`}
+        className={`relative h-14 overflow-hidden rounded-full ${bgColor} border-2 ${borderColor} ${
+          sliderDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+        } select-none transition-all duration-300`}
       >
         <div className="pointer-events-none absolute inset-0 z-0 opacity-30 dark:opacity-40 bg-[radial-gradient(circle_at_20%_40%,rgba(255,255,255,0.22),transparent_55%),radial-gradient(circle_at_80%_50%,rgba(255,255,255,0.18),transparent_50%)]" />
         <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-1 bg-white/20 dark:bg-white/10" />
@@ -639,6 +923,11 @@ export function TimeSlider({
           </svg>
         </div>
       </div>
+      {requiresBillingSelection && (
+        <p className="text-xs font-medium text-orange-600 text-center">
+          Välj debiteringsform innan du startar tid.
+        </p>
+      )}
     </div>
     </>
   );

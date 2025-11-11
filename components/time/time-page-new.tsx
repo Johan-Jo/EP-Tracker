@@ -11,13 +11,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { createClient } from '@/lib/supabase/client';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createTimeEntrySchema, type CreateTimeEntryInput } from '@/lib/schemas/time-entry';
 import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Link from 'next/link';
+import { billingTypeOptions, type BillingType } from '@/lib/schemas/billing-types';
 
 interface OrgMember {
 	id: string;
@@ -37,8 +38,26 @@ interface TimePageNewProps {
 	projectId?: string;
 }
 
+interface ProjectOption {
+	id: string;
+	name: string;
+	billing_mode: 'FAST_ONLY' | 'LOPANDE_ONLY' | 'BOTH';
+	default_time_billing_type: BillingType;
+}
+
+interface FixedBlockOption {
+	id: string;
+	name: string;
+	amount_sek: number;
+	status: 'open' | 'closed';
+}
+
+type TimeEntryFormValues = Omit<CreateTimeEntryInput, 'billing_type' | 'fixed_block_id'> & {
+	billing_type: '' | BillingType;
+	fixed_block_id: string | null;
+};
+
 export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewProps) {
-	const [selectedProject, setSelectedProject] = useState(projectId || '');
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [editingEntry, setEditingEntry] = useState<any | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -52,6 +71,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 	const [filterStartDate, setFilterStartDate] = useState<string>('');
 	const [filterEndDate, setFilterEndDate] = useState<string>('');
 	const [diaryLoadingMap, setDiaryLoadingMap] = useState<Record<string, boolean>>({});
+	const [billingInteractionRequired, setBillingInteractionRequired] = useState(false);
 	const supabase = createClient();
 	const queryClient = useQueryClient();
 	
@@ -66,13 +86,24 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 		}
 		
 		const entryDate = new Date(entry.start_at).toISOString().split('T')[0];
+		const entryUserId = entry.user_id ?? entry.user?.id;
+		if (!entryUserId) {
+			toast.error('Kunde inte bestämma vilken användare som äger tidsregistreringen');
+			return;
+		}
 		const entryKey = `${entry.id}`;
 		
 		setDiaryLoadingMap(prev => ({ ...prev, [entryKey]: true }));
 		
 		try {
 			// Check if diary entry exists for this project and date
-			const response = await fetch(`/api/diary/find?project_id=${entry.project_id}&date=${entryDate}`);
+			const params = new URLSearchParams({
+				project_id: entry.project_id,
+				date: entryDate,
+				user_id: entryUserId,
+			});
+
+			const response = await fetch(`/api/diary/find?${params.toString()}`);
 			if (!response.ok) {
 				throw new Error('Failed to check diary entry');
 			}
@@ -84,7 +115,11 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 				window.location.href = `/dashboard/diary/${data.diary.id}?edit=1`;
 			} else {
 				// No diary exists - navigate to create page with project and date
-				window.location.href = `/dashboard/diary/new?project_id=${entry.project_id}&date=${entryDate}`;
+				const newEntryUrl = new URL(window.location.origin + '/dashboard/diary/new');
+				newEntryUrl.searchParams.set('project_id', entry.project_id);
+				newEntryUrl.searchParams.set('date', entryDate);
+				newEntryUrl.searchParams.set('user_id', entryUserId);
+				window.location.href = `${newEntryUrl.pathname}${newEntryUrl.search}`;
 			}
 		} catch (error) {
 			console.error('Error checking diary entry:', error);
@@ -94,13 +129,6 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 		}
 	};
 	
-	// Set selected project when projectId prop changes
-	useEffect(() => {
-		if (projectId) {
-			setSelectedProject(projectId);
-		}
-	}, [projectId]);
-
 	const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
 	const [startTime, setStartTime] = useState('08:00');
 	const [endTime, setEndTime] = useState('');
@@ -112,12 +140,26 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 		setValue,
 		watch,
 		reset,
-	} = useForm<CreateTimeEntryInput>({
-		resolver: zodResolver(createTimeEntrySchema),
+	} = useForm<TimeEntryFormValues>({
+		resolver: zodResolver(createTimeEntrySchema) as Resolver<TimeEntryFormValues>,
 		defaultValues: {
 			start_at: new Date().toISOString().split('T')[0] + 'T08:00',
+			project_id: '',
+			phase_id: null,
+			work_order_id: null,
+			task_label: '',
+			billing_type: '',
+			fixed_block_id: null,
+			stop_at: null,
 		},
 	});
+
+	// Set selected project when projectId prop changes
+	useEffect(() => {
+		if (projectId) {
+			setValue('project_id', projectId, { shouldDirty: true });
+		}
+	}, [projectId, setValue]);
 
 	// Initialize start_at on mount and when date/time changes
 	useEffect(() => {
@@ -130,6 +172,11 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 			setValue('stop_at', `${currentDate}T${endTime}`);
 		}
 	}, [currentDate, endTime, setValue]);
+
+	const watchedProjectId = watch('project_id');
+	const selectedProjectId = watchedProjectId ? String(watchedProjectId) : '';
+	const billingType = watch('billing_type') as TimeEntryFormValues['billing_type'];
+	const fixedBlockId = watch('fixed_block_id') as TimeEntryFormValues['fixed_block_id'];
 
 	// Populate form when editing
 	useEffect(() => {
@@ -144,20 +191,21 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 			setCurrentDate(date);
 			setStartTime(start);
 			setEndTime(stop);
-			setValue('project_id', editingEntry.project_id);
+			setValue('project_id', editingEntry.project_id ? String(editingEntry.project_id) : '', { shouldDirty: true });
 			setValue('start_at', editingEntry.start_at);
 			setValue('stop_at', editingEntry.stop_at);
-			setSelectedProject(editingEntry.project_id);
+			setValue('billing_type', editingEntry.billing_type ?? 'LOPANDE', { shouldDirty: true });
+			setValue('fixed_block_id', editingEntry.fixed_block_id ?? null, { shouldDirty: true });
 		}
 	}, [editingEntry, setValue]);
 
 	// Fetch active projects
-	const { data: projects, isLoading: projectsLoading } = useQuery({
+	const { data: projects, isLoading: projectsLoading } = useQuery<ProjectOption[]>({
 		queryKey: ['active-projects', orgId],
 		queryFn: async () => {
 			const { data, error } = await supabase
 				.from('projects')
-				.select('id, name')
+				.select('id, name, billing_mode, default_time_billing_type')
 				.eq('org_id', orgId)
 				.eq('status', 'active')
 				.order('name');
@@ -168,6 +216,115 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 		staleTime: 5 * 60 * 1000,  // 5 minutes (projects rarely change)
 		gcTime: 10 * 60 * 1000,     // 10 minutes
 	});
+
+	const selectedProjectDetails = useMemo(() => {
+		if (!selectedProjectId) return undefined;
+		return projects?.find((project) => String(project.id) === String(selectedProjectId));
+	}, [projects, selectedProjectId]);
+
+	const effectiveBillingMode =
+		selectedProjectDetails?.billing_mode ?? (selectedProjectId ? 'LOPANDE_ONLY' : undefined);
+
+	const {
+		data: fixedBlocks = [],
+		isLoading: fixedBlocksLoading,
+		error: fixedBlocksError,
+	} = useQuery<FixedBlockOption[]>({
+		queryKey: ['fixed-time-blocks', selectedProjectId],
+		queryFn: async () => {
+			if (!selectedProjectId) return [];
+			if (effectiveBillingMode !== 'FAST_ONLY' && effectiveBillingMode !== 'BOTH') {
+				return [];
+			}
+			const response = await fetch(`/api/fixed-time-blocks?projectId=${selectedProjectId}`);
+			if (!response.ok) {
+				throw new Error('Kunde inte hämta fasta poster');
+			}
+			const json = await response.json();
+			return json.blocks || [];
+		},
+		enabled:
+			!!selectedProjectId &&
+			(effectiveBillingMode === 'FAST_ONLY' || effectiveBillingMode === 'BOTH'),
+	});
+
+	const hasFixedBlocks = fixedBlocks.length > 0;
+	const fixedBlocksErrorMessage =
+		fixedBlocksError instanceof Error ? fixedBlocksError.message : undefined;
+
+	useEffect(() => {
+		if (process.env.NODE_ENV !== 'production') {
+			console.log('TimePageNew watch', {
+				projectId: selectedProjectId || null,
+				billingType,
+				fixedBlockId,
+				projectsCount: projects?.length ?? 0,
+				hasProjectDetails: Boolean(selectedProjectDetails),
+				effectiveBillingMode,
+				fixedBlocksCount: fixedBlocks.length,
+				hasFixedBlocks,
+			});
+		}
+
+		if (!selectedProjectId) {
+			if (billingType !== '') {
+				setValue('billing_type', '', { shouldDirty: true });
+			}
+			if (fixedBlockId) {
+				setValue('fixed_block_id', null, { shouldDirty: true });
+			}
+			setBillingInteractionRequired(false);
+			return;
+		}
+
+		const mode = selectedProjectDetails?.billing_mode ?? 'LOPANDE_ONLY';
+
+		if (mode === 'FAST_ONLY') {
+			setBillingInteractionRequired(false);
+			if (billingType !== 'FAST') {
+				setValue('billing_type', 'FAST', { shouldDirty: true });
+			}
+			if (fixedBlockId) {
+				setValue('fixed_block_id', null, { shouldDirty: true });
+			}
+			return;
+		}
+
+		if (mode === 'LOPANDE_ONLY') {
+			setBillingInteractionRequired(false);
+			if (billingType !== 'LOPANDE') {
+				setValue('billing_type', 'LOPANDE', { shouldDirty: true });
+			}
+			if (fixedBlockId) {
+				setValue('fixed_block_id', null, { shouldDirty: true });
+			}
+			return;
+		}
+
+		// mode === 'BOTH'
+		const hasSelection = billingType === 'FAST' || billingType === 'LOPANDE';
+		setBillingInteractionRequired(!hasSelection);
+
+		if (!hasSelection) {
+			if (fixedBlockId) {
+				setValue('fixed_block_id', null, { shouldDirty: true });
+			}
+			return;
+		}
+
+		if (billingType !== 'FAST' && fixedBlockId) {
+			setValue('fixed_block_id', null, { shouldDirty: true });
+		}
+	}, [
+		billingType,
+		fixedBlockId,
+		selectedProjectDetails,
+		selectedProjectId,
+		setValue,
+		fixedBlocks.length,
+		projects?.length,
+		effectiveBillingMode,
+	]);
 
 	// Fetch all org members for user filter (only if admin/foreman/finance)
 	const { data: orgMembers } = useQuery<OrgMember[]>({
@@ -228,12 +385,13 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 		gcTime: 5 * 60 * 1000,
 	});
 
-	// Create a Set for quick lookup: "project_id:date" -> true
+	// Create a Set for quick lookup: "project_id:user_id:date" -> true
 	const diaryExistsMap = useMemo(() => {
 		if (!diaryEntries || !timeEntries) return new Set<string>();
 		const map = new Set<string>();
 		diaryEntries.forEach((diary: any) => {
-			const key = `${diary.project_id}:${diary.date}`;
+			if (!diary.project_id || !diary.created_by || !diary.date) return;
+			const key = `${diary.project_id}:${diary.created_by}:${diary.date}`;
 			map.add(key);
 		});
 		return map;
@@ -242,8 +400,10 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 	// Helper function to check if diary exists for a time entry
 	const hasDiaryEntry = (entry: any): boolean => {
 		if (!entry.project_id) return false;
+		const entryUserId = entry.user_id ?? entry.user?.id;
+		if (!entryUserId) return false;
 		const entryDate = new Date(entry.start_at).toISOString().split('T')[0];
-		const key = `${entry.project_id}:${entryDate}`;
+		const key = `${entry.project_id}:${entryUserId}:${entryDate}`;
 		return diaryExistsMap.has(key);
 	};
 
@@ -342,8 +502,9 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 					task_label: '',
 					start_at: today + 'T08:00',
 					stop_at: null,
+					billing_type: '',
+					fixed_block_id: null,
 				});
-				setSelectedProject('');
 			}
 
 			// Invalidate cache and refetch
@@ -360,10 +521,20 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 		}
 	};
 
-	const onSubmit = async (data: CreateTimeEntryInput) => {
+	const onSubmit = async (data: TimeEntryFormValues) => {
 		if (!data.project_id || !data.start_at || !data.stop_at) {
 			return;
 		}
+
+		const normalizedBillingType =
+			data.billing_type === '' ? selectedProjectDetails?.default_time_billing_type ?? 'LOPANDE' : data.billing_type;
+
+		const payload: CreateTimeEntryInput = {
+			...data,
+			project_id: String(data.project_id),
+			billing_type: normalizedBillingType as BillingType,
+			fixed_block_id: data.fixed_block_id ?? null,
+		};
 
 		setIsSubmitting(true);
 
@@ -375,7 +546,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 			const response = await fetch(url, {
 				method,
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(data),
+				body: JSON.stringify(payload),
 			});
 
 			if (!response.ok) {
@@ -399,8 +570,9 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 				task_label: '',
 				start_at: today + 'T08:00',
 				stop_at: null,
+			billing_type: '',
+			fixed_block_id: null,
 			});
-			setSelectedProject('');
 			setEditingEntry(null);
 
 			// Show diary prompt dialog like the slider
@@ -617,8 +789,9 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 										start_at: today + 'T08:00',
 										stop_at: null,
 										notes: '',
+										billing_type: '',
+										fixed_block_id: null,
 									});
-									setSelectedProject('');
 								}}
 							>
 								Avbryt
@@ -639,10 +812,18 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 								</div>
 							) : (
 								<Select
-									value={watch('project_id') || ''}
+									value={selectedProjectId || ''}
 									onValueChange={(value) => {
-										setValue('project_id', value);
-										setSelectedProject(value);
+										setValue('project_id', value, { shouldDirty: true });
+										const projectMode = projects?.find((project) => String(project.id) === String(value))?.billing_mode;
+										if (projectMode === 'FAST_ONLY') {
+											setValue('billing_type', 'FAST', { shouldDirty: true });
+										} else if (projectMode === 'LOPANDE_ONLY') {
+											setValue('billing_type', 'LOPANDE', { shouldDirty: true });
+										} else {
+											setValue('billing_type', '', { shouldDirty: true });
+										}
+										setValue('fixed_block_id', null, { shouldDirty: true });
 									}}
 								>
 									<SelectTrigger className='h-11 justify-between text-left'>
@@ -667,6 +848,98 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 								</p>
 							)}
 						</div>
+
+						{/* Billing Type */}
+						{selectedProjectId && (
+							<div>
+								<label className='block text-sm font-medium mb-2'>
+									Debitering {effectiveBillingMode === 'BOTH' && <span className='text-destructive'>*</span>}
+								</label>
+								{effectiveBillingMode === 'BOTH' ? (
+									<Select
+										value={billingType || ''}
+										onValueChange={(value) => {
+											const normalized = value as BillingType;
+											setValue('billing_type', normalized, { shouldDirty: true });
+											if (normalized !== 'FAST') {
+												setValue('fixed_block_id', null, { shouldDirty: true });
+											}
+										}}
+									>
+										<SelectTrigger className={!billingType ? 'h-11 border-destructive' : 'h-11'}>
+											<SelectValue placeholder='Välj debitering' />
+										</SelectTrigger>
+										<SelectContent>
+											{billingTypeOptions.map((option) => (
+												<SelectItem key={option.value} value={option.value}>
+													{option.label}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								) : effectiveBillingMode === 'FAST_ONLY' ? (
+									<div className='rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground'>
+										Debitering: Fast
+									</div>
+								) : (
+									<div className='rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground'>
+										Debitering: Löpande
+									</div>
+								)}
+								{billingInteractionRequired && !billingType && (
+									<p className='text-sm text-destructive mt-1'>Välj debitering innan du sparar.</p>
+								)}
+							</div>
+						)}
+
+						{/* Fixed block selection */}
+						{selectedProjectId &&
+							((billingType === 'FAST' && effectiveBillingMode === 'BOTH') || effectiveBillingMode === 'FAST_ONLY') && (
+								<div>
+									<label className='block text-sm font-medium mb-2'>
+										Fast post {hasFixedBlocks && <span className='text-destructive'>*</span>}
+									</label>
+									{fixedBlocksLoading ? (
+										<div className='flex items-center gap-2 text-sm text-muted-foreground'>
+											<Loader2 className='w-4 h-4 animate-spin' />
+											Laddar fasta poster...
+										</div>
+									) : hasFixedBlocks ? (
+										<Select
+											value={fixedBlockId || ''}
+											onValueChange={(value) => {
+												setValue('fixed_block_id', value ? String(value) : null, { shouldDirty: true });
+											}}
+										>
+											<SelectTrigger className='h-11'>
+												<SelectValue placeholder='Välj fast post' />
+											</SelectTrigger>
+											<SelectContent>
+												{fixedBlocks.map((block) => (
+													<SelectItem key={block.id} value={block.id}>
+														{block.name} ({Math.round(Number(block.amount_sek || 0))} SEK)
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									) : (
+										<div className='rounded-lg border border-dashed border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground'>
+											Inga fasta poster i projektet – debiteringen kopplas till huvudprojektets fasta budget.
+										</div>
+									)}
+									{fixedBlocksErrorMessage && (
+										<p className='text-sm text-destructive mt-1'>{fixedBlocksErrorMessage}</p>
+									)}
+									{errors.fixed_block_id && (
+										<p className='text-sm text-destructive mt-1'>{errors.fixed_block_id.message}</p>
+									)}
+									{hasFixedBlocks && (
+										<p className='text-xs text-muted-foreground mt-1'>
+											Fast tid måste kopplas till en fast fakturapost.
+										</p>
+									)}
+								</div>
+							)}
 
 						{/* Date */}
 						<div>
@@ -743,6 +1016,24 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 									{calculateDuration()}
 								</p>
 							</div>
+						)}
+
+						{process.env.NODE_ENV !== 'production' && (
+							<pre className='bg-muted/40 border border-dashed border-border/60 text-xs text-muted-foreground rounded-lg p-3 max-h-48 overflow-auto'>
+								{JSON.stringify(
+									{
+										rhf: {
+											project_id: selectedProjectId || null,
+											billing_type: billingType || null,
+											fixed_block_id: fixedBlockId || null,
+										},
+										effectiveBillingMode,
+										fixedBlocksCount: fixedBlocks.length,
+									},
+									null,
+									2,
+								)}
+							</pre>
 						)}
 
 					{/* Description removed: we prompt for diary update after save */}
@@ -828,126 +1119,143 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 								</CardContent>
 							</Card>
 						) : (
-							recentEntries.map((entry: any) => (
-								<div
-									key={entry.id}
-									className='bg-card border-2 border-border rounded-xl p-4 hover:border-orange-300 hover:shadow-md hover:scale-[1.01] transition-all duration-200'
-								>
-									<div className='flex flex-col md:flex-row md:items-center justify-between gap-3'>
-										{/* Left side - Info */}
-										<div className='flex-1 min-w-0'>
-											<div className='flex items-start gap-3 mb-2'>
-												<div className='p-2 rounded-lg bg-orange-50 shrink-0'>
-													<Clock className='w-4 h-4 text-orange-600' />
+							recentEntries.map((entry: any) => {
+								const billingTypeLabel = entry.billing_type === 'FAST' ? 'Fast' : 'Löpande';
+								const billingBadgeClasses =
+									entry.billing_type === 'FAST'
+										? 'bg-orange-500/20 text-orange-700 border-orange-300 dark:bg-[#3a251c] dark:text-[#f8ddba] dark:border-[#4a2f22]'
+										: 'bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-700';
+
+								return (
+									<div
+										key={entry.id}
+										className='bg-card border-2 border-border rounded-xl p-4 hover:border-orange-300 hover:shadow-md hover:scale-[1.01] transition-all duration-200'
+									>
+										<div className='flex flex-col md:flex-row md:items-center justify-between gap-3'>
+											{/* Left side - Info */}
+											<div className='flex-1 min-w-0'>
+												<div className='flex items-start gap-3 mb-2'>
+													<div className='p-2 rounded-lg bg-orange-50 shrink-0'>
+														<Clock className='w-4 h-4 text-orange-600' />
+													</div>
+													<div className='flex-1 min-w-0'>
+														<div className='mb-1 flex items-center gap-2'>
+															<h4 className='font-semibold text-base truncate'>
+																{entry.project?.name || 'Okänt projekt'}
+															</h4>
+															<span
+																className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${billingBadgeClasses}`}
+															>
+																{billingTypeLabel}
+															</span>
+														</div>
+														{entry.user?.full_name && (
+															<p className='text-sm font-medium text-muted-foreground mb-1'>
+																{entry.user.full_name}
+															</p>
+														)}
+														{entry.task_label &&
+															entry.task_label.trim() !== '' &&
+															entry.task_label.toLowerCase() !== 'ingen beskrivning' && (
+																<p className='text-sm text-muted-foreground'>
+																	{entry.task_label}
+																</p>
+															)}
+													</div>
 												</div>
-												<div className='flex-1 min-w-0'>
-													<h4 className='font-semibold text-base truncate mb-1'>
-														{entry.project?.name || 'Okänt projekt'}
-													</h4>
-													{entry.user?.full_name && (
-														<p className='text-sm font-medium text-muted-foreground mb-1'>
-															{entry.user.full_name}
-														</p>
-													)}
-													{entry.task_label && entry.task_label.trim() !== '' && entry.task_label.toLowerCase() !== 'ingen beskrivning' && (
-														<p className='text-sm text-muted-foreground'>
-															{entry.task_label}
-														</p>
-													)}
-												</div>
-											</div>
-											<div className='flex flex-wrap gap-4 text-sm text-muted-foreground ml-11'>
-												<span>
-													{new Date(entry.start_at).toLocaleDateString('sv-SE')}
-												</span>
-												<span>
-													{new Date(entry.start_at).toLocaleTimeString('sv-SE', {
-														hour: '2-digit',
-														minute: '2-digit',
-													})}
-													{entry.stop_at &&
-														` - ${new Date(entry.stop_at).toLocaleTimeString('sv-SE', {
+												<div className='flex flex-wrap gap-4 text-sm text-muted-foreground ml-11'>
+													<span>
+														{new Date(entry.start_at).toLocaleDateString('sv-SE')}
+													</span>
+													<span>
+														{new Date(entry.start_at).toLocaleTimeString('sv-SE', {
 															hour: '2-digit',
 															minute: '2-digit',
-														})}`}
-												</span>
+														})}
+														{entry.stop_at &&
+															` - ${new Date(entry.stop_at).toLocaleTimeString('sv-SE', {
+																hour: '2-digit',
+																minute: '2-digit',
+															})}`}
+													</span>
+												</div>
 											</div>
-										</div>
 
-										{/* Right side - Duration and Status */}
-										<div className='flex items-center gap-3 ml-11 md:ml-0'>
-											<div className='text-right'>
-												<p className='text-xl'>
-													{formatDuration(entry.duration_min || 0)}
-												</p>
-											</div>
-											<span
-												className={`px-3 py-1 rounded-full text-xs font-medium border-2 whitespace-nowrap ${getStatusColor(
-													entry.status
-												)}`}
-											>
-												{getStatusText(entry.status)}
-											</span>
-											<div className='flex items-center gap-2'>
-												{/* Diary Button - always visible */}
-												<Button
-													variant={hasDiaryEntry(entry) ? 'default' : 'outline'}
-													size='sm'
-													className={
-														hasDiaryEntry(entry)
-															? 'flex h-9 w-9 items-center justify-center rounded-full border-green-300 bg-green-50 text-green-700 transition-all duration-200 hover:bg-green-100 md:w-auto md:px-4 md:gap-2'
-															: 'flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 md:w-auto md:px-4 md:gap-2'
-													}
-													onClick={() => handleDiaryClick(entry)}
-													disabled={diaryLoadingMap[entry.id] || !entry.project_id}
-													title='Dagbok'
+											{/* Right side - Duration and Status */}
+											<div className='flex items-center gap-3 ml-11 md:ml-0'>
+												<div className='text-right'>
+													<p className='text-xl'>
+														{formatDuration(entry.duration_min || 0)}
+													</p>
+												</div>
+												<span
+													className={`px-3 py-1 rounded-full text-xs font-medium border-2 whitespace-nowrap ${getStatusColor(
+														entry.status
+													)}`}
 												>
-													{diaryLoadingMap[entry.id] ? (
-														<Loader2 className='h-4 w-4 animate-spin' />
-													) : (
+													{getStatusText(entry.status)}
+												</span>
+												<div className='flex items-center gap-2'>
+													{/* Diary Button - always visible */}
+													<Button
+														variant={hasDiaryEntry(entry) ? 'default' : 'outline'}
+														size='sm'
+														className={
+															hasDiaryEntry(entry)
+																? 'flex h-9 w-9 items-center justify-center rounded-full border-green-300 bg-green-50 text-green-700 transition-all duration-200 hover:bg-green-100 md:w-auto md:px-4 md:gap-2'
+																: 'flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 md:w-auto md:px-4 md:gap-2'
+														}
+														onClick={() => handleDiaryClick(entry)}
+														disabled={diaryLoadingMap[entry.id] || !entry.project_id}
+														title='Dagbok'
+													>
+														{diaryLoadingMap[entry.id] ? (
+															<Loader2 className='h-4 w-4 animate-spin' />
+														) : (
+															<>
+																{hasDiaryEntry(entry) ? (
+																	<CheckCircle2 className='h-4 w-4' />
+																) : (
+																	<BookOpen className='h-4 w-4' />
+																)}
+																<span className='hidden md:inline'>Dagbok</span>
+															</>
+														)}
+													</Button>
+
+													{entry.status === 'draft' && (
 														<>
-															{hasDiaryEntry(entry) ? (
-																<CheckCircle2 className='h-4 w-4' />
-															) : (
-																<BookOpen className='h-4 w-4' />
-															)}
-															<span className='hidden md:inline'>Dagbok</span>
+															<Button
+																variant='outline'
+																size='sm'
+																className='flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 md:w-auto md:px-4 md:gap-2'
+																onClick={() => {
+																	setEditingEntry(entry);
+																	window.scrollTo({ top: 0, behavior: 'smooth' });
+																}}
+																title='Ändra'
+															>
+																<Pencil className='h-4 w-4' />
+																<span className='hidden md:inline'>Ändra</span>
+															</Button>
+															<Button
+																variant='outline'
+																size='sm'
+																className='flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:border-red-300 hover:bg-red-50 hover:text-red-700 md:w-auto md:px-4 md:gap-2'
+																onClick={() => handleDelete(entry.id)}
+																title='Ta bort'
+															>
+																<Trash2 className='h-4 w-4' />
+																<span className='hidden md:inline'>Ta bort</span>
+															</Button>
 														</>
 													)}
-												</Button>
-
-												{entry.status === 'draft' && (
-													<>
-														<Button
-															variant='outline'
-															size='sm'
-															className='flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 md:w-auto md:px-4 md:gap-2'
-															onClick={() => {
-																setEditingEntry(entry);
-																window.scrollTo({ top: 0, behavior: 'smooth' });
-															}}
-															title='Ändra'
-														>
-															<Pencil className='h-4 w-4' />
-															<span className='hidden md:inline'>Ändra</span>
-														</Button>
-														<Button
-															variant='outline'
-															size='sm'
-															className='flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:border-red-300 hover:bg-red-50 hover:text-red-700 md:w-auto md:px-4 md:gap-2'
-															onClick={() => handleDelete(entry.id)}
-															title='Ta bort'
-														>
-															<Trash2 className='h-4 w-4' />
-															<span className='hidden md:inline'>Ta bort</span>
-														</Button>
-													</>
-												)}
+												</div>
 											</div>
 										</div>
 									</div>
-								</div>
-							))
+								);
+							})
 						)}
 					</div>
 				</div>

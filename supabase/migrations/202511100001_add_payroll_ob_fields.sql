@@ -4,3 +4,4 @@ ALTER TABLE payroll_basis
 	ADD COLUMN IF NOT EXISTS ob_hours_multiplier NUMERIC;
 
 
+

@@ -1,10 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { projectSchema, type ProjectFormData, type AlertSettings } from '@/lib/schemas/project';
+import {
+	billingTypeOptions,
+	projectBillingModeOptions,
+} from '@/lib/schemas/billing-types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -95,6 +99,10 @@ const [error, setError] = useState<string | null>(null);
 	budget_hours: null,
 	budget_amount: null,
 	status: 'active' as const,
+	billing_mode: 'LOPANDE_ONLY',
+	default_time_billing_type: 'LOPANDE',
+	quoted_amount_sek: null,
+	project_hourly_rate_sek: null,
 	// Defaults requested: Stockholm/Sverige
 	timezone: 'Europe/Stockholm',
 	country: 'Sverige',
@@ -103,16 +111,42 @@ const [error, setError] = useState<string | null>(null);
 		},
 		});
 
-	const budgetMode = watch('budget_mode');
-	const status = watch('status');
-	const siteAddress = watch('site_address');
-	const siteLat = watch('site_lat');
-	const siteLon = watch('site_lon');
-	const addr1 = watch('address_line1');
-	const postal = watch('postal_code');
-	const city = watch('city');
-	const projNumber = watch('project_number');
-	const projName = watch('name');
+const budgetMode = watch('budget_mode');
+const status = watch('status');
+const siteAddress = watch('site_address');
+const siteLat = watch('site_lat');
+const siteLon = watch('site_lon');
+const addr1 = watch('address_line1');
+const postal = watch('postal_code');
+const city = watch('city');
+const projNumber = watch('project_number');
+const projName = watch('name');
+const billingMode = watch('billing_mode');
+const defaultTimeBilling = watch('default_time_billing_type');
+const timeBillingOptions = useMemo(() => {
+	if (billingMode === 'FAST_ONLY') return billingTypeOptions.filter((opt) => opt.value === 'FAST');
+	if (billingMode === 'LOPANDE_ONLY') return billingTypeOptions.filter((opt) => opt.value === 'LOPANDE');
+	return billingTypeOptions;
+}, [billingMode]);
+
+useEffect(() => {
+	if (billingMode === 'FAST_ONLY') {
+		if (defaultTimeBilling !== 'FAST') {
+			setValue('default_time_billing_type', 'FAST', { shouldDirty: true });
+		}
+	} else if (billingMode === 'LOPANDE_ONLY') {
+		if (defaultTimeBilling !== 'LOPANDE') {
+			setValue('default_time_billing_type', 'LOPANDE', { shouldDirty: true });
+		}
+	} else {
+		if (!timeBillingOptions.find((opt) => opt.value === defaultTimeBilling)) {
+			setValue('default_time_billing_type', timeBillingOptions[0]?.value ?? 'LOPANDE', { shouldDirty: true });
+		}
+	}
+}, [billingMode, defaultTimeBilling, setValue, timeBillingOptions]);
+
+const showFastFields = billingMode === 'FAST_ONLY' || billingMode === 'BOTH';
+const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOTH';
 
 	// Parse a Swedish-style address "Gata 1, 123 45 Stad"
 	function parseAddress(input?: string | null): { address1?: string; postal_code?: string; city?: string } {
@@ -210,9 +244,16 @@ const [error, setError] = useState<string | null>(null);
 				city: worksiteAddress.city || data.city || null,
 			};
 			
+			const normalizeNumber = (value: number | null | undefined) =>
+				typeof value === 'number' && Number.isFinite(value) ? value : null;
+
 			const projectData: ProjectFormData = {
 				...data,
 				...finalAddress,
+				budget_hours: normalizeNumber(data.budget_hours),
+				budget_amount: normalizeNumber(data.budget_amount),
+				project_hourly_rate_sek: normalizeNumber(data.project_hourly_rate_sek),
+				quoted_amount_sek: normalizeNumber(data.quoted_amount_sek),
 				timezone: data?.timezone ?? 'Europe/Stockholm',
 				country: data?.country ?? 'Sverige',
 				retention_years: 2, // Automatiskt 2 år från idag enligt lagkrav
@@ -414,6 +455,114 @@ const [error, setError] = useState<string | null>(null);
 							</p>
 						</div>
 					)}
+				</CardContent>
+			</Card>
+
+			<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm transition-colors dark:border-[#2d1b15] dark:bg-[#1b120d]'>
+				<CardHeader className='rounded-t-2xl bg-muted/40 pb-4 dark:bg-white/5'>
+					<CardTitle className='text-xl text-foreground dark:text-white'>Debitering</CardTitle>
+					<CardDescription className='text-muted-foreground dark:text-white/70'>
+						Välj hur projektet ska debiteras och ange standardvärden
+					</CardDescription>
+				</CardHeader>
+				<CardContent className='space-y-4 pt-6'>
+					<div className='grid gap-4 md:grid-cols-2'>
+						<div className='space-y-2'>
+							<Label htmlFor='billing_mode'>
+								Standardläge <span className='text-destructive'>*</span>
+							</Label>
+							<Select
+								value={billingMode}
+								onValueChange={(value) => setValue('billing_mode', value as any, { shouldDirty: true })}
+							>
+								<SelectTrigger id='billing_mode' name='billing_mode'>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{projectBillingModeOptions.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							{errors.billing_mode && (
+								<p className='text-sm text-destructive'>{errors.billing_mode.message as string}</p>
+							)}
+							<p className='text-xs text-muted-foreground'>
+								Styr om tid och ÄTA ska vara löpande, fast eller kunna växla.
+							</p>
+						</div>
+						<div className='space-y-2'>
+							<Label htmlFor='default_time_billing_type'>Standard för tid</Label>
+							<Select
+								value={defaultTimeBilling}
+								onValueChange={(value) => setValue('default_time_billing_type', value as any, { shouldDirty: true })}
+								disabled={billingMode !== 'BOTH'}
+							>
+								<SelectTrigger id='default_time_billing_type' name='default_time_billing_type'>
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{timeBillingOptions.map((option) => (
+										<SelectItem key={option.value} value={option.value}>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							{errors.default_time_billing_type && (
+								<p className='text-sm text-destructive'>
+									{errors.default_time_billing_type.message as string}
+								</p>
+							)}
+							<p className='text-xs text-muted-foreground'>
+								Används som förval när tid rapporteras.
+							</p>
+						</div>
+					</div>
+					<div className='grid gap-4 md:grid-cols-2'>
+						{showLopandeFields && (
+							<div className='space-y-2'>
+								<Label htmlFor='project_hourly_rate_sek'>
+									Timpris (SEK){' '}
+									<span className='text-muted-foreground'>(för löpande debitering)</span>
+								</Label>
+								<Input
+									id='project_hourly_rate_sek'
+									type='number'
+									step='1'
+									{...register('project_hourly_rate_sek', { valueAsNumber: true })}
+									placeholder='Ex: 675'
+								/>
+								{errors.project_hourly_rate_sek && (
+									<p className='text-sm text-destructive'>
+										{errors.project_hourly_rate_sek.message as string}
+									</p>
+								)}
+							</div>
+						)}
+						{showFastFields && (
+							<div className='space-y-2'>
+								<Label htmlFor='quoted_amount_sek'>
+									Offertbelopp (SEK){' '}
+									<span className='text-muted-foreground'>(för fast debitering)</span>
+								</Label>
+								<Input
+									id='quoted_amount_sek'
+									type='number'
+									step='1'
+									{...register('quoted_amount_sek', { valueAsNumber: true })}
+									placeholder='Ex: 250000'
+								/>
+								{errors.quoted_amount_sek && (
+									<p className='text-sm text-destructive'>
+										{errors.quoted_amount_sek.message as string}
+									</p>
+								)}
+							</div>
+						)}
+					</div>
 				</CardContent>
 			</Card>
 

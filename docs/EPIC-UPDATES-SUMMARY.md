@@ -46,9 +46,10 @@ Added missing details (UI, testing, jobs) to EPICs 31-36 based on the PRD analys
 - Invoice line types
 - Basis refresh job
 - Full API routes documentation
-- **Missing:** UI specs, testing
+- **NEW:** Detaljerad UI-specifikation (navigation, redigering, lås/export)
+- **Missing:** Testplan & scenarier
 
-**Status:** Needs completion
+**Status:** Dokumentation klar, väntar teststrategi
 
 ### ❌ EPIC 35 - NOT UPDATED
 **Still missing:**

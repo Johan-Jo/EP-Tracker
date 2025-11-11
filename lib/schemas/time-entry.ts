@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { billingTypeEnum, type BillingType } from './billing-types';
 
 // Time entry validation schema
 export const timeEntrySchema = z.object({
@@ -6,6 +7,8 @@ export const timeEntrySchema = z.object({
 	phase_id: z.string().uuid().optional().nullable(),
 	work_order_id: z.string().uuid().optional().nullable(),
 	task_label: z.string().optional().nullable(),
+	billing_type: billingTypeEnum.default('LOPANDE'),
+	fixed_block_id: z.string().uuid().optional().nullable(),
 	start_at: z.string().refine((val) => {
 		// Accept both ISO datetime and datetime-local format (yyyy-MM-ddTHH:mm)
 		const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{3})?)?([+-]\d{2}:\d{2}|Z)?$/;
@@ -57,6 +60,8 @@ export type TimeEntry = z.infer<typeof timeEntrySchema> & {
 	id: string;
 	org_id: string;
 	user_id: string;
+	billing_type: BillingType;
+	fixed_block_id: string | null;
 	duration_min: number | null;
 	approved_by: string | null;
 	approved_at: string | null;

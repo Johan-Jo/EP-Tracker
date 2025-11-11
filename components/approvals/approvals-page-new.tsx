@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
 	ChevronLeft,
@@ -403,19 +403,43 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 		setSelectedCostEntries((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
 	};
 
+const filteredTimeEntries = useMemo(() => {
+	return timeEntries.filter((entry: any) => {
+		const matchesUser =
+			!userSearchQuery ||
+			entry.user?.full_name?.toLowerCase().includes(userSearchQuery.toLowerCase());
+		const matchesProject =
+			!projectSearchQuery ||
+			entry.project?.name?.toLowerCase().includes(projectSearchQuery.toLowerCase());
+		return matchesUser && matchesProject;
+	});
+}, [timeEntries, userSearchQuery, projectSearchQuery]);
+
+const filteredCostEntries = useMemo(() => {
+	return costEntries.filter((entry: any) => {
+		const matchesUser =
+			!userSearchQuery ||
+			entry.user?.full_name?.toLowerCase().includes(userSearchQuery.toLowerCase());
+		const matchesProject =
+			!projectSearchQuery ||
+			entry.project?.name?.toLowerCase().includes(projectSearchQuery.toLowerCase());
+		return matchesUser && matchesProject;
+	});
+}, [costEntries, userSearchQuery, projectSearchQuery]);
+
 	const handleSelectAllTime = () => {
-		if (selectedTimeEntries.length === timeEntries.length) {
+	if (selectedTimeEntries.length === filteredTimeEntries.length) {
 			setSelectedTimeEntries([]);
 		} else {
-			setSelectedTimeEntries(timeEntries.map((e: any) => e.id));
+		setSelectedTimeEntries(filteredTimeEntries.map((e: any) => e.id));
 		}
 	};
 
 	const handleSelectAllCost = () => {
-		if (selectedCostEntries.length === costEntries.length) {
+	if (selectedCostEntries.length === filteredCostEntries.length) {
 			setSelectedCostEntries([]);
 		} else {
-			setSelectedCostEntries(costEntries.map((e: any) => e.id));
+		setSelectedCostEntries(filteredCostEntries.map((e: any) => e.id));
 		}
 	};
 
@@ -536,6 +560,63 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 		link.click();
 		toast.success('Faktura-CSV exporterad');
 	};
+
+const handleDownloadCurrentView = () => {
+	if (activeTab === 'time') {
+		if (filteredTimeEntries.length === 0) {
+			toast.error('Inga tidsrader i den aktuella vyn att exportera');
+		 return;
+		}
+
+		const rows = filteredTimeEntries.map((entry: any) => [
+			entry.user?.full_name || '',
+			entry.project?.name || '',
+			entry.phase?.name || '',
+			new Date(entry.start_at).toLocaleDateString('sv-SE'),
+			entry.duration_min ? (entry.duration_min / 60).toFixed(2) : '0',
+			entry.status ?? '',
+		]);
+
+		const csv = [
+			['Användare', 'Projekt', 'Fas', 'Datum', 'Timmar', 'Status'].join(';'),
+			...rows.map((row) => row.join(';')),
+		].join('\n');
+
+		const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+		const link = document.createElement('a');
+		link.href = URL.createObjectURL(blob);
+		link.download = `approvals_time_week${selectedWeek}_${selectedYear}.csv`;
+		link.click();
+		toast.success('Aktuell tidsvy exporterad');
+	} else {
+		if (filteredCostEntries.length === 0) {
+			toast.error('Inga kostnader i den aktuella vyn att exportera');
+			return;
+		}
+
+		const rows = filteredCostEntries.map((entry: any) => [
+			entry.user?.full_name || '',
+			entry.project?.name || '',
+			entry.type || '',
+			entry.description || '',
+			(entry.amount || 0).toFixed(2),
+			entry.status ?? '',
+			new Date(entry.created_at).toLocaleDateString('sv-SE'),
+		]);
+
+		const csv = [
+			['Användare', 'Projekt', 'Typ', 'Beskrivning', 'Belopp', 'Status', 'Datum'].join(';'),
+			...rows.map((row) => row.join(';')),
+		].join('\n');
+
+		const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+		const link = document.createElement('a');
+		link.href = URL.createObjectURL(blob);
+		link.download = `approvals_costs_week${selectedWeek}_${selectedYear}.csv`;
+		link.click();
+		toast.success('Aktuell kostnadsvy exporterad');
+	}
+};
 
 	const handleApprove = async () => {
 		if (activeTab === 'time') {
@@ -838,21 +919,27 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 							</div>
 
 							{/* Action Buttons */}
-							{selectedTimeEntries.length > 0 && (
-								<div className='flex gap-2 mb-4'>
-									<Button
-										onClick={handleApprove}
-										className='bg-green-600 hover:bg-green-700 text-white gap-2'
-									>
-										<CheckCircle2 className='w-4 h-4' />
-										Godkänn ({selectedTimeEntries.length})
-									</Button>
-									<Button onClick={handleRejectClick} variant='outline' className='gap-2 text-red-600'>
-										<XCircle className='w-4 h-4' />
-										Avvisa ({selectedTimeEntries.length})
-									</Button>
-								</div>
-							)}
+							<div className='flex flex-wrap gap-2 mb-4'>
+								{selectedTimeEntries.length > 0 && (
+									<>
+										<Button
+											onClick={handleApprove}
+											className='bg-green-600 hover:bg-green-700 text-white gap-2'
+										>
+											<CheckCircle2 className='w-4 h-4' />
+											Godkänn ({selectedTimeEntries.length})
+										</Button>
+										<Button onClick={handleRejectClick} variant='outline' className='gap-2 text-red-600'>
+											<XCircle className='w-4 h-4' />
+											Avvisa ({selectedTimeEntries.length})
+										</Button>
+									</>
+								)}
+								<Button variant='outline' className='gap-2' onClick={handleDownloadCurrentView}>
+									<Download className='w-4 h-4' />
+									Ladda ner visning (CSV)
+								</Button>
+							</div>
 
 							{/* Table */}
 							<div className='bg-card border-2 border-border rounded-xl overflow-hidden'>
@@ -863,8 +950,8 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 												<th className='text-left p-3 text-sm'>
 													<Checkbox
 														checked={
-															selectedTimeEntries.length === timeEntries.length &&
-															timeEntries.length > 0
+															selectedTimeEntries.length === filteredTimeEntries.length &&
+															filteredTimeEntries.length > 0
 														}
 														onCheckedChange={handleSelectAllTime}
 													/>
@@ -878,7 +965,7 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 											</tr>
 										</thead>
 										<tbody>
-											{timeEntries.length === 0 && (
+											{filteredTimeEntries.length === 0 && (
 												<tr>
 													<td colSpan={7} className='p-8 text-center'>
 														<p className='text-muted-foreground'>
@@ -887,7 +974,7 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 													</td>
 												</tr>
 											)}
-											{timeEntries.map((entry: any) => (
+											{filteredTimeEntries.map((entry: any) => (
 												<tr
 													key={entry.id}
 													className='border-b border-border hover:bg-orange-50/50 transition-colors'
@@ -958,21 +1045,27 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 							</div>
 
 							{/* Action Buttons */}
-							{selectedCostEntries.length > 0 && (
-								<div className='flex gap-2 mb-4'>
-									<Button
-										onClick={handleApprove}
-										className='bg-green-600 hover:bg-green-700 text-white gap-2'
-									>
-										<CheckCircle2 className='w-4 h-4' />
-										Godkänn ({selectedCostEntries.length})
-									</Button>
-									<Button onClick={handleRejectClick} variant='outline' className='gap-2 text-red-600'>
-										<XCircle className='w-4 h-4' />
-										Avvisa ({selectedCostEntries.length})
-									</Button>
-								</div>
-							)}
+							<div className='flex flex-wrap gap-2 mb-4'>
+								{selectedCostEntries.length > 0 && (
+									<>
+										<Button
+											onClick={handleApprove}
+											className='bg-green-600 hover:bg-green-700 text-white gap-2'
+										>
+											<CheckCircle2 className='w-4 h-4' />
+											Godkänn ({selectedCostEntries.length})
+										</Button>
+										<Button onClick={handleRejectClick} variant='outline' className='gap-2 text-red-600'>
+											<XCircle className='w-4 h-4' />
+											Avvisa ({selectedCostEntries.length})
+										</Button>
+									</>
+								)}
+								<Button variant='outline' className='gap-2' onClick={handleDownloadCurrentView}>
+									<Download className='w-4 h-4' />
+									Ladda ner visning (CSV)
+								</Button>
+							</div>
 
 							{/* Table */}
 							<div className='bg-card border-2 border-border rounded-xl overflow-hidden'>
@@ -983,7 +1076,8 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 												<th className='text-left p-3 text-sm'>
 													<Checkbox
 														checked={
-															selectedCostEntries.length === costEntries.length && costEntries.length > 0
+															selectedCostEntries.length === filteredCostEntries.length &&
+															filteredCostEntries.length > 0
 														}
 														onCheckedChange={handleSelectAllCost}
 													/>
@@ -998,14 +1092,14 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 											</tr>
 										</thead>
 										<tbody>
-											{costEntries.length === 0 && (
+											{filteredCostEntries.length === 0 && (
 												<tr>
 													<td colSpan={8} className='p-8 text-center'>
 														<p className='text-muted-foreground'>Inga kostnader att visa för vald period</p>
 													</td>
 												</tr>
 											)}
-											{costEntries.map((entry: any) => (
+											{filteredCostEntries.map((entry: any) => (
 												<tr
 													key={entry.id}
 													className='border-b border-border hover:bg-orange-50/50 transition-colors'

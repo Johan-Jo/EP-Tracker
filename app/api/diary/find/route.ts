@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
 		const searchParams = request.nextUrl.searchParams;
 		const projectId = searchParams.get('project_id');
 		const date = searchParams.get('date');
+		const requestedUserId = searchParams.get('user_id');
 
 		if (!projectId || !date) {
 			return NextResponse.json(
@@ -32,12 +33,15 @@ export async function GET(request: NextRequest) {
 			);
 		}
 
-		// Find diary entry for this project and date
+		const targetUserId = requestedUserId ?? user.id;
+
+		// Find diary entry for this project, user and date
 		const { data: diaryEntry, error } = await supabase
 			.from('diary_entries')
 			.select('id')
 			.eq('project_id', projectId)
 			.eq('date', date)
+			.eq('created_by', targetUserId)
 			.eq('org_id', membership.org_id)
 			.single();
 

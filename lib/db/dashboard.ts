@@ -170,7 +170,7 @@ export async function getActiveProjects(orgId: string) {
 
 	const { data, error } = await supabase
 		.from('projects')
-		.select('id, name')
+		.select('id, name, billing_mode, default_time_billing_type')
 		.eq('org_id', orgId)
 		.eq('status', 'active')
 		.order('name', { ascending: true });

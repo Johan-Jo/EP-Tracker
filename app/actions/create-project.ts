@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { ProjectFormData } from '@/lib/schemas/project';
+import type { BillingType } from '@/lib/schemas/billing-types';
 
 /**
  * Create a new project
@@ -43,12 +44,24 @@ export async function createProject(data: ProjectFormData) {
 	// Use admin client to bypass RLS (we've already verified permissions above)
 	const adminClient = createAdminClient();
 	
+	const defaultAtaBilling: BillingType =
+		data.billing_mode === 'FAST_ONLY'
+			? 'FAST'
+			: data.billing_mode === 'LOPANDE_ONLY'
+			? 'LOPANDE'
+			: data.default_time_billing_type;
+
+	const insertPayload = {
+		...data,
+		default_ata_billing_type: defaultAtaBilling,
+	};
+
 	const { data: project, error } = await adminClient
 		.from('projects')
 		.insert({
 			org_id: membership.org_id,
 			created_by: user.id,
-			...data,
+			...insertPayload,
 		})
 		.select()
 		.single();

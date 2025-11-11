@@ -8,6 +8,7 @@ import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import type { BillingType } from '@/lib/schemas/billing-types';
 
 interface DashboardClientProps {
   userName: string;
@@ -20,6 +21,8 @@ interface DashboardClientProps {
   activeTimeEntry?: {
     id: string;
     start_at: string;
+    billing_type?: BillingType | null;
+    fixed_block_id?: string | null;
     projects: { id: string; name: string } | null;
   } | null;
   recentProject?: {
@@ -29,6 +32,8 @@ interface DashboardClientProps {
   allProjects: Array<{
     id: string;
     name: string;
+    billing_mode: 'FAST_ONLY' | 'LOPANDE_ONLY' | 'BOTH';
+    default_time_billing_type: BillingType;
   }>;
     recentActivities: Array<{
       id: string;
@@ -73,7 +78,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
   }, [activeTimeEntry]);
 
   // EPIC 26: Optimistic check-in - INSTANT UI, background sync!
-  const handleCheckIn = async (projectId: string) => {
+  const handleCheckIn = async (projectId: string, billingType: BillingType, fixedBlockId?: string | null) => {
     const project = allProjects.find(p => p.id === projectId);
     const tempId = `temp-${Date.now()}`;
     const startTime = new Date().toISOString();
@@ -82,7 +87,9 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
     setOptimisticTimeEntry({
       id: tempId,
       start_at: startTime,
+      billing_type: billingType,
       projects: project ? { id: project.id, name: project.name } : null,
+      fixed_block_id: fixedBlockId ?? null,
     });
 
     // 🔄 Background sync - user doesn't wait for this!
@@ -92,6 +99,8 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
       body: JSON.stringify({
         project_id: projectId,
         start_at: startTime,
+        billing_type: billingType,
+        fixed_block_id: fixedBlockId ?? null,
       }),
     })
       .then(async (response) => {
@@ -105,6 +114,8 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
         setOptimisticTimeEntry({
           id: data.entry.id,
           start_at: data.entry.start_at,
+          billing_type: data.entry.billing_type,
+          fixed_block_id: data.entry.fixed_block_id,
           projects: project ? { id: project.id, name: project.name } : null,
         });
         // Invalidate time entries queries so time page shows new entry
@@ -275,6 +286,12 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                       </span>
                     </>
                   ) : null}
+                  {optimisticTimeEntry.billing_type ? (
+                    <span className="font-medium text-[#854215] dark:text-[#f0a25b]">
+                      {' '}
+                      · {optimisticTimeEntry.billing_type === 'FAST' ? 'Fast' : 'Löpande'}
+                    </span>
+                  ) : null}
                 </p>
               </div>
             ) : (
@@ -297,6 +314,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
               : recentProject?.id
           }
           startTime={optimisticTimeEntry?.start_at}
+          activeBillingType={optimisticTimeEntry?.billing_type ?? null}
           availableProjects={allProjects}
           onCheckIn={handleCheckIn}
           onCheckOut={handleCheckOut}

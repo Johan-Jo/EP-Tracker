@@ -5,7 +5,17 @@ import { getSession } from '@/lib/auth/get-session';
 // Ensure this route runs in Node.js runtime
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 export const maxDuration = 30; // 30 seconds timeout
+
+function respond(body: unknown, status = 200) {
+	return NextResponse.json(body, {
+		status,
+		headers: {
+			'Cache-Control': 'no-store',
+		},
+	});
+}
 
 /**
  * GET /api/payroll/basis
@@ -23,12 +33,12 @@ export async function GET(request: NextRequest) {
 		const { user, membership } = await getSession();
 
 		if (!user || !membership) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+			return respond({ error: 'Unauthorized' }, 401);
 		}
 
 		// Only admin and foreman can view payroll basis
 		if (membership.role !== 'admin' && membership.role !== 'foreman') {
-			return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+			return respond({ error: 'Forbidden' }, 403);
 		}
 
 		const searchParams = request.nextUrl.searchParams;
@@ -37,9 +47,9 @@ export async function GET(request: NextRequest) {
 		const personId = searchParams.get('person_id');
 
 		if (!periodStart || !periodEnd) {
-			return NextResponse.json(
+			return respond(
 				{ error: 'start and end parameters are required (YYYY-MM-DD)' },
-				{ status: 400 }
+				400,
 			);
 		}
 
@@ -75,24 +85,24 @@ export async function GET(request: NextRequest) {
 			console.error('Error fetching payroll basis:', error);
 			console.error('Query params:', { periodStart, periodEnd, personId, orgId: membership.org_id });
 			console.error('Error details:', JSON.stringify(error, null, 2));
-			return NextResponse.json({ 
+			return respond({
 				error: 'Failed to fetch payroll basis',
 				details: error.message,
 				code: error.code,
-				hint: error.hint
-			}, { status: 500 });
+				hint: error.hint,
+			}, 500);
 		}
 
-		return NextResponse.json({ payroll_basis: payrollBasis || [] });
+		return respond({ payroll_basis: payrollBasis || [] });
 	} catch (error) {
 		console.error('Error in GET /api/payroll/basis:', error);
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 		const errorStack = error instanceof Error ? error.stack : undefined;
 		console.error('Error stack:', errorStack);
-		return NextResponse.json({ 
+		return respond({
 			error: 'Internal server error',
-			details: errorMessage
-		}, { status: 500 });
+			details: errorMessage,
+		}, 500);
 	}
 }
 

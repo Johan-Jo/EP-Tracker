@@ -1,13 +1,29 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTimerStore } from '@/lib/stores/timer-store';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Clock, Play, Square, Pause, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, Play, Square, Pause, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { billingTypeOptions, type BillingType } from '@/lib/schemas/billing-types';
+
+type ProjectOption = {
+	id: string;
+	name: string;
+	project_number: string | null;
+	billing_mode: 'FAST_ONLY' | 'LOPANDE_ONLY' | 'BOTH';
+	default_time_billing_type: BillingType;
+};
+
+type FixedBlockOption = {
+	id: string;
+	name: string;
+	amount_sek: number;
+	status: 'open' | 'closed';
+};
 
 interface TimerWidgetProps {
 	userId: string;
@@ -20,17 +36,22 @@ export function TimerWidget({ userId, orgId, inline = false }: TimerWidgetProps)
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [selectedProject, setSelectedProject] = useState<string>('');
 	const [selectedPhase, setSelectedPhase] = useState<string>('');
+	const [selectedBillingType, setSelectedBillingType] = useState<BillingType>('LOPANDE');
+	const [selectedFixedBlock, setSelectedFixedBlock] = useState<string>('');
+	const [fixedBlocks, setFixedBlocks] = useState<FixedBlockOption[]>([]);
+	const [fixedBlocksLoading, setFixedBlocksLoading] = useState(false);
+	const [fixedBlocksError, setFixedBlocksError] = useState<string | null>(null);
 	const [elapsedTime, setElapsedTime] = useState<string>('00:00:00');
 
 	const supabase = createClient();
 
 	// Fetch active projects
-	const { data: projects } = useQuery({
+	const { data: projects } = useQuery<ProjectOption[]>({
 		queryKey: ['active-projects', orgId],
 		queryFn: async () => {
 			const { data, error } = await supabase
 				.from('projects')
-				.select('id, name, project_number')
+				.select('id, name, project_number, billing_mode, default_time_billing_type')
 				.eq('org_id', orgId)
 				.eq('status', 'active')
 				.order('name');
@@ -39,6 +60,82 @@ export function TimerWidget({ userId, orgId, inline = false }: TimerWidgetProps)
 			return data || [];
 		},
 	});
+
+	const selectedProjectDetails = useMemo(
+		() => projects?.find((p) => p.id === selectedProject) ?? null,
+		[projects, selectedProject],
+	);
+
+	useEffect(() => {
+		if (!selectedProjectDetails) {
+			setSelectedBillingType('LOPANDE');
+		setSelectedFixedBlock('');
+		setFixedBlocks([]);
+		setFixedBlocksError(null);
+			return;
+		}
+
+		switch (selectedProjectDetails.billing_mode) {
+			case 'FAST_ONLY':
+				setSelectedBillingType('FAST');
+				break;
+			case 'LOPANDE_ONLY':
+				setSelectedBillingType('LOPANDE');
+				break;
+			case 'BOTH':
+				setSelectedBillingType(selectedProjectDetails.default_time_billing_type ?? 'LOPANDE');
+				break;
+			default:
+				setSelectedBillingType('LOPANDE');
+		}
+}, [selectedProjectDetails]);
+
+useEffect(() => {
+	if (
+		!selectedProjectDetails ||
+		(selectedProjectDetails.billing_mode !== 'FAST_ONLY' &&
+			selectedProjectDetails.billing_mode !== 'BOTH')
+	) {
+		setFixedBlocks([]);
+		setSelectedFixedBlock('');
+		setFixedBlocksError(null);
+		return;
+	}
+
+	let isCancelled = false;
+	const loadBlocks = async () => {
+		try {
+			setFixedBlocksLoading(true);
+			setFixedBlocksError(null);
+			const response = await fetch(`/api/fixed-time-blocks?projectId=${selectedProjectDetails.id}`);
+			if (!response.ok) throw new Error('Kunde inte hämta fasta poster');
+			const json = await response.json();
+			if (!isCancelled) {
+				setFixedBlocks(json.blocks || []);
+			}
+		} catch (error) {
+			if (!isCancelled) {
+				console.error(error);
+				setFixedBlocksError(error instanceof Error ? error.message : 'Ett fel uppstod');
+				setFixedBlocks([]);
+			}
+		} finally {
+			if (!isCancelled) setFixedBlocksLoading(false);
+		}
+	};
+
+	loadBlocks();
+
+	return () => {
+		isCancelled = true;
+	};
+}, [selectedProjectDetails]);
+
+useEffect(() => {
+	if (selectedBillingType !== 'FAST') {
+		setSelectedFixedBlock('');
+	}
+}, [selectedBillingType]);
 
 	// Fetch phases for selected project
 	const { data: phases } = useQuery({
@@ -90,8 +187,16 @@ export function TimerWidget({ userId, orgId, inline = false }: TimerWidgetProps)
 			return;
 		}
 
-		const project = projects?.find(p => p.id === selectedProject);
+		const project = selectedProjectDetails;
 		if (!project) return;
+
+		if (
+			selectedBillingType === 'FAST' &&
+			(!selectedFixedBlock || fixedBlocks.length === 0)
+		) {
+			alert('Välj en fast post innan du startar tid på detta projekt.');
+			return;
+		}
 
 		const entryId = crypto.randomUUID();
 
@@ -101,6 +206,8 @@ export function TimerWidget({ userId, orgId, inline = false }: TimerWidgetProps)
 			project_id: selectedProject,
 			project_name: project.name,
 			phase_id: selectedPhase || undefined,
+			billing_type: selectedBillingType,
+			fixed_block_id: selectedBillingType === 'FAST' ? selectedFixedBlock || undefined : undefined,
 		});
 
 		// Create time entry in database (draft, no stop time)
@@ -112,6 +219,8 @@ export function TimerWidget({ userId, orgId, inline = false }: TimerWidgetProps)
 					project_id: selectedProject,
 					phase_id: selectedPhase || null,
 					start_at: new Date().toISOString(),
+					billing_type: selectedBillingType,
+					fixed_block_id: selectedBillingType === 'FAST' ? selectedFixedBlock || null : null,
 				}),
 			});
 		} catch (error) {
@@ -157,7 +266,10 @@ export function TimerWidget({ userId, orgId, inline = false }: TimerWidgetProps)
 						{isRunning && currentEntry ? (
 							<div>
 								<p className="text-sm font-medium">{currentEntry.project_name}</p>
-								<p className="text-xs text-muted-foreground">{elapsedTime}</p>
+								<p className="text-xs text-muted-foreground">
+									{elapsedTime}{' '}
+									{currentEntry.billing_type === 'FAST' ? '· Fast' : '· Löpande'}
+								</p>
 							</div>
 						) : (
 							<p className="text-base font-semibold text-black dark:text-[#c47a2c] dark:[text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">
@@ -221,7 +333,15 @@ export function TimerWidget({ userId, orgId, inline = false }: TimerWidgetProps)
 							<div className="space-y-3">
 								<div className="space-y-2">
 									<label className="text-sm font-medium">Projekt</label>
-									<Select value={selectedProject} onValueChange={setSelectedProject}>
+									<Select
+										value={selectedProject}
+										onValueChange={(value) => {
+											setSelectedProject(value);
+											setSelectedFixedBlock('');
+											setFixedBlocks([]);
+											setFixedBlocksError(null);
+										}}
+									>
 										<SelectTrigger>
 											<SelectValue placeholder="Välj projekt" />
 										</SelectTrigger>
@@ -254,12 +374,87 @@ export function TimerWidget({ userId, orgId, inline = false }: TimerWidgetProps)
 										</Select>
 									</div>
 								)}
+
+								{selectedProjectDetails && selectedProjectDetails.billing_mode === 'BOTH' && (
+									<div className="space-y-2">
+										<label className="text-sm font-medium">Debitering</label>
+										<Select
+											value={selectedBillingType}
+											onValueChange={(value) => setSelectedBillingType(value as BillingType)}
+										>
+											<SelectTrigger>
+												<SelectValue placeholder="Välj debitering" />
+											</SelectTrigger>
+											<SelectContent>
+												{billingTypeOptions.map((option) => (
+													<SelectItem key={option.value} value={option.value}>
+														{option.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+								)}
+
+								{selectedProjectDetails && selectedProjectDetails.billing_mode !== 'BOTH' && (
+									<div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+										Debitering: {selectedProjectDetails.billing_mode === 'FAST_ONLY' ? 'Fast' : 'Löpande'}
+									</div>
+								)}
+
+								{selectedProjectDetails &&
+									selectedBillingType === 'FAST' &&
+									(selectedProjectDetails.billing_mode === 'FAST_ONLY' ||
+										selectedProjectDetails.billing_mode === 'BOTH') && (
+										<div className="space-y-2">
+											<label className="text-sm font-medium">Fast post</label>
+											{fixedBlocksLoading ? (
+												<div className="flex items-center gap-2 text-xs text-muted-foreground">
+													<Loader2 className="w-3 h-3 animate-spin" />
+													Hämtar fasta poster...
+												</div>
+											) : (
+												<Select
+													value={selectedFixedBlock}
+													onValueChange={setSelectedFixedBlock}
+													disabled={fixedBlocks.length === 0}
+												>
+													<SelectTrigger>
+														<SelectValue placeholder="Välj fast post" />
+													</SelectTrigger>
+													<SelectContent>
+														{fixedBlocks.length > 0 ? (
+															fixedBlocks.map((block) => (
+																<SelectItem key={block.id} value={block.id}>
+																	{block.name} ({Math.round(Number(block.amount_sek || 0))} SEK)
+																</SelectItem>
+															))
+														) : (
+															<SelectItem value="" disabled>
+																Inga fasta poster – skapa i projektet
+															</SelectItem>
+														)}
+													</SelectContent>
+												</Select>
+											)}
+											{fixedBlocksError && (
+												<p className="text-xs text-red-600">{fixedBlocksError}</p>
+											)}
+											<p className="text-xs text-muted-foreground">
+												Fast tid måste kopplas till en fast post.
+											</p>
+										</div>
+									)}
 							</div>
 
 							<Button 
 								className="w-full" 
 								onClick={handleStart}
-								disabled={!selectedProject}
+								disabled={
+									!selectedProject ||
+									(selectedBillingType === 'FAST' &&
+										(fixedBlocksLoading || fixedBlocks.length === 0 || !selectedFixedBlock))
+								}
 							>
 								<Play className="w-4 h-4 mr-2" />
 								Starta tid

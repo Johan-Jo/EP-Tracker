@@ -22,7 +22,7 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
 		// Get the project to verify access
 		const { data: project, error: projectError } = await supabase
 			.from('projects')
-			.select('org_id')
+			.select('org_id, billing_mode, default_time_billing_type')
 			.eq('id', params.id)
 			.single();
 
@@ -45,7 +45,21 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
 
 		// Parse request body
 		const body = await request.json();
-		const { name, project_number, client_name, site_address, status, budget_mode, budget_hours, budget_amount, alert_settings } = body;
+		const {
+			name,
+			project_number,
+			client_name,
+			site_address,
+			status,
+			budget_mode,
+			budget_hours,
+			budget_amount,
+			alert_settings,
+			billing_mode,
+			default_time_billing_type,
+			quoted_amount_sek,
+			project_hourly_rate_sek,
+		} = body;
 
 		// Prepare update object (only include fields that are provided)
 		const updateData: any = {
@@ -61,6 +75,23 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
 		if (budget_hours !== undefined) updateData.budget_hours = budget_hours;
 		if (budget_amount !== undefined) updateData.budget_amount = budget_amount;
 		if (alert_settings !== undefined) updateData.alert_settings = alert_settings;
+		if (billing_mode !== undefined) updateData.billing_mode = billing_mode;
+		if (default_time_billing_type !== undefined) updateData.default_time_billing_type = default_time_billing_type;
+		if (quoted_amount_sek !== undefined) updateData.quoted_amount_sek = quoted_amount_sek;
+		if (project_hourly_rate_sek !== undefined) updateData.project_hourly_rate_sek = project_hourly_rate_sek;
+
+		const nextBillingMode = (billing_mode ?? project.billing_mode) as string;
+		const nextDefaultTime =
+			(default_time_billing_type ?? project.default_time_billing_type) as string;
+
+		const derivedAta =
+			nextBillingMode === 'FAST_ONLY'
+				? 'FAST'
+				: nextBillingMode === 'LOPANDE_ONLY'
+				? 'LOPANDE'
+				: nextDefaultTime;
+
+		updateData.default_ata_billing_type = derivedAta;
 
 		// Update project
 		const { data: updatedProject, error: updateError } = await supabase

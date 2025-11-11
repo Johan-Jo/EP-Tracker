@@ -4,6 +4,19 @@ import { createTimeEntrySchema } from '@/lib/schemas/time-entry';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
 import { notifyOnCheckIn } from '@/lib/notifications/project-alerts'; // EPIC 25 Phase 2: Project alerts
 
+const MAX_MINUTES_PER_DAY = 24 * 60;
+
+function calculateDurationMinutes(startISO: string, stopISO?: string | null, fallbackMinutes?: number | null) {
+	if (!stopISO) return 0;
+	const start = new Date(startISO);
+	const stop = new Date(stopISO);
+	const diff = stop.getTime() - start.getTime();
+	if (Number.isNaN(diff) || diff <= 0) {
+		return Math.max(0, fallbackMinutes ?? 0);
+	}
+	return Math.round(diff / 60000);
+}
+
 // GET /api/time/entries - List time entries with filters
 export async function GET(request: NextRequest) {
 	try {
@@ -107,6 +120,52 @@ export async function POST(request: NextRequest) {
 		// This saves 1 query and makes the API faster
 		const supabase = await createClient();
 
+		const startDate = new Date(data.start_at);
+		const stopDate = data.stop_at ? new Date(data.stop_at) : null;
+
+		if (stopDate) {
+			const newEntryMinutes = calculateDurationMinutes(data.start_at, data.stop_at);
+
+			if (newEntryMinutes > MAX_MINUTES_PER_DAY) {
+				return NextResponse.json(
+					{ error: 'En användare kan inte registrera mer än 24 timmar på ett dygn.' },
+					{ status: 400 },
+				);
+			}
+
+			const dayStart = new Date(startDate);
+			dayStart.setHours(0, 0, 0, 0);
+			const dayEnd = new Date(dayStart);
+			dayEnd.setDate(dayEnd.getDate() + 1);
+
+			const { data: existingDayEntries, error: dayError } = await supabase
+				.from('time_entries')
+				.select('id, start_at, stop_at, duration_min')
+				.eq('org_id', membership.org_id)
+				.eq('user_id', user.id)
+				.gte('start_at', dayStart.toISOString())
+				.lt('start_at', dayEnd.toISOString());
+
+			if (dayError) {
+				return NextResponse.json({ error: dayError.message }, { status: 500 });
+			}
+
+			const accumulatedMinutes =
+				(existingDayEntries || []).reduce((sum, entry) => {
+					return (
+						sum +
+						calculateDurationMinutes(entry.start_at, entry.stop_at, entry.duration_min ?? 0)
+					);
+				}, 0) + newEntryMinutes;
+
+			if (accumulatedMinutes > MAX_MINUTES_PER_DAY) {
+				return NextResponse.json(
+					{ error: 'Summan av registrerad arbetstid får inte överstiga 24 timmar för samma dag.' },
+					{ status: 400 },
+				);
+			}
+		}
+
 		// EPIC 26: Insert time entry without JOINs for maximum speed
 		// Client already has project/phase data cached, no need to fetch it again
 		const { data: entry, error: insertError } = await supabase
@@ -121,6 +180,8 @@ export async function POST(request: NextRequest) {
 				start_at: data.start_at,
 				stop_at: data.stop_at,
 				notes: data.notes,
+				billing_type: data.billing_type ?? 'LOPANDE',
+				fixed_block_id: data.billing_type === 'FAST' ? data.fixed_block_id ?? null : null,
 				status: 'draft',
 			})
 			.select('*')

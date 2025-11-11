@@ -35,9 +35,9 @@ export async function GET(request: NextRequest) {
 		}
 
 		const searchParams = request.nextUrl.searchParams;
-	const periodStart = searchParams.get('start');
-	const periodEnd = searchParams.get('end');
-	const format = searchParams.get('format') || 'csv';
+		const periodStart = searchParams.get('start');
+		const periodEnd = searchParams.get('end');
+		const format = searchParams.get('format') || 'csv';
 		const personId = searchParams.get('person_id');
 	let lockedOnly = searchParams.get('locked_only') === 'true';
 	const selectedIdsParam = searchParams.get('selected_ids');

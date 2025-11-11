@@ -1,0 +1,92 @@
+[1mdiff --git a/components/payroll/payroll-basis-page.tsx b/components/payroll/payroll-basis-page.tsx[m
+[1mindex 9370f04..0b130dc 100644[m
+[1m--- a/components/payroll/payroll-basis-page.tsx[m
+[1m+++ b/components/payroll/payroll-basis-page.tsx[m
+[36m@@ -58,6 +58,21 @@[m [mconst fmtMoneySEK = (value: number | null | undefined) =>[m
+ 				maximumFractionDigits: 2,[m
+ 		  }).format(value)} SEK`;[m
+ [m
+[32m+[m[32mconst normalizeObHours = (entry: { ob_hours: number | null | undefined; total_hours: number | null | undefined }) => {[m
+[32m+[m	[32mconst raw = entry.ob_hours ?? 0;[m
+[32m+[m	[32mif (raw === 0) {[m
+[32m+[m		[32mreturn 0;[m
+[32m+[m	[32m}[m
+[32m+[m	[32mconst total = Math.abs(entry.total_hours ?? 0);[m
+[32m+[m	[32mif (total <= 0) {[m
+[32m+[m		[32mreturn raw / 60;[m
+[32m+[m	[32m}[m
+[32m+[m	[32mif (raw > total + 0.01) {[m
+[32m+[m		[32mreturn raw / 60;[m
+[32m+[m	[32m}[m
+[32m+[m	[32mreturn raw;[m
+[32m+[m[32m};[m
+[32m+[m
+ const formatDate = (value: string) => new Date(value).toLocaleDateString('sv-SE');[m
+ [m
+ const formatDateRange = (start: string, end: string) => `${formatDate(start)} – ${formatDate(end)}`;[m
+[36m@@ -365,7 +380,9 @@[m [mexport function PayrollBasisPage({ orgId }: { orgId: string }) {[m
+ 									/>[m
+ [m
+ 									<div className='space-y-3 sm:hidden'>[m
+[31m-										{filteredData.map((row) => ([m
+[32m+[m										[32m{filteredData.map((row) => {[m
+[32m+[m											[32mconst obHours = normalizeObHours(row);[m
+[32m+[m											[32mreturn ([m
+ 											<article[m
+ 												key={row.id}[m
+ 												className='rounded-2xl border border-white/10 bg-white/5 p-3 shadow-sm dark:border-white/5 dark:bg-white/5'[m
+[36m@@ -390,8 +407,8 @@[m [mexport function PayrollBasisPage({ orgId }: { orgId: string }) {[m
+ 															{!isZeroHours(row.hours_overtime) && ([m
+ 																<span className='rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-300'>ÖT {fmtH(row.hours_overtime)}</span>[m
+ 															)}[m
+[31m-															{!isZeroHours(row.ob_hours) && ([m
+[31m-																<span className='rounded-full bg-sky-500/15 px-2 py-0.5 text-sky-300'>OB {fmtH(row.ob_hours)}</span>[m
+[32m+[m															[32m{!isZeroHours(obHours) && ([m
+[32m+[m																[32m<span className='rounded-full bg-sky-500/15 px-2 py-0.5 text-sky-300'>OB {fmtH(obHours)}</span>[m
+ 															)}[m
+ 															{!isZeroHours(row.hours_norm) && ([m
+ 																<span className='rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-300'>[m
+[36m@@ -420,7 +437,7 @@[m [mexport function PayrollBasisPage({ orgId }: { orgId: string }) {[m
+ 													<div className='text-right text-[15px] font-semibold'>{fmtMoneySEK(row.gross_salary_sek)}</div>[m
+ 												</div>[m
+ [m
+[31m-												{(!isZeroHours(row.hours_norm) || !isZeroHours(row.hours_overtime) || !isZeroHours(row.ob_hours)) && ([m
+[32m+[m												[32m{(!isZeroHours(row.hours_norm) || !isZeroHours(row.hours_overtime) || !isZeroHours(obHours)) && ([m
+ 													<div className='mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 tabular text-[13px]'>[m
+ 														{!isZeroHours(row.hours_norm) && ([m
+ 															<>[m
+[36m@@ -434,10 +451,10 @@[m [mexport function PayrollBasisPage({ orgId }: { orgId: string }) {[m
+ 																<div className='text-right'>{fmtH(row.hours_overtime)}</div>[m
+ 															</>[m
+ 														)}[m
+[31m-														{!isZeroHours(row.ob_hours) && ([m
+[32m+[m														[32m{!isZeroHours(obHours) && ([m
+ 															<>[m
+ 																<div className='text-slate-400'>OB</div>[m
+[31m-																<div className='text-right'>{fmtH(row.ob_hours)}</div>[m
+[32m+[m																[32m<div className='text-right'>{fmtH(obHours)}</div>[m
+ 															</>[m
+ 														)}[m
+ 													</div>[m
+[36m@@ -461,7 +478,8 @@[m [mexport function PayrollBasisPage({ orgId }: { orgId: string }) {[m
+ 													</button>[m
+ 												</div>[m
+ 											</article>[m
+[31m-										))}[m
+[32m+[m										[32m);[m
+[32m+[m										[32m})}[m
+ [m
+ 										{filteredData.length > 0 && ([m
+ 											<div className='sticky-actions safe-bottom mt-3 -mx-6 px-6 py-3'>[m
+[36m@@ -692,7 +710,10 @@[m [mfunction Table({ data, selected, selectedCount, allSelected, toggleAll, toggleSe[m
+ 								{isZeroHours(row.hours_overtime) ? '–' : fmtH(row.hours_overtime)}[m
+ 							</td>[m
+ 							<td className='whitespace-nowrap py-2 pr-4 text-slate-500'>[m
+[31m-								{isZeroHours(row.ob_hours) ? '–' : fmtH(row.ob_hours)}[m
+[32m+[m								[32m{(() => {[m
+[32m+[m									[32mconst obHours = normalizeObHours(row);[m
+[32m+[m									[32mreturn isZeroHours(obHours) ? '–' : fmtH(obHours);[m
+[32m+[m								[32m})()}[m
+ 							</td>[m
+ 							<td className='whitespace-nowrap py-2 pr-4 text-slate-500'>[m
+ 								{isZeroHours(row.break_hours) ? '–' : fmtH(row.break_hours)}[m

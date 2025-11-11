@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import {
+	billingTypeEnum,
+	type BillingType,
+	projectBillingModeEnum,
+	type ProjectBillingMode,
+} from './billing-types';
 
 // Project status enum
 export const projectStatusEnum = z.enum([
@@ -52,6 +58,10 @@ export const projectSchema = z.object({
 	budget_hours: z.number().positive('Budget måste vara större än 0').optional().nullable(),
 	budget_amount: z.number().positive('Budget måste vara större än 0').optional().nullable(),
 	status: projectStatusEnum.default('active'),
+	default_time_billing_type: billingTypeEnum.default('LOPANDE'),
+	billing_mode: projectBillingModeEnum.default('LOPANDE_ONLY'),
+	quoted_amount_sek: z.number().positive('Ange offertbelopp').optional().nullable(),
+	project_hourly_rate_sek: z.number().positive('Ange timpris').optional().nullable(),
 	// Personalliggare/Worksite fields
 	worksite_enabled: z.boolean().default(false).optional(),
 	worksite_code: z.string().max(100).optional().nullable(),
@@ -64,6 +74,43 @@ export const projectSchema = z.object({
 	timezone: z.string().max(100).optional().nullable(),
 	retention_years: z.number().int().min(2).optional().nullable(),
 	alert_settings: alertSettingsSchema.optional(),
+}).superRefine((data, ctx) => {
+	const requiresFast = data.billing_mode === 'FAST_ONLY' || data.billing_mode === 'BOTH';
+	const requiresLopande = data.billing_mode === 'LOPANDE_ONLY' || data.billing_mode === 'BOTH';
+
+	if (requiresFast) {
+		if (!data.quoted_amount_sek || data.quoted_amount_sek <= 0) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['quoted_amount_sek'],
+				message: 'Ange offertbelopp för fast debitering',
+			});
+		}
+		if (data.billing_mode === 'FAST_ONLY' && data.default_time_billing_type === 'LOPANDE') {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['default_time_billing_type'],
+				message: 'Standard för tid måste vara Fast när projektet är Fast',
+			});
+		}
+	}
+
+	if (requiresLopande) {
+		if (!data.project_hourly_rate_sek || data.project_hourly_rate_sek <= 0) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['project_hourly_rate_sek'],
+				message: 'Ange timpris för löpande debitering',
+			});
+		}
+		if (data.default_time_billing_type === 'FAST' && data.billing_mode === 'LOPANDE_ONLY') {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['default_time_billing_type'],
+				message: 'Standard för tid måste vara Löpande när projektet är Löpande',
+			});
+		}
+	}
 });
 
 // Project database type (what comes from DB)
@@ -79,6 +126,11 @@ export type Project = {
 	geo_fence_radius_m: number;
 	budget_mode: string;
 	status: string;
+	default_time_billing_type: BillingType;
+	default_ata_billing_type?: BillingType;
+	billing_mode: ProjectBillingMode;
+	quoted_amount_sek: number | null;
+	project_hourly_rate_sek: number | null;
 	// Worksite fields
 	worksite_enabled?: boolean;
 	worksite_code?: string | null;
