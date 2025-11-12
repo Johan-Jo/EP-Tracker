@@ -56,6 +56,7 @@ export default async function NewAtaPage(props: PageProps) {
 				<Card className='bg-card/80 border-border/70 shadow-lg shadow-black/20'>
 					<CardContent className='p-6 md:p-8'>
 						<AtaForm 
+							orgId={membership.org_id}
 							userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance' | 'ue'} 
 							projectId={projectId}
 						/>
