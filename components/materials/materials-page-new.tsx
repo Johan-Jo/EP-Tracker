@@ -34,6 +34,11 @@ type RawMaterialRow = {
 	phase: { id: string; name: string } | null;
 };
 
+type RawMaterialRowFromDb = Omit<RawMaterialRow, 'project' | 'phase'> & {
+	project: { id: string; name: string } | { id: string; name: string }[] | null;
+	phase: { id: string; name: string } | { id: string; name: string }[] | null;
+};
+
 type RawExpenseRow = {
 	id: string;
 	org_id: string;
@@ -44,6 +49,10 @@ type RawExpenseRow = {
 	created_at: string;
 	photo_urls?: string[];
 	project: { id: string; name: string } | null;
+};
+
+type RawExpenseRowFromDb = Omit<RawExpenseRow, 'project'> & {
+	project: { id: string; name: string } | { id: string; name: string }[] | null;
 };
 
 type UnifiedItem = {
@@ -71,6 +80,26 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 	const [entriesLimit, setEntriesLimit] = useState(200);
 	const supabase = createClient();
 	
+	const normalizeSingleRelation = <T,>(relation: T | T[] | null): T | null => {
+		if (!relation) return null;
+		return Array.isArray(relation) ? relation[0] ?? null : relation;
+	};
+
+	const normalizeMaterialRow = (row: RawMaterialRowFromDb): RawMaterialRow => {
+		return {
+			...row,
+			project: normalizeSingleRelation(row.project),
+			phase: normalizeSingleRelation(row.phase),
+		};
+	};
+
+	const normalizeExpenseRow = (row: RawExpenseRowFromDb): RawExpenseRow => {
+		return {
+			...row,
+			project: normalizeSingleRelation(row.project),
+		};
+	};
+
 	// Set selected project when projectId prop changes
 	useEffect(() => {
 		if (projectId) {
@@ -167,31 +196,37 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 			if (expensesError) throw expensesError;
 
 			// Combine and normalize data
-			const normalizedMaterials: UnifiedItem[] = (materialsData || []).map((m: RawMaterialRow) => ({
-				...m,
-				category: 'material',
-				name: m.description,
-				quantity: m.qty,
-				unit_price: m.unit_price_sek,
-				total_price: m.total_sek,
-				supplier: m.notes, // Using notes as supplier for now
-				photo_urls: m.photo_urls || [],
-				unit: m.unit,
-				raw: m,
-			}));
+			const normalizedMaterials: UnifiedItem[] = (materialsData || []).map((row) => {
+				const material = normalizeMaterialRow(row as RawMaterialRowFromDb);
+				return {
+					...material,
+					category: 'material' as const,
+					name: material.description,
+					quantity: material.qty,
+					unit_price: material.unit_price_sek,
+					total_price: material.total_sek,
+					supplier: material.notes, // Using notes as supplier for now
+					photo_urls: material.photo_urls || [],
+					unit: material.unit,
+					raw: material,
+				};
+			});
 
-			const normalizedExpenses: UnifiedItem[] = (expensesData || []).map((e: RawExpenseRow) => ({
-				...e,
-				category: 'expense',
-				name: e.description,
-				quantity: 1,
-				unit: 'st',
-				unit_price: e.amount_sek,
-				total_price: e.amount_sek,
-				supplier: e.category,
-				photo_urls: e.photo_urls || [],
-				raw: e,
-			}));
+			const normalizedExpenses: UnifiedItem[] = (expensesData || []).map((row) => {
+				const expense = normalizeExpenseRow(row as RawExpenseRowFromDb);
+				return {
+					...expense,
+					category: 'expense' as const,
+					name: expense.description,
+					quantity: 1,
+					unit: 'st',
+					unit_price: expense.amount_sek,
+					total_price: expense.amount_sek,
+					supplier: expense.category,
+					photo_urls: expense.photo_urls || [],
+					raw: expense,
+				};
+			});
 
 			// Combine and sort by created_at
 			return [...normalizedMaterials, ...normalizedExpenses]
