@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Upload, Camera } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Upload } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { PhotoUploadButtons } from '@/components/shared/photo-upload-buttons';
 
 interface ReceiptUploadProps {
 	onUpload: (urls: string[]) => void;
@@ -125,43 +125,16 @@ export function ReceiptUpload({ onUpload, existingUrls = [], maxFiles = 10 }: Re
 				</div>
 
 				{/* Buttons */}
-				<div className='flex gap-3'>
-					<Button
-						type='button'
-						variant='outline'
-						onClick={() => document.getElementById('file-upload')?.click()}
-						disabled={isUploading}
-					>
-						<Upload className='w-4 h-4 mr-2' />
-						Välj fil
-					</Button>
-					<Button
-						type='button'
-						onClick={() => document.getElementById('camera-capture')?.click()}
-						disabled={isUploading}
-						className='bg-orange-500 hover:bg-orange-600 text-white'
-					>
-						<Camera className='w-4 h-4 mr-2' />
-						Ta foto
-					</Button>
-				</div>
-
-				{/* Hidden inputs */}
-				<input
-					id='file-upload'
-					type='file'
-					accept='image/*'
-					multiple
-					onChange={handleFileSelect}
-					className='hidden'
-				/>
-				<input
-					id='camera-capture'
-					type='file'
-					accept='image/*'
-					capture='environment'
-					onChange={handleCameraCapture}
-					className='hidden'
+				<PhotoUploadButtons
+					onFileChange={handleFileSelect}
+					onCameraChange={handleCameraCapture}
+					disabled={isUploading}
+					fileLabel='Välj fil'
+					cameraLabel='Ta foto'
+					fileButtonVariant='outline'
+					cameraButtonVariant='default'
+					fileButtonClassName='flex-1'
+					cameraButtonClassName='flex-1 bg-orange-500 hover:bg-orange-600 text-white'
 				/>
 			</div>
 		</div>

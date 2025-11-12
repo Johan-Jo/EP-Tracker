@@ -11,16 +11,18 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { ImagePlus, X, Loader2 } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { SignatureInput } from '@/components/shared/signature-input';
 import { toast } from 'sonner';
 import { billingTypeEnum, billingTypeOptions, type BillingType } from '@/lib/schemas/billing-types';
+import { AddMaterialDialog } from '@/components/materials/add-material-dialog';
+import { PhotoUploadButtons } from '@/components/shared/photo-upload-buttons';
 
 const DRAFT_FORM_STORAGE_PREFIX = 'ata-draft-form:';
 const DRAFT_MATERIALS_STORAGE_PREFIX = 'ata-draft-materials:';
+const DRAFT_EXPENSES_STORAGE_PREFIX = 'ata-draft-expenses:';
 
 const ataFormSchema = z
 	.object({
@@ -102,6 +104,7 @@ type CreateAtaPayload = {
 	fixed_amount_sek: number | null;
 	materials_amount_sek: number;
 	material_ids: string[];
+	expense_ids: string[];
 	status: 'draft' | 'pending_approval';
 	signed_by_name?: string | null;
 	signed_at?: string | null;
@@ -125,13 +128,14 @@ const parseNumberString = (value?: string | null): number | null => {
 };
 
 interface AtaFormProps {
+	orgId: string;
 	projectId?: string;
 	onSuccess?: () => void;
 	onCancel?: () => void;
 	userRole?: 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 }
 
-export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormProps) {
+export function AtaForm({ orgId, projectId, onSuccess, onCancel, userRole }: AtaFormProps) {
 	const [photos, setPhotos] = useState<File[]>([]);
 	const [photosPreviews, setPhotosPreviews] = useState<string[]>([]);
 	const [signature, setSignature] = useState<{ name: string; timestamp: string } | null>(null);
@@ -142,7 +146,8 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 	const router = useRouter();
 	const [draftId, setDraftId] = useState<string | null>(null);
 	const [draftMaterialIds, setDraftMaterialIds] = useState<string[]>([]);
-	const [materialsLink, setMaterialsLink] = useState<string | null>(null);
+	const [draftExpenseIds, setDraftExpenseIds] = useState<string[]>([]);
+	const [isMaterialDialogOpen, setIsMaterialDialogOpen] = useState(false);
 
 	const {
 		register,
@@ -164,6 +169,14 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 			fixed_amount_sek: '',
 		},
 	});
+
+	const selectedProjectId = watch('project_id');
+	const titleValue = watch('title');
+	const billingType = watch('billing_type');
+	const qtyValue = watch('qty');
+	const unitPriceValue = watch('unit_price_sek');
+	const unitValue = watch('unit');
+	const fixedAmountValue = watch('fixed_amount_sek');
 
 	const persistedFields: (keyof AtaFormValues)[] = useMemo(
 		() => ['project_id', 'title', 'description', 'qty', 'unit', 'unit_price_sek', 'ata_number', 'billing_type', 'fixed_amount_sek'],
@@ -293,30 +306,201 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 		[draftId],
 	);
 
+const loadDraftExpenseIds = useCallback(() => {
+	if (!draftId || typeof window === 'undefined') {
+		setDraftExpenseIds([]);
+		return;
+	}
+
+	try {
+		const stored = window.localStorage.getItem(`${DRAFT_EXPENSES_STORAGE_PREFIX}${draftId}`);
+		if (!stored) {
+			setDraftExpenseIds([]);
+			return;
+		}
+		const parsed = JSON.parse(stored);
+		if (!Array.isArray(parsed)) {
+			setDraftExpenseIds([]);
+			return;
+		}
+		const unique = Array.from(
+			new Set(parsed.filter((id: unknown): id is string => typeof id === 'string')),
+		);
+		setDraftExpenseIds(unique);
+	} catch (error) {
+		console.error('Kunde inte läsa kopplade utgifter', error);
+		setDraftExpenseIds([]);
+	}
+}, [draftId]);
+
+useEffect(() => {
+	if (!draftId || typeof window === 'undefined') return;
+
+	loadDraftExpenseIds();
+
+	const handleStorage = (event: StorageEvent) => {
+		if (event.key === `${DRAFT_EXPENSES_STORAGE_PREFIX}${draftId}`) {
+			loadDraftExpenseIds();
+		}
+	};
+
+	const handleVisibility = () => {
+		if (!document.hidden) {
+			loadDraftExpenseIds();
+		}
+	};
+
+	window.addEventListener('storage', handleStorage);
+	document.addEventListener('visibilitychange', handleVisibility);
+
+	return () => {
+		window.removeEventListener('storage', handleStorage);
+		document.removeEventListener('visibilitychange', handleVisibility);
+	};
+}, [draftId, loadDraftExpenseIds]);
+
+const updateDraftExpenses = useCallback(
+	(updater: (ids: string[]) => string[]) => {
+		if (!draftId || typeof window === 'undefined') return;
+		const key = `${DRAFT_EXPENSES_STORAGE_PREFIX}${draftId}`;
+		setDraftExpenseIds((prev) => {
+			const next = updater(prev);
+			if (next.length === 0) {
+				window.localStorage.removeItem(key);
+			} else {
+				window.localStorage.setItem(key, JSON.stringify(next));
+			}
+			return next;
+		});
+	},
+	[draftId],
+);
+
 	const handleRemoveDraftMaterial = useCallback(
+		async (materialId: string) => {
+			try {
+				const { error } = await supabase
+					.from('materials')
+					.delete()
+					.eq('id', materialId)
+					.eq('status', 'draft');
+
+				if (error) {
+					console.error('Failed to remove material', error);
+					toast.error('Kunde inte ta bort materialet.');
+				}
+			} catch (error) {
+				console.error('Failed to remove material', error);
+				toast.error('Kunde inte ta bort materialet.');
+			} finally {
+				updateDraftMaterials((ids) => ids.filter((id) => id !== materialId));
+			}
+		},
+		[supabase, updateDraftMaterials],
+	);
+
+	const handleClearDraftMaterials = useCallback(async () => {
+		if (draftMaterialIds.length > 0) {
+			try {
+				const { error } = await supabase
+					.from('materials')
+					.delete()
+					.in('id', draftMaterialIds)
+					.eq('status', 'draft');
+
+				if (error) {
+					console.error('Failed to clear materials', error);
+					toast.error('Kunde inte rensa materiallistan.');
+				}
+			} catch (error) {
+				console.error('Failed to clear materials', error);
+				toast.error('Kunde inte rensa materiallistan.');
+			}
+		}
+		updateDraftMaterials(() => []);
+	}, [draftMaterialIds, supabase, updateDraftMaterials]);
+
+	const handleRemoveDraftExpense = useCallback(
+		async (expenseId: string) => {
+			try {
+				const { error } = await supabase
+					.from('expenses')
+					.delete()
+					.eq('id', expenseId)
+					.eq('status', 'draft');
+
+				if (error) {
+					console.error('Failed to remove expense', error);
+					toast.error('Kunde inte ta bort utgiften.');
+				}
+			} catch (error) {
+				console.error('Failed to remove expense', error);
+				toast.error('Kunde inte ta bort utgiften.');
+			} finally {
+				updateDraftExpenses((ids) => ids.filter((id) => id !== expenseId));
+			}
+		},
+		[supabase, updateDraftExpenses],
+	);
+
+	const handleClearDraftExpenses = useCallback(async () => {
+		if (draftExpenseIds.length > 0) {
+			try {
+				const { error } = await supabase
+					.from('expenses')
+					.delete()
+					.in('id', draftExpenseIds)
+					.eq('status', 'draft');
+
+				if (error) {
+					console.error('Failed to clear expenses', error);
+					toast.error('Kunde inte rensa utgiftslistan.');
+				}
+			} catch (error) {
+				console.error('Failed to clear expenses', error);
+				toast.error('Kunde inte rensa utgiftslistan.');
+			}
+		}
+		updateDraftExpenses(() => []);
+	}, [draftExpenseIds, supabase, updateDraftExpenses]);
+
+	const handleMaterialCreated = useCallback(
 		(materialId: string) => {
-			updateDraftMaterials((ids) => ids.filter((id) => id !== materialId));
+			updateDraftMaterials((ids) => {
+				if (ids.includes(materialId)) {
+					return ids;
+				}
+				toast.success('Material tillagt i ÄTA-utkastet');
+				return [...ids, materialId];
+			});
 		},
 		[updateDraftMaterials],
 	);
 
-	const handleClearDraftMaterials = useCallback(() => {
-		updateDraftMaterials(() => []);
-	}, [updateDraftMaterials]);
+	const handleExpenseCreated = useCallback(
+		(expenseId: string) => {
+			updateDraftExpenses((ids) => {
+				if (ids.includes(expenseId)) {
+					return ids;
+				}
+				toast.success('Utgift tillagd i ÄTA-utkastet');
+				return [...ids, expenseId];
+			});
+		},
+		[updateDraftExpenses],
+	);
 
 	const handleOpenMaterials = useCallback(() => {
-		if (!materialsLink) {
-			if (!selectedProjectId) {
-				toast.error('Välj projekt innan du lägger till material.');
-			} else if (!titleValue?.trim()) {
-				toast.error('Ge ÄTA:n ett namn innan du lägger till material.');
-			} else {
-				toast.error('Kunde inte öppna materialsidan.');
-			}
+		if (!selectedProjectId) {
+			toast.error('Välj ett projekt innan du lägger till material.');
 			return;
 		}
-		router.push(materialsLink);
-	}, [materialsLink, router, selectedProjectId, titleValue]);
+		if (!titleValue?.trim()) {
+			toast.error('Ange ett namn på ÄTA:n innan du lägger till material.');
+			return;
+		}
+		setIsMaterialDialogOpen(true);
+	}, [selectedProjectId, titleValue]);
 
 	const createAtaMutation = useMutation({
 		mutationFn: async (payload: CreateAtaPayload) => {
@@ -359,8 +543,10 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 			if (draftId && typeof window !== 'undefined') {
 				window.localStorage.removeItem(`${DRAFT_FORM_STORAGE_PREFIX}${draftId}`);
 				window.localStorage.removeItem(`${DRAFT_MATERIALS_STORAGE_PREFIX}${draftId}`);
+				window.localStorage.removeItem(`${DRAFT_EXPENSES_STORAGE_PREFIX}${draftId}`);
 			}
 			setDraftMaterialIds([]);
+			setDraftExpenseIds([]);
 			queryClient.invalidateQueries({ queryKey: ['ata'] });
 			if (onSuccess) {
 				onSuccess();
@@ -441,14 +627,6 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 		setPhotosPreviews(photosPreviews.filter((_, i) => i !== index));
 	};
 
-	const selectedProjectId = watch('project_id');
-	const titleValue = watch('title');
-	const billingType = watch('billing_type');
-	const qtyValue = watch('qty');
-	const unitPriceValue = watch('unit_price_sek');
-	const unitValue = watch('unit');
-	const fixedAmountValue = watch('fixed_amount_sek');
-
 	const toNumber = (value: unknown): number => {
 		if (value === undefined || value === null) return 0;
 		if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
@@ -458,28 +636,6 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 
 	const unitPriceNumber = parseNumberString(unitPriceValue);
 	const fixedAmountNumber = parseNumberString(fixedAmountValue);
-
-	useEffect(() => {
-		if (typeof window === 'undefined') return;
-		if (!draftId || !selectedProjectId || !titleValue?.trim()) {
-			setMaterialsLink(null);
-			return;
-		}
-
-		const currentUrl = new URL(window.location.href);
-		currentUrl.searchParams.set('ata_draft', draftId);
-		const returnTo =
-			currentUrl.pathname +
-			(currentUrl.searchParams.size > 0 ? `?${currentUrl.searchParams.toString()}` : '');
-
-		const materialsUrl = new URL(`${window.location.origin}/dashboard/materials`);
-		materialsUrl.searchParams.set('project_id', selectedProjectId);
-		materialsUrl.searchParams.set('ata_draft', draftId);
-		materialsUrl.searchParams.set('return_to', returnTo);
-		materialsUrl.searchParams.set('ata_title', titleValue.trim());
-
-		setMaterialsLink(`${materialsUrl.pathname}?${materialsUrl.searchParams.toString()}`);
-	}, [draftId, selectedProjectId, titleValue]);
 
 	const { data: draftMaterials = [], isLoading: isLoadingDraftMaterials } = useQuery({
 		queryKey: ['ata-draft-materials', draftId, draftMaterialIds],
@@ -501,6 +657,27 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 				.filter((item): item is NonNullable<typeof item> => Boolean(item));
 		},
 	});
+
+const { data: draftExpenses = [], isLoading: isLoadingDraftExpenses } = useQuery({
+	queryKey: ['ata-draft-expenses', draftId, draftExpenseIds],
+	enabled: Boolean(draftId && draftExpenseIds.length > 0),
+	queryFn: async () => {
+		const ids = draftExpenseIds.filter(Boolean);
+		if (ids.length === 0) return [];
+
+		const { data, error } = await supabase
+			.from('expenses')
+			.select('id, project_id, description, amount_sek, category, created_at')
+			.in('id', ids);
+
+		if (error) throw error;
+
+		const map = new Map((data ?? []).map((item) => [item.id, item]));
+		return ids
+			.map((id) => map.get(id))
+			.filter((item): item is NonNullable<typeof item> => Boolean(item));
+	},
+});
 
 	useEffect(() => {
 		if (!draftId || !selectedProjectId) return;
@@ -527,6 +704,31 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 		}
 	}, [draftId, draftMaterials, draftMaterialIds, selectedProjectId]);
 
+	useEffect(() => {
+		if (!draftId || !selectedProjectId) return;
+		if (!draftExpenses || draftExpenses.length === 0) return;
+
+		const filtered = draftExpenses.filter((expense: any) => expense.project_id === selectedProjectId);
+		if (filtered.length === draftExpenses.length) return;
+
+		const allowedIds = filtered.map((expense: any) => expense.id);
+		const currentIds = draftExpenseIds;
+		const isSameLength = allowedIds.length === currentIds.length;
+		const isSameOrder = isSameLength && allowedIds.every((id, index) => id === currentIds[index]);
+
+		if (!isSameOrder) {
+			const key = `${DRAFT_EXPENSES_STORAGE_PREFIX}${draftId}`;
+			setDraftExpenseIds(allowedIds);
+			if (typeof window !== 'undefined') {
+				if (allowedIds.length === 0) {
+					window.localStorage.removeItem(key);
+				} else {
+					window.localStorage.setItem(key, JSON.stringify(allowedIds));
+				}
+			}
+		}
+	}, [draftExpenseIds, draftExpenses, draftId, selectedProjectId]);
+
 	const materialsSubtotal = useMemo(
 		() =>
 			(draftMaterials ?? []).reduce((sum, material) => {
@@ -538,6 +740,15 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 		[draftMaterials],
 	);
 
+	const expensesSubtotal = useMemo(
+		() =>
+			(draftExpenses ?? []).reduce((sum, expense) => {
+				const amount = toNumber(expense?.amount_sek ?? 0);
+				return sum + amount;
+			}, 0),
+		[draftExpenses],
+	);
+
 	const materialIdsForSubmit = useMemo(() => {
 		const ids =
 			draftMaterials && draftMaterials.length > 0
@@ -546,15 +757,25 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 		return Array.from(new Set(ids));
 	}, [draftMaterials, draftMaterialIds]);
 
+const expenseIdsForSubmit = useMemo(() => {
+	const ids =
+		draftExpenses && draftExpenses.length > 0
+			? draftExpenses.map((expense) => expense.id)
+			: draftExpenseIds;
+	return Array.from(new Set(ids));
+}, [draftExpenses, draftExpenseIds]);
+
 	const laborSubtotal =
 		billingType === 'FAST'
 			? fixedAmountNumber ?? 0
 			: 0;
-	const calculatedTotal = (Number.isFinite(laborSubtotal) ? laborSubtotal : 0) + materialsSubtotal;
+const calculatedTotal =
+	(Number.isFinite(laborSubtotal) ? laborSubtotal : 0) + materialsSubtotal + expensesSubtotal;
 	const totalDisplay = Number.isFinite(calculatedTotal) ? calculatedTotal : 0;
 	const showTotalCard = totalDisplay > 0;
 	const hasLaborSubtotal = Number.isFinite(laborSubtotal) && laborSubtotal > 0;
-	const hasMaterialsSubtotal = materialsSubtotal > 0;
+const hasMaterialsSubtotal = materialsSubtotal > 0;
+const hasExpensesSubtotal = expensesSubtotal > 0;
 
 	const laborLabel =
 		billingType === 'FAST' ? 'Fast belopp' : 'Arbetstid (från tidrapportering)';
@@ -660,6 +881,7 @@ useEffect(() => {
 			fixed_amount_sek: resolvedBillingType === 'FAST' ? parseNumberString(data.fixed_amount_sek) : null,
 			materials_amount_sek: Math.round(materialsSubtotal * 100) / 100,
 			material_ids: materialIdsForSubmit,
+			expense_ids: expenseIdsForSubmit,
 			status: submitAsPending ? 'pending_approval' : 'draft',
 			signed_by_name: signature?.name ?? null,
 			signed_at: signature?.timestamp ?? null,
@@ -669,6 +891,7 @@ useEffect(() => {
 	};
 
 	return (
+		<>
 		<form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 			<div className="space-y-4">
 				<div>
@@ -821,6 +1044,18 @@ useEffect(() => {
 									</span>
 								</div>
 							)}
+							{hasExpensesSubtotal && (
+								<div className="flex items-center justify-between text-sm text-muted-foreground">
+									<span>Utgifter</span>
+									<span className="font-medium text-foreground">
+										{expensesSubtotal.toLocaleString('sv-SE', {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										})}{' '}
+										SEK
+									</span>
+								</div>
+							)}
 							<div className="flex items-center justify-between border-t border-border/60 pt-3">
 								<span className="text-sm font-medium">Totalt</span>
 								<span className="text-lg font-bold">
@@ -842,7 +1077,8 @@ useEffect(() => {
 								<div>
 									<h3 className="text-sm font-semibold">Material kopplade till denna ÄTA</h3>
 									<p className="text-xs text-muted-foreground">
-										Lägg till material via materialsidan så sparas de mot detta utkast.
+										Lägg till materialposter här – de sparas både i materialhistoriken och kopplas till
+										detta ÄTA-utkast.
 									</p>
 								</div>
 								{draftMaterials.length > 0 && (
@@ -867,36 +1103,13 @@ useEffect(() => {
 										return (
 											<li
 												key={material.id}
-												className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background p-3 md:flex-row md:items-start md:justify-between"
+												className="rounded-lg border border-border/60 bg-background p-4 space-y-3"
 											>
-												<div className="space-y-1">
-													<p className="text-sm font-medium">{material.description}</p>
-													{qtyDisplay > 0 && unitPriceDisplay > 0 && (
-														<p className="text-xs text-muted-foreground">
-															{qtyDisplay.toLocaleString('sv-SE', {
-																minimumFractionDigits: 2,
-																maximumFractionDigits: 2,
-															})}{' '}
-															{material.unit || 'st'} ×{' '}
-															{unitPriceDisplay.toLocaleString('sv-SE', {
-																minimumFractionDigits: 2,
-																maximumFractionDigits: 2,
-															})}{' '}
-															SEK
-														</p>
-													)}
-													<p className="text-xs text-muted-foreground capitalize">
-														Status: {material.status ?? 'utkast'}
-													</p>
-												</div>
-												<div className="flex items-center justify-between gap-3 md:flex-col md:items-end md:justify-start">
-													<p className="text-sm font-semibold">
-														{totalDisplayValue.toLocaleString('sv-SE', {
-															minimumFractionDigits: 2,
-															maximumFractionDigits: 2,
-														})}{' '}
-														SEK
-													</p>
+												<div className="flex items-start justify-between gap-3">
+													<div>
+														<p className="text-sm font-semibold text-foreground">Material</p>
+														<p className="text-sm text-muted-foreground">{material.description}</p>
+													</div>
 													<Button
 														type="button"
 														variant="ghost"
@@ -905,6 +1118,40 @@ useEffect(() => {
 													>
 														Ta bort
 													</Button>
+												</div>
+												<div className="grid grid-cols-2 gap-4 text-xs md:grid-cols-4">
+													<div>
+														<p className="font-medium text-foreground">Antal</p>
+														<p>
+															{qtyDisplay.toLocaleString('sv-SE', {
+																minimumFractionDigits: 2,
+																maximumFractionDigits: 2,
+															})}{' '}
+															{material.unit || 'st'}
+														</p>
+													</div>
+													{qtyDisplay !== 1 ? (
+														<div>
+															<p className="font-medium text-foreground">À-pris</p>
+															<p>
+																{unitPriceDisplay.toLocaleString('sv-SE', {
+																	minimumFractionDigits: 2,
+																	maximumFractionDigits: 2,
+																})}{' '}
+																SEK
+															</p>
+														</div>
+													) : null}
+													<div>
+														<p className="font-medium text-foreground">Belopp</p>
+														<p>
+															{totalDisplayValue.toLocaleString('sv-SE', {
+																minimumFractionDigits: 2,
+																maximumFractionDigits: 2,
+															})}{' '}
+															SEK
+														</p>
+													</div>
 												</div>
 											</li>
 										);
@@ -931,6 +1178,110 @@ useEffect(() => {
 									<p className="text-xs text-muted-foreground">
 										{!titleValue?.trim()
 											? 'Ange ett namn på ÄTA:n för att kunna lägga till material.'
+											: 'Välj ett projekt för ÄTA:n först.'}
+									</p>
+								)}
+							</div>
+						</CardContent>
+					</Card>
+				)}
+
+				{selectedProjectId && (
+					<Card className="border-dashed border-border/60 bg-muted/30">
+						<CardContent className="p-4 space-y-3">
+							<div className="flex items-center justify-between">
+								<div>
+									<h3 className="text-sm font-semibold">Utgifter kopplade till denna ÄTA</h3>
+									<p className="text-xs text-muted-foreground">
+										Lägg till utgiftsposter här – de sparas både i utgiftshistoriken och kopplas till detta
+										ÄTA-utkast.
+									</p>
+								</div>
+								{draftExpenses.length > 0 && (
+									<Button variant="ghost" size="sm" onClick={handleClearDraftExpenses}>
+										Rensa lista
+									</Button>
+								)}
+							</div>
+
+							{isLoadingDraftExpenses ? (
+								<div className="flex items-center gap-2 text-sm text-muted-foreground">
+									<Loader2 className="h-4 w-4 animate-spin" />
+									Laddar kopplade utgifter...
+								</div>
+							) : draftExpenses.length > 0 ? (
+								<ul className="space-y-3">
+									{draftExpenses.map((expense) => {
+										const amountDisplay = toNumber(expense.amount_sek);
+
+										return (
+											<li
+												key={expense.id}
+												className="rounded-lg border border-border/60 bg-background p-4 space-y-3"
+											>
+												<div className="flex items-start justify-between gap-3">
+													<div>
+														<p className="text-sm font-semibold text-foreground">Utgift</p>
+														<p className="text-sm text-muted-foreground">{expense.description}</p>
+													</div>
+													<Button
+														type="button"
+														variant="ghost"
+														size="sm"
+														onClick={() => handleRemoveDraftExpense(expense.id)}
+													>
+														Ta bort
+													</Button>
+												</div>
+												<div className="grid grid-cols-2 gap-4 text-xs md:grid-cols-4">
+													<div>
+														<p className="font-medium text-foreground">Kategori</p>
+														<p>{expense.category || 'Övrigt'}</p>
+													</div>
+													<div>
+														<p className="font-medium text-foreground">Datum</p>
+														<p>
+															{expense.created_at
+																? new Date(expense.created_at).toLocaleDateString('sv-SE')
+																: '-'}
+														</p>
+													</div>
+													<div>
+														<p className="font-medium text-foreground">Belopp</p>
+														<p>
+															{amountDisplay.toLocaleString('sv-SE', {
+																minimumFractionDigits: 2,
+																maximumFractionDigits: 2,
+															})}{' '}
+															SEK
+														</p>
+													</div>
+												</div>
+											</li>
+										);
+									})}
+								</ul>
+							) : (
+								<p className="text-sm text-muted-foreground">
+									Inga utgifter kopplade ännu. Lägg till via knappen nedan.
+								</p>
+							)}
+
+							<div className="flex items-center gap-2">
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="w-fit"
+									onClick={handleOpenMaterials}
+									disabled={!selectedProjectId || !titleValue?.trim()}
+								>
+									Lägg till utgift
+								</Button>
+								{(!titleValue?.trim() || !selectedProjectId) && (
+									<p className="text-xs text-muted-foreground">
+										{!titleValue?.trim()
+											? 'Ange ett namn på ÄTA:n för att kunna lägga till utgifter.'
 											: 'Välj ett projekt för ÄTA:n först.'}
 									</p>
 								)}
@@ -966,24 +1317,21 @@ useEffect(() => {
 							</div>
 						)}
 
-					{photos.length < 10 && (
-						<label className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted transition-colors">
-							<div className="flex flex-col items-center gap-2">
-								<ImagePlus className="h-8 w-8 text-muted-foreground" />
-								<span className="text-sm text-muted-foreground">
-									Ta foto eller välj fil ({photos.length}/10)
-								</span>
-							</div>
-							<input
-								type="file"
-								accept="image/*"
-								capture="environment"
-								multiple
-								className="hidden"
-								onChange={handlePhotoChange}
+						{photos.length < 10 && (
+							<PhotoUploadButtons
+								onFileChange={handlePhotoChange}
+								onCameraChange={handlePhotoChange}
+								fileLabel="Välj fil"
+								cameraLabel="Ta foto"
+								fileButtonVariant="outline"
+								cameraButtonVariant="default"
+								fileButtonClassName="flex-1"
+								cameraButtonClassName="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
 							/>
-						</label>
-					)}
+						)}
+						<p className="text-xs text-muted-foreground">
+							{photos.length} av 10 bilder uppladdade
+						</p>
 					</div>
 				</div>
 			</div>
@@ -1044,5 +1392,16 @@ useEffect(() => {
 				</div>
 			</div>
 		</form>
+		<AddMaterialDialog
+			open={isMaterialDialogOpen}
+			onClose={() => setIsMaterialDialogOpen(false)}
+			orgId={orgId}
+			projectId={selectedProjectId || projectId}
+			ataTitle={titleValue?.trim() || null}
+			projectLocked
+			onMaterialCreated={handleMaterialCreated}
+			onExpenseCreated={handleExpenseCreated}
+		/>
+		</>
 	);
 }

@@ -10,11 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ImagePlus, X, Loader2 } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { SignatureInput } from '@/components/shared/signature-input';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { PhotoUploadButtons } from '@/components/shared/photo-upload-buttons';
 
 const diarySchema = z.object({
 	project_id: z.string().uuid('Välj ett projekt'),
@@ -374,23 +375,21 @@ export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 						)}
 
 						{photos.length < 10 && (
-							<label className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted transition-colors">
-								<div className="flex flex-col items-center gap-2">
-									<ImagePlus className="h-8 w-8 text-muted-foreground" />
-									<span className="text-sm text-muted-foreground">
-										Ta foto eller välj fil ({photos.length}/10)
-									</span>
-								</div>
-								<input
-									type="file"
-									accept="image/*"
-									capture="environment"
-									multiple
-									className="hidden"
-									onChange={handlePhotoChange}
-								/>
-							</label>
+							<PhotoUploadButtons
+								onFileChange={handlePhotoChange}
+								onCameraChange={handlePhotoChange}
+								disabled={createDiaryMutation.isPending}
+								fileLabel="Välj fil"
+								cameraLabel="Ta foto"
+								fileButtonVariant="outline"
+								cameraButtonVariant="default"
+								fileButtonClassName="flex-1"
+								cameraButtonClassName="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+							/>
 						)}
+						<p className="text-xs text-muted-foreground">
+							{photos.length} av 10 bilder uppladdade
+						</p>
 					</div>
 				</div>
 

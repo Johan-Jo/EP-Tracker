@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Package, Receipt, Loader2, Camera, Upload, X } from 'lucide-react';
+import { Package, Receipt, Loader2, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
+import { PhotoUploadButtons } from '@/components/shared/photo-upload-buttons';
 
 interface AddMaterialDialogProps {
 	open: boolean;
@@ -21,6 +22,7 @@ interface AddMaterialDialogProps {
 	ataTitle?: string | null;
 	projectLocked?: boolean;
 	onMaterialCreated?: (materialId: string) => void;
+	onExpenseCreated?: (expenseId: string) => void;
 }
 
 export function AddMaterialDialog({
@@ -32,6 +34,7 @@ export function AddMaterialDialog({
 	ataTitle,
 	projectLocked,
 	onMaterialCreated,
+	onExpenseCreated,
 }: AddMaterialDialogProps) {
 	const [type, setType] = useState<'material' | 'expense'>('material');
 	const [project, setProject] = useState(projectId || '');
@@ -204,20 +207,27 @@ export function AddMaterialDialog({
 						onMaterialCreated?.(insertedMaterial.id);
 					}
 				} else {
-					const { error } = await supabase.from('expenses').insert({
-						org_id: orgId,
-						project_id: project,
-						user_id: user.id,
-						description: name,
-						amount_sek: totalPrice,
-						category: supplier || 'Övrigt',
-						notes: notes || null,
-						photo_urls: allPhotoUrls,
-						status: 'draft',
-						vat: true,
-					});
+					const { data: insertedExpense, error } = await supabase
+						.from('expenses')
+						.insert({
+							org_id: orgId,
+							project_id: project,
+							user_id: user.id,
+							description: name,
+							amount_sek: totalPrice,
+							category: supplier || 'Övrigt',
+							notes: notes || null,
+							photo_urls: allPhotoUrls,
+							status: 'draft',
+							vat: true,
+						})
+						.select('id')
+						.single();
 
 					if (error) throw error;
+					if (insertedExpense?.id) {
+						onExpenseCreated?.(insertedExpense.id);
+					}
 				}
 			}
 
@@ -503,46 +513,18 @@ export function AddMaterialDialog({
 
 					{/* Photo upload buttons */}
 					{photosPreviews.length < 10 && (
-						<div className='flex gap-3'>
-							<Button
-								type='button'
-								variant='outline'
-								onClick={() => document.getElementById('photo-upload')?.click()}
-								disabled={isSubmitting || isUploadingPhotos}
-								className='flex-1'
-							>
-								<Upload className='w-4 h-4 mr-2' />
-								Välj fil
-							</Button>
-							<Button
-								type='button'
-								onClick={() => document.getElementById('camera-capture')?.click()}
-								disabled={isSubmitting || isUploadingPhotos}
-								className='flex-1 bg-orange-500 hover:bg-orange-600 text-white'
-							>
-								<Camera className='w-4 h-4 mr-2' />
-								Ta foto
-							</Button>
-						</div>
+						<PhotoUploadButtons
+							onFileChange={handlePhotoChange}
+							onCameraChange={handlePhotoChange}
+							disabled={isSubmitting || isUploadingPhotos}
+							fileLabel='Välj fil'
+							cameraLabel='Ta foto'
+							fileButtonVariant='outline'
+							cameraButtonVariant='default'
+							fileButtonClassName='flex-1'
+							cameraButtonClassName='flex-1 bg-orange-500 hover:bg-orange-600 text-white'
+						/>
 					)}
-
-					{/* Hidden inputs */}
-					<input
-						id='photo-upload'
-						type='file'
-						accept='image/*'
-						multiple
-						onChange={handlePhotoChange}
-						className='hidden'
-					/>
-					<input
-						id='camera-capture'
-						type='file'
-						accept='image/*'
-						capture='environment'
-						onChange={handlePhotoChange}
-						className='hidden'
-					/>
 					
 					<p className='text-xs text-muted-foreground'>
 						{photosPreviews.length} av 10 bilder uppladdade

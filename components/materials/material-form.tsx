@@ -12,9 +12,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Package, Loader2, Camera, X } from 'lucide-react';
+import { Package, Loader2, X } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { PhotoUploadButtons } from '@/components/shared/photo-upload-buttons';
 
 const NO_PHASE_SELECT_VALUE = '__no_phase__';
 
@@ -392,27 +393,20 @@ export function MaterialForm({ orgId, onSuccess, onCancel, initialData }: Materi
 
 						{/* Add Photo Button */}
 						{photoPreviews.length < 10 && (
-							<div className="flex gap-2">
-								<Button
-									type="button"
-									variant="outline"
-									className="flex-1"
-									onClick={() => document.getElementById('photo-input')?.click()}
-								>
-									<Camera className="w-4 h-4 mr-2" />
-									{photoPreviews.length === 0 ? 'Ta foto / Välj fil' : 'Lägg till foto'}
-								</Button>
-								<input
-									id="photo-input"
-									type="file"
-									accept="image/*"
-									capture="environment"
-									multiple
-									className="hidden"
-									onChange={handlePhotoChange}
-								/>
-							</div>
+							<PhotoUploadButtons
+								onFileChange={handlePhotoChange}
+								onCameraChange={handlePhotoChange}
+								fileLabel="Välj fil"
+								cameraLabel={photoPreviews.length === 0 ? 'Ta foto' : 'Lägg till foto'}
+								fileButtonVariant="outline"
+								cameraButtonVariant="default"
+								fileButtonClassName="flex-1"
+								cameraButtonClassName="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+							/>
 						)}
+						<p className="text-xs text-muted-foreground">
+							{photoPreviews.length} av 10 bilder uppladdade
+						</p>
 					</div>
 
 					{/* Notes */}

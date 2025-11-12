@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { VoiceRecorder } from '@/components/voice/voice-recorder';
 import { useVoiceStore } from '@/lib/stores/voice-store';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { PhotoUploadButtons } from '@/components/shared/photo-upload-buttons';
 
 interface DiaryFormNewProps {
 	orgId: string;
@@ -399,64 +400,47 @@ export function DiaryFormNew({ orgId, userId, projectId, defaultDate }: DiaryFor
 					{/* Photos */}
 					<div className='space-y-2'>
 						<Label>Foton (max 10)</Label>
-						<div className='border-2 border-dashed border-border rounded-xl p-6 hover:border-primary/30 transition-colors'>
+						<div className='border-2 border-dashed border-border rounded-xl p-6 hover:border-primary/30 transition-colors space-y-4'>
 							{photos.length === 0 ? (
-								<label className='w-full flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer'>
+								<div className='w-full flex flex-col items-center gap-2 text-muted-foreground'>
 									<Upload className='w-8 h-8' />
-									<span className='text-sm'>Ta foto eller välj fil (0/10)</span>
-									<input
-										type='file'
-										accept='image/*'
-										capture='environment'
-										multiple
-										onChange={handlePhotoUpload}
-										className='hidden'
-									/>
-								</label>
+									<span className='text-sm'>Lägg till dina första bilder</span>
+								</div>
 							) : (
-								<div className='space-y-3'>
-									<div className='grid grid-cols-3 md:grid-cols-5 gap-2'>
-										{photos.map((photo, index) => (
-											<div key={index} className='relative aspect-square bg-muted rounded-lg overflow-hidden group'>
-												<img
-													src={URL.createObjectURL(photo)}
-													alt={`Foto ${index + 1}`}
-													className='w-full h-full object-cover'
-												/>
-												<button
-													type='button'
-													onClick={() => removePhoto(index)}
-													className='absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity'
-												>
-													<X className='w-3 h-3' />
-												</button>
-											</div>
-										))}
-									</div>
-									{photos.length < 10 && (
-										<label>
-											<Button
-												type='button'
-												variant='outline'
-												className='w-full'
-												asChild
-											>
-												<span>
-													<Upload className='w-4 h-4 mr-2' />
-													Lägg till fler ({photos.length}/10)
-												</span>
-											</Button>
-											<input
-												type='file'
-												accept='image/*'
-												multiple
-												onChange={handlePhotoUpload}
-												className='hidden'
+								<div className='grid grid-cols-3 md:grid-cols-5 gap-2'>
+									{photos.map((photo, index) => (
+										<div key={index} className='relative aspect-square bg-muted rounded-lg overflow-hidden group'>
+											<img
+												src={URL.createObjectURL(photo)}
+												alt={`Foto ${index + 1}`}
+												className='w-full h-full object-cover'
 											/>
-										</label>
-									)}
+											<button
+												type='button'
+												onClick={() => removePhoto(index)}
+												className='absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity'
+											>
+												<X className='w-3 h-3' />
+											</button>
+										</div>
+									))}
 								</div>
 							)}
+							{photos.length < 10 && (
+								<PhotoUploadButtons
+									onFileChange={handlePhotoUpload}
+									onCameraChange={handlePhotoUpload}
+									fileLabel='Välj fil'
+									cameraLabel='Ta foto'
+									fileButtonVariant='outline'
+									cameraButtonVariant='default'
+									fileButtonClassName='w-full sm:flex-1'
+									cameraButtonClassName='w-full sm:flex-1 bg-orange-500 hover:bg-orange-600 text-white'
+								/>
+							)}
+							<p className='text-xs text-muted-foreground text-center sm:text-left'>
+								{photos.length} av 10 bilder uppladdade
+							</p>
 						</div>
 					</div>
 

@@ -336,27 +336,20 @@ export function ExpenseForm({ orgId, onSuccess, onCancel, initialData }: Expense
 
 						{/* Add Photo Button */}
 						{photoPreviews.length < 10 && (
-							<div className="flex gap-2">
-								<Button
-									type="button"
-									variant="outline"
-									className="flex-1"
-									onClick={() => document.getElementById('receipt-input')?.click()}
-								>
-									<Camera className="w-4 h-4 mr-2" />
-									{photoPreviews.length === 0 ? 'Fotografera kvitto' : 'Lägg till kvitto'}
-								</Button>
-								<input
-									id="receipt-input"
-									type="file"
-									accept="image/*"
-									capture="environment"
-									multiple
-									className="hidden"
-									onChange={handlePhotoChange}
-								/>
-							</div>
+							<PhotoUploadButtons
+								onFileChange={handlePhotoChange}
+								onCameraChange={handlePhotoChange}
+								fileLabel="Välj fil"
+								cameraLabel={photoPreviews.length === 0 ? 'Ta foto' : 'Lägg till foto'}
+								fileButtonVariant="outline"
+								cameraButtonVariant="default"
+								fileButtonClassName="flex-1"
+								cameraButtonClassName="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+							/>
 						)}
+						<p className="text-xs text-muted-foreground">
+							{photoPreviews.length} av 10 bilder uppladdade
+						</p>
 					</div>
 
 					{/* Notes */}
