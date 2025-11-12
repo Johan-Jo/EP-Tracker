@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import type { BillingType } from '@/lib/schemas/billing-types';
+import type { DashboardActivity } from '@/lib/db/dashboard';
 
 interface DashboardClientProps {
   userName: string;
@@ -36,22 +37,7 @@ interface DashboardClientProps {
     billing_mode: 'FAST_ONLY' | 'LOPANDE_ONLY' | 'BOTH';
     default_time_billing_type: BillingType;
   }>;
-    recentActivities: Array<{
-      id: string;
-      type: 'time_entry' | 'material' | 'expense' | 'ata' | 'diary' | 'mileage';
-      created_at: string;
-      project: { id: string; name: string } | null;
-    user_id?: string | null;
-      user_name?: string;
-    data: Record<string, unknown> | null;
-      description: string;
-    diary_entry?: {
-      id: string;
-      work_performed: string | null;
-      created_by: string;
-      date: string;
-    } | null;
-    }>;
+  recentActivities: DashboardActivity[];
   userId: string;
 }
 

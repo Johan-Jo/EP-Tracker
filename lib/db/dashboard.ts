@@ -86,9 +86,29 @@ type RawActivityRow = {
 	description: string | null;
 };
 
+const VALID_ACTIVITY_TYPES = [
+	'time_entry',
+	'material',
+	'expense',
+	'mileage',
+	'ata',
+	'diary',
+] as const;
+
+type ValidActivityType = (typeof VALID_ACTIVITY_TYPES)[number];
+
+export type DashboardActivityType = ValidActivityType | 'other';
+
+const normalizeActivityType = (type: string): DashboardActivityType => {
+	if (VALID_ACTIVITY_TYPES.includes(type as ValidActivityType)) {
+		return type as ValidActivityType;
+	}
+	return 'other';
+};
+
 type ActivityRecord = {
 	id: string;
-	type: string;
+	type: DashboardActivityType;
 	created_at: string;
 	project: { id: string; name: string } | null;
 	user_id: string | null;
@@ -98,6 +118,7 @@ type ActivityRecord = {
 };
 
 type EnrichedActivityRecord = ActivityRecord & { diary_entry: ActivityDiarySummary | null };
+export type DashboardActivity = EnrichedActivityRecord;
 
 const getDataString = (data: Record<string, unknown> | null, key: string): string | undefined => {
 	if (!data) return undefined;
@@ -109,7 +130,7 @@ async function attachDiarySummaries(
 	supabase: Awaited<ReturnType<typeof createClient>>,
 	orgId: string,
 	activities: ActivityRecord[],
-): Promise<EnrichedActivityRecord[]> {
+): Promise<DashboardActivity[]> {
 	const diaryLookupKeys = new Set<string>();
 	const projectIds = new Set<string>();
 	const userIds = new Set<string>();
@@ -191,7 +212,7 @@ async function attachDiarySummaries(
 	});
 }
 
-export async function getRecentActivities(orgId: string, limit: number = 15) {
+export async function getRecentActivities(orgId: string, limit: number = 15): Promise<DashboardActivity[]> {
 	const supabase = await createClient();
 
 	// EPIC 26.9: Try fast activity log query first (Phase B)
@@ -209,7 +230,7 @@ export async function getRecentActivities(orgId: string, limit: number = 15) {
 	// Transform database response to match existing format
 	const activities = (data || []).map((activity: RawActivityRow) => ({
 		id: activity.id,
-		type: activity.type,
+		type: normalizeActivityType(activity.type),
 		created_at: activity.created_at,
 		project: activity.project_name ? {
 			id: activity.project_id as string,
@@ -227,7 +248,7 @@ export async function getRecentActivities(orgId: string, limit: number = 15) {
 /**
  * Fallback: Legacy UNION ALL query (used if activity_log fails)
  */
-async function getRecentActivitiesLegacy(orgId: string, limit: number = 15) {
+async function getRecentActivitiesLegacy(orgId: string, limit: number = 15): Promise<DashboardActivity[]> {
 	const supabase = await createClient();
 
 	const { data, error } = await supabase.rpc('get_recent_activities', {
@@ -242,7 +263,7 @@ async function getRecentActivitiesLegacy(orgId: string, limit: number = 15) {
 
 	const activities = (data || []).map((activity: RawActivityRow) => ({
 		id: activity.id,
-		type: activity.type,
+		type: normalizeActivityType(activity.type),
 		created_at: activity.created_at,
 		project: activity.project_name ? {
 			id: activity.project_id as string,
