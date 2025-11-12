@@ -225,7 +225,10 @@ export function AtaForm({ orgId, projectId, onSuccess, onCancel, userRole }: Ata
 			try {
 				const payload: Partial<AtaFormValues> = {};
 				persistedFields.forEach((field) => {
-					payload[field] = value[field];
+					const fieldValue = value[field];
+					if (fieldValue !== undefined && fieldValue !== null) {
+						payload[field] = fieldValue as AtaFormValues[typeof field];
+					}
 				});
 				window.localStorage.setItem(formKey, JSON.stringify(payload));
 			} catch (error) {
