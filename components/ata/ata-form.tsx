@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { billingTypeEnum, billingTypeOptions, type BillingType } from '@/lib/schemas/billing-types';
 import { AddMaterialDialog } from '@/components/materials/add-material-dialog';
 import { PhotoUploadButtons } from '@/components/shared/photo-upload-buttons';
+import { formatUnitLabel } from '@/lib/utils/units';
 
 const DRAFT_FORM_STORAGE_PREFIX = 'ata-draft-form:';
 const DRAFT_MATERIALS_STORAGE_PREFIX = 'ata-draft-materials:';
@@ -223,11 +224,11 @@ export function AtaForm({ orgId, projectId, onSuccess, onCancel, userRole }: Ata
 
 		const subscription = watch((value) => {
 			try {
-				const payload: Partial<AtaFormValues> = {};
+				const payload: Record<string, unknown> = {};
 				persistedFields.forEach((field) => {
 					const fieldValue = value[field];
 					if (fieldValue !== undefined && fieldValue !== null) {
-						payload[field] = fieldValue as AtaFormValues[typeof field];
+						payload[field] = fieldValue;
 					}
 				});
 				window.localStorage.setItem(formKey, JSON.stringify(payload));
@@ -1130,7 +1131,7 @@ useEffect(() => {
 																minimumFractionDigits: 2,
 																maximumFractionDigits: 2,
 															})}{' '}
-															{material.unit || 'st'}
+															{formatUnitLabel(material.unit)}
 														</p>
 													</div>
 													{qtyDisplay !== 1 ? (
