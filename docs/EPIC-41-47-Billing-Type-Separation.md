@@ -10,6 +10,7 @@
 - Introduce `billing_type` enum.
 - Add `project_billing_mode` enum (`LOPANDE_ONLY`, `FAST_ONLY`, `BOTH`) and extend `projects` with `billing_mode`, `quoted_amount_sek`, `project_hourly_rate_sek`.
 - Extend `projects`, `time_entries`, `atas`, `invoice_basis` with billing metadata, validation fields.
+- Extend `time_entries` med valfri `ata_id`-referens för att kunna boka tid direkt på ÄTA.
 - Create `fixed_time_blocks` table with relations, audit columns, and constraints.
 - Add supporting indexes and defaults.
 - Update shared Supabase types, Prisma/TypeScript definitions, Zod schemas.
@@ -47,14 +48,15 @@
 - Add Löpande/Fast toggle to slider & manual time entry flows using project defaults.
 - Integrate fixed block selector with inline “+ Ny fast post” sheet.
 - Persist `billing_type` and `fixed_block_id` via API/Sync (online + offline queue).
+- Tillåt Fast-tid utan fast post om projektet saknar block och användaren istället väljer en ÄTA.
 - Provide UX hint explaining Fast behaviour.
-- Update Zod schemas, mutations, offline sync to enforce block requirement.
+- Update Zod schemas, mutations, offline sync to kräva fast post eller ÄTA för Fast-tid.
 - Regression test payroll export remains unchanged.
 
 **Dependencies:** EPIC 41, EPIC 42.  
 **Acceptance Criteria**
-- Users can create both billing types; Fast requires selecting/creating block before save.
-- Offline entries sync with correct billing type and block association.
+- Users can create both billing types; Fast kräver fast post eller ÄTA innan sparning.
+- Offline entries sync with korrekt koppling (fast post eller ÄTA) beroende på val.
 - Payroll export data matches previous totals.
 
 ---
@@ -67,6 +69,7 @@
 - Update detail/list views with billing badges and amount display.
 - Ensure diary integration untouched.
 - Add audit log coverage for billing changes.
+- ÄTA som väljs i tidflöden ska synas i fakturaunderlagets Fast-delposter.
 
 **Dependencies:** EPIC 41.  
 **Acceptance Criteria**

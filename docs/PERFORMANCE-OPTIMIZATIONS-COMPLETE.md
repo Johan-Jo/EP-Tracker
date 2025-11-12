@@ -272,6 +272,16 @@ npm install --save-dev @next/bundle-analyzer
 - Optimize joins in Supabase queries
 - Consider pagination for large lists
 
+### 6. November 2025 Index Pass (Time, Approvals & ÄTA)
+- Added `idx_time_entries_org_start_at_desc` + `idx_diary_entries_org_project_user_date` to back `/dashboard/time` (faster org/week queries + diary linking).
+- Added `idx_time_entries_org_status_start`, `idx_materials_org_status_created`, `idx_expenses_org_status_created`, `idx_ata_org_status_created` (plus supporting created_at indexes) so `/dashboard/approvals` no longer full-scans vid status-/veckofilter.
+- Added `idx_ata_project_org_created_desc_nonrejected` to speed up ÄTA dropdown load per projekt i tidformuläret.
+- Migrationer: `202511120004_optimize_time_page_queries.sql`, `202511120005_optimize_approvals_queries.sql`, `202511120006_optimize_ata_project_lookup.sql`.
+
+### 7. November 2025 ATA Dropdown Fix
+- Added `idx_ata_project_org_created_desc_nonrejected` för att snabba upp ATA-listan i tidsformuläret (`project_id + org_id`, sorterat på `created_at`, exkluderar avvisade).
+- Migration: `202511120006_optimize_ata_project_lookup.sql`.
+
 ---
 
 ## Key Takeaways

@@ -104,3 +104,4 @@ CREATE POLICY "Admins and foremen can manage invoice basis"
 
 
 
+

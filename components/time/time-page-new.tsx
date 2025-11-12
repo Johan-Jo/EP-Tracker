@@ -72,6 +72,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 	const [filterEndDate, setFilterEndDate] = useState<string>('');
 	const [diaryLoadingMap, setDiaryLoadingMap] = useState<Record<string, boolean>>({});
 	const [billingInteractionRequired, setBillingInteractionRequired] = useState(false);
+	const [entriesLimit, setEntriesLimit] = useState(200);
 	const supabase = createClient();
 	const queryClient = useQueryClient();
 	
@@ -96,7 +97,13 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 		setDiaryLoadingMap(prev => ({ ...prev, [entryKey]: true }));
 		
 		try {
-			// Check if diary entry exists for this project and date
+			// If diary entry already loaded with this time entry, go directly
+			if (entry.diary_entry?.id) {
+				window.location.href = `/dashboard/diary/${entry.diary_entry.id}?edit=1`;
+				return;
+			}
+
+			// Otherwise, check if diary entry exists for this project and date
 			const params = new URLSearchParams({
 				project_id: entry.project_id,
 				date: entryDate,
@@ -351,7 +358,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 		} else if (filterUserId) {
 			params.append('user_id', filterUserId);
 		}
-		params.append('limit', '500');
+		params.append('limit', String(entriesLimit));
 		if (filterProject) params.append('project_id', filterProject);
 		if (filterStatus) params.append('status', filterStatus);
 		if (filterStartDate) params.append('start_date', filterStartDate);
@@ -360,8 +367,8 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 	};
 
 	// Fetch time entries for stats and list
-	const { data: timeEntries, refetch } = useQuery({
-		queryKey: ['time-entries-stats', orgId, userId, userRole, filterProject, filterStatus, filterUserId, filterStartDate, filterEndDate],
+	const { data: timeEntries, refetch, isFetching: isFetchingEntries } = useQuery({
+		queryKey: ['time-entries-stats', orgId, userId, userRole, filterProject, filterStatus, filterUserId, filterStartDate, filterEndDate, entriesLimit],
 		queryFn: async () => {
 			const response = await fetch(buildEntriesUrl());
 			if (!response.ok) throw new Error('Failed to fetch time entries');
@@ -372,40 +379,8 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 		gcTime: 5 * 60 * 1000,       // 5 minutes
 	});
 
-	// Fetch diary entries to check which ones exist for displayed time entries
-	const { data: diaryEntries } = useQuery({
-		queryKey: ['diary-entries-check', orgId],
-		queryFn: async () => {
-			const response = await fetch('/api/diary');
-			if (!response.ok) return [];
-			const data = await response.json();
-			return data.diary || [];
-		},
-		staleTime: 2 * 60 * 1000,  // 2 minutes
-		gcTime: 5 * 60 * 1000,
-	});
-
-	// Create a Set for quick lookup: "project_id:user_id:date" -> true
-	const diaryExistsMap = useMemo(() => {
-		if (!diaryEntries || !timeEntries) return new Set<string>();
-		const map = new Set<string>();
-		diaryEntries.forEach((diary: any) => {
-			if (!diary.project_id || !diary.created_by || !diary.date) return;
-			const key = `${diary.project_id}:${diary.created_by}:${diary.date}`;
-			map.add(key);
-		});
-		return map;
-	}, [diaryEntries, timeEntries]);
-
 	// Helper function to check if diary exists for a time entry
-	const hasDiaryEntry = (entry: any): boolean => {
-		if (!entry.project_id) return false;
-		const entryUserId = entry.user_id ?? entry.user?.id;
-		if (!entryUserId) return false;
-		const entryDate = new Date(entry.start_at).toISOString().split('T')[0];
-		const key = `${entry.project_id}:${entryUserId}:${entryDate}`;
-		return diaryExistsMap.has(key);
-	};
+	const hasDiaryEntry = (entry: any): boolean => Boolean(entry?.diary_entry?.id);
 
 	// Calculate stats
 	const calculateStats = () => {
@@ -447,7 +422,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 		return { today, yesterday, thisWeek, thisMonth };
 	};
 
-	const stats = calculateStats();
+	const stats = useMemo(calculateStats, [timeEntries]);
 
 	const formatDuration = (minutes: number): string => {
 		if (!minutes) return '0h 0min';
@@ -614,6 +589,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 	};
 
 	const recentEntries = timeEntries || [];
+	const canLoadMoreEntries = recentEntries.length >= entriesLimit;
 
 	return (
 		<div className='flex-1 overflow-auto bg-gray-50 pb-20 transition-colors md:pb-0 dark:bg-[#0A0908]'>
@@ -894,17 +870,18 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 
 						{/* Fixed block selection */}
 						{selectedProjectId &&
+							hasFixedBlocks &&
 							((billingType === 'FAST' && effectiveBillingMode === 'BOTH') || effectiveBillingMode === 'FAST_ONLY') && (
 								<div>
 									<label className='block text-sm font-medium mb-2'>
-										Fast post {hasFixedBlocks && <span className='text-destructive'>*</span>}
+										Fast post <span className='text-destructive'>*</span>
 									</label>
 									{fixedBlocksLoading ? (
 										<div className='flex items-center gap-2 text-sm text-muted-foreground'>
 											<Loader2 className='w-4 h-4 animate-spin' />
 											Laddar fasta poster...
 										</div>
-									) : hasFixedBlocks ? (
+									) : (
 										<Select
 											value={fixedBlockId || ''}
 											onValueChange={(value) => {
@@ -922,10 +899,6 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 												))}
 											</SelectContent>
 										</Select>
-									) : (
-										<div className='rounded-lg border border-dashed border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground'>
-											Inga fasta poster i projektet – debiteringen kopplas till huvudprojektets fasta budget.
-										</div>
 									)}
 									{fixedBlocksErrorMessage && (
 										<p className='text-sm text-destructive mt-1'>{fixedBlocksErrorMessage}</p>
@@ -933,11 +906,9 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 									{errors.fixed_block_id && (
 										<p className='text-sm text-destructive mt-1'>{errors.fixed_block_id.message}</p>
 									)}
-									{hasFixedBlocks && (
-										<p className='text-xs text-muted-foreground mt-1'>
-											Fast tid måste kopplas till en fast fakturapost.
-										</p>
-									)}
+									<p className='text-xs text-muted-foreground mt-1'>
+										Fast tid måste kopplas till en fast fakturapost.
+									</p>
 								</div>
 							)}
 
@@ -1119,7 +1090,8 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 								</CardContent>
 							</Card>
 						) : (
-							recentEntries.map((entry: any) => {
+							<>
+							{recentEntries.map((entry: any) => {
 								const billingTypeLabel = entry.billing_type === 'FAST' ? 'Fast' : 'Löpande';
 								const billingBadgeClasses =
 									entry.billing_type === 'FAST'
@@ -1179,6 +1151,17 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 															})}`}
 													</span>
 												</div>
+
+												{entry.diary_entry?.work_performed && (
+													<div className='ml-11 mt-3 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3'>
+														<p className='text-xs font-semibold uppercase tracking-wide text-primary/80'>
+															Dagboksnotering
+														</p>
+														<p className='mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground'>
+															{entry.diary_entry.work_performed}
+														</p>
+													</div>
+												)}
 											</div>
 
 											{/* Right side - Duration and Status */}
@@ -1255,7 +1238,27 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 										</div>
 									</div>
 								);
-							})
+							})}
+							{canLoadMoreEntries && (
+								<div className='flex justify-center pt-2'>
+									<Button
+										variant='outline'
+										onClick={() => setEntriesLimit((prev) => prev + 200)}
+										disabled={isFetchingEntries}
+										className='flex items-center gap-2'
+									>
+										{isFetchingEntries ? (
+											<>
+												<Loader2 className='h-4 w-4 animate-spin' />
+												Laddar fler...
+											</>
+										) : (
+											'Visa fler'
+										)}
+									</Button>
+								</div>
+							)}
+							</>
 						)}
 					</div>
 				</div>

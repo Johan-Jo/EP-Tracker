@@ -903,12 +903,14 @@ EP Tracker is organized into 15+ major modules:
 - Edit/delete entries
 - Filter by date/project/user
 - Weekly summaries
+- Debiteringsval (Löpande/Fast) med koppling till fasta block eller ÄTA-delprojekt
 
 **Business Rules:**
 - No overlapping entries
 - Maximum 24 hours per day
 - Can't edit after approval
 - Foremen can edit team entries
+- Fast-debiterade timmar måste kopplas till en fast post eller ÄTA innan de kan sparas
 
 ---
 
@@ -961,6 +963,7 @@ EP Tracker is organized into 15+ major modules:
 - Approval workflow (internal + client)
 - Status tracking
 - PDF export
+- Kan ta emot timmar direkt (projektdelar) när arbetstid loggas mot ÄTA i tidflödena
 
 **Workflow:**
 1. Worker creates ÄTA

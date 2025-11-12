@@ -41,9 +41,16 @@ interface DashboardClientProps {
       type: 'time_entry' | 'material' | 'expense' | 'ata' | 'diary' | 'mileage';
       created_at: string;
       project: { id: string; name: string } | null;
+    user_id?: string | null;
       user_name?: string;
-      data: any;
+    data: Record<string, unknown> | null;
       description: string;
+    diary_entry?: {
+      id: string;
+      work_performed: string | null;
+      created_by: string;
+      date: string;
+    } | null;
     }>;
   userId: string;
 }
@@ -368,8 +375,8 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
 
       {/* Quick actions */}
       <div className="mt-6" data-tour="quick-actions">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Snabbåtgärder</h2>
-        <p className="text-sm text-gray-600 mb-4">Vanliga uppgifter för att komma igång snabbt</p>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Snabbåtgärder</h2>
+        <p className="text-sm text-gray-600 dark:text-white/80 mb-4">Vanliga uppgifter för att komma igång snabbt</p>
         <div className="grid md:grid-cols-3 gap-4">
           {/* SOLID ORANGE CARD */}
           <button
@@ -492,6 +499,16 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                   const createdDate = new Date(activity.created_at);
                   
                   // Render based on activity type
+                  const data = activity.data ?? {};
+                  const getDataString = (key: string): string | undefined => {
+                    const value = data[key];
+                    return typeof value === 'string' ? value : undefined;
+                  };
+                  const getDataNumber = (key: string): number | undefined => {
+                    const value = data[key];
+                    return typeof value === 'number' ? value : undefined;
+                  };
+
                   const getActivityDetails = () => {
                     switch (activity.type) {
                       case 'time_entry': {
@@ -509,6 +526,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           description: activity.description || 'Tidrapport skapad',
                           badge: null,
                           badgeColor: '',
+                          diaryExcerpt: activity.diary_entry?.work_performed || null,
                         };
                       }
                       case 'material':
@@ -522,8 +540,14 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           iconBg: 'bg-blue-100 text-blue-600 dark:bg-blue-400/20 dark:text-white',
                           title: 'Material',
                           description: activity.description || 'Material tillagt',
-                          badge: activity.data?.qty && activity.data?.unit ? `${activity.data.qty} ${activity.data.unit}` : null,
+                          badge: (() => {
+                            const qty = getDataNumber('qty');
+                            const unit = getDataString('unit');
+                            if (qty === undefined || !unit) return null;
+                            return `${qty} ${unit}`;
+                          })(),
                           badgeColor: 'text-blue-600 dark:text-white',
+                          diaryExcerpt: null,
                         };
                       case 'expense':
                         return {
@@ -535,8 +559,12 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           iconBg: 'bg-green-100 text-green-600 dark:bg-green-400/20 dark:text-white',
                           title: 'Utgift',
                           description: activity.description || 'Utgift registrerad',
-                          badge: activity.data?.amount_sek ? `${activity.data.amount_sek} kr` : null,
+                          badge: (() => {
+                            const amount = getDataNumber('amount_sek');
+                            return amount !== undefined ? `${amount} kr` : null;
+                          })(),
                           badgeColor: 'text-green-600 dark:text-white',
+                          diaryExcerpt: null,
                         };
                       case 'mileage':
                         return {
@@ -551,8 +579,12 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           iconBg: 'bg-teal-100 text-teal-600 dark:bg-teal-400/20 dark:text-white',
                           title: 'Milersättning',
                           description: activity.description || 'Milersättning registrerad',
-                          badge: activity.data?.distance_km ? `${activity.data.distance_km} km` : null,
+                          badge: (() => {
+                            const distance = getDataNumber('distance_km');
+                            return distance !== undefined ? `${distance} km` : null;
+                          })(),
                           badgeColor: 'text-teal-600 dark:text-white',
+                          diaryExcerpt: null,
                         };
                       case 'ata':
                         return {
@@ -567,6 +599,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           description: activity.description || 'ÄTA skapad',
                           badge: null,
                           badgeColor: '',
+                          diaryExcerpt: null,
                         };
                       case 'diary':
                         return {
@@ -581,6 +614,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           description: activity.description || 'Dagboksanteckning skapad',
                           badge: null,
                           badgeColor: '',
+                          diaryExcerpt: getDataString('work_performed') || null,
                         };
                       default:
                         return {
@@ -595,6 +629,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           description: activity.description || 'Aktivitet',
                           badge: null,
                           badgeColor: '',
+                          diaryExcerpt: null,
                         };
                     }
                   };
@@ -658,6 +693,16 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                             </span>
                           </div>
                           <p className="text-sm text-gray-700 dark:text-white/80">{details.description}</p>
+                          {details.diaryExcerpt && (
+                            <div className="mt-3 rounded-lg border border-dashed border-orange-300/60 bg-orange-50/40 p-3 text-sm text-gray-700 dark:border-orange-400/40 dark:bg-white/5 dark:text-white/80">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-orange-600 dark:text-orange-200">
+                                Dagboksnotering
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap leading-relaxed">
+                                {details.diaryExcerpt}
+                              </p>
+                            </div>
+                          )}
                           {details.badge && (
                             <span
                               className={`inline-flex items-center gap-1 rounded-full border border-current px-2 py-0.5 text-xs font-semibold ${details.badgeColor}`}

@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
 	const supabase = await createClient();
 	const searchParams = request.nextUrl.searchParams;
 	const projectId = searchParams.get('project_id');
+	const statusFilter = searchParams.get('status');
 
 	let query = supabase
 		.from('ata')
@@ -27,6 +28,13 @@ export async function GET(request: NextRequest) {
 
 	if (projectId) {
 		query = query.eq('project_id', projectId);
+	}
+
+	if (statusFilter && statusFilter !== 'all') {
+		query = query.eq('status', statusFilter);
+	} else {
+		// Default: exclude rejected entries
+		query = query.not('status', 'eq', 'rejected');
 	}
 
 	const { data, error } = await query;

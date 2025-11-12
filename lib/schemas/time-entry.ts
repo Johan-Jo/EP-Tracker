@@ -100,5 +100,11 @@ export type TimeEntryWithRelations = TimeEntry & {
 		full_name: string | null;
 		email: string;
 	} | null;
+	diary_entry: {
+		id: string;
+		work_performed: string | null;
+		created_by: string;
+		date: string;
+	} | null;
 };
 

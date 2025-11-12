@@ -114,7 +114,7 @@ export const queryKeys = {
 		detail: (projectId: string, periodStart: string, periodEnd: string) =>
 			['invoice-basis', projectId, periodStart, periodEnd] as const,
 	},
-
+	
 	fixedTimeBlocks: {
 		list: (projectId: string) => ['fixed-time-blocks', 'list', projectId] as const,
 		detail: (id: string) => ['fixed-time-blocks', 'detail', id] as const,

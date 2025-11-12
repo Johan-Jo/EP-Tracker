@@ -619,7 +619,8 @@ const showFixedBlockPicker =
   !!selectedProjectDetails &&
   selectedBillingType === 'FAST' &&
   (selectedProjectDetails.billing_mode === 'FAST_ONLY' ||
-    selectedProjectDetails.billing_mode === 'BOTH');
+    selectedProjectDetails.billing_mode === 'BOTH') &&
+  (fixedBlocksLoading || fixedBlocks.length > 0);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX);
@@ -974,33 +975,28 @@ const showFixedBlockPicker =
                   <label className="text-xs font-medium text-gray-700 dark:text-[#ffe5c7]">
                     Fast post
                   </label>
-                  <Select
-                    value={selectedFixedBlockId ?? undefined}
-                    onValueChange={setSelectedFixedBlockId}
-                    disabled={fixedBlocksLoading || fixedBlocks.length === 0}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Välj fast post" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fixedBlocksLoading && (
-                        <SelectItem value="__loading" disabled>
-                          Laddar...
-                        </SelectItem>
-                      )}
-                      {!fixedBlocksLoading && fixedBlocks.length > 0 ? (
-                        fixedBlocks.map((block) => (
+                  {fixedBlocksLoading ? (
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Hämtar fasta poster...
+                    </div>
+                  ) : (
+                    <Select
+                      value={selectedFixedBlockId ?? undefined}
+                      onValueChange={setSelectedFixedBlockId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Välj fast post" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fixedBlocks.map((block) => (
                           <SelectItem key={block.id} value={block.id}>
                             {block.name} ({Math.round(Number(block.amount_sek || 0))} SEK)
                           </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="__no_blocks_available" disabled>
-                          Inga fasta poster – skapa i projektet
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   {fixedBlocksError && (
                     <p className="text-xs text-red-600">{fixedBlocksError}</p>
                   )}

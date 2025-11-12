@@ -165,7 +165,7 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 							<Tag className='w-4 h-4 text-muted-foreground' />
 							<span className='text-sm text-muted-foreground'>Projekt</span>
 						</div>
-						<p className='font-medium'>
+						<p className='font-medium text-slate-900'>
 							{ata.project.project_number ? `${ata.project.project_number} - ` : ''}
 							{ata.project.name}
 						</p>
@@ -176,7 +176,7 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 							<Calendar className='w-4 h-4 text-muted-foreground' />
 							<span className='text-sm text-muted-foreground'>Skapad</span>
 						</div>
-						<p className='font-medium'>
+						<p className='font-medium text-slate-900'>
 							{new Date(ata.created_at).toLocaleDateString('sv-SE', {
 								year: 'numeric',
 								month: 'long',
@@ -191,7 +191,7 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 								<User className='w-4 h-4 text-muted-foreground' />
 								<span className='text-sm text-muted-foreground'>Skapad av</span>
 							</div>
-							<p className='font-medium'>{ata.created_by_user.full_name}</p>
+							<p className='font-medium text-slate-900'>{ata.created_by_user.full_name}</p>
 						</div>
 					)}
 
@@ -201,7 +201,7 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 								<DollarSign className='w-4 h-4 text-muted-foreground' />
 								<span className='text-sm text-muted-foreground'>Fast belopp</span>
 							</div>
-							<p className='font-medium'>
+							<p className='font-medium text-slate-900'>
 								{fixedAmount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
 							</p>
 						</div>
@@ -211,7 +211,7 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 								<Package className='w-4 h-4 text-muted-foreground' />
 								<span className='text-sm text-muted-foreground'>Antal</span>
 							</div>
-							<p className='font-medium'>
+							<p className='font-medium text-slate-900'>
 								{qty.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} {ata.unit || 'st'}
 							</p>
 						</div>

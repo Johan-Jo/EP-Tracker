@@ -223,6 +223,17 @@ export function TimeEntriesList({ orgId, userId, projectId, onEdit }: TimeEntrie
 															{entry.notes}
 														</p>
 													)}
+
+													{entry.diary_entry?.work_performed && (
+														<div className="mt-3 rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
+															<p className="text-xs font-semibold uppercase text-primary/80 tracking-wide">
+																Dagboksnotering
+															</p>
+															<p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+																{entry.diary_entry.work_performed}
+															</p>
+														</div>
+													)}
 												</div>
 
 												{/* Actions */}

@@ -85,7 +85,76 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: error.message }, { status: 500 });
 		}
 
-		return NextResponse.json({ entries }, { status: 200 });
+		if (!entries || entries.length === 0) {
+			return NextResponse.json({ entries: [] }, { status: 200 });
+		}
+
+		// Map diary notes to time entries (per project + user + date)
+		const diaryLookupKeys = new Set<string>();
+		const projectIds = new Set<string>();
+		const userIds = new Set<string>();
+		let minDate: string | null = null;
+		let maxDate: string | null = null;
+
+		for (const entry of entries) {
+			if (!entry?.project_id || !entry?.user_id || !entry?.start_at) continue;
+			const entryDate = new Date(entry.start_at).toISOString().split('T')[0];
+			const lookupKey = `${entry.project_id}:${entry.user_id}:${entryDate}`;
+			diaryLookupKeys.add(lookupKey);
+			projectIds.add(entry.project_id);
+			userIds.add(entry.user_id);
+
+			if (!minDate || entryDate < minDate) {
+				minDate = entryDate;
+			}
+			if (!maxDate || entryDate > maxDate) {
+				maxDate = entryDate;
+			}
+		}
+
+		const diaryEntriesByKey: Record<string, { id: string; work_performed: string | null; created_by: string; date: string }> = {};
+
+		if (diaryLookupKeys.size > 0 && projectIds.size > 0 && userIds.size > 0 && minDate && maxDate) {
+			const { data: diaryEntries, error: diaryError } = await supabase
+				.from('diary_entries')
+				.select('id, project_id, created_by, date, work_performed')
+				.eq('org_id', membership.org_id)
+				.in('project_id', Array.from(projectIds))
+				.in('created_by', Array.from(userIds))
+				.gte('date', minDate)
+				.lte('date', maxDate);
+
+			if (diaryError) {
+				console.error('Error fetching diary entries for time history:', diaryError);
+				return NextResponse.json({ error: diaryError.message }, { status: 500 });
+			}
+
+			for (const diary of diaryEntries ?? []) {
+				if (!diary.project_id || !diary.created_by || !diary.date) continue;
+				const key = `${diary.project_id}:${diary.created_by}:${diary.date}`;
+				diaryEntriesByKey[key] = {
+					id: diary.id,
+					work_performed: diary.work_performed ?? null,
+					created_by: diary.created_by,
+					date: diary.date,
+				};
+			}
+		}
+
+		const enrichedEntries = entries.map((entry) => {
+			if (!entry?.project_id || !entry?.user_id || !entry?.start_at) {
+				return { ...entry, diary_entry: null };
+			}
+			const entryDate = new Date(entry.start_at).toISOString().split('T')[0];
+			const key = `${entry.project_id}:${entry.user_id}:${entryDate}`;
+			const diaryEntry = diaryEntriesByKey[key] ?? null;
+			return {
+				...entry,
+				diary_entry: diaryEntry,
+			};
+		});
+
+		return NextResponse.json({ entries: enrichedEntries }, { status: 200 });
 	} catch (error) {
 		console.error('Error in GET /api/time/entries:', error);
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

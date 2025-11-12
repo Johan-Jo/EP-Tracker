@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Package, Receipt, TrendingUp, FileImage } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Plus, Search, Package, Receipt, TrendingUp, FileImage, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -17,14 +17,59 @@ interface MaterialsPageNewProps {
 	projectId?: string;
 }
 
+type RawMaterialRow = {
+	id: string;
+	org_id: string;
+	project_id: string | null;
+	phase_id: string | null;
+	description: string;
+	qty: number;
+	unit: string;
+	unit_price_sek: number | null;
+	total_sek: number | null;
+	notes: string | null;
+	created_at: string;
+	photo_urls?: string[];
+	project: { id: string; name: string } | null;
+	phase: { id: string; name: string } | null;
+};
+
+type RawExpenseRow = {
+	id: string;
+	org_id: string;
+	project_id: string | null;
+	description: string;
+	amount_sek: number | null;
+	category: string | null;
+	created_at: string;
+	photo_urls?: string[];
+	project: { id: string; name: string } | null;
+};
+
+type UnifiedItem = {
+	id: string;
+	category: 'material' | 'expense';
+	name: string;
+	project: { id: string; name: string } | null;
+	phase?: { id: string; name: string } | null;
+	quantity: number;
+	unit: string;
+	unit_price: number | null;
+	total_price: number | null;
+	supplier: string | null;
+	photo_urls: string[];
+	created_at: string;
+	raw: RawMaterialRow | RawExpenseRow;
+};
+
 export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 	const [showAddDialog, setShowAddDialog] = useState(false);
-	const [editingMaterial, setEditingMaterial] = useState<any>(null);
-	const [viewingMaterial, setViewingMaterial] = useState<any>(null);
+	const [editingMaterial, setEditingMaterial] = useState<UnifiedItem | null>(null);
+	const [viewingMaterial, setViewingMaterial] = useState<UnifiedItem | null>(null);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [selectedProject, setSelectedProject] = useState<string>(projectId || 'all');
+	const [entriesLimit, setEntriesLimit] = useState(200);
 	const supabase = createClient();
-	const queryClient = useQueryClient();
 	
 	// Set selected project when projectId prop changes
 	useEffect(() => {
@@ -33,8 +78,13 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 		}
 	}, [projectId]);
 
+	useEffect(() => {
+		setEntriesLimit(200);
+	}, [selectedProject]);
+
 	// Fetch projects for filter
-	const { data: projects = [] } = useQuery({
+	type ProjectOption = { id: string; name: string };
+	const { data: projects = [] } = useQuery<ProjectOption[]>({
 		queryKey: ['projects', orgId],
 		queryFn: async () => {
 			const { data, error } = await supabase
@@ -52,46 +102,72 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 	});
 
 	// Fetch materials and expenses
-	const { data: materials = [], isLoading } = useQuery({
-		queryKey: ['materials-expenses', orgId, selectedProject],
+	const { data: materials = [], isLoading, isFetching } = useQuery<UnifiedItem[]>({
+		queryKey: ['materials-expenses', orgId, selectedProject, entriesLimit],
 		queryFn: async () => {
 			// Fetch materials
 			let materialsQuery = supabase
 				.from('materials')
-				.select(`
-					*,
+				.select(
+					`
+					id,
+					org_id,
+					project_id,
+					phase_id,
+					description,
+					qty,
+					unit,
+					unit_price_sek,
+					total_sek,
+					notes,
+					created_at,
+					photo_urls,
 					project:projects(id, name),
 					phase:phases(id, name)
-				`)
+				`,
+				)
 				.eq('org_id', orgId);
 
 			if (selectedProject !== 'all') {
 				materialsQuery = materialsQuery.eq('project_id', selectedProject);
 			}
 
-			const { data: materialsData, error: materialsError } = await materialsQuery.order('created_at', { ascending: false });
+			const { data: materialsData, error: materialsError } = await materialsQuery
+				.order('created_at', { ascending: false })
+				.limit(entriesLimit);
 
 			if (materialsError) throw materialsError;
 
 			// Fetch expenses
 			let expensesQuery = supabase
 				.from('expenses')
-				.select(`
-					*,
+				.select(
+					`
+					id,
+					org_id,
+					project_id,
+					description,
+					amount_sek,
+					category,
+					created_at,
+					photo_urls,
 					project:projects(id, name)
-				`)
+				`,
+				)
 				.eq('org_id', orgId);
 
 			if (selectedProject !== 'all') {
 				expensesQuery = expensesQuery.eq('project_id', selectedProject);
 			}
 
-			const { data: expensesData, error: expensesError } = await expensesQuery.order('created_at', { ascending: false });
+			const { data: expensesData, error: expensesError } = await expensesQuery
+				.order('created_at', { ascending: false })
+				.limit(entriesLimit);
 
 			if (expensesError) throw expensesError;
 
 			// Combine and normalize data
-			const normalizedMaterials = (materialsData || []).map((m: any) => ({
+			const normalizedMaterials: UnifiedItem[] = (materialsData || []).map((m: RawMaterialRow) => ({
 				...m,
 				category: 'material',
 				name: m.description,
@@ -100,9 +176,11 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 				total_price: m.total_sek,
 				supplier: m.notes, // Using notes as supplier for now
 				photo_urls: m.photo_urls || [],
+				unit: m.unit,
+				raw: m,
 			}));
 
-			const normalizedExpenses = (expensesData || []).map((e: any) => ({
+			const normalizedExpenses: UnifiedItem[] = (expensesData || []).map((e: RawExpenseRow) => ({
 				...e,
 				category: 'expense',
 				name: e.description,
@@ -112,70 +190,51 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 				total_price: e.amount_sek,
 				supplier: e.category,
 				photo_urls: e.photo_urls || [],
+				raw: e,
 			}));
 
 			// Combine and sort by created_at
-			return [...normalizedMaterials, ...normalizedExpenses].sort(
-				(a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-			);
+			return [...normalizedMaterials, ...normalizedExpenses]
+				.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+				.slice(0, entriesLimit);
 		},
 		staleTime: 1 * 60 * 1000,  // 1 minute (materials change more frequently)
 		gcTime: 5 * 60 * 1000,      // 5 minutes
 	});
 
-	const getStatusColor = (status: string) => {
-		switch (status) {
-			case 'purchased':
-				return 'bg-green-100 text-green-700 border-green-200';
-			case 'ordered':
-				return 'bg-blue-100 text-blue-700 border-blue-200';
-			case 'approved':
-				return 'bg-purple-100 text-purple-700 border-purple-200';
-			case 'delivered':
-				return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-			default:
-				return 'bg-gray-100 text-gray-700 border-gray-200';
-		}
-	};
-
-	const getStatusText = (status: string) => {
-		switch (status) {
-			case 'purchased':
-				return 'Köpt';
-			case 'ordered':
-				return 'Beställd';
-			case 'approved':
-				return 'Godkänd';
-			case 'delivered':
-				return 'Levererad';
-			default:
-				return status;
-		}
-	};
-
-	const getCategoryIcon = (category: string) => {
+	const getCategoryIcon = (category: 'material' | 'expense') => {
 		return category === 'material' ? Package : Receipt;
 	};
 
 	// Calculate stats
-	const totalMaterialCost = materials
-		.filter((m: any) => m.category === 'material')
-		.reduce((sum: number, m: any) => sum + (m.total_price || 0), 0);
-
-	const totalExpenses = materials
-		.filter((m: any) => m.category === 'expense')
-		.reduce((sum: number, m: any) => sum + (m.total_price || 0), 0);
+	const { totalMaterialCost, totalExpenses } = useMemo(() => {
+		return materials.reduce(
+			(acc: { totalMaterialCost: number; totalExpenses: number }, m: UnifiedItem) => {
+				if (m.category === 'material') {
+					acc.totalMaterialCost += m.total_price || 0;
+				} else if (m.category === 'expense') {
+					acc.totalExpenses += m.total_price || 0;
+				}
+				return acc;
+			},
+			{ totalMaterialCost: 0, totalExpenses: 0 },
+		);
+	}, [materials]);
 
 	// Filter materials based on search
-	const filteredMaterials = materials.filter((material: any) => {
-		if (!searchQuery) return true;
+	const filteredMaterials = useMemo(() => {
+		if (!searchQuery) return materials;
 		const query = searchQuery.toLowerCase();
-		return (
-			material.name?.toLowerCase().includes(query) ||
-			material.project?.name?.toLowerCase().includes(query) ||
-			material.supplier?.toLowerCase().includes(query)
-		);
-	});
+		return materials.filter((material: UnifiedItem) => {
+			return (
+				material.name?.toLowerCase().includes(query) ||
+				material.project?.name?.toLowerCase().includes(query) ||
+				material.supplier?.toLowerCase().includes(query)
+			);
+		});
+	}, [materials, searchQuery]);
+
+	const canLoadMore = materials.length >= entriesLimit;
 
 	return (
 		<div className='flex-1 overflow-auto bg-gray-50 pb-20 transition-colors md:pb-0 dark:bg-[#0A0908]'>
@@ -216,7 +275,7 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value='all'>Alla projekt</SelectItem>
-									{projects.map((project: any) => (
+									{projects.map((project) => (
 										<SelectItem key={project.id} value={project.id}>
 											{project.name}
 										</SelectItem>
@@ -307,7 +366,7 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 						</div>
 					) : (
 						<div className='space-y-3'>
-							{filteredMaterials.map((material: any) => {
+							{filteredMaterials.map((material: UnifiedItem) => {
 								const Icon = getCategoryIcon(material.category);
 
 								return (
@@ -405,6 +464,25 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 									</div>
 								);
 							})}
+							{canLoadMore && !searchQuery && (
+								<div className='flex justify-center pt-2'>
+									<Button
+										variant='outline'
+										onClick={() => setEntriesLimit((prev) => prev + 200)}
+										disabled={isFetching}
+										className='flex items-center gap-2'
+									>
+										{isFetching ? (
+											<>
+												<Loader2 className='h-4 w-4 animate-spin' />
+												Laddar fler...
+											</>
+										) : (
+											'Visa fler'
+										)}
+									</Button>
+								</div>
+							)}
 						</div>
 					)}
 				</div>

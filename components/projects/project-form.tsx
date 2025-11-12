@@ -291,8 +291,8 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 				</Card>
 			)}
 
-			<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm transition-colors dark:border-[#2d1b15] dark:bg-[#1b120d]'>
-				<CardHeader className='rounded-t-2xl bg-muted/40 pb-4 dark:bg-white/5'>
+			<Card>
+				<CardHeader className='pb-4'>
 					<CardTitle className='text-xl text-foreground dark:text-white'>Grunduppgifter</CardTitle>
 					<CardDescription className='text-muted-foreground dark:text-white/70'>
 						Fyll i projektets grundläggande information
@@ -458,8 +458,8 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 				</CardContent>
 			</Card>
 
-			<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm transition-colors dark:border-[#2d1b15] dark:bg-[#1b120d]'>
-				<CardHeader className='rounded-t-2xl bg-muted/40 pb-4 dark:bg-white/5'>
+			<Card>
+				<CardHeader className='pb-4'>
 					<CardTitle className='text-xl text-foreground dark:text-white'>Debitering</CardTitle>
 					<CardDescription className='text-muted-foreground dark:text-white/70'>
 						Välj hur projektet ska debiteras och ange standardvärden
@@ -566,65 +566,65 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 				</CardContent>
 			</Card>
 
-			<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm transition-colors dark:border-[#2d1b15] dark:bg-[#1b120d]'>
-			<CardHeader className='relative rounded-t-2xl bg-muted/40 pb-3 dark:bg-white/5'>
-		<CardTitle className='text-xl text-foreground dark:text-white'>Platsinställningar</CardTitle>
-		{siteLat != null && siteLon != null && !isNaN(Number(siteLat)) && !isNaN(Number(siteLon)) && (
-			<a
-				href={`https://www.waze.com/ul?ll=${Number(siteLat)},${Number(siteLon)}&navigate=yes`}
-				target='_blank'
-				rel='noopener noreferrer'
-				className='absolute top-6 right-6 inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-300 dark:hover:text-blue-200'
-			>
-				<Navigation className='w-3.5 h-3.5' />
-				Öppna i Waze
-			</a>
-		)}
-		</CardHeader>
-			<CardContent className='space-y-4 pt-3'>
-	<div className='space-y-1.5'>
-	<Label>Karta</Label>
-	<AddressMap 
-		lat={siteLat != null && !isNaN(Number(siteLat)) ? Number(siteLat) : null} 
-		lon={siteLon != null && !isNaN(Number(siteLon)) ? Number(siteLon) : null} 
-	/>
-	</div>
-	<div className='grid gap-4 md:grid-cols-2'>
-		<div className='space-y-2'>
-		<Label htmlFor='site_lat'>Latitud</Label>
-		<Input
-		id='site_lat'
-		type='number'
-		step='any'
-		 {...register('site_lat', { valueAsNumber: true })}
-		  placeholder='57.491'
-						className='text-xs'
-		 />
-		</div>
-		<div className='space-y-2'>
-		<Label htmlFor='site_lon'>Longitud</Label>
-		<Input
-		id='site_lon'
-		type='number'
-		 step='any'
-		  {...register('site_lon', { valueAsNumber: true })}
-		   placeholder='12.068'
-		    className='text-xs'
-		   />
+			<Card>
+				<CardHeader className='relative pb-3'>
+					<CardTitle className='text-xl text-foreground dark:text-white'>Platsinställningar</CardTitle>
+					{siteLat != null && siteLon != null && !isNaN(Number(siteLat)) && !isNaN(Number(siteLon)) && (
+						<a
+							href={`https://www.waze.com/ul?ll=${Number(siteLat)},${Number(siteLon)}&navigate=yes`}
+							target='_blank'
+							rel='noopener noreferrer'
+							className='absolute top-6 right-6 inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-300 dark:hover:text-blue-200'
+						>
+							<Navigation className='w-3.5 h-3.5' />
+							Öppna i Waze
+						</a>
+					)}
+				</CardHeader>
+				<CardContent className='space-y-4 pt-3'>
+					<div className='space-y-1.5'>
+						<Label>Karta</Label>
+						<AddressMap
+							lat={siteLat != null && !isNaN(Number(siteLat)) ? Number(siteLat) : null}
+							lon={siteLon != null && !isNaN(Number(siteLon)) ? Number(siteLon) : null}
+						/>
+					</div>
+					<div className='grid gap-4 md:grid-cols-2'>
+						<div className='space-y-2'>
+							<Label htmlFor='site_lat'>Latitud</Label>
+							<Input
+								id='site_lat'
+								type='number'
+								step='any'
+								{...register('site_lat', { valueAsNumber: true })}
+								placeholder='57.491'
+								className='text-xs'
+							/>
+						</div>
+						<div className='space-y-2'>
+							<Label htmlFor='site_lon'>Longitud</Label>
+							<Input
+								id='site_lon'
+								type='number'
+								step='any'
+								{...register('site_lon', { valueAsNumber: true })}
+								placeholder='12.068'
+								className='text-xs'
+							/>
 						</div>
 					</div>
-					</CardContent>
-				</Card>
+				</CardContent>
+			</Card>
 
-			<Card className='rounded-2xl border border-border/60 bg-[var(--color-card)] shadow-sm transition-colors dark:border-[#2d1b15] dark:bg-[#1b120d]'>
-				<CardHeader className='rounded-t-2xl bg-muted/40 dark:bg-white/5'>
+			<Card>
+				<CardHeader>
 					<CardTitle className='text-xl text-foreground dark:text-white'>Personalliggare / Platsdata</CardTitle>
 					<CardDescription className='text-muted-foreground dark:text-white/70'>
 						Aktivera personalliggare och fyll i nödvändig platsinformation
 					</CardDescription>
 				</CardHeader>
 				<CardContent className='space-y-4 pt-6'>
-					<div className='flex items-center justify-between rounded-lg border border-border/60 bg-[var(--color-card)]/70 p-3 dark:border-[#312016] dark:bg-[#25160f]'>
+					<div className='flex items-center justify-between rounded-lg border border-border bg-muted/20 p-4 border-l-4 border-l-orange-500/70 dark:border-border/70 dark:bg-white/5 dark:border-l-orange-400/70'>
 						<div>
 							<Label htmlFor='worksite_enabled' className='cursor-pointer font-medium text-foreground dark:text-white'>Aktivera personalliggare</Label>
 							<p className='text-sm text-muted-foreground dark:text-white/60'>Kräver platsdata nedan</p>
@@ -673,7 +673,7 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 						</div>
 					</div>
 
-					<div className='rounded-lg border border-border/60 bg-muted/40 p-3 dark:border-[#312016] dark:bg-[#23140e]'>
+					<div className='rounded-lg border border-border bg-muted/10 p-3 dark:border-border/70 dark:bg-white/5'>
 						<label htmlFor='use_project_address' className='flex items-center gap-2 text-sm font-medium mb-3'>
 						<input id='use_project_address' name='use_project_address' type='checkbox' className='h-4 w-4 rounded border border-border/60 bg-background text-orange-500 focus:ring-orange-500 dark:border-[#3a251d] dark:bg-[#1b120d]' checked={useProjectAddress} onChange={(e) => setUseProjectAddress(e.target.checked)} />
 							<span>Använd projektets adress</span>

@@ -12,7 +12,6 @@ import { billingTypeOptions, type BillingType } from '@/lib/schemas/billing-type
 
 const NO_PHASE_SELECT_VALUE = '__no_phase__';
 const NO_FIXED_BLOCK_SELECT_VALUE = '__no_fixed_block__';
-const NO_FIXED_BLOCK_DISABLED_VALUE = '__no_fixed_block_disabled__';
 
 type ProjectOption = {
 	id: string;
@@ -195,10 +194,11 @@ useEffect(() => {
 		const project = selectedProjectDetails;
 		if (!project) return;
 
-		if (
-			selectedBillingType === 'FAST' &&
-			(selectedFixedBlock === NO_FIXED_BLOCK_SELECT_VALUE || fixedBlocks.length === 0)
-		) {
+	if (
+		selectedBillingType === 'FAST' &&
+		fixedBlocks.length > 0 &&
+		selectedFixedBlock === NO_FIXED_BLOCK_SELECT_VALUE
+	) {
 			alert('Välj en fast post innan du startar tid på detta projekt.');
 			return;
 		}
@@ -213,7 +213,7 @@ useEffect(() => {
 			phase_id: selectedPhase === NO_PHASE_SELECT_VALUE ? undefined : selectedPhase,
 			billing_type: selectedBillingType,
 			fixed_block_id:
-				selectedBillingType === 'FAST'
+				selectedBillingType === 'FAST' && fixedBlocks.length > 0
 					? selectedFixedBlock === NO_FIXED_BLOCK_SELECT_VALUE
 						? undefined
 						: selectedFixedBlock
@@ -231,7 +231,7 @@ useEffect(() => {
 					start_at: new Date().toISOString(),
 					billing_type: selectedBillingType,
 					fixed_block_id:
-						selectedBillingType === 'FAST'
+						selectedBillingType === 'FAST' && fixedBlocks.length > 0
 							? selectedFixedBlock === NO_FIXED_BLOCK_SELECT_VALUE
 								? null
 								: selectedFixedBlock
@@ -421,7 +421,8 @@ useEffect(() => {
 								{selectedProjectDetails &&
 									selectedBillingType === 'FAST' &&
 									(selectedProjectDetails.billing_mode === 'FAST_ONLY' ||
-										selectedProjectDetails.billing_mode === 'BOTH') && (
+										selectedProjectDetails.billing_mode === 'BOTH') &&
+									(fixedBlocksLoading || fixedBlocks.length > 0) && (
 										<div className="space-y-2">
 											<label className="text-sm font-medium">Fast post</label>
 											{fixedBlocksLoading ? (
@@ -438,18 +439,12 @@ useEffect(() => {
 													<SelectTrigger>
 														<SelectValue placeholder="Välj fast post" />
 													</SelectTrigger>
-												<SelectContent>
-														{fixedBlocks.length > 0 ? (
-															fixedBlocks.map((block) => (
-																<SelectItem key={block.id} value={block.id}>
-																	{block.name} ({Math.round(Number(block.amount_sek || 0))} SEK)
-																</SelectItem>
-															))
-														) : (
-															<SelectItem value={NO_FIXED_BLOCK_DISABLED_VALUE} disabled>
-																Inga fasta poster – skapa i projektet
+													<SelectContent>
+														{fixedBlocks.map((block) => (
+															<SelectItem key={block.id} value={block.id}>
+																{block.name} ({Math.round(Number(block.amount_sek || 0))} SEK)
 															</SelectItem>
-														)}
+														))}
 													</SelectContent>
 												</Select>
 											)}
@@ -469,9 +464,8 @@ useEffect(() => {
 								disabled={
 									!selectedProject ||
 									(selectedBillingType === 'FAST' &&
-										(fixedBlocksLoading ||
-											fixedBlocks.length === 0 ||
-											selectedFixedBlock === NO_FIXED_BLOCK_SELECT_VALUE))
+										((fixedBlocksLoading && fixedBlocks.length === 0) ||
+											(fixedBlocks.length > 0 && selectedFixedBlock === NO_FIXED_BLOCK_SELECT_VALUE)))
 								}
 							>
 								<Play className="w-4 h-4 mr-2" />

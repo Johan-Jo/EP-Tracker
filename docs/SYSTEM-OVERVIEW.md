@@ -554,6 +554,7 @@
 #### `time_entries`
 - Time tracking records
 - User, project, dates
+- Billing metadata (`billing_type`, `fixed_block_id`, `ata_id`) för att koppla timmar till fasta poster eller ÄTA-delprojekt
 
 #### `materials`
 - Material registrations
@@ -572,6 +573,7 @@
 #### `ata`
 - Change orders
 - Signatures
+- Kan fungera som delprojekt för arbetstid (via `time_entries.ata_id`)
 
 #### `diary_entries`
 - Daily notes
@@ -656,6 +658,7 @@
 - `POST /api/time/entries` (create)
 - `PATCH /api/time/entries/[id]` (update)
 - `DELETE /api/time/entries/[id]` (delete)
+- Payload kräver projekt och debitering (`billing_type`) och accepterar valfri `fixed_block_id` eller `ata_id` beroende på vald Fast/Löpande-logik
 
 ### Materials
 - `GET /api/materials` (list)

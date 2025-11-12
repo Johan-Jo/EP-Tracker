@@ -209,28 +209,34 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 		isLoading: atasLoading,
 		error: atasError,
 	} = useQuery<AtaOption[]>({
-		queryKey: ['atas', selectedProjectId],
+		queryKey: ['atas', orgId, selectedProjectId],
 		queryFn: async () => {
 			if (!selectedProjectId) return [];
-			const { data, error } = await supabase
-				.from('ata')
-				.select('id, title, ata_number, billing_type, status, org_id')
-				.eq('project_id', selectedProjectId)
-				.eq('org_id', orgId)
-				.not('status', 'eq', 'rejected')
-				.order('created_at', { ascending: false });
+			const params = new URLSearchParams({
+				project_id: selectedProjectId,
+				status: billingType === 'FAST' ? 'all' : 'LOPANDE',
+			});
+			const response = await fetch(`/api/ata?${params.toString()}`, {
+				headers: { 'Content-Type': 'application/json' },
+			});
 
-			if (error) throw error;
-			return (
-				data || []
-			).map((ata) => ({
-				id: ata.id,
-				title: ata.title,
-				ata_number: ata.ata_number,
-				billing_type: ata.billing_type as BillingType,
-			}));
+			if (!response.ok) {
+				const message = await response.text();
+				throw new Error(message || 'Kunde inte hämta ÄTA');
+			}
+
+			const json = await response.json();
+			return (json.ata || [])
+				.filter((ata: { status: string }) => ata.status !== 'rejected')
+				.map((ata: { id: string; title: string; ata_number: string | null; billing_type: string | null }) => ({
+					id: ata.id,
+					title: ata.title,
+					ata_number: ata.ata_number ?? null,
+					billing_type: (ata.billing_type ?? 'LOPANDE') as BillingType,
+				}));
 		},
 		enabled: !!selectedProjectId,
+		staleTime: 60 * 1000,
 	});
 
 	const atasErrorMessage = atasError instanceof Error ? atasError.message : undefined;
@@ -310,7 +316,7 @@ useEffect(() => {
 			setValue('ata_id', null, { shouldDirty: true });
 		}
 	}
-}, [selectedProjectId, selectedProjectDetails, billingType, fixedBlockId, ataId, atas, setValue]);
+	}, [selectedProjectId, selectedProjectDetails, billingType, fixedBlockId, ataId, atas, setValue, effectiveBillingMode, hasFixedBlocks, projects?.length]);
 
 useEffect(() => {
 	if (!selectedProjectId || !ataId) return;
@@ -565,17 +571,18 @@ useEffect(() => {
 
 				{/* Fixed block selection */}
 				{selectedProjectId &&
+					hasFixedBlocks &&
 					(billingType === 'FAST' || effectiveBillingMode === 'FAST_ONLY') && (
 						<div className="space-y-2">
 							<Label htmlFor="fixed_block_id">
-								Fast post {hasFixedBlocks && <span className="text-destructive">*</span>}
+								Fast post <span className="text-destructive">*</span>
 							</Label>
 							{fixedBlocksLoading ? (
 								<div className="flex items-center gap-2 text-sm text-muted-foreground">
 									<Loader2 className="w-4 h-4 animate-spin" />
 									Hämtar fasta poster...
 								</div>
-							) : hasFixedBlocks ? (
+							) : (
 								<Controller
 									name="fixed_block_id"
 									control={control}
@@ -600,10 +607,6 @@ useEffect(() => {
 										</Select>
 									)}
 								/>
-							) : (
-								<div className="rounded-lg border border-dashed border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-									Inga fasta poster i projektet – debiteringen kopplas till huvudprojektets fasta budget.
-								</div>
 							)}
 							{fixedBlocksErrorMessage && (
 								<p className="text-sm text-destructive">{fixedBlocksErrorMessage}</p>
@@ -611,11 +614,9 @@ useEffect(() => {
 							{errors.fixed_block_id && (
 								<p className="text-sm text-destructive">{errors.fixed_block_id.message}</p>
 							)}
-							{hasFixedBlocks && (
-								<p className="text-xs text-muted-foreground">
-									Fast tid måste kopplas till en fast post eller ÄTA.
-								</p>
-							)}
+							<p className="text-xs text-muted-foreground">
+								Fast tid måste kopplas till en fast post eller ÄTA.
+							</p>
 						</div>
 					)}
 

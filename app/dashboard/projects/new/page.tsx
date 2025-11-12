@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ProjectForm } from '@/components/projects/project-form';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
 import { createProject } from '@/app/actions/create-project'; // Server action in separate file
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default async function NewProjectPage() {
 	// EPIC 26: Use cached session to avoid duplicate queries
@@ -51,14 +52,14 @@ export default async function NewProjectPage() {
 				</nav>
 
 					{/* Header */}
-					<div className='rounded-2xl border border-border/60 bg-gradient-to-r from-[#fde8d5] via-[#f6dcc0] to-[#f4d0ad] p-6 shadow-sm dark:border-[#3a251d] dark:from-[#2a1a13] dark:via-[#26140d] dark:to-[#201109]'>
-						<h1 className='text-3xl font-bold tracking-tight text-foreground dark:text-white'>
-							Skapa nytt projekt
-						</h1>
-						<p className='mt-2 text-muted-foreground dark:text-white/70'>
-							Fyll i projektets information nedan för att komma igång
-						</p>
-					</div>
+					<Card>
+						<CardHeader>
+							<CardTitle className='text-3xl tracking-tight'>Skapa nytt projekt</CardTitle>
+							<CardDescription>
+								Fyll i projektets information nedan för att komma igång
+							</CardDescription>
+						</CardHeader>
+					</Card>
 
 					<ProjectForm orgId={orgId} onSubmit={createProject} />
 				</div>
