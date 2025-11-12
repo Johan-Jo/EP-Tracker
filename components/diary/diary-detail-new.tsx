@@ -21,11 +21,13 @@ import {
 	Cloud,
 	CloudRain,
 	CloudSnow,
-	Wind
+	Wind,
+	X
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { GalleryViewer } from '@/components/shared/gallery-viewer';
 import { formatPlainDate, formatSwedishFull } from '@/lib/utils/formatPlainDate';
+import { PhotoUploadButtons } from '@/components/shared/photo-upload-buttons';
 
 interface DiaryDetailNewProps {
     diaryId: string;
@@ -96,6 +98,8 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
         signature_name: '',
         signature_timestamp: '',
     });
+    const [newPhotos, setNewPhotos] = useState<File[]>([]);
+    const [newPhotoPreviews, setNewPhotoPreviews] = useState<string[]>([]);
 
     useEffect(() => {
         if (addingNote) {
@@ -188,6 +192,74 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
     const weatherInfo = diary.weather ? weatherConfig[diary.weather] : null;
 	const WeatherIcon = weatherInfo?.icon;
 
+    const handleNewPhotos = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(event.target.files || []);
+        if (files.length === 0) return;
+
+        const existingCount = photos?.length ?? 0;
+        if (existingCount + newPhotos.length + files.length > 10) {
+            alert('Max 10 foton tillåtna');
+            return;
+        }
+
+        setNewPhotos(prev => [...prev, ...files]);
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setNewPhotoPreviews(prev => [...prev, reader.result as string]);
+            };
+            reader.readAsDataURL(file);
+        });
+        event.target.value = '';
+    };
+
+    const removeNewPhoto = (index: number) => {
+        setNewPhotos(prev => prev.filter((_, i) => i !== index));
+        setNewPhotoPreviews(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const uploadNewPhotos = async () => {
+        if (newPhotos.length === 0) return;
+
+        const existingCount = photos?.length ?? 0;
+
+        for (let i = 0; i < newPhotos.length; i++) {
+            const photo = newPhotos[i];
+            const fileExt = photo.name.split('.').pop();
+            const fileName = `${diaryId}/${crypto.randomUUID()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('diary-photos')
+                .upload(fileName, photo);
+
+            if (uploadError) {
+                console.error('Photo upload error:', uploadError);
+                alert(`Kunde inte ladda upp foto ${i + 1}: ${uploadError.message}`);
+                continue;
+            }
+
+            const { data: urlData } = supabase.storage
+                .from('diary-photos')
+                .getPublicUrl(fileName);
+
+            const response = await fetch('/api/diary/photos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    diary_entry_id: diaryId,
+                    photo_url: urlData.publicUrl,
+                    sort_order: existingCount + i,
+                }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                console.error('Failed to save photo record:', error);
+                alert(`Kunde inte spara foto ${i + 1} i databasen`);
+            }
+        }
+    };
+
     const saveEdits = async () => {
         setSaving(true);
         try {
@@ -204,6 +276,7 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
                 const j = await res.json().catch(() => ({}));
                 throw new Error(j.error || 'Kunde inte spara');
             }
+            await uploadNewPhotos();
             // Refresh page data
             window.location.reload();
         } catch (e: any) {
@@ -359,9 +432,53 @@ export function DiaryDetailNew({ diaryId, autoEdit }: DiaryDetailNewProps) {
                                         onChange={e => setForm({ ...form, visitors: e.target.value })} />
                                 </div>
                             </div>
-                            <div className='flex justify-end gap-2'>
+                            <div className='space-y-3'>
+                                <div className='space-y-2'>
+                                    <label className='text-sm font-medium flex items-center justify-between'>
+                                        <span>Lägg till foton</span>
+                                        <span className='text-xs text-muted-foreground'>
+                                            {photos?.length ?? 0} befintliga · {newPhotos.length} valda · max 10 totalt
+                                        </span>
+                                    </label>
+                                    {newPhotoPreviews.length > 0 && (
+                                        <div className='grid grid-cols-2 sm:grid-cols-3 gap-3'>
+                                            {newPhotoPreviews.map((preview, index) => (
+                                                <div key={index} className='relative rounded-lg overflow-hidden border border-border'>
+                                                    <img src={preview} alt={`Nytt foto ${index + 1}`} className='h-32 w-full object-cover' />
+                                                    <button
+                                                        type='button'
+                                                        onClick={() => removeNewPhoto(index)}
+                                                        className='absolute top-2 right-2 rounded-full bg-black/70 p-1 text-white hover:bg-black/80 transition-colors'
+                                                        aria-label='Ta bort foto'
+                                                    >
+                                                        <X className='h-4 w-4' />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {photos && photos.length >= 10 && newPhotos.length === 0 ? (
+                                        <p className='text-xs text-muted-foreground'>
+                                            Du har redan 10 foton. Ta bort något foto i galleri-vyn för att kunna lägga till fler.
+                                        </p>
+                                    ) : (
+                                        <PhotoUploadButtons
+                                            onFileChange={handleNewPhotos}
+                                            onCameraChange={handleNewPhotos}
+                                            disabled={saving || (photos?.length ?? 0) + newPhotos.length >= 10}
+                                            fileLabel='Välj fil'
+                                            cameraLabel='Ta foto'
+                                            fileButtonVariant='outline'
+                                            cameraButtonVariant='default'
+                                            fileButtonClassName='flex-1'
+                                            cameraButtonClassName='flex-1 bg-orange-500 hover:bg-orange-600 text-white'
+                                        />
+                                    )}
+                                </div>
+                                <div className='flex justify-end gap-2'>
                                 <Button variant='outline' onClick={() => setIsEditing(false)} disabled={saving}>Avbryt</Button>
                                 <Button onClick={saveEdits} disabled={saving}>{saving ? 'Sparar…' : 'Spara'}</Button>
+                            </div>
                             </div>
                         </CardContent>
                     </Card>
