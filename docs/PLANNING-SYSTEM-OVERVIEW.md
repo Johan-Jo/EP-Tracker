@@ -358,7 +358,7 @@ The Planning System has been successfully restructured from an unstructured impl
 
 ## References
 
-- **EPIC Documentation:** `/docs/EPIC-22-*.md`, `/docs/EPIC-23-*.md`, `/docs/EPIC-24-*.md`
+- **EPIC Documentation:** `/docs/epics/EPIC-022-*.md`, `/docs/epics/EPIC-023-*.md`, `/docs/epics/EPIC-024-*.md`
 - **Progress Tracking:** `/docs/PLANNING-SYSTEM-STATUS.md`
 - **Project Status:** `/docs/PROJECT-STATUS.md`
 - **Phase 1 Plan:** `/docs/phase-1-implementation-plan.md`

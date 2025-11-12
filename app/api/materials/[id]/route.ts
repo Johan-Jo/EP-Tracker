@@ -62,7 +62,7 @@ export async function PATCH(
 			return NextResponse.json({ error: 'Finance users cannot edit materials' }, { status: 403 });
 		}
 
-		if (membership.role === 'worker' && existingMaterial.user_id !== user.id) {
+		if ((membership.role === 'worker' || membership.role === 'ue') && existingMaterial.user_id !== user.id) {
 			return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 		}
 
@@ -140,7 +140,7 @@ export async function DELETE(
 			return NextResponse.json({ error: 'Finance users cannot delete materials' }, { status: 403 });
 		}
 
-		if (membership.role === 'worker' && existingMaterial.user_id !== user.id) {
+		if ((membership.role === 'worker' || membership.role === 'ue') && existingMaterial.user_id !== user.id) {
 			return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 		}
 

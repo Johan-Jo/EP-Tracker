@@ -1,7 +1,7 @@
 # EPIC 31: Test Plan
 
 **Scope:** Worksite Activation, Check-in, Control View, and Exports (CSV/PDF/TXT)
-**Related Docs:** `docs/EPIC-31-COMPLETE.md`, `docs/EPIC-31-TEST-RESULTS.md`, `docs/EPIC-31-Worksite-Activation-and-Control-View.md`, `docs/PRD-Personalliggare-v2.md`
+**Related Docs:** `docs/epics/EPIC-031-COMPLETE.md`, `docs/epics/EPIC-031-TEST-RESULTS.md`, `docs/epics/EPIC-031-Worksite-Activation-and-Control-View.md`, `docs/PRD-Personalliggare-v2.md`
 
 ---
 
@@ -140,7 +140,7 @@
 
 ## 9. Reporting
 
-- Record results in `docs/EPIC-31-TEST-RESULTS.md`
+- Record results in `docs/epics/EPIC-031-TEST-RESULTS.md`
 - Note deviations, logs, and screenshots where helpful
 - File follow-ups: pagination/virtualization, token TTL server-side, pdfkit
 
@@ -152,6 +152,7 @@
 - A1 performance target met (≥ 500 rows < 2s)
 - A2 export metadata complete and validated
 - No critical security gaps; non-blocking issues documented
+
 
 
 

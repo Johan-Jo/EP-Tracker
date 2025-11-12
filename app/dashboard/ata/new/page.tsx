@@ -4,6 +4,7 @@ import { AtaForm } from '@/components/ata/ata-form';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface PageProps {
 	searchParams: Promise<{ project_id?: string }>;
@@ -51,12 +52,16 @@ export default async function NewAtaPage(props: PageProps) {
 				</p>
 			</div>
 
-		<div className='max-w-3xl'>
-			<AtaForm 
-				userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance'} 
-				projectId={projectId}
-			/>
-		</div>
+			<div className='max-w-3xl'>
+				<Card className='bg-card/80 border-border/70 shadow-lg shadow-black/20'>
+					<CardContent className='p-6 md:p-8'>
+						<AtaForm 
+							userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance' | 'ue'} 
+							projectId={projectId}
+						/>
+					</CardContent>
+				</Card>
+			</div>
 		</div>
 	);
 }

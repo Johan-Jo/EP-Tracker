@@ -17,6 +17,6 @@ export default async function HelpPage() {
         );
     }
 
-    return <HelpPageNew userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance'} />;
+    return <HelpPageNew userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance' | 'ue'} />;
 }
 

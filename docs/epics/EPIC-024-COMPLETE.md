@@ -175,7 +175,7 @@ Build a mobile-optimized "Today" screen for field workers to view their daily as
 - ✅ `app/api/mobile/checkins/route.ts` (100 lines)
 
 ### Documentation (1 file)
-- ✅ `docs/EPIC-24-MOBILE-TODAY.md` (plan)
+- ✅ `docs/epics/EPIC-024-MOBILE-TODAY.md` (plan)
 
 **Total: 3 new files (UI only, API was EPIC 22)**  
 **Total Lines: ~349 production code**
@@ -364,4 +364,5 @@ Build a mobile-optimized "Today" screen for field workers to view their daily as
 **Status:** ✅ COMPLETE  
 **Date:** 2025-10-23  
 **Next:** Production testing & user feedback
+
 

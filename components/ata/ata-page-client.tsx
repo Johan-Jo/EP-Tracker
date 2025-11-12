@@ -7,7 +7,7 @@ import Link from 'next/link';
 
 interface AtaPageClientProps {
 	orgId: string;
-	userRole: 'admin' | 'foreman' | 'worker' | 'finance';
+	userRole: 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 }
 
 export function AtaPageClient({ orgId, userRole }: AtaPageClientProps) {

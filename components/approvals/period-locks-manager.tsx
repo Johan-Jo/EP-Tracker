@@ -16,7 +16,7 @@ import { formatPeriod } from '@/lib/utils/period-format';
 
 interface PeriodLocksManagerProps {
 	orgId: string;
-	userRole: 'admin' | 'foreman' | 'worker' | 'finance';
+	userRole: 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 }
 
 export function PeriodLocksManager({ orgId, userRole }: PeriodLocksManagerProps) {

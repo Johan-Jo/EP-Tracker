@@ -29,7 +29,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { toast } from 'sonner';
 
 interface HelpPageNewProps {
-	userRole: 'admin' | 'foreman' | 'worker' | 'finance';
+	userRole: 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 }
 
 export function HelpPageNew({ userRole }: HelpPageNewProps) {
@@ -80,7 +80,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			title: 'Tidsrapportering',
 			description: 'Lär dig att registrera arbetstid',
 			icon: Clock,
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 			sections: [
 				{
 					title: 'Snabbstart timer',
@@ -123,7 +123,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			title: 'Röstanteckningar (Voice-to-Text)',
 			description: 'Diktera arbetsrapporter och få automatisk översättning',
 			icon: Mic,
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 			sections: [
 				{
 					title: 'Spela in röstanteckning',
@@ -169,7 +169,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			title: 'Material & Utlägg',
 			description: 'Registrera material och kostnader',
 			icon: Package,
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 			sections: [
 				{
 					title: 'Material',
@@ -199,7 +199,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			title: 'Dagens uppdrag (Mobil)',
 			description: 'Checklista för fältarbetare',
 			icon: CalendarCheck,
-			roles: ['admin', 'foreman', 'worker'],
+			roles: ['admin', 'foreman', 'worker', 'ue'],
 			sections: [
 				{
 					title: 'Dagens jobb',
@@ -540,7 +540,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			title: 'Offline-läge',
 			description: 'Arbeta utan internetanslutning',
 			icon: Info,
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 			sections: [
 				{
 					title: '',
@@ -562,7 +562,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			description: 'Lär dig använda översiktssidan, snabbåtgärder och statistik',
 			icon: Lightbulb,
 			page: '/dashboard',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'projects',
@@ -570,7 +570,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			description: 'Skapa projekt, hantera team och konfigurera alert-inställningar',
 			icon: BookOpen,
 			page: '/dashboard/projects',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'time',
@@ -578,7 +578,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			description: 'Rapportera tid med timer eller manuellt',
 			icon: Clock,
 			page: '/dashboard/time',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'diary',
@@ -586,7 +586,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			description: 'Skriv dagboksanteckningar eller diktera med röst-till-text',
 			icon: Mic,
 			page: '/dashboard/diary',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'materials',
@@ -594,7 +594,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			description: 'Lägg till material, utlägg och miltal',
 			icon: Package,
 			page: '/dashboard/materials',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'planning-today',
@@ -602,7 +602,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			description: 'Checka in/ut och navigera till arbetsplatser',
 			icon: CalendarCheck,
 			page: '/dashboard/planning/today',
-			roles: ['admin', 'foreman', 'worker'],
+			roles: ['admin', 'foreman', 'worker', 'ue'],
 		},
 		{
 			id: 'planning',
@@ -639,49 +639,49 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			question: 'Hur rättar jag en tidrapport?',
 			answer:
 				'Du kan redigera tidrapporter som har status "Utkast". Om en tidrapport redan är godkänd, kontakta din arbetsledare för att begära ändringar.',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'faq-2',
 			question: 'Vad händer om jag glömmer stoppa timern?',
 			answer:
 				'Timern fortsätter räkna tills du stoppar den manuellt. När du checkar ut visas en bekräftelsedialog där du kan se och justera både check-in och check-out tid innan du sparar.',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'faq-2b',
 			question: 'Hur redigerar jag tiden när jag checkar ut?',
 			answer:
 				'När du checkar ut från översiktssidan visas en dialog med din arbetstid. Klicka "Nej, editera" för att justera tiderna. Du kan använda +/- knapparna för att ändra timmar och minuter, eller skriva tiden direkt. Datumet kan inte ändras, endast tiden. Total arbetad tid uppdateras automatiskt. Perfekt för att rätta till om du glömde checka in/ut eller om tiden behöver justeras.',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'faq-3',
 			question: 'Kan jag ta bort en tidrapport?',
 			answer:
 				'Ja, tidrapporter med status "Utkast" kan tas bort. Godkända tidrapporter kan inte tas bort av säkerhetsskäl.',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'faq-4',
 			question: 'Hur fungerar offline-läge?',
 			answer:
 				'När du är offline sparas all data lokalt på din enhet. När du får internetanslutning igen synkroniseras automatiskt alla dina ändringar till servern. Du ser en synkroniseringsstatus längst upp i appen.',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'faq-8',
 			question: 'Var hittar jag mina dagliga uppdrag?',
 			answer:
 				'Gå till "Planering → Idag" för att se alla dina uppdrag för dagen. Här kan du checka in/ut, navigera till arbetsplatser och se anteckningar för varje jobb.',
-			roles: ['admin', 'foreman', 'worker'],
+			roles: ['admin', 'foreman', 'worker', 'ue'],
 		},
 		{
 			id: 'faq-10',
 			question: 'Kan jag checka in utan internetanslutning?',
 			answer:
 				'Ja! Check-in/out fungerar offline. Händelserna sparas lokalt och synkroniseras automatiskt när du får internetanslutning igen. Du ser din status uppdateras direkt.',
-			roles: ['admin', 'foreman', 'worker'],
+			roles: ['admin', 'foreman', 'worker', 'ue'],
 		},
 		{
 			id: 'faq-7',
@@ -716,7 +716,7 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			question: 'Varför ser jag inte alla projekt?',
 			answer:
 				'Användare ser bara projekt de är tilldelade till. Om du är admin eller arbetsledare, gå till projektets "Team"-flik och lägg till dig själv som medlem. Workers behöver bli tillagda av en admin eller arbetsledare.',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'faq-12',
@@ -758,14 +758,14 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			question: 'Hur aktiverar jag push-notifieringar?',
 			answer:
 				'Gå till "Inställningar → Notiser" och klicka "Aktivera notiser". Din webbläsare kommer att fråga om tillåtelse - acceptera för att ta emot notifieringar. Du kan välja vilka typer av notiser du vill ha och ställa in tysta timmar.',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'faq-18',
 			question: 'Vilka typer av notiser kan jag få?',
 			answer:
 				'Du kan få notiser om: godkännanden av tid, veckosammanfattningar, påminnelser om utcheckning, och projektspecifika alerts om check-in/out. Alla notiser kan aktiveras/avaktiveras individuellt i notis-inställningarna.',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'faq-19',
@@ -786,42 +786,42 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			question: 'Fungerar notiser när appen är stängd?',
 			answer:
 				'Ja! Push-notiser fungerar även när appen är stängd. Du får notiser som vanliga systemnotiser i Windows, Mac, iOS eller Android. Klicka på notisen för att öppna appen och gå direkt till relevant sida.',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'faq-22',
 			question: 'Hur använder jag röstanteckningar?',
 			answer:
 				'Gå till Dagbok-sidan och klicka på mikrofon-ikonen. Prata in din arbetsrapport på valfritt språk. Systemet transkriberar automatiskt din röst till text och översätter till svenska om du pratade på annat språk. Perfekt för att snabbt rapportera från arbetsplatsen!',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'faq-23',
 			question: 'Vilka språk kan jag använda för röstanteckningar?',
 			answer:
 				'Du kan prata på nästan vilket språk som helst! Systemet detekterar automatiskt språket och stöder bl.a. Svenska, Engelska, Polska, Tyska, Spanska, Franska, Italienska och många fler. Om du pratar på annat språk än svenska översätts texten automatiskt till svenska.',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'faq-24',
 			question: 'Hur exakt är rösttranskriptionen?',
 			answer:
 				'Vi använder OpenAI Whisper, som är en av de mest avancerade AI-modellerna för rösttranskription. Systemet är specialtränat för byggbranschen och känner igen vanliga byggtermer som betong, armering, gjutning, etc. För bästa resultat, tala tydligt och undvik mycket bakgrundsljud.',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'faq-25',
 			question: 'Sparas mina röstinspelningar?',
 			answer:
 				'Röstinspelningarna laddas upp och transkriberas säkert. Efter transkription sparas både originalljudet och den transkriberade texten så du alltid kan gå tillbaka och lyssna på originalinspelningen om du behöver dubbelkolla något.',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'faq-26',
 			question: 'Kan jag använda röstanteckningar offline?',
 			answer:
 				'Rösttranskription och översättning kräver internetanslutning eftersom den använder AI i molnet. Du kan dock spela in ljudet offline, och det kommer automatiskt att bearbetas när du får internetanslutning igen.',
-			roles: ['admin', 'foreman', 'worker', 'finance'],
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 		{
 			id: 'faq-27',

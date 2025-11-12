@@ -23,7 +23,7 @@ import type { BillingType } from '@/lib/schemas/billing-types';
 
 interface AtaDetailClientProps {
 	ataId: string;
-	userRole: 'admin' | 'foreman' | 'worker' | 'finance';
+	userRole: 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 }
 
 const statusConfig = {
@@ -91,6 +91,20 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 		},
 	});
 
+	const { data: ataMaterials = [] } = useQuery({
+		queryKey: ['ata-materials', ataId],
+		queryFn: async () => {
+			const { data, error } = await supabase
+				.from('materials')
+				.select('id, description, qty, unit, unit_price_sek, total_sek, status')
+				.eq('ata_id', ataId)
+				.order('created_at', { ascending: false });
+
+			if (error) throw error;
+			return data ?? [];
+		},
+	});
+
 	if (isLoading) {
 		return (
 			<div className='flex items-center justify-center py-12'>
@@ -128,7 +142,31 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 	const qty = toNumber(ata.qty);
 	const unitPrice = toNumber(ata.unit_price_sek);
 	const fixedAmount = toNumber(ata.fixed_amount_sek);
-	const total = billingType === 'FAST' ? fixedAmount : qty * unitPrice;
+	const materialsAmount = toNumber(ata.materials_amount_sek);
+	const laborTotal = billingType === 'FAST' ? fixedAmount : qty * unitPrice;
+	const total = laborTotal + materialsAmount;
+const hoursDisplay =
+	billingType === 'FAST' || qty <= 0
+		? null
+		: qty.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const hourlyRateDisplay =
+	billingType === 'FAST' || unitPrice <= 0
+		? null
+		: unitPrice.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const laborLabel =
+	billingType === 'FAST'
+		? 'Fast belopp'
+		: hoursDisplay && hourlyRateDisplay
+		? `Arbetstid (${hoursDisplay} h × ${hourlyRateDisplay} SEK)`
+		: 'Arbetstid (från tidrapportering)';
+const pricingGridCols =
+	billingType === 'FAST'
+		? materialsAmount > 0
+			? 'md:grid-cols-3'
+			: 'md:grid-cols-2'
+		: materialsAmount > 0
+		? 'md:grid-cols-4'
+		: 'md:grid-cols-3';
 
 	return (
 		<div className='max-w-5xl space-y-6'>
@@ -236,16 +274,28 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 					<DollarSign className='w-5 h-5 text-orange-600' />
 					<h2 className='text-xl font-semibold text-orange-900'>Kostnadsuppgifter</h2>
 				</div>
-				<div className='grid grid-cols-2 md:grid-cols-3 gap-4'>
+				<div className={`grid grid-cols-2 ${pricingGridCols} gap-4`}>
 					{billingType === 'FAST' ? (
 						<>
 							<div className='bg-white rounded-xl p-4 md:col-span-1 col-span-2'>
-								<p className='text-sm text-muted-foreground mb-1'>Fast belopp</p>
-								<p className='text-2xl text-gray-900'>{fixedAmount.toLocaleString('sv-SE')} kr</p>
+								<p className='text-sm text-muted-foreground mb-1'>{laborLabel}</p>
+								<p className='text-2xl text-gray-900'>
+									{laborTotal.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+								</p>
 							</div>
+							{materialsAmount > 0 && (
+								<div className='bg-white rounded-xl p-4 md:col-span-1 col-span-2'>
+									<p className='text-sm text-muted-foreground mb-1'>Material</p>
+									<p className='text-2xl text-gray-900'>
+										{materialsAmount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+									</p>
+								</div>
+							)}
 							<div className='bg-white rounded-xl p-4 md:col-span-1 col-span-2'>
 								<p className='text-sm text-muted-foreground mb-1'>Totalt</p>
-								<p className='text-2xl text-gray-900'>{total.toLocaleString('sv-SE')} kr</p>
+								<p className='text-2xl text-gray-900'>
+									{total.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+								</p>
 							</div>
 						</>
 					) : (
@@ -262,8 +312,24 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 									{qty.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} {ata.unit || 'st'}
 								</p>
 							</div>
+							<div className='bg-white rounded-xl p-4'>
+								<p className='text-sm text-muted-foreground mb-1'>{laborLabel}</p>
+								<p className='text-2xl text-gray-900'>
+									{laborTotal.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+								</p>
+							</div>
+							{materialsAmount > 0 && (
+								<div className='bg-white rounded-xl p-4'>
+									<p className='text-sm text-muted-foreground mb-1'>Material</p>
+									<p className='text-2xl text-gray-900'>
+										{materialsAmount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+									</p>
+								</div>
+							)}
 							<div className='bg-white rounded-xl p-4 md:col-span-1 col-span-2'>
-								<p className='text-sm text-muted-foreground mb-1'>Totalt</p>
+								<p className='text-sm text-muted-foreground mb-1'>
+									Totalt{materialsAmount > 0 ? ' (inkl. material)' : ''}
+								</p>
 								<p className='text-2xl text-gray-900'>
 									{total.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
 								</p>
@@ -272,6 +338,59 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 					)}
 				</div>
 			</div>
+
+			{ataMaterials.length > 0 && (
+				<div className='bg-card border-2 border-border rounded-xl p-6 hover:border-orange-300 hover:shadow-md transition-all duration-200'>
+					<div className='flex items-center gap-2 mb-4'>
+						<Package className='w-5 h-5 text-orange-600' />
+						<h2 className='text-xl font-semibold'>Material</h2>
+					</div>
+					<ul className='space-y-3'>
+						{ataMaterials.map((material) => {
+							const qtyDisplay = toNumber(material.qty);
+							const unitPriceDisplay = toNumber(material.unit_price_sek);
+							const totalDisplay = toNumber(material.total_sek);
+
+							return (
+								<li
+									key={material.id}
+									className='flex flex-col gap-2 rounded-lg border border-border/60 bg-background p-3 md:flex-row md:items-center md:justify-between'
+								>
+									<div>
+										<p className='text-sm font-medium'>{material.description}</p>
+										{qtyDisplay > 0 && unitPriceDisplay > 0 && (
+											<p className='text-xs text-muted-foreground'>
+												{qtyDisplay.toLocaleString('sv-SE', {
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2,
+												})}{' '}
+												{material.unit || 'st'} ×{' '}
+												{unitPriceDisplay.toLocaleString('sv-SE', {
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2,
+												})}{' '}
+												SEK
+											</p>
+										)}
+										{material.status && (
+											<p className='text-xs text-muted-foreground capitalize'>
+												Status: {material.status}
+											</p>
+										)}
+									</div>
+									<p className='text-sm font-semibold'>
+										{totalDisplay.toLocaleString('sv-SE', {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										})}{' '}
+										SEK
+									</p>
+								</li>
+							);
+						})}
+					</ul>
+				</div>
+			)}
 
 			{/* Photos */}
 			{photos && photos.length > 0 && (

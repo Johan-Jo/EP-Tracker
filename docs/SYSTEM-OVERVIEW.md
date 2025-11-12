@@ -460,6 +460,7 @@
 | Role | Key Access | Features |
 |------|-----------|----------|
 | **Worker** | Own time, materials, expenses | View/create own entries, check-in/out |
+| **UE (Underentreprenör)** | Own time, materials, expenses (external) | Report subcontractor effort with worker-level permissions |
 | **Foreman** | Team time, approvals, planning | Crew clock-in, approve entries, schedule assignments |
 | **Admin** | All organization data | Manage projects, users, settings |
 | **Finance** | Reports, exports, approvals | View all entries, export CSV, approve invoices |
@@ -467,18 +468,18 @@
 
 ### Role Matrix
 
-| Feature | Worker | Foreman | Admin | Finance | Super Admin |
-|---------|--------|---------|-------|---------|-------------|
-| Time Tracking | Own | Team | All | View All | View All |
-| Materials | Own | Team | All | View All | View All |
-| ÄTA | Own | Team | All | View All | View All |
-| Approvals | - | Approve | Approve | Approve | View All |
-| Planning Grid | - | Read/Write | Read/Write | View | View All |
-| Mobile Today | Own | Own | Own | - | - |
-| Projects | View | Manage | Manage | View All | View All |
-| Users | - | - | Manage | - | Manage All |
-| Billing | - | - | View | View | Manage All |
-| System Config | - | - | - | - | Manage |
+| Feature | Worker | UE | Foreman | Admin | Finance | Super Admin |
+|---------|--------|----|---------|-------|---------|-------------|
+| Time Tracking | Own | Own | Team | All | View All | View All |
+| Materials | Own | Own | Team | All | View All | View All |
+| ÄTA | Own | Own | Team | All | View All | View All |
+| Approvals | - | - | Approve | Approve | Approve | View All |
+| Planning Grid | - | - | Read/Write | Read/Write | View | View All |
+| Mobile Today | Own | Own | Own | Own | - | - |
+| Projects | View | View | Manage | Manage | View All | View All |
+| Users | - | - | - | Manage | - | Manage All |
+| Billing | - | - | - | View | View | Manage All |
+| System Config | - | - | - | - | - | Manage |
 
 ---
 
@@ -766,28 +767,28 @@
 ## Documentation Index
 
 ### Completion Reports
-- `docs/EPIC-1-VERIFICATION.md` (Infrastructure)
-- `docs/EPIC-2-COMPLETE.md` (Database & Auth)
-- `docs/EPIC-3-COMPLETE.md` (Core UI & Projects)
-- `docs/EPIC-4-COMPLETE.md` (Time Tracking)
-- `docs/EPIC-5-COMPLETE.md` (Materials, Expenses, Mileage)
-- `docs/EPIC-6-COMPLETE.md` (ÄTA, Diary, Checklists)
-- `docs/EPIC-7-COMPLETE.md` (Approvals & Exports)
-- `docs/EPIC-8-COMPLETE.md` (Offline & PWA)
-- `docs/EPIC-9-COMPLETE.md` (Polish & Pilot Prep)
-- `docs/EPIC-10-COMPLETE.md` (Organization Management)
-- `docs/EPIC-11-COMPLETE.md` (Advanced Org Features)
-- `docs/EPIC-12-COMPLETE.md` (Org Analytics)
-- `docs/EPIC-13-COMPLETE.md` (User Management)
-- `docs/EPIC-14-COMPLETE.md` (Advanced User Features)
-- `docs/EPIC-15-COMPLETE.md` (Billing & Stripe)
-- `docs/EPIC-16-COMPLETE.md` (System Configuration)
-- `docs/EPIC-17-COMPLETE.md` (Analytics & Monitoring)
-- `docs/EPIC-18-COMPLETE.md` (Support Tools)
-- `docs/EPIC-21-COMPLETE.md` (Email System)
-- `docs/EPIC-22-COMPLETE.md` (Planning Foundation)
-- `docs/EPIC-23-COMPLETE.md` (Planning UI)
-- `docs/EPIC-24-COMPLETE.md` (Mobile Today)
+- `docs/epics/EPIC-001-VERIFICATION.md` (Infrastructure)
+- `docs/epics/EPIC-002-COMPLETE.md` (Database & Auth)
+- `docs/epics/EPIC-003-COMPLETE.md` (Core UI & Projects)
+- `docs/epics/EPIC-004-COMPLETE.md` (Time Tracking)
+- `docs/epics/EPIC-005-COMPLETE.md` (Materials, Expenses, Mileage)
+- `docs/epics/EPIC-006-COMPLETE.md` (ÄTA, Diary, Checklists)
+- `docs/epics/EPIC-007-COMPLETE.md` (Approvals & Exports)
+- `docs/epics/EPIC-008-COMPLETE.md` (Offline & PWA)
+- `docs/epics/EPIC-009-COMPLETE.md` (Polish & Pilot Prep)
+- `docs/epics/EPIC-010-COMPLETE.md` (Organization Management)
+- `docs/epics/EPIC-011-COMPLETE.md` (Advanced Org Features)
+- `docs/epics/EPIC-012-COMPLETE.md` (Org Analytics)
+- `docs/epics/EPIC-013-COMPLETE.md` (User Management)
+- `docs/epics/EPIC-014-COMPLETE.md` (Advanced User Features)
+- `docs/epics/EPIC-015-COMPLETE.md` (Billing & Stripe)
+- `docs/epics/EPIC-016-COMPLETE.md` (System Configuration)
+- `docs/epics/EPIC-017-COMPLETE.md` (Analytics & Monitoring)
+- `docs/epics/EPIC-018-FOUNDATION-COMPLETE.md` (Support Tools)
+- `docs/epics/EPIC-021-EMAIL-SYSTEM-COMPLETE.md` (Email System)
+- `docs/epics/EPIC-022-COMPLETE.md` (Planning Foundation)
+- `docs/epics/EPIC-023-COMPLETE.md` (Planning UI)
+- `docs/epics/EPIC-024-COMPLETE.md` (Mobile Today)
 
 ### Status & Planning
 - `docs/PROJECT-STATUS.md` (Overall status)
@@ -813,9 +814,9 @@
 - `docs/SUPER-ADMIN-PRD.md` (Phase 2 requirements)
 - `docs/phase-1-implementation-plan.md` (Phase 1 plan)
 - `docs/phase-2-super-admin-epics.md` (Phase 2 plan)
-- `docs/EPIC-22-PLANNING-FOUNDATION.md` (Planning foundation plan)
-- `docs/EPIC-23-PLANNING-UI.md` (Planning UI plan)
-- `docs/EPIC-24-MOBILE-TODAY.md` (Mobile today plan)
+- `docs/epics/EPIC-022-PLANNING-FOUNDATION.md` (Planning foundation plan)
+- `docs/epics/EPIC-023-PLANNING-UI.md` (Planning UI plan)
+- `docs/epics/EPIC-024-MOBILE-TODAY.md` (Mobile today plan)
 
 ### Code Reviews & Fixes
 - `docs/CODE-REVIEW-2025-10-21.md` (Code review findings)
@@ -853,4 +854,5 @@
 
 **Last Updated:** 2025-10-23  
 **Next Review:** After Phase 2.2 (Geo-fences, Push Notifications)
+
 

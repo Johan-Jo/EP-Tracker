@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Search, Package, Receipt, TrendingUp, FileImage, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,10 +11,17 @@ import { createClient } from '@/lib/supabase/client';
 import { AddMaterialDialog } from '@/components/materials/add-material-dialog';
 import { MaterialDetailModal } from '@/components/materials/material-detail-modal';
 import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
+import Link from 'next/link';
+import { toast } from 'sonner';
+
+const DRAFT_MATERIALS_STORAGE_PREFIX = 'ata-draft-materials:';
 
 interface MaterialsPageNewProps {
 	orgId: string;
 	projectId?: string;
+	ataDraftId?: string;
+	ataTitle?: string | null;
+	returnTo?: string | null;
 }
 
 type RawMaterialRow = {
@@ -71,14 +78,94 @@ type UnifiedItem = {
 	raw: RawMaterialRow | RawExpenseRow;
 };
 
-export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
+export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, returnTo }: MaterialsPageNewProps) {
 	const [showAddDialog, setShowAddDialog] = useState(false);
 	const [editingMaterial, setEditingMaterial] = useState<UnifiedItem | null>(null);
 	const [viewingMaterial, setViewingMaterial] = useState<UnifiedItem | null>(null);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [selectedProject, setSelectedProject] = useState<string>(projectId || 'all');
 	const [entriesLimit, setEntriesLimit] = useState(200);
+	const [ataDraftMaterialIds, setAtaDraftMaterialIds] = useState<string[]>([]);
 	const supabase = createClient();
+
+	const registerMaterialForAta = useCallback(
+		(materialId: string) => {
+			if (!ataDraftId || typeof window === 'undefined') return;
+			const key = `${DRAFT_MATERIALS_STORAGE_PREFIX}${ataDraftId}`;
+			try {
+				const stored = window.localStorage.getItem(key);
+				const parsed = stored ? JSON.parse(stored) : [];
+				const ids = Array.isArray(parsed)
+					? parsed.filter((id: unknown): id is string => typeof id === 'string')
+					: [];
+				if (!ids.includes(materialId)) {
+					const next = [...ids, materialId];
+					window.localStorage.setItem(key, JSON.stringify(next));
+					setAtaDraftMaterialIds(next);
+					toast.success('Material kopplat till ÄTA-utkastet');
+				}
+			} catch (error) {
+				console.error('Kunde inte uppdatera ATA-utkastets material-lista', error);
+				const next = [materialId];
+				window.localStorage.setItem(key, JSON.stringify(next));
+				setAtaDraftMaterialIds(next);
+				toast.success('Material kopplat till ÄTA-utkastet');
+			}
+		},
+		[ataDraftId],
+	);
+
+	useEffect(() => {
+		if (!ataDraftId || typeof window === 'undefined') {
+			setAtaDraftMaterialIds([]);
+			return;
+		}
+
+		const key = `${DRAFT_MATERIALS_STORAGE_PREFIX}${ataDraftId}`;
+
+		const loadDraftMaterials = () => {
+			try {
+				const stored = window.localStorage.getItem(key);
+				if (!stored) {
+					setAtaDraftMaterialIds([]);
+					return;
+				}
+				const parsed = JSON.parse(stored);
+				if (!Array.isArray(parsed)) {
+					setAtaDraftMaterialIds([]);
+					return;
+				}
+				const unique = Array.from(
+					new Set(parsed.filter((id: unknown): id is string => typeof id === 'string')),
+				);
+				setAtaDraftMaterialIds(unique);
+			} catch {
+				setAtaDraftMaterialIds([]);
+			}
+		};
+
+		loadDraftMaterials();
+
+		const handleStorage = (event: StorageEvent) => {
+			if (event.key === key) {
+				loadDraftMaterials();
+			}
+		};
+
+		const handleVisibility = () => {
+			if (!document.hidden) {
+				loadDraftMaterials();
+			}
+		};
+
+		window.addEventListener('storage', handleStorage);
+		document.addEventListener('visibilitychange', handleVisibility);
+
+		return () => {
+			window.removeEventListener('storage', handleStorage);
+			document.removeEventListener('visibilitychange', handleVisibility);
+		};
+	}, [ataDraftId]);
 	
 	const normalizeSingleRelation = <T,>(relation: T | T[] | null): T | null => {
 		if (!relation) return null;
@@ -270,6 +357,23 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 	}, [materials, searchQuery]);
 
 	const canLoadMore = materials.length >= entriesLimit;
+	const normalizedAtaTitle = useMemo(() => {
+		if (!ataTitle) return null;
+		try {
+			return decodeURIComponent(ataTitle);
+		} catch {
+			return ataTitle;
+		}
+	}, [ataTitle]);
+	const normalizedReturnTo = useMemo(() => {
+		if (!returnTo) return null;
+		try {
+			return decodeURIComponent(returnTo);
+		} catch {
+			return returnTo;
+		}
+	}, [returnTo]);
+	const draftMaterialSet = useMemo(() => new Set(ataDraftMaterialIds), [ataDraftMaterialIds]);
 
 	return (
 		<div className='flex-1 overflow-auto bg-gray-50 pb-20 transition-colors md:pb-0 dark:bg-[#0A0908]'>
@@ -320,6 +424,26 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 						)}
 					</div>
 				</section>
+
+				{ataDraftId && normalizedReturnTo && (
+					<div className='mb-6 flex flex-col gap-3 rounded-lg border border-dashed border-orange-300 bg-orange-50/80 p-4 md:flex-row md:items-center md:justify-between'>
+						<div className='space-y-1'>
+							<p className='text-sm font-semibold text-orange-800'>Kopplad till pågående ÄTA-utkast</p>
+							<p className='text-xs text-orange-700'>
+								Material du sparar här kopplas automatiskt till ÄTA-utkastet
+								{normalizedAtaTitle ? ` "${normalizedAtaTitle}"` : ''}.
+							</p>
+						</div>
+						<Button
+							asChild
+							variant='outline'
+							size='sm'
+							className='border-orange-400 text-orange-700 hover:bg-orange-100'
+						>
+							<Link href={normalizedReturnTo}>Tillbaka till ÄTA</Link>
+						</Button>
+					</div>
+				)}
 
 				{/* Stats */}
 				<div className='grid grid-cols-1 gap-4 md:grid-cols-4 mb-6'>
@@ -432,6 +556,11 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 														<h4 className='font-semibold mb-1 truncate'>
 															{material.name}
 														</h4>
+														{ataDraftId && draftMaterialSet.has(material.id) && (
+															<Badge className='bg-orange-100 text-orange-700 border-orange-300'>
+																Kopplad till ÄTA-utkast
+															</Badge>
+														)}
 														<p className='text-sm text-muted-foreground mb-2'>
 															{material.project?.name || 'Inget projekt'}
 														</p>
@@ -524,12 +653,15 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 			</main>
 
 			{/* Add Material Dialog */}
-		<AddMaterialDialog 
-			open={showAddDialog} 
-			onClose={() => setShowAddDialog(false)} 
-			orgId={orgId}
-			projectId={projectId}
-		/>
+			<AddMaterialDialog
+				open={showAddDialog}
+				onClose={() => setShowAddDialog(false)}
+				orgId={orgId}
+				projectId={projectId || (selectedProject !== 'all' ? selectedProject : undefined)}
+				ataTitle={normalizedAtaTitle}
+				projectLocked={Boolean(ataDraftId)}
+				onMaterialCreated={ataDraftId ? registerMaterialForAta : undefined}
+			/>
 
 			{/* Edit Material Dialog */}
 			{editingMaterial && (
@@ -539,6 +671,8 @@ export function MaterialsPageNew({ orgId, projectId }: MaterialsPageNewProps) {
 				orgId={orgId}
 				editingMaterial={editingMaterial}
 				projectId={projectId}
+				ataTitle={normalizedAtaTitle}
+				projectLocked={Boolean(ataDraftId)}
 			/>
 			)}
 

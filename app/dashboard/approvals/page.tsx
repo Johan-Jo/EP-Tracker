@@ -22,6 +22,11 @@ export default async function ApprovalsPage() {
 		redirect('/dashboard');
 	}
 
-	return <ApprovalsPageNew orgId={membership.org_id} userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance'} />;
+return (
+	<ApprovalsPageNew
+		orgId={membership.org_id}
+		userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance' | 'ue'}
+	/>
+);
 }
 

@@ -306,7 +306,7 @@ Pre-defined tours for all major pages:
 8. `components/onboarding/tour-launcher.tsx` (115 lines)
 
 ### Documentation
-9. `docs/EPIC-9-COMPLETE.md` (this file)
+9. `docs/epics/EPIC-009-COMPLETE.md` (this file)
 
 **Total:** ~1,100 new lines of code
 
@@ -487,4 +487,5 @@ All core features (EPICs 1-9) are implemented, tested, and documented. The only 
 1. Continue with EPIC 10 (Super Admin)?
 2. Run deployment checklist and deploy to staging?
 3. Something else?
+
 

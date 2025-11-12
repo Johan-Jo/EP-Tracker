@@ -171,9 +171,9 @@ EPIC 31 is **functionally complete** with all core features implemented accordin
 ## 📝 Documentation
 
 **Updated Documents:**
-- ✅ `docs/EPIC-31-Worksite-Activation-and-Control-View.md` - Full spec with UI, API, tests
+- ✅ `docs/epics/EPIC-031-Worksite-Activation-and-Control-View.md` - Full spec with UI, API, tests
 - ✅ `docs/PRD-Personalliggare-v2.md` - Complete PRD saved
-- ✅ `docs/EPIC-31-TEST-RESULTS.md` - Test results and pending tests
+- ✅ `docs/epics/EPIC-031-TEST-RESULTS.md` - Test results and pending tests
 - ✅ `test-ep31-quick.md` - Quick test checklist
 
 ---
@@ -181,4 +181,5 @@ EPIC 31 is **functionally complete** with all core features implemented accordin
 **🎉 EPIC 31 Implementation Status: COMPLETE**  
 **Ready for:** Testing & UAT  
 **Production Ready:** After testing and enhancements
+
 

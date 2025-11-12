@@ -129,14 +129,14 @@ Complete EPIC 31: Worksite Activation & Control View implementation based on PRD
 ## 📝 Documentation Delivered
 
 1. `docs/PRD-Personalliggare-v2.md` - Original PRD
-2. `docs/EPIC-31-Worksite-Activation-and-Control-View.md` - Updated spec
-3. `docs/EPIC-31-COMPLETE.md` - Completion summary
-4. `docs/EPIC-31-TEST-RESULTS.md` - Test results
-5. `docs/EPIC-31-TESTING-COMPLETE.md` - Automated tests
-6. `docs/EPIC-32-Session-Builder-Corrections-and-Exports.md` - Updated spec
-7. `docs/EPIC-33-Payroll-Basis-Lock-and-Export.md` - Updated spec
-8. `docs/EPIC-34-Invoice-Basis-Lock-and-Export.md` - Updated spec
-9. `docs/EPIC-UPDATES-SUMMARY.md` - Summary of changes
+2. `docs/epics/EPIC-031-Worksite-Activation-and-Control-View.md` - Updated spec
+3. `docs/epics/EPIC-031-COMPLETE.md` - Completion summary
+4. `docs/epics/EPIC-031-TEST-RESULTS.md` - Test results
+5. `docs/epics/EPIC-031-TESTING-COMPLETE.md` - Automated tests
+6. `docs/epics/EPIC-032-Session-Builder-Corrections-and-Exports.md` - Updated spec
+7. `docs/epics/EPIC-033-Payroll-Basis-Lock-and-Export.md` - Updated spec
+8. `docs/epics/EPIC-034-Invoice-Basis-Lock-and-Export.md` - Updated spec
+9. `docs/epics/EPIC-UPDATES-SUMMARY.md` - Summary of changes
 10. `test-ep31-quick.md` - Quick test checklist
 
 ---
@@ -161,4 +161,5 @@ Complete EPIC 31: Worksite Activation & Control View implementation based on PRD
 **Ready for:** Manual UAT & Performance Testing
 
 **🎉 EPIC 31: COMPLETE & VERIFIED**
+
 

@@ -26,7 +26,7 @@ All EPICs 1-21 are complete and documented. See:
 ## ✅ Phase 2.1: Planning System (EPICs 22-24)
 
 ### EPIC 22: Planning Foundation ✅
-**Documentation:** `docs/EPIC-22-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-022-COMPLETE.md`
 
 **Delivered:**
 - Database schema (assignments, absences, shift_templates, mobile_notes)
@@ -40,7 +40,7 @@ All EPICs 1-21 are complete and documented. See:
 ---
 
 ### EPIC 23: Planning UI ✅
-**Documentation:** `docs/EPIC-23-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-023-COMPLETE.md`
 
 **Delivered:**
 - Week planning grid (desktop, `/dashboard/planning`)
@@ -65,7 +65,7 @@ All EPICs 1-21 are complete and documented. See:
 ---
 
 ### EPIC 24: Mobile Today ✅
-**Documentation:** `docs/EPIC-24-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-024-COMPLETE.md`
 
 **Delivered:**
 - Mobile today list (field workers, `/dashboard/planning/today`)
@@ -108,7 +108,7 @@ All EPICs 1-21 are complete and documented. See:
 - Multi-tenancy via organizations
 - User roles: admin, foreman, worker, finance
 
-**Summary:** `docs/EPIC-2-COMPLETE.md`
+**Summary:** `docs/epics/EPIC-002-COMPLETE.md`
 
 ---
 
@@ -119,7 +119,7 @@ All EPICs 1-21 are complete and documented. See:
 - Responsive layout (mobile-first)
 - shadcn/ui components
 
-**Summary:** `docs/EPIC-3-COMPLETE.md`
+**Summary:** `docs/epics/EPIC-003-COMPLETE.md`
 
 ---
 
@@ -155,7 +155,7 @@ All EPICs 1-21 are complete and documented. See:
 - Checklist instances tied to projects
 - Worker ÄTA creation (pending approval)
 
-**Summary:** `docs/EPIC-6-TEST-PLAN.md`
+**Summary:** `docs/epics/EPIC-006-TEST-PLAN.md`
 
 ---
 
@@ -169,7 +169,7 @@ All EPICs 1-21 are complete and documented. See:
 - **Faktura-CSV export** (invoicing)
 - Export history tracking
 
-**Summary:** `docs/EPIC-7-8-TEST-REPORT.md`
+**Summary:** `docs/epics/EPIC-007-8-TEST-REPORT.md`
 
 ---
 
@@ -183,7 +183,7 @@ All EPICs 1-21 are complete and documented. See:
 - Service worker update notifications
 - PWA manifest for installability
 
-**Summary:** `docs/EPIC-8-SUMMARY.md`
+**Summary:** `docs/epics/EPIC-008-SUMMARY.md`
 
 ---
 
@@ -198,7 +198,7 @@ All EPICs 1-21 are complete and documented. See:
 - Success toast notifications
 - **Deployment checklist** (100+ checkpoints)
 
-**Summary:** `docs/EPIC-9-SUMMARY.md`
+**Summary:** `docs/epics/EPIC-009-SUMMARY.md`
 
 ---
 
@@ -297,14 +297,14 @@ All EPICs 1-21 are complete and documented. See:
 - `README.md` - Project overview
 - `docs/phase-1-implementation-plan.md` - EPIC breakdown
 - `docs/SETUP-COMPLETE.md` - EPIC 1 verification
-- `docs/EPIC-2-COMPLETE.md` - Database & auth
-- `docs/EPIC-3-COMPLETE.md` - UI & projects
+- `docs/epics/EPIC-002-COMPLETE.md` - Database & auth
+- `docs/epics/EPIC-003-COMPLETE.md` - UI & projects
 - `EPIC-4-TEST-SUMMARY.md` - Time tracking tests
 - `EPIC-3-TEST-SUMMARY.md` - Materials & expenses tests
-- `docs/EPIC-6-TEST-PLAN.md` - ÄTA, diary, checklists
-- `docs/EPIC-7-8-TEST-REPORT.md` - Approvals & offline
-- `docs/EPIC-8-SUMMARY.md` - PWA & offline features
-- `docs/EPIC-9-SUMMARY.md` - Polish & pilot prep
+- `docs/epics/EPIC-006-TEST-PLAN.md` - ÄTA, diary, checklists
+- `docs/epics/EPIC-007-8-TEST-REPORT.md` - Approvals & offline
+- `docs/epics/EPIC-008-SUMMARY.md` - PWA & offline features
+- `docs/epics/EPIC-009-SUMMARY.md` - Polish & pilot prep
 
 ### User Documentation
 - **In-app Help:** `/dashboard/help` (role-based)
@@ -488,4 +488,5 @@ EP-Tracker/
 8. ✅ Deployment checklist
 
 **Lycka till med piloten! 🚀**
+
 

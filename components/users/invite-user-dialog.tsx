@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 const inviteUserSchema = z.object({
 	email: z.string().email({ message: 'Ogiltig e-postadress' }),
 	full_name: z.string().min(1, { message: 'Namn krävs' }),
-	role: z.enum(['admin', 'foreman', 'worker', 'finance'], { message: 'Roll måste väljas' }),
+	role: z.enum(['admin', 'foreman', 'worker', 'finance', 'ue'], { message: 'Roll måste väljas' }),
 	hourly_rate_sek: z.string().optional(), // Timtaxa debitering
 	salary_per_hour_sek: z.string().optional(), // Timlön
 });
@@ -151,6 +151,7 @@ export function InviteUserDialog({ open: controlledOpen, onOpenChange, onSuccess
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="worker">Arbetare</SelectItem>
+									<SelectItem value="ue">UE (Underentreprenör)</SelectItem>
 									<SelectItem value="foreman">Arbetsledare</SelectItem>
 									<SelectItem value="finance">Ekonomi</SelectItem>
 									<SelectItem value="admin">Admin</SelectItem>
@@ -164,6 +165,7 @@ export function InviteUserDialog({ open: controlledOpen, onOpenChange, onSuccess
 								{selectedRole === 'foreman' && 'Kan se alla data men inte hantera användare'}
 								{selectedRole === 'finance' && 'Skrivskyddad åtkomst för fakturering och lön'}
 								{selectedRole === 'worker' && 'Kan endast se och redigera sina egna data'}
+								{selectedRole === 'ue' && 'Underentreprenör med samma behörigheter som arbetare'}
 							</p>
 						</div>
 

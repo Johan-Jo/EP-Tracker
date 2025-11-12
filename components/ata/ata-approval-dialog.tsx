@@ -20,12 +20,23 @@ interface AtaApprovalDialogProps {
 		description?: string | null;
 		total_sek?: number | null;
 		fixed_amount_sek?: number | null;
+	materials_amount_sek?: number | null;
 		billing_type?: BillingType;
 		status: string;
+	qty?: number | null;
+	unit?: string | null;
+	unit_price_sek?: number | null;
 	};
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }
+
+const toNumber = (value: unknown): number => {
+	if (value === null || value === undefined) return 0;
+	if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+	const parsed = Number(value);
+	return Number.isFinite(parsed) ? parsed : 0;
+};
 
 export function AtaApprovalDialog({ ata, open, onOpenChange }: AtaApprovalDialogProps) {
 	const [action, setAction] = useState<'approve' | 'reject' | null>(null);
@@ -33,6 +44,29 @@ export function AtaApprovalDialog({ ata, open, onOpenChange }: AtaApprovalDialog
 	const [signature, setSignature] = useState<{ name: string; timestamp: string } | null>(null);
 	const queryClient = useQueryClient();
 	const router = useRouter();
+
+	const laborAmount =
+		ata.billing_type === 'FAST'
+			? toNumber(ata.fixed_amount_sek)
+			: toNumber(ata.total_sek);
+	const materialsAmount = toNumber(ata.materials_amount_sek);
+	const totalAmount = laborAmount + materialsAmount;
+	const qtyDisplay = ata.billing_type === 'FAST' ? 0 : toNumber(ata.qty);
+	const unitPriceDisplay = ata.billing_type === 'FAST' ? 0 : toNumber(ata.unit_price_sek);
+	const hoursDisplay =
+		ata.billing_type !== 'FAST' && qtyDisplay > 0
+			? qtyDisplay.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+			: null;
+	const hourlyRateDisplay =
+		ata.billing_type !== 'FAST' && unitPriceDisplay > 0
+			? unitPriceDisplay.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+			: null;
+	const laborLabel =
+		ata.billing_type === 'FAST'
+			? 'Fast belopp'
+			: hoursDisplay && hourlyRateDisplay
+			? `Arbete (${hoursDisplay} h × ${hourlyRateDisplay} SEK)`
+			: 'Arbete';
 
 	const approvalMutation = useMutation({
 		mutationFn: async () => {
@@ -111,16 +145,42 @@ export function AtaApprovalDialog({ ata, open, onOpenChange }: AtaApprovalDialog
 								</p>
 							)}
 
-							{(ata.fixed_amount_sek || ata.total_sek) && (
-								<div className="pt-4 border-t">
-									<h4 className="text-sm font-semibold text-muted-foreground mb-2">Totalt belopp</h4>
-									<p className="text-3xl font-bold text-primary">
-										{(ata.fixed_amount_sek ?? ata.total_sek ?? 0).toLocaleString('sv-SE', {
-											minimumFractionDigits: 2,
-											maximumFractionDigits: 2,
-										})}{' '}
-										<span className="text-xl">SEK</span>
-									</p>
+							{(laborAmount > 0 || materialsAmount > 0) && (
+								<div className="pt-4 border-t space-y-2">
+									{laborAmount > 0 && (
+										<div className="flex items-center justify-between text-sm text-muted-foreground">
+											<span>{laborLabel}</span>
+											<span className="font-medium text-foreground">
+												{laborAmount.toLocaleString('sv-SE', {
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2,
+												})}{' '}
+												SEK
+											</span>
+										</div>
+									)}
+									{materialsAmount > 0 && (
+										<div className="flex items-center justify-between text-sm text-muted-foreground">
+											<span>Material</span>
+											<span className="font-medium text-foreground">
+												{materialsAmount.toLocaleString('sv-SE', {
+													minimumFractionDigits: 2,
+													maximumFractionDigits: 2,
+												})}{' '}
+												SEK
+											</span>
+										</div>
+									)}
+									<div className="flex items-center justify-between border-t border-border/60 pt-2">
+										<h4 className="text-sm font-semibold text-muted-foreground">Totalt belopp</h4>
+										<p className="text-3xl font-bold text-primary">
+											{totalAmount.toLocaleString('sv-SE', {
+												minimumFractionDigits: 2,
+												maximumFractionDigits: 2,
+											})}{' '}
+											<span className="text-xl">SEK</span>
+										</p>
+									</div>
 								</div>
 							)}
 						</CardContent>

@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const inviteUserSchema = z.object({
 	email: z.string().email({ message: 'Ogiltig e-postadress' }),
-	role: z.enum(['admin', 'foreman', 'worker', 'finance'], { message: 'Ogiltig roll' }),
+	role: z.enum(['admin', 'foreman', 'worker', 'finance', 'ue'], { message: 'Ogiltig roll' }),
 	hourly_rate_sek: z.number().positive().optional().nullable(), // Timtaxa debitering
 	salary_per_hour_sek: z.number().positive().optional().nullable(), // Timlön
 	full_name: z.string().min(1, { message: 'Namn krävs' }),

@@ -330,12 +330,12 @@ npm run dev
 
 ## 📚 Related Documentation
 
-- PRD: `docs/EPIC-27-VOICE-NOTES-PRD.md`
-- Foundation: `docs/EPIC-27-FOUNDATION.md`
-- Backend: `docs/EPIC-28-BACKEND-SERVICES.md`
-- Frontend: `docs/EPIC-29-VOICE-CAPTURE-UI.md`
-- Integration: `docs/EPIC-30-DAYBOOK-INTEGRATION.md`
-- Issues Summary: `docs/EPIC-27-30-CRITICAL-ISSUES.md`
+- PRD: `docs/epics/EPIC-027-VOICE-NOTES-PRD.md`
+- Foundation: `docs/epics/EPIC-027-FOUNDATION.md`
+- Backend: `docs/epics/EPIC-028-BACKEND-SERVICES.md`
+- Frontend: `docs/epics/EPIC-029-VOICE-CAPTURE-UI.md`
+- Integration: `docs/epics/EPIC-030-DAYBOOK-INTEGRATION.md`
+- Issues Summary: `docs/epics/EPIC-027-30-CRITICAL-ISSUES.md`
 
 ---
 
@@ -346,5 +346,6 @@ npm run dev
 ---
 
 _Generated: October 29, 2025_
+
 
 

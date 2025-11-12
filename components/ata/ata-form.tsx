@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,9 +14,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ImagePlus, X, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { SignatureInput } from '@/components/shared/signature-input';
 import { toast } from 'sonner';
 import { billingTypeEnum, billingTypeOptions, type BillingType } from '@/lib/schemas/billing-types';
+
+const DRAFT_FORM_STORAGE_PREFIX = 'ata-draft-form:';
+const DRAFT_MATERIALS_STORAGE_PREFIX = 'ata-draft-materials:';
 
 const ataFormSchema = z
 	.object({
@@ -57,14 +61,9 @@ const ataFormSchema = z
 		}
 
 		if (data.billing_type === 'LOPANDE') {
-			if (data.qty && parseNumberString(data.qty) === null) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: 'Ange ett giltigt tal',
-					path: ['qty'],
-				});
-			}
-			if (data.unit_price_sek && parseNumberString(data.unit_price_sek) === null) {
+			const parsedUnitPrice = parseNumberString(data.unit_price_sek);
+
+			if (data.unit_price_sek && parsedUnitPrice === null) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message: 'Ange ett giltigt à-pris',
@@ -78,7 +77,15 @@ const ataFormSchema = z
 					path: ['unit'],
 				});
 			}
+			if (parsedUnitPrice === null || parsedUnitPrice <= 0) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Projektets timtaxa saknas eller är ogiltig',
+					path: ['unit_price_sek'],
+				});
+			}
 		}
+
 	});
 
 type AtaFormValues = z.infer<typeof ataFormSchema>;
@@ -93,6 +100,8 @@ type CreateAtaPayload = {
 	ata_number: string | null;
 	billing_type: BillingType;
 	fixed_amount_sek: number | null;
+	materials_amount_sek: number;
+	material_ids: string[];
 	status: 'draft' | 'pending_approval';
 	signed_by_name?: string | null;
 	signed_at?: string | null;
@@ -104,6 +113,7 @@ interface ProjectOption {
 	project_number: string | null;
 	billing_mode: 'FAST_ONLY' | 'LOPANDE_ONLY' | 'BOTH';
 	default_ata_billing_type: BillingType;
+	project_hourly_rate_sek: number | null;
 }
 
 const parseNumberString = (value?: string | null): number | null => {
@@ -118,7 +128,7 @@ interface AtaFormProps {
 	projectId?: string;
 	onSuccess?: () => void;
 	onCancel?: () => void;
-	userRole?: 'admin' | 'foreman' | 'worker' | 'finance';
+	userRole?: 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 }
 
 export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormProps) {
@@ -126,10 +136,13 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 	const [photosPreviews, setPhotosPreviews] = useState<string[]>([]);
 	const [signature, setSignature] = useState<{ name: string; timestamp: string } | null>(null);
 	const [submitAsPending, setSubmitAsPending] = useState(false);
-	const isWorker = userRole === 'worker';
+	const isWorker = userRole === 'worker' || userRole === 'ue';
 	const queryClient = useQueryClient();
 	const supabase = createClient();
 	const router = useRouter();
+	const [draftId, setDraftId] = useState<string | null>(null);
+	const [draftMaterialIds, setDraftMaterialIds] = useState<string[]>([]);
+	const [materialsLink, setMaterialsLink] = useState<string | null>(null);
 
 	const {
 		register,
@@ -151,6 +164,159 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 			fixed_amount_sek: '',
 		},
 	});
+
+	const persistedFields: (keyof AtaFormValues)[] = useMemo(
+		() => ['project_id', 'title', 'description', 'qty', 'unit', 'unit_price_sek', 'ata_number', 'billing_type', 'fixed_amount_sek'],
+		[],
+	);
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+
+		const currentUrl = new URL(window.location.href);
+		let existingDraft = currentUrl.searchParams.get('ata_draft');
+
+		if (!existingDraft) {
+			existingDraft = crypto.randomUUID();
+			currentUrl.searchParams.set('ata_draft', existingDraft);
+			router.replace(`${currentUrl.pathname}${currentUrl.search}`, { scroll: false });
+		}
+
+		setDraftId(existingDraft);
+	}, [router]);
+
+	useEffect(() => {
+		if (!draftId || typeof window === 'undefined') return;
+
+		const formKey = `${DRAFT_FORM_STORAGE_PREFIX}${draftId}`;
+
+		const loadPersistedForm = () => {
+			try {
+				const stored = window.localStorage.getItem(formKey);
+				if (!stored) return;
+				const parsed = JSON.parse(stored);
+				if (!parsed || typeof parsed !== 'object') return;
+				persistedFields.forEach((field) => {
+					if (field in parsed && parsed[field] !== undefined) {
+						setValue(field, parsed[field] as any, { shouldDirty: false });
+					}
+				});
+			} catch (error) {
+				console.error('Kunde inte läsa sparat ÄTA-utkast', error);
+			}
+		};
+
+		loadPersistedForm();
+
+		const subscription = watch((value) => {
+			try {
+				const payload: Partial<AtaFormValues> = {};
+				persistedFields.forEach((field) => {
+					payload[field] = value[field];
+				});
+				window.localStorage.setItem(formKey, JSON.stringify(payload));
+			} catch (error) {
+				console.error('Kunde inte spara ÄTA-utkast', error);
+			}
+		});
+
+		return () => subscription.unsubscribe();
+	}, [draftId, persistedFields, setValue, watch]);
+
+	const loadDraftMaterialIds = useCallback(() => {
+		if (!draftId || typeof window === 'undefined') {
+			setDraftMaterialIds([]);
+			return;
+		}
+
+		try {
+			const stored = window.localStorage.getItem(`${DRAFT_MATERIALS_STORAGE_PREFIX}${draftId}`);
+			if (!stored) {
+				setDraftMaterialIds([]);
+				return;
+			}
+			const parsed = JSON.parse(stored);
+			if (!Array.isArray(parsed)) {
+				setDraftMaterialIds([]);
+				return;
+			}
+			const unique = Array.from(
+				new Set(parsed.filter((id: unknown): id is string => typeof id === 'string')),
+			);
+			setDraftMaterialIds(unique);
+		} catch (error) {
+			console.error('Kunde inte läsa kopplade material', error);
+			setDraftMaterialIds([]);
+		}
+	}, [draftId]);
+
+	useEffect(() => {
+		if (!draftId || typeof window === 'undefined') return;
+
+		loadDraftMaterialIds();
+
+		const handleStorage = (event: StorageEvent) => {
+			if (event.key === `${DRAFT_MATERIALS_STORAGE_PREFIX}${draftId}`) {
+				loadDraftMaterialIds();
+			}
+		};
+
+		const handleVisibility = () => {
+			if (!document.hidden) {
+				loadDraftMaterialIds();
+			}
+		};
+
+		window.addEventListener('storage', handleStorage);
+		document.addEventListener('visibilitychange', handleVisibility);
+
+		return () => {
+			window.removeEventListener('storage', handleStorage);
+			document.removeEventListener('visibilitychange', handleVisibility);
+		};
+	}, [draftId, loadDraftMaterialIds]);
+
+	const updateDraftMaterials = useCallback(
+		(updater: (ids: string[]) => string[]) => {
+			if (!draftId || typeof window === 'undefined') return;
+			const key = `${DRAFT_MATERIALS_STORAGE_PREFIX}${draftId}`;
+			setDraftMaterialIds((prev) => {
+				const next = updater(prev);
+				if (next.length === 0) {
+					window.localStorage.removeItem(key);
+				} else {
+					window.localStorage.setItem(key, JSON.stringify(next));
+				}
+				return next;
+			});
+		},
+		[draftId],
+	);
+
+	const handleRemoveDraftMaterial = useCallback(
+		(materialId: string) => {
+			updateDraftMaterials((ids) => ids.filter((id) => id !== materialId));
+		},
+		[updateDraftMaterials],
+	);
+
+	const handleClearDraftMaterials = useCallback(() => {
+		updateDraftMaterials(() => []);
+	}, [updateDraftMaterials]);
+
+	const handleOpenMaterials = useCallback(() => {
+		if (!materialsLink) {
+			if (!selectedProjectId) {
+				toast.error('Välj projekt innan du lägger till material.');
+			} else if (!titleValue?.trim()) {
+				toast.error('Ge ÄTA:n ett namn innan du lägger till material.');
+			} else {
+				toast.error('Kunde inte öppna materialsidan.');
+			}
+			return;
+		}
+		router.push(materialsLink);
+	}, [materialsLink, router, selectedProjectId, titleValue]);
 
 	const createAtaMutation = useMutation({
 		mutationFn: async (payload: CreateAtaPayload) => {
@@ -190,6 +356,11 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 					? 'ÄTA skickad för godkännande!'
 					: 'ÄTA sparad som utkast!';
 			toast.success(message);
+			if (draftId && typeof window !== 'undefined') {
+				window.localStorage.removeItem(`${DRAFT_FORM_STORAGE_PREFIX}${draftId}`);
+				window.localStorage.removeItem(`${DRAFT_MATERIALS_STORAGE_PREFIX}${draftId}`);
+			}
+			setDraftMaterialIds([]);
 			queryClient.invalidateQueries({ queryKey: ['ata'] });
 			if (onSuccess) {
 				onSuccess();
@@ -271,24 +442,122 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 	};
 
 	const selectedProjectId = watch('project_id');
+	const titleValue = watch('title');
 	const billingType = watch('billing_type');
 	const qtyValue = watch('qty');
 	const unitPriceValue = watch('unit_price_sek');
 	const unitValue = watch('unit');
 	const fixedAmountValue = watch('fixed_amount_sek');
 
-	const qtyNumber = parseNumberString(qtyValue);
+	const toNumber = (value: unknown): number => {
+		if (value === undefined || value === null) return 0;
+		if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? parsed : 0;
+	};
+
 	const unitPriceNumber = parseNumberString(unitPriceValue);
 	const fixedAmountNumber = parseNumberString(fixedAmountValue);
 
-	const calculatedTotal =
-		billingType === 'FAST'
-			? fixedAmountNumber ?? null
-			: qtyNumber !== null && unitPriceNumber !== null
-			? qtyNumber * unitPriceNumber
-			: null;
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+		if (!draftId || !selectedProjectId || !titleValue?.trim()) {
+			setMaterialsLink(null);
+			return;
+		}
 
-	const showTotalCard = calculatedTotal !== null && Number.isFinite(calculatedTotal) && calculatedTotal > 0;
+		const currentUrl = new URL(window.location.href);
+		currentUrl.searchParams.set('ata_draft', draftId);
+		const returnTo =
+			currentUrl.pathname +
+			(currentUrl.searchParams.size > 0 ? `?${currentUrl.searchParams.toString()}` : '');
+
+		const materialsUrl = new URL(`${window.location.origin}/dashboard/materials`);
+		materialsUrl.searchParams.set('project_id', selectedProjectId);
+		materialsUrl.searchParams.set('ata_draft', draftId);
+		materialsUrl.searchParams.set('return_to', returnTo);
+		materialsUrl.searchParams.set('ata_title', titleValue.trim());
+
+		setMaterialsLink(`${materialsUrl.pathname}?${materialsUrl.searchParams.toString()}`);
+	}, [draftId, selectedProjectId, titleValue]);
+
+	const { data: draftMaterials = [], isLoading: isLoadingDraftMaterials } = useQuery({
+		queryKey: ['ata-draft-materials', draftId, draftMaterialIds],
+		enabled: Boolean(draftId && draftMaterialIds.length > 0),
+		queryFn: async () => {
+			const ids = draftMaterialIds.filter(Boolean);
+			if (ids.length === 0) return [];
+
+			const { data, error } = await supabase
+				.from('materials')
+				.select('id, description, qty, unit, unit_price_sek, total_sek, status, project_id')
+				.in('id', ids);
+
+			if (error) throw error;
+
+			const map = new Map((data ?? []).map((item) => [item.id, item]));
+			return ids
+				.map((id) => map.get(id))
+				.filter((item): item is NonNullable<typeof item> => Boolean(item));
+		},
+	});
+
+	useEffect(() => {
+		if (!draftId || !selectedProjectId) return;
+		if (!draftMaterials || draftMaterials.length === 0) return;
+
+		const filtered = draftMaterials.filter((material) => material.project_id === selectedProjectId);
+		if (filtered.length === draftMaterials.length) return;
+
+		const allowedIds = filtered.map((material) => material.id);
+		const currentIds = draftMaterialIds;
+		const isSameLength = allowedIds.length === currentIds.length;
+		const isSameOrder = isSameLength && allowedIds.every((id, index) => id === currentIds[index]);
+
+		if (!isSameOrder) {
+			const key = `${DRAFT_MATERIALS_STORAGE_PREFIX}${draftId}`;
+			setDraftMaterialIds(allowedIds);
+			if (typeof window !== 'undefined') {
+				if (allowedIds.length === 0) {
+					window.localStorage.removeItem(key);
+				} else {
+					window.localStorage.setItem(key, JSON.stringify(allowedIds));
+				}
+			}
+		}
+	}, [draftId, draftMaterials, draftMaterialIds, selectedProjectId]);
+
+	const materialsSubtotal = useMemo(
+		() =>
+			(draftMaterials ?? []).reduce((sum, material) => {
+				const total = toNumber(material?.total_sek ?? 0);
+				if (total > 0) return sum + total;
+				const fallback = toNumber(material?.qty ?? 0) * toNumber(material?.unit_price_sek ?? 0);
+				return sum + fallback;
+			}, 0),
+		[draftMaterials],
+	);
+
+	const materialIdsForSubmit = useMemo(() => {
+		const ids =
+			draftMaterials && draftMaterials.length > 0
+				? draftMaterials.map((material) => material.id)
+				: draftMaterialIds;
+		return Array.from(new Set(ids));
+	}, [draftMaterials, draftMaterialIds]);
+
+	const laborSubtotal =
+		billingType === 'FAST'
+			? fixedAmountNumber ?? 0
+			: 0;
+	const calculatedTotal = (Number.isFinite(laborSubtotal) ? laborSubtotal : 0) + materialsSubtotal;
+	const totalDisplay = Number.isFinite(calculatedTotal) ? calculatedTotal : 0;
+	const showTotalCard = totalDisplay > 0;
+	const hasLaborSubtotal = Number.isFinite(laborSubtotal) && laborSubtotal > 0;
+	const hasMaterialsSubtotal = materialsSubtotal > 0;
+
+	const laborLabel =
+		billingType === 'FAST' ? 'Fast belopp' : 'Arbetstid (från tidrapportering)';
 
 	// Fetch projects
 	const { data: projects } = useQuery<ProjectOption[]>({
@@ -296,7 +565,7 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 		queryFn: async () => {
 			const { data, error } = await supabase
 				.from('projects')
-				.select('id, name, project_number, billing_mode, default_ata_billing_type')
+				.select('id, name, project_number, billing_mode, default_ata_billing_type, project_hourly_rate_sek')
 				.order('name');
 			if (error) throw error;
 			return data || [];
@@ -308,7 +577,14 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 		[projects, selectedProjectId],
 	);
 
-	const effectiveBillingMode = selectedProjectDetails?.billing_mode ?? 'LOPANDE_ONLY';
+const projectHourlyRateNumber = (() => {
+	const raw = selectedProjectDetails?.project_hourly_rate_sek;
+	if (raw === null || raw === undefined) return null;
+	const numeric = typeof raw === 'number' ? raw : Number(raw);
+	return Number.isFinite(numeric) ? numeric : null;
+})();
+
+const hourlyRateMissing = billingType === 'LOPANDE' && (!projectHourlyRateNumber || projectHourlyRateNumber <= 0);
 
 	useEffect(() => {
 		if (!selectedProjectId) {
@@ -318,18 +594,43 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 			return;
 		}
 
-		const mode = selectedProjectDetails?.billing_mode ?? 'LOPANDE_ONLY';
-
-		if (mode === 'FAST_ONLY' && billingType !== 'FAST') {
-			setValue('billing_type', 'FAST', { shouldDirty: true });
-		} else if (mode === 'LOPANDE_ONLY' && billingType !== 'LOPANDE') {
-			setValue('billing_type', 'LOPANDE', { shouldDirty: true });
-		} else if (mode === 'BOTH' && !billingType) {
-			setValue('billing_type', selectedProjectDetails?.default_ata_billing_type ?? 'LOPANDE', {
-				shouldDirty: false,
-			});
+	if (!billingType) {
+		setValue('billing_type', selectedProjectDetails?.default_ata_billing_type ?? 'LOPANDE', {
+			shouldDirty: false,
+		});
 		}
 	}, [selectedProjectId, selectedProjectDetails, billingType, setValue]);
+
+useEffect(() => {
+	if (billingType !== 'LOPANDE') {
+		return;
+	}
+
+	if (!selectedProjectDetails) {
+		setValue('unit_price_sek', '', { shouldDirty: false });
+		return;
+	}
+
+	const rate = selectedProjectDetails.project_hourly_rate_sek;
+
+	if (rate === null || rate === undefined) {
+		setValue('unit_price_sek', '', { shouldDirty: false });
+		return;
+	}
+
+	const normalizedRate = typeof rate === 'number' ? rate.toString() : rate;
+	setValue('unit_price_sek', normalizedRate, { shouldDirty: false });
+}, [billingType, selectedProjectDetails, setValue]);
+
+useEffect(() => {
+	if (billingType !== 'LOPANDE') {
+		return;
+	}
+
+	if (unitValue !== 'tim') {
+		setValue('unit', 'tim', { shouldDirty: false });
+	}
+}, [billingType, unitValue, setValue]);
 
 	useEffect(() => {
 		if (billingType === 'FAST') {
@@ -357,6 +658,8 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 			ata_number: data.ata_number?.trim() || null,
 			billing_type: resolvedBillingType,
 			fixed_amount_sek: resolvedBillingType === 'FAST' ? parseNumberString(data.fixed_amount_sek) : null,
+			materials_amount_sek: Math.round(materialsSubtotal * 100) / 100,
+			material_ids: materialIdsForSubmit,
 			status: submitAsPending ? 'pending_approval' : 'draft',
 			signed_by_name: signature?.name ?? null,
 			signed_at: signature?.timestamp ?? null,
@@ -391,46 +694,39 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 					)}
 				</div>
 
-				{selectedProjectId && (
-					<div>
-						<Label>Debitering *</Label>
-						{effectiveBillingMode === 'BOTH' ? (
-							<Select
-								value={billingType || undefined}
-								onValueChange={(value) =>
-									setValue('billing_type', value as BillingType, {
-										shouldDirty: true,
-										shouldValidate: true,
-									})
-								}
-							>
-								<SelectTrigger>
-									<SelectValue placeholder="Välj debitering" />
-								</SelectTrigger>
-								<SelectContent>
-									{billingTypeOptions.map((option) => (
-										<SelectItem key={option.value} value={option.value}>
-											{option.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						) : (
-							<div className="rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-								Debitering: {effectiveBillingMode === 'FAST_ONLY' ? 'Fast' : 'Löpande'}
-							</div>
-						)}
-						{errors.billing_type && (
-							<p className="text-sm text-destructive mt-1">{errors.billing_type.message}</p>
-						)}
-						{billingType === 'FAST' && (
-							<p className="text-xs text-muted-foreground mt-1">
-								Fast belopp kopplas till huvudprojektets fasta budget och visas som en fast rad på
-								fakturaunderlaget.
-							</p>
-						)}
-					</div>
-				)}
+				<div>
+					<Label>Debitering *</Label>
+					<Select
+						value={billingType || ''}
+						onValueChange={(value) =>
+							setValue('billing_type', value as BillingType, {
+								shouldDirty: true,
+								shouldValidate: true,
+							})
+						}
+						disabled={!selectedProjectId}
+					>
+						<SelectTrigger>
+							<SelectValue placeholder="Välj debitering" />
+						</SelectTrigger>
+						<SelectContent>
+							{billingTypeOptions.map((option) => (
+								<SelectItem key={option.value} value={option.value}>
+									{option.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					{errors.billing_type && (
+						<p className="text-sm text-destructive mt-1">{errors.billing_type.message}</p>
+					)}
+					{billingType === 'FAST' && (
+						<p className="text-xs text-muted-foreground mt-1">
+							Fast belopp kopplas till huvudprojektets fasta budget och visas som en fast rad på
+							fakturaunderlaget.
+						</p>
+					)}
+				</div>
 
 				<div>
 					<Label htmlFor="ata_number">ÄTA-nummer (valfritt)</Label>
@@ -465,47 +761,179 @@ export function AtaForm({ projectId, onSuccess, onCancel, userRole }: AtaFormPro
 						<p className="text-xs text-muted-foreground mt-1">Ange totalbeloppet inklusive moms.</p>
 					</div>
 				) : (
-					<div className="grid grid-cols-3 gap-4">
-						<div>
-							<Label htmlFor="qty">Kvantitet</Label>
-							<Input id="qty" type="number" step="0.01" {...register('qty')} placeholder="0" />
-							{errors.qty && <p className="text-sm text-destructive mt-1">{errors.qty.message}</p>}
-						</div>
+					<div className="space-y-3">
+						<p className="text-xs text-muted-foreground">
+							Timmar registreras via tidrapporteringen och kopplas automatiskt till denna ÄTA.
+						</p>
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+							<div>
+								<Label htmlFor="unit_price_sek">Timtaxa (SEK)</Label>
+								<Input
+									id="unit_price_sek"
+									type="number"
+									step="0.01"
+									inputMode="decimal"
+									{...register('unit_price_sek')}
+									placeholder="0.00"
+								/>
+								{errors.unit_price_sek && (
+									<p className="text-sm text-destructive mt-1">{errors.unit_price_sek.message}</p>
+								)}
+								<p className="text-xs text-muted-foreground mt-1">
+									{hourlyRateMissing
+										? 'Projektets timtaxa saknas – uppdatera projektet eller ange timtaxan manuellt.'
+										: 'Hämtas automatiskt från projektets ordinarie timtaxa.'}
+								</p>
+							</div>
 
-						<div>
-							<Label htmlFor="unit">Enhet</Label>
-							<Input id="unit" {...register('unit')} placeholder="st, m², tim" />
-						</div>
-
-						<div>
-							<Label htmlFor="unit_price_sek">À-pris (SEK)</Label>
-							<Input
-								id="unit_price_sek"
-								type="number"
-								step="0.01"
-								inputMode="decimal"
-								{...register('unit_price_sek')}
-								placeholder="0.00"
-							/>
-							{errors.unit_price_sek && (
-								<p className="text-sm text-destructive mt-1">{errors.unit_price_sek.message}</p>
-							)}
+							<div>
+								<Label htmlFor="unit">Enhet</Label>
+								<Input id="unit" {...register('unit')} readOnly />
+							</div>
 						</div>
 					</div>
 				)}
 
-				{showTotalCard && calculatedTotal !== null && (
+				{showTotalCard && (
 					<Card className="bg-muted">
-						<CardContent className="p-4">
-							<div className="flex justify-between items-center">
-								<span className="text-sm font-medium">Totalt:</span>
+						<CardContent className="p-4 space-y-2">
+							{hasLaborSubtotal && (
+								<div className="flex items-center justify-between text-sm text-muted-foreground">
+									<span>{laborLabel}</span>
+									<span className="font-medium text-foreground">
+										{laborSubtotal.toLocaleString('sv-SE', {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										})}{' '}
+										SEK
+									</span>
+								</div>
+							)}
+							{hasMaterialsSubtotal && (
+								<div className="flex items-center justify-between text-sm text-muted-foreground">
+									<span>Material</span>
+									<span className="font-medium text-foreground">
+										{materialsSubtotal.toLocaleString('sv-SE', {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										})}{' '}
+										SEK
+									</span>
+								</div>
+							)}
+							<div className="flex items-center justify-between border-t border-border/60 pt-3">
+								<span className="text-sm font-medium">Totalt</span>
 								<span className="text-lg font-bold">
-									{calculatedTotal.toLocaleString('sv-SE', {
+									{totalDisplay.toLocaleString('sv-SE', {
 										minimumFractionDigits: 2,
 										maximumFractionDigits: 2,
 									})}{' '}
 									SEK
 								</span>
+							</div>
+						</CardContent>
+					</Card>
+				)}
+
+				{selectedProjectId && (
+					<Card className="border-dashed border-border/60 bg-muted/30">
+						<CardContent className="p-4 space-y-3">
+							<div className="flex items-center justify-between">
+								<div>
+									<h3 className="text-sm font-semibold">Material kopplade till denna ÄTA</h3>
+									<p className="text-xs text-muted-foreground">
+										Lägg till material via materialsidan så sparas de mot detta utkast.
+									</p>
+								</div>
+								{draftMaterials.length > 0 && (
+									<Button variant="ghost" size="sm" onClick={handleClearDraftMaterials}>
+										Rensa lista
+									</Button>
+								)}
+							</div>
+
+							{isLoadingDraftMaterials ? (
+								<div className="flex items-center gap-2 text-sm text-muted-foreground">
+									<Loader2 className="h-4 w-4 animate-spin" />
+									Laddar kopplade material...
+								</div>
+							) : draftMaterials.length > 0 ? (
+								<ul className="space-y-3">
+									{draftMaterials.map((material) => {
+										const qtyDisplay = toNumber(material.qty);
+										const unitPriceDisplay = toNumber(material.unit_price_sek);
+										const totalDisplayValue = toNumber(material.total_sek);
+
+										return (
+											<li
+												key={material.id}
+												className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background p-3 md:flex-row md:items-start md:justify-between"
+											>
+												<div className="space-y-1">
+													<p className="text-sm font-medium">{material.description}</p>
+													{qtyDisplay > 0 && unitPriceDisplay > 0 && (
+														<p className="text-xs text-muted-foreground">
+															{qtyDisplay.toLocaleString('sv-SE', {
+																minimumFractionDigits: 2,
+																maximumFractionDigits: 2,
+															})}{' '}
+															{material.unit || 'st'} ×{' '}
+															{unitPriceDisplay.toLocaleString('sv-SE', {
+																minimumFractionDigits: 2,
+																maximumFractionDigits: 2,
+															})}{' '}
+															SEK
+														</p>
+													)}
+													<p className="text-xs text-muted-foreground capitalize">
+														Status: {material.status ?? 'utkast'}
+													</p>
+												</div>
+												<div className="flex items-center justify-between gap-3 md:flex-col md:items-end md:justify-start">
+													<p className="text-sm font-semibold">
+														{totalDisplayValue.toLocaleString('sv-SE', {
+															minimumFractionDigits: 2,
+															maximumFractionDigits: 2,
+														})}{' '}
+														SEK
+													</p>
+													<Button
+														type="button"
+														variant="ghost"
+														size="sm"
+														onClick={() => handleRemoveDraftMaterial(material.id)}
+													>
+														Ta bort
+													</Button>
+												</div>
+											</li>
+										);
+									})}
+								</ul>
+							) : (
+								<p className="text-sm text-muted-foreground">
+									Inga material kopplade ännu. Lägg till via knappen nedan.
+								</p>
+							)}
+
+							<div className="flex items-center gap-2">
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="w-fit"
+									onClick={handleOpenMaterials}
+									disabled={!selectedProjectId || !titleValue?.trim()}
+								>
+									Lägg till material
+								</Button>
+								{(!titleValue?.trim() || !selectedProjectId) && (
+									<p className="text-xs text-muted-foreground">
+										{!titleValue?.trim()
+											? 'Ange ett namn på ÄTA:n för att kunna lägga till material.'
+											: 'Välj ett projekt för ÄTA:n först.'}
+									</p>
+								)}
 							</div>
 						</CardContent>
 					</Card>

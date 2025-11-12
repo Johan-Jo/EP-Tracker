@@ -69,11 +69,11 @@ export async function GET(request: NextRequest) {
 		if (start_date) query = query.gte('start_at', start_date);
 		if (end_date) query = query.lte('start_at', end_date);
 
-		// Workers only see their own entries; admin/foreman/finance see all
+		// Workers and UE only see their own entries; admin/foreman/finance see all
 		// But if user_id param is provided, filter by that user (for viewing specific user's entries)
 		if (user_id) {
 			query = query.eq('user_id', user_id);
-		} else if (membership.role === 'worker') {
+		} else if (membership.role === 'worker' || membership.role === 'ue') {
 			// Only apply worker filter if no user_id param (worker always sees own entries)
 			query = query.eq('user_id', user.id);
 		}

@@ -241,9 +241,10 @@ export async function refreshInvoiceBasis({
 			.lte('start_at', rangeEnd),
 		supabase
 			.from('materials')
-			.select('id, project_id, description, qty, unit, unit_price_sek, total_sek, status, photo_url, created_at')
+			.select('id, project_id, description, qty, unit, unit_price_sek, total_sek, status, photo_url, created_at, ata_id')
 			.eq('org_id', orgId)
 			.eq('project_id', projectId)
+			.is('ata_id', null)
 			.eq('status', 'approved')
 			.gte('created_at', rangeStart)
 			.lte('created_at', rangeEnd),
@@ -265,7 +266,7 @@ export async function refreshInvoiceBasis({
 			.lte('date', periodEnd),
 		supabase
 			.from('ata')
-			.select('id, project_id, ata_number, title, description, qty, unit, unit_price_sek, total_sek, status')
+			.select('id, project_id, ata_number, title, description, qty, unit, unit_price_sek, total_sek, fixed_amount_sek, materials_amount_sek, billing_type, status')
 			.eq('org_id', orgId)
 			.eq('project_id', projectId)
 			.eq('status', 'approved')
@@ -453,8 +454,16 @@ export async function refreshInvoiceBasis({
 		if (!entry || !entry.id) return;
 		const qty = Number(entry.qty) || 0;
 		const unitPrice = Number(entry.unit_price_sek) || 0;
+		const fixedAmount = Number(entry.fixed_amount_sek) || 0;
+		const materialsAmountRaw = Number(entry.materials_amount_sek) || 0;
+		const billingType = entry.billing_type ?? 'LOPANDE';
 		const config = DEFAULT_LINE_CONFIG.ata;
-		const amountExVat = roundCurrency(qty * unitPrice);
+		const laborAmountRaw =
+			billingType === 'FAST'
+				? fixedAmount
+				: qty * unitPrice;
+		const laborAmount = roundCurrency(Number.isFinite(laborAmountRaw) ? laborAmountRaw : 0);
+		const materialsAmount = roundCurrency(Number.isFinite(materialsAmountRaw) ? materialsAmountRaw : 0);
 
 		const descriptionParts = [
 			sanitizeText(entry.title),
@@ -462,25 +471,64 @@ export async function refreshInvoiceBasis({
 			entry.ata_number ? `ÄTA ${entry.ata_number}` : null,
 		].filter(Boolean);
 
-		pushLine(
-			{
-				id: entry.id,
-				type: 'ata',
-				source: { table: 'ata', id: entry.id },
-				article_code: config.article,
-				description: truncate(descriptionParts.join(' – '), 512),
-				unit: entry.unit ?? config.unit,
-				quantity: roundCurrency(qty),
-				unit_price: roundCurrency(unitPrice),
-				discount: 0,
-				vat_rate: config.defaultVatRate,
-				vat_code: config.defaultVatCode,
-				account: config.account,
-				dimensions: { project: projectDimension, cost_center: null },
-				attachments: [],
-			},
-			amountExVat
-		);
+		if (laborAmount > 0) {
+			const quantityValue = billingType === 'FAST' ? 1 : roundCurrency(qty);
+			const unitValue =
+				billingType === 'FAST'
+					? 'st'
+					: entry.unit ?? config.unit;
+			const unitPriceValue =
+				billingType === 'FAST'
+					? laborAmount
+					: roundCurrency(unitPrice);
+
+			pushLine(
+				{
+					id: entry.id,
+					type: 'ata',
+					source: { table: 'ata', id: entry.id },
+					article_code: config.article,
+					description: truncate(descriptionParts.join(' – '), 512),
+					unit: unitValue,
+					quantity: quantityValue,
+					unit_price: unitPriceValue,
+					discount: 0,
+					vat_rate: config.defaultVatRate,
+					vat_code: config.defaultVatCode,
+					account: config.account,
+					dimensions: { project: projectDimension, cost_center: null },
+					attachments: [],
+				},
+				laborAmount
+			);
+		}
+
+		if (materialsAmount > 0) {
+			const materialConfig = DEFAULT_LINE_CONFIG.material;
+			const materialDescription = descriptionParts.length
+				? `Material – ${truncate(descriptionParts.join(' – '), 400)}`
+				: 'Materialkostnad';
+
+			pushLine(
+				{
+					id: `${entry.id}-material`,
+					type: 'material',
+					source: { table: 'ata', id: entry.id },
+					article_code: materialConfig.article,
+					description: truncate(materialDescription, 512),
+					unit: materialConfig.unit ?? 'st',
+					quantity: 1,
+					unit_price: roundCurrency(materialsAmount),
+					discount: 0,
+					vat_rate: materialConfig.defaultVatRate,
+					vat_code: materialConfig.defaultVatCode,
+					account: materialConfig.account,
+					dimensions: { project: projectDimension, cost_center: null },
+					attachments: [],
+				},
+				materialsAmount
+			);
+		}
 	});
 
 	// DIARY

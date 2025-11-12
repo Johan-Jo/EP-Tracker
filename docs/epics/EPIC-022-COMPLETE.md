@@ -234,7 +234,7 @@ Establish database schema, API routes, TypeScript types, and core utilities for 
 - ✅ `lib/db/offline-store.ts` (added 2 tables)
 
 ### Documentation (1 file)
-- ✅ `docs/EPIC-22-PLANNING-FOUNDATION.md` (227 lines)
+- ✅ `docs/epics/EPIC-022-PLANNING-FOUNDATION.md` (227 lines)
 
 **Total: 9 new files, 1 updated file**  
 **Total Lines: ~1,520 production code**
@@ -380,4 +380,5 @@ if (conflicts.length > 0) {
 **Status:** ✅ COMPLETE  
 **Date:** 2025-10-23  
 **Next Review:** After EPIC 23 completion
+
 

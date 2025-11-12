@@ -44,7 +44,7 @@ Phase 2 transformerade EP Time Tracker från en single-tenant MVP till en fullt 
 
 ### EPIC 11: Billing System & Pricing Plans ✅
 **Completion:** 100%  
-**Documentation:** `docs/EPIC-11-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-011-COMPLETE.md`
 
 **Features:**
 - Pricing plans management
@@ -64,7 +64,7 @@ Phase 2 transformerade EP Time Tracker från en single-tenant MVP till en fullt 
 
 ### EPIC 12: Organizations Management ✅
 **Completion:** 100%  
-**Documentation:** `docs/EPIC-12-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-012-COMPLETE.md`
 
 **Features:**
 - Organizations list with search/filter/sort
@@ -82,7 +82,7 @@ Phase 2 transformerade EP Time Tracker från en single-tenant MVP till en fullt 
 
 ### EPIC 13: Super Admin Dashboard & Metrics ✅
 **Completion:** 100%  
-**Documentation:** `docs/EPIC-13-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-013-COMPLETE.md`
 
 **Features:**
 - KPI cards (MRR, ARR, Churn, ARPU, Growth)
@@ -98,7 +98,7 @@ Phase 2 transformerade EP Time Tracker från en single-tenant MVP till en fullt 
 
 ### EPIC 14: Users Management ✅
 **Completion:** 100%  
-**Documentation:** `docs/EPIC-14-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-014-COMPLETE.md`
 
 **Features:**
 - All users list (across all organizations)
@@ -115,7 +115,7 @@ Phase 2 transformerade EP Time Tracker från en single-tenant MVP till en fullt 
 
 ### EPIC 15: Stripe Integration ✅
 **Completion:** 100%  
-**Documentation:** `docs/EPIC-15-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-015-COMPLETE.md`
 
 **Features:**
 - Stripe API client
@@ -134,7 +134,7 @@ Phase 2 transformerade EP Time Tracker från en single-tenant MVP till en fullt 
 
 ### EPIC 16: System Configuration & Feature Flags ✅
 **Completion:** 100%  
-**Documentation:** `docs/EPIC-16-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-016-COMPLETE.md`
 
 **Features:**
 - Feature flags (global toggles)
@@ -153,7 +153,7 @@ Phase 2 transformerade EP Time Tracker från en single-tenant MVP till en fullt 
 
 ### EPIC 17: Usage Analytics & Performance ✅
 **Completion:** 100%  
-**Documentation:** `docs/EPIC-17-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-017-COMPLETE.md`
 
 **Features:**
 - Feature adoption tracking
@@ -171,7 +171,7 @@ Phase 2 transformerade EP Time Tracker från en single-tenant MVP till en fullt 
 
 ### EPIC 18: Support Tools & User Impersonation ✅
 **Completion:** 85% (Production Ready)  
-**Documentation:** `docs/EPIC-18-FOUNDATION-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-018-FOUNDATION-COMPLETE.md`
 
 **Features:**
 - Global search (users + organizations)
@@ -195,7 +195,7 @@ Phase 2 transformerade EP Time Tracker från en single-tenant MVP till en fullt 
 
 ### EPIC 21: Email System ✅
 **Completion:** 100%  
-**Documentation:** `docs/EPIC-21-EMAIL-SYSTEM-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-021-EMAIL-SYSTEM-COMPLETE.md`
 
 **Features:**
 - Email logging (`email_logs` table)
@@ -480,4 +480,5 @@ Du har nu:
 **Datum:** 2025-10-21  
 **Status:** ✅ COMPLETE  
 **Phase 2 Progress:** 100% (10/10 EPICs)
+
 

@@ -18,9 +18,21 @@ interface AddMaterialDialogProps {
 	orgId: string;
 	editingMaterial?: any;
 	projectId?: string;
+	ataTitle?: string | null;
+	projectLocked?: boolean;
+	onMaterialCreated?: (materialId: string) => void;
 }
 
-export function AddMaterialDialog({ open, onClose, orgId, editingMaterial, projectId }: AddMaterialDialogProps) {
+export function AddMaterialDialog({
+	open,
+	onClose,
+	orgId,
+	editingMaterial,
+	projectId,
+	ataTitle,
+	projectLocked,
+	onMaterialCreated,
+}: AddMaterialDialogProps) {
 	const [type, setType] = useState<'material' | 'expense'>('material');
 	const [project, setProject] = useState(projectId || '');
 	const [name, setName] = useState('');
@@ -170,20 +182,27 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial, proje
 			} else {
 				// Create new material/expense
 				if (type === 'material') {
-					const { error } = await supabase.from('materials').insert({
-						org_id: orgId,
-						project_id: project,
-						user_id: user.id,
-						description: name,
-						qty: parseFloat(quantity),
-						unit,
-						unit_price_sek: parseFloat(unitPrice),
-						notes: notes || supplier || null,
-						photo_urls: allPhotoUrls,
-						status: 'draft',
-					});
+					const { data: insertedMaterial, error } = await supabase
+						.from('materials')
+						.insert({
+							org_id: orgId,
+							project_id: project,
+							user_id: user.id,
+							description: name,
+							qty: parseFloat(quantity),
+							unit,
+							unit_price_sek: parseFloat(unitPrice),
+							notes: notes || supplier || null,
+							photo_urls: allPhotoUrls,
+							status: 'draft',
+						})
+						.select('id')
+						.single();
 
 					if (error) throw error;
+					if (insertedMaterial?.id) {
+						onMaterialCreated?.(insertedMaterial.id);
+					}
 				} else {
 					const { error } = await supabase.from('expenses').insert({
 						org_id: orgId,
@@ -248,9 +267,14 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial, proje
 		}
 	};
 
+	useEffect(() => {
+		if (!open || editingMaterial) return;
+		setProject(projectId || '');
+	}, [open, editingMaterial, projectId]);
+
 	const handleReset = () => {
 		setType('material');
-		setProject('');
+		setProject(projectId || '');
 		setName('');
 		setQuantity('');
 		setUnit('st');
@@ -267,6 +291,7 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial, proje
 	};
 
 	const totalPrice = quantity && unitPrice ? parseFloat(quantity) * parseFloat(unitPrice) : 0;
+	const isProjectSelectDisabled = Boolean(projectLocked || editingMaterial);
 
 	return (
 		<Dialog open={open} onOpenChange={handleClose}>
@@ -278,6 +303,12 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial, proje
 				</DialogHeader>
 
 				<form onSubmit={handleSubmit} className='space-y-5'>
+					{ataTitle && (
+						<div className='rounded-lg border border-dashed border-orange-300 bg-orange-50/80 p-3 text-sm text-orange-800'>
+							Materialet kopplas till ÄTA: <span className='font-semibold'>{ataTitle}</span>
+						</div>
+					)}
+
 					{/* Type Selection - Disabled when editing */}
 					<div className='grid grid-cols-2 gap-3'>
 						<button
@@ -317,7 +348,7 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial, proje
 						<Label htmlFor='project' className='flex items-center gap-1'>
 							Projekt <span className='text-destructive'>*</span>
 						</Label>
-						<Select value={project} onValueChange={setProject}>
+						<Select value={project} onValueChange={setProject} disabled={isProjectSelectDisabled}>
 							<SelectTrigger id='project' className='h-11'>
 								<SelectValue placeholder='Välj projekt' />
 							</SelectTrigger>
@@ -330,7 +361,7 @@ export function AddMaterialDialog({ open, onClose, orgId, editingMaterial, proje
 							</SelectContent>
 						</Select>
 						<p className='text-xs text-muted-foreground'>
-							Material och utgifter måste kopplas till ett projekt
+							Material och utgifter måste kopplas till ett projekt.
 						</p>
 					</div>
 

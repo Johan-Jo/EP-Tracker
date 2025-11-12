@@ -237,7 +237,7 @@ EPIC 16 implementerar systemkonfiguration och granskningsverktyg för Super Admi
 2. `app/(super-admin)/super-admin/system/features/page.tsx` - Feature flags
 3. `app/(super-admin)/super-admin/system/maintenance/page.tsx` - Maintenance
 4. `app/(super-admin)/super-admin/logs/page.tsx` - Audit logs
-5. `docs/EPIC-16-COMPLETE.md` - This document
+5. `docs/epics/EPIC-016-COMPLETE.md` - This document
 
 ---
 
@@ -481,14 +481,15 @@ Alla planerade features har implementerats och testats:
 
 - `docs/phase-2-super-admin-epics.md` - Overall EPIC plan
 - `docs/SUPER-ADMIN-STATUS.md` - Super Admin status
-- `docs/EPIC-10-COMPLETE.md` - Super Admin Foundation
-- `docs/EPIC-11-COMPLETE.md` - Billing System
-- `docs/EPIC-12-COMPLETE.md` - Organizations Management
-- `docs/EPIC-13-COMPLETE.md` - Dashboard & Metrics
-- `docs/EPIC-14-COMPLETE.md` - Users Management
-- `docs/EPIC-15-COMPLETE.md` - Stripe Integration
+- `docs/epics/EPIC-010-COMPLETE.md` - Super Admin Foundation
+- `docs/epics/EPIC-011-COMPLETE.md` - Billing System
+- `docs/epics/EPIC-012-COMPLETE.md` - Organizations Management
+- `docs/epics/EPIC-013-COMPLETE.md` - Dashboard & Metrics
+- `docs/epics/EPIC-014-COMPLETE.md` - Users Management
+- `docs/epics/EPIC-015-COMPLETE.md` - Stripe Integration
 
 ---
 
 **🎉 EPIC 16 COMPLETE! 🚀**
+
 

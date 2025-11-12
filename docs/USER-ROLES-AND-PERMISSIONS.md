@@ -1,17 +1,18 @@
 # EP-Tracker User Roles & Permissions
 
-**Last Updated:** 2025-10-19 (Updated with Finance role)
+**Last Updated:** 2025-11-12 (Added UE subcontractor role)
 
 ---
 
 ## Overview
 
-EP-Tracker implements a **4-tier role-based access control (RBAC)** system with the following roles:
+EP-Tracker implements a **5-tier role-based access control (RBAC)** system with the following roles:
 
 1. **Admin** (Administrator)
 2. **Foreman** (Arbetsledare)
 3. **Finance** (Ekonomi/Finance Manager) ⭐ NEW
 4. **Worker** (Arbetare)
+5. **UE (Underentreprenör)** (Subcontractor worker)
 
 Each user is assigned a role within their organization membership.
 
@@ -78,16 +79,16 @@ Each user is assigned a role within their organization membership.
 - ✅ **Clock in crew members** (bulk time entry creation)
 - ✅ **Manually add time entries** for themselves
 - ✅ **Edit/delete their own time entries**
-- ⚠️ **Can view** other workers' time entries
-- ❌ **Cannot edit/delete** other workers' time entries
+- ⚠️ **Can view** other workers/UEs time entries
+- ❌ **Cannot edit/delete** other workers/UEs time entries
 - ❌ **Cannot approve/reject** time entries (read-only for others)
 
 #### Materials, Expenses & Mileage
 - ✅ **View all materials/expenses/mileage** in the organization
 - ✅ **Create materials/expenses/mileage** entries
 - ✅ **Edit/delete their own** materials/expenses/mileage
-- ⚠️ **Can view** other workers' materials/expenses/mileage
-- ❌ **Cannot edit/delete** other workers' entries
+- ⚠️ **Can view** other workers/UEs materials/expenses/mileage
+- ❌ **Cannot edit/delete** other workers/UEs entries
 - ❌ **Cannot approve/reject** entries
 
 #### Projects
@@ -157,7 +158,7 @@ Each user is assigned a role within their organization membership.
 
 #### Time Tracking
 - ⚠️ **View only their own time entries** (filtered by user_id)
-- ❌ **Cannot view** other workers' time entries
+- ❌ **Cannot view** other workers/UEs time entries
 - ❌ **Cannot clock in crew members**
 - ✅ **Manually add time entries** for themselves
 - ✅ **Edit/delete their own time entries**
@@ -165,10 +166,10 @@ Each user is assigned a role within their organization membership.
 
 #### Materials, Expenses & Mileage
 - ⚠️ **View only their own materials/expenses/mileage** (filtered by user_id)
-- ❌ **Cannot view** other workers' materials/expenses/mileage
+- ❌ **Cannot view** other workers/UEs materials/expenses/mileage
 - ✅ **Create materials/expenses/mileage** entries
 - ✅ **Edit/delete their own** materials/expenses/mileage
-- ❌ **Cannot edit/delete** other workers' entries
+- ❌ **Cannot edit/delete** other workers/UEs entries
 - ❌ **Cannot approve/reject** entries
 
 #### Projects
@@ -179,61 +180,100 @@ Each user is assigned a role within their organization membership.
 
 ---
 
+### 5. **UE (Underentreprenör)**
+
+**Purpose:** External subcontractors who need to report time and costs for their company
+
+**Permissions:**
+
+#### Organization & User Management
+- ❌ **Cannot invite new users**
+- ❌ **Cannot manage user roles**
+- ❌ **Cannot access Settings → Users** page
+- ❌ **Cannot access Settings → Organization** page
+- ✅ **Can view Settings → Profile** (endast sin egen profil)
+
+#### Time Tracking
+- ⚠️ **View only their own time entries** (filtered by user_id)
+- ❌ **Cannot view** andra användares tidposter
+- ❌ **Cannot clock in crew members**
+- ✅ **Manually add time entries** for themselves
+- ✅ **Edit/delete their own time entries**
+- ❌ **Cannot approve/reject** any time entries
+
+#### Materials, Expenses & Mileage
+- ⚠️ **View only their own materials/expenses/mileage** (filtered by user_id)
+- ❌ **Cannot view** andra användares poster
+- ✅ **Create materials/expenses/mileage** entries
+- ✅ **Edit/delete their own** materials/expenses/mileage
+- ❌ **Cannot edit/delete** andra användares poster
+- ❌ **Cannot approve/reject** entries
+
+#### Projects
+- ✅ **View all projects** där organisationen har gett behörighet
+- ❌ **Cannot edit projects**
+- ❌ **Cannot create new projects**
+- ❌ **Cannot archive projects**
+
+**Key Characteristic:** UE-roller har exakt samma åtkomstnivå som interna arbetare men flaggas separat för rapportering och företagsuppföljning.
+
+---
+
 ## Permission Matrix
 
-| **Feature**                          | **Admin** | **Foreman** | **Finance** | **Worker** |
-|--------------------------------------|-----------|-------------|-------------|------------|
-| **Organization & Users**             |           |             |             |            |
-| Invite users                         | ✅         | ❌           | ❌           | ❌          |
-| Manage user roles                    | ✅         | ❌           | ❌           | ❌          |
-| Set hourly rates                     | ✅         | ❌           | ❌           | ❌          |
-| Access Settings → Users              | ✅         | ❌           | ❌           | ❌          |
-| Access Settings → Organization       | ✅         | ❌           | ❌           | ❌          |
-| Access Settings → Profile            | ✅         | ✅           | ✅           | ✅          |
-|                                      |           |             |             |            |
-| **Time Tracking**                    |           |             |             |            |
-| View all time entries                | ✅         | ✅           | ✅ (read-only)| ❌ (own only)|
-| Clock in crew members                | ✅         | ✅           | ❌           | ❌          |
-| Add manual time entry (self)         | ✅         | ✅           | ❌           | ✅          |
-| Edit own time entries                | ✅         | ✅           | ❌           | ✅          |
-| Edit other users' time entries       | ✅         | ❌           | ❌           | ❌          |
-| Delete own time entries              | ✅         | ✅           | ❌           | ✅          |
-| Delete other users' time entries     | ✅         | ❌           | ❌           | ❌          |
-| Approve/reject time entries          | ✅         | ❌           | ❌           | ❌          |
-|                                      |           |             |             |            |
-| **Materials**                        |           |             |             |            |
-| View all materials                   | ✅         | ✅           | ✅ (read-only)| ❌ (own only)|
-| Create materials                     | ✅         | ✅           | ❌           | ✅          |
-| Edit own materials                   | ✅         | ✅           | ❌           | ✅          |
-| Edit other users' materials          | ✅         | ❌           | ❌           | ❌          |
-| Delete own materials                 | ✅         | ✅           | ❌           | ✅          |
-| Delete other users' materials        | ✅         | ❌           | ❌           | ❌          |
-| Approve/reject materials             | ✅         | ❌           | ❌           | ❌          |
-|                                      |           |             |             |            |
-| **Expenses**                         |           |             |             |            |
-| View all expenses                    | ✅         | ✅           | ✅ (read-only)| ❌ (own only)|
-| Create expenses                      | ✅         | ✅           | ❌           | ✅          |
-| Edit own expenses                    | ✅         | ✅           | ❌           | ✅          |
-| Edit other users' expenses           | ✅         | ❌           | ❌           | ❌          |
-| Delete own expenses                  | ✅         | ✅           | ❌           | ✅          |
-| Delete other users' expenses         | ✅         | ❌           | ❌           | ❌          |
-| Approve/reject expenses              | ✅         | ❌           | ❌           | ❌          |
-|                                      |           |             |             |            |
-| **Mileage**                          |           |             |             |            |
-| View all mileage                     | ✅         | ✅           | ✅ (read-only)| ❌ (own only)|
-| Create mileage                       | ✅         | ✅           | ❌           | ✅          |
-| Edit own mileage                     | ✅         | ✅           | ❌           | ✅          |
-| Edit other users' mileage            | ✅         | ❌           | ❌           | ❌          |
-| Delete own mileage                   | ✅         | ✅           | ❌           | ✅          |
-| Delete other users' mileage          | ✅         | ❌           | ❌           | ❌          |
-| Approve/reject mileage               | ✅         | ❌           | ❌           | ❌          |
-|                                      |           |             |             |            |
-| **Projects**                         |           |             |             |            |
-| View all projects                    | ✅         | ✅           | ✅ (read-only)| ✅          |
-| Create projects                      | ✅         | ❌           | ❌           | ❌          |
-| Edit projects                        | ✅         | ⚠️ (TBD)     | ❌           | ❌          |
-| Archive projects                     | ✅         | ❌           | ❌           | ❌          |
-| Manage phases/work orders            | ✅         | ❌           | ❌           | ❌          |
+| **Feature**                          | **Admin** | **Foreman** | **Finance** | **Worker** | **UE** |
+|--------------------------------------|-----------|-------------|-------------|------------|--------|
+| **Organization & Users**             |           |             |             |            |        |
+| Invite users                         | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Manage user roles                    | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Set hourly rates                     | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Access Settings → Users              | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Access Settings → Organization       | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Access Settings → Profile            | ✅         | ✅           | ✅           | ✅          | ✅      |
+|                                      |           |             |             |            |        |
+| **Time Tracking**                    |           |             |             |            |        |
+| View all time entries                | ✅         | ✅           | ✅ (read-only)| ❌ (own only)| ❌ (own only) |
+| Clock in crew members                | ✅         | ✅           | ❌           | ❌          | ❌      |
+| Add manual time entry (self)         | ✅         | ✅           | ❌           | ✅          | ✅      |
+| Edit own time entries                | ✅         | ✅           | ❌           | ✅          | ✅      |
+| Edit other users' time entries       | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Delete own time entries              | ✅         | ✅           | ❌           | ✅          | ✅      |
+| Delete other users' time entries     | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Approve/reject time entries          | ✅         | ❌           | ❌           | ❌          | ❌      |
+|                                      |           |             |             |            |        |
+| **Materials**                        |           |             |             |            |        |
+| View all materials                   | ✅         | ✅           | ✅ (read-only)| ❌ (own only)| ❌ (own only) |
+| Create materials                     | ✅         | ✅           | ❌           | ✅          | ✅      |
+| Edit own materials                   | ✅         | ✅           | ❌           | ✅          | ✅      |
+| Edit other users' materials          | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Delete own materials                 | ✅         | ✅           | ❌           | ✅          | ✅      |
+| Delete other users' materials        | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Approve/reject materials             | ✅         | ❌           | ❌           | ❌          | ❌      |
+|                                      |           |             |             |            |        |
+| **Expenses**                         |           |             |             |            |        |
+| View all expenses                    | ✅         | ✅           | ✅ (read-only)| ❌ (own only)| ❌ (own only) |
+| Create expenses                      | ✅         | ✅           | ❌           | ✅          | ✅      |
+| Edit own expenses                    | ✅         | ✅           | ❌           | ✅          | ✅      |
+| Edit other users' expenses           | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Delete own expenses                  | ✅         | ✅           | ❌           | ✅          | ✅      |
+| Delete other users' expenses         | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Approve/reject expenses              | ✅         | ❌           | ❌           | ❌          | ❌      |
+|                                      |           |             |             |            |        |
+| **Mileage**                          |           |             |             |            |        |
+| View all mileage                     | ✅         | ✅           | ✅ (read-only)| ❌ (own only)| ❌ (own only) |
+| Create mileage                       | ✅         | ✅           | ❌           | ✅          | ✅      |
+| Edit own mileage                     | ✅         | ✅           | ❌           | ✅          | ✅      |
+| Edit other users' mileage            | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Delete own mileage                   | ✅         | ✅           | ❌           | ✅          | ✅      |
+| Delete other users' mileage          | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Approve/reject mileage               | ✅         | ❌           | ❌           | ❌          | ❌      |
+|                                      |           |             |             |            |        |
+| **Projects**                         |           |             |             |            |        |
+| View all projects                    | ✅         | ✅           | ✅ (read-only)| ✅          | ✅      |
+| Create projects                      | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Edit projects                        | ✅         | ⚠️ (TBD)     | ❌           | ❌          | ❌      |
+| Archive projects                     | ✅         | ❌           | ❌           | ❌          | ❌      |
+| Manage phases/work orders            | ✅         | ❌           | ❌           | ❌          | ❌      |
 
 ---
 
@@ -248,7 +288,7 @@ CREATE TABLE memberships (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  role TEXT NOT NULL CHECK (role IN ('admin', 'foreman', 'worker', 'finance')),
+  role TEXT NOT NULL CHECK (role IN ('admin', 'foreman', 'worker', 'finance', 'ue')),
   hourly_rate_sek NUMERIC(10,2),
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -261,7 +301,7 @@ CREATE TABLE memberships (
 Defined in `lib/schemas/organization.ts`:
 
 ```typescript
-export const membershipRoleEnum = z.enum(['admin', 'foreman', 'worker', 'finance']);
+export const membershipRoleEnum = z.enum(['admin', 'foreman', 'worker', 'finance', 'ue']);
 ```
 
 ### API-Level Authorization
@@ -269,8 +309,8 @@ export const membershipRoleEnum = z.enum(['admin', 'foreman', 'worker', 'finance
 **Example from `/api/time/entries/route.ts` (GET):**
 
 ```typescript
-// Workers only see their own entries; admin/foreman/finance see all
-if (membership.role === 'worker') {
+// Workers and UE only see their own entries; admin/foreman/finance see all
+if (membership.role === 'worker' || membership.role === 'ue') {
   query = query.eq('user_id', user.id);
 }
 ```
@@ -286,8 +326,8 @@ if (membership.role === 'finance') {
   );
 }
 
-// Workers can only edit their own entries
-if (membership.role === 'worker' && existingEntry.user_id !== user.id) {
+// Workers and UE can only edit their own entries
+if ((membership.role === 'worker' || membership.role === 'ue') && existingEntry.user_id !== user.id) {
   return NextResponse.json(
     { error: 'Unauthorized' },
     { status: 403 }
@@ -399,6 +439,7 @@ USING (
    - Admin: Full access
    - Foreman: Mid-level access
    - Worker: Restricted access
+   - UE: Restricted access (same as Worker but flagged as subcontractor)
 
 2. **Test each feature area:**
    - Time tracking (view, create, edit, delete)
@@ -418,7 +459,7 @@ USING (
 ```typescript
 // Example test case
 describe('Time Entries API - Role-Based Access', () => {
-  test('Worker can only view their own time entries', async () => {
+  test('Worker or UE can only view their own time entries', async () => {
     // ...
   });
 
@@ -426,7 +467,7 @@ describe('Time Entries API - Role-Based Access', () => {
     // ...
   });
 
-  test('Worker cannot edit another worker's time entry', async () => {
+  test('Worker or UE cannot edit another worker's time entry', async () => {
     // ...
   });
 });

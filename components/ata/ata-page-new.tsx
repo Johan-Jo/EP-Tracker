@@ -12,7 +12,7 @@ import Link from 'next/link';
 
 interface AtaPageNewProps {
 	orgId: string;
-	userRole: 'admin' | 'foreman' | 'worker' | 'finance';
+	userRole: 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 	projectId?: string;
 }
 
@@ -21,6 +21,13 @@ export function AtaPageNew({ orgId, userRole, projectId }: AtaPageNewProps) {
 	const [selectedProject, setSelectedProject] = useState<string>(projectId || 'all');
 	const supabase = createClient();
 	
+	const toNumber = (value: unknown): number => {
+		if (value === null || value === undefined) return 0;
+		if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? parsed : 0;
+	};
+
 	// Set selected project when projectId prop changes
 	useEffect(() => {
 		if (projectId) {
@@ -108,9 +115,12 @@ export function AtaPageNew({ orgId, userRole, projectId }: AtaPageNewProps) {
 	};
 
 	const resolveAtaAmount = (ata: any): number => {
-		const amount = ata?.fixed_amount_sek ?? ata?.total_sek ?? 0;
-		const numeric = typeof amount === 'number' ? amount : Number(amount);
-		return Number.isFinite(numeric) ? numeric : 0;
+		const laborAmount =
+			ata?.billing_type === 'FAST'
+				? toNumber(ata?.fixed_amount_sek)
+				: toNumber(ata?.total_sek);
+		const materialsAmount = toNumber(ata?.materials_amount_sek);
+		return laborAmount + materialsAmount;
 	};
 
 	// Calculate stats
@@ -271,6 +281,11 @@ export function AtaPageNew({ orgId, userRole, projectId }: AtaPageNewProps) {
 									ata.billing_type === 'FAST'
 										? 'bg-orange-500/20 text-orange-700 border-orange-300 dark:bg-[#3a251c] dark:text-[#f8ddba] dark:border-[#4a2f22]'
 										: 'bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-700';
+								const qtyDisplay =
+									ata.billing_type === 'LOPANDE' ? toNumber(ata.qty) : 0;
+								const unitPriceDisplay =
+									ata.billing_type === 'LOPANDE' ? toNumber(ata.unit_price_sek) : 0;
+								const materialsAmount = toNumber(ata.materials_amount_sek);
 
 								return (
 									<div
@@ -314,9 +329,21 @@ export function AtaPageNew({ orgId, userRole, projectId }: AtaPageNewProps) {
 															<span className='text-muted-foreground'>
 																{ata.project?.name || 'Inget projekt'}
 															</span>
-															{ata.billing_type !== 'FAST' && ata.qty && ata.unit && ata.unit_price_sek && (
+															{ata.billing_type === 'FAST' && ata.fixed_amount_sek && (
 																<span className='text-muted-foreground'>
-																	{ata.qty} {ata.unit} × {ata.unit_price_sek.toLocaleString('sv-SE')}{' '}
+																	Fast belopp:{' '}
+																	{toNumber(ata.fixed_amount_sek).toLocaleString('sv-SE', {
+																		minimumFractionDigits: 2,
+																		maximumFractionDigits: 2,
+																	})}{' '}
+																	kr
+																</span>
+															)}
+															{ata.billing_type !== 'FAST' && qtyDisplay > 0 && unitPriceDisplay > 0 && (
+																<span className='text-muted-foreground'>
+																	{qtyDisplay.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+																	{ata.unit ?? 'tim'} ×{' '}
+																	{unitPriceDisplay.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
 																	kr
 																</span>
 															)}
@@ -335,6 +362,11 @@ export function AtaPageNew({ orgId, userRole, projectId }: AtaPageNewProps) {
 													<p className='text-xl'>
 														{amount.toLocaleString('sv-SE')} kr
 													</p>
+													{materialsAmount > 0 && (
+														<p className='text-xs text-muted-foreground'>
+															Material: {materialsAmount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+														</p>
+													)}
 												</div>
 												<Button
 													variant='outline'

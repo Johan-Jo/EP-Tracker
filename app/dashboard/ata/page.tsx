@@ -30,6 +30,12 @@ export default async function AtaPage(props: PageProps) {
 		redirect('/dashboard');
 	}
 
-	return <AtaPageNew orgId={membership.org_id} userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance'} projectId={projectId} />;
+return (
+	<AtaPageNew
+		orgId={membership.org_id}
+		userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance' | 'ue'}
+		projectId={projectId}
+	/>
+);
 }
 

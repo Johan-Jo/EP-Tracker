@@ -39,7 +39,7 @@
 **Key Stats:**
 - **~300+ files** of production code
 - **15+ major feature modules**
-- **5 user roles** with different permissions
+- **6 user roles** with different permissions
 - **100% cloud-based** (no on-premise servers needed)
 - **Offline-first** (works without internet connection)
 - **Multi-tenant** (multiple companies can use it, data completely isolated)
@@ -862,7 +862,7 @@ EP Tracker is organized into 15+ major modules:
 - Password reset
 - User invitations
 - Profile management
-- Role assignment (Worker, Foreman, Admin, Finance, Super Admin)
+- Role assignment (Worker, UE, Foreman, Admin, Finance, Super Admin)
 
 **Security:**
 - Password hashing (bcrypt)

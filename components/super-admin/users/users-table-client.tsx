@@ -15,6 +15,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { DeleteUserDialog } from './delete-user-dialog';
 
+const roleDisplayMap: Record<string, string> = {
+  admin: 'Admin',
+  foreman: 'Arbetsledare',
+  worker: 'Arbetare',
+  ue: 'UE',
+  finance: 'Ekonomi',
+  manager: 'Manager',
+};
+
 export interface UserData {
   id: string;
   email: string;
@@ -200,12 +209,12 @@ export function UsersTableClient({ users }: UsersTableClientProps) {
                               'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
                             member.role === 'finance' &&
                               'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-                            member.role === 'worker' &&
+                            (member.role === 'worker' || member.role === 'ue') &&
                               'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
                           )}
                         >
                           {member.role === 'admin' && <Shield className="h-3 w-3" />}
-                          {member.role}
+                          {roleDisplayMap[member.role] ?? member.role}
                         </span>
                       ))}
                     </div>

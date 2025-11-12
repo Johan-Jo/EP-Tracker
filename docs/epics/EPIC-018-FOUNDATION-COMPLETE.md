@@ -203,7 +203,7 @@ EPIC 18 implementerar customer support tools och user impersonation för Super A
 3. `app/(super-admin)/super-admin/organizations/[id]/page.tsx` - Added users list ✅
 
 ### Documentation (1 file):
-1. `docs/EPIC-18-FOUNDATION-COMPLETE.md` - This document ✅
+1. `docs/epics/EPIC-018-FOUNDATION-COMPLETE.md` - This document ✅
 
 ---
 
@@ -445,12 +445,13 @@ All core integrations have been successfully implemented:
 
 - `docs/phase-2-super-admin-epics.md` - Overall EPIC plan
 - `docs/SUPER-ADMIN-STATUS.md` - Super Admin status
-- `docs/EPIC-16-COMPLETE.md` - System Configuration
-- `docs/EPIC-17-COMPLETE.md` - Usage Analytics
+- `docs/epics/EPIC-016-COMPLETE.md` - System Configuration
+- `docs/epics/EPIC-017-COMPLETE.md` - Usage Analytics
 
 ---
 
 **🎉 EPIC 18 COMPLETE! 🛠️**
 
 **Note:** This EPIC is production-ready with all core features fully integrated. Additional features (advanced support actions, dedicated all-users view, support notes) are optional enhancements that can be added incrementally based on actual support team needs.
+
 

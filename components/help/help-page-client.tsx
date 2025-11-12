@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { TourLauncher } from '@/components/onboarding/tour-launcher';
 
 type HelpPageClientProps = {
-    userRole: 'admin' | 'foreman' | 'worker' | 'finance';
+    userRole: 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 };
 
 export function HelpPageClient({ userRole }: HelpPageClientProps) {

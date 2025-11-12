@@ -203,6 +203,7 @@ export async function GET(
 			admin: 'Administratör',
 			foreman: 'Arbetsledare',
 			worker: 'Arbetare',
+			ue: 'UE (Underentreprenör)',
 			finance: 'Ekonomi',
 		};
 		

@@ -354,7 +354,7 @@ All critical functionality from EPIC 1-9 is complete:
 
 ### Documentation:
 - `docs/DEPLOYMENT-CHECKLIST.md`
-- `docs/EPIC-9-SUMMARY.md` (this file)
+- `docs/epics/EPIC-009-SUMMARY.md` (this file)
 
 ### Updated:
 - `components/core/sidebar.tsx` - Added Help link
@@ -410,4 +410,5 @@ Från implementation plan:
 Alla core features är implementerade, polished, och dokumenterade. Deployment-checklist ger en tydlig väg till production. Help-sidan ger användare support. Error boundaries och loading states ger professionell UX.
 
 **Recommendation:** Gå vidare till deployment om du är redo, eller kör en sista testomgång enligt deployment-checklistans smoke tests.
+
 

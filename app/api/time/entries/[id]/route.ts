@@ -72,7 +72,7 @@ export async function PATCH(
 		}
 
 		// Only allow editing own entries (unless admin/foreman)
-		if (membership.role === 'worker' && existingEntry.user_id !== user.id) {
+		if ((membership.role === 'worker' || membership.role === 'ue') && existingEntry.user_id !== user.id) {
 			return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 		}
 
@@ -245,7 +245,7 @@ export async function DELETE(
 		}
 
 		// Only allow deleting own entries (unless admin/foreman)
-		if (membership.role === 'worker' && existingEntry.user_id !== user.id) {
+		if ((membership.role === 'worker' || membership.role === 'ue') && existingEntry.user_id !== user.id) {
 			return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 		}
 

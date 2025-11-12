@@ -9,6 +9,15 @@ import { Mail, Building2, Shield, Calendar, Activity, User, X } from 'lucide-rea
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
+const roleDisplayMap: Record<string, string> = {
+  admin: 'Admin',
+  foreman: 'Arbetsledare',
+  worker: 'Arbetare',
+  ue: 'UE',
+  finance: 'Ekonomi',
+  manager: 'Manager',
+};
+
 interface UserDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -167,12 +176,12 @@ export function UserDetailModal({ isOpen, onClose, user }: UserDetailModalProps)
                               'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
                             member.role === 'finance' &&
                               'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-                            member.role === 'worker' &&
+                            (member.role === 'worker' || member.role === 'ue') &&
                               'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
                           )}
                         >
                           <Shield className="h-3 w-3" />
-                          {member.role}
+                          {roleDisplayMap[member.role] ?? member.role}
                         </Badge>
                       </div>
                     </div>

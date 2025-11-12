@@ -136,9 +136,9 @@ Added comprehensive billing section:
 - `components/billing/manage-billing-button.tsx`
 
 ### Documentation
-- `docs/EPIC-15-STRIPE-INTEGRATION.md`
+- `docs/epics/EPIC-015-STRIPE-INTEGRATION.md`
 - `docs/STRIPE-SETUP.md`
-- `docs/EPIC-15-COMPLETE.md`
+- `docs/epics/EPIC-015-COMPLETE.md`
 
 ---
 
@@ -337,7 +337,7 @@ const STRIPE_PRICE_MAP = {
 ## 📚 Documentation
 
 - **Setup Guide:** `docs/STRIPE-SETUP.md` (comprehensive)
-- **Implementation Plan:** `docs/EPIC-15-STRIPE-INTEGRATION.md`
+- **Implementation Plan:** `docs/epics/EPIC-015-STRIPE-INTEGRATION.md`
 - **API Docs:** Comments in each file
 - **Stripe Docs:** https://stripe.com/docs
 
@@ -419,4 +419,5 @@ const STRIPE_PRICE_MAP = {
 ---
 
 **🎉 Stripe integration is ready to use! Follow the setup guide in `docs/STRIPE-SETUP.md` to get started.**
+
 

@@ -20,3 +20,6 @@ Säkerställ UE-stöd utan separat register genom policy för `company_id` och s
 
 ## Dependencies & Milestone
 - Del av M5 (valfritt steg 2).
+
+## 2025-11-12 Update
+- Lagt till ny användarroll `ue` (Underentreprenör) med samma behörigheter som arbetare men flaggad separat i RBAC, API och dokumentation.

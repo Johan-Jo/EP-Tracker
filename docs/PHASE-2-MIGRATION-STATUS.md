@@ -180,7 +180,7 @@ While waiting for Supabase to stabilize, we've completed **EPIC 10: Super Admin 
 - ✅ Helper script to grant super admin
 
 **Files Created:** 8 new files, 1,140+ lines of code  
-**See:** `docs/EPIC-10-COMPLETE.md` for full details
+**See:** `docs/epics/EPIC-010-COMPLETE.md` for full details
 
 ### Ready to Test After Migration:
 Once you complete the seed data migration and grant yourself super admin access, you'll be able to:
@@ -191,4 +191,5 @@ Once you complete the seed data migration and grant yourself super admin access,
 ---
 
 **When you're ready to continue, just run the seed data migration and you'll be all set!** 🚀
+
 

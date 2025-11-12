@@ -181,7 +181,7 @@
 
 **Redo för manuell testning:** ✅ JA
 
-**Nästa steg:** Utför manuell testning enligt `docs/EPIC-6-TEST-PLAN.md`
+**Nästa steg:** Utför manuell testning enligt `docs/epics/EPIC-006-TEST-PLAN.md`
 
 ---
 
@@ -194,4 +194,5 @@ Vid problem under testning:
 4. Rapportera med bugg-ID enligt testplanen
 
 Lycka till med testningen! 🚀
+
 

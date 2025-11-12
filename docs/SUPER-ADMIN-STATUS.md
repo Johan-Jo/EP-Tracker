@@ -165,7 +165,7 @@
 - `lib/stripe/*`
 - `app/api/stripe/*`
 - `supabase/migrations/20241021000003_add_stripe_columns.sql`
-- `docs/EPIC-15-STRIPE-FOUNDATION.md`
+- `docs/epics/EPIC-015-STRIPE-FOUNDATION.md`
 
 ---
 
@@ -496,4 +496,5 @@
 
 **Status:** ⏸️ Pausad 2025-10-21  
 **Nästa session:** Fortsätt med EPIC 16 (Usage Analytics) eller EPIC 19 (Audit Log)
+
 

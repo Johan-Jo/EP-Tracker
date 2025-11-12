@@ -7,7 +7,7 @@
 
 ## Test Plan
 
-See the full plan and acceptance criteria in `docs/EPIC-31-TEST-PLAN.md`.
+See the full plan and acceptance criteria in `docs/epics/EPIC-031-TEST-PLAN.md`.
 
 ## Build Status
 ✅ **SUCCESS** - No compilation errors
@@ -91,4 +91,5 @@ See the full plan and acceptance criteria in `docs/EPIC-31-TEST-PLAN.md`.
 ---
 
 **Overall Status:** 🟢 Code Complete, Testing Pending
+
 

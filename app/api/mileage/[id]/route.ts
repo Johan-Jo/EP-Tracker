@@ -61,7 +61,7 @@ export async function PATCH(
 			return NextResponse.json({ error: 'Finance users cannot edit mileage' }, { status: 403 });
 		}
 
-		if (membership.role === 'worker' && existingMileage.user_id !== user.id) {
+		if ((membership.role === 'worker' || membership.role === 'ue') && existingMileage.user_id !== user.id) {
 			return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 		}
 
@@ -138,7 +138,7 @@ export async function DELETE(
 			return NextResponse.json({ error: 'Finance users cannot delete mileage' }, { status: 403 });
 		}
 
-		if (membership.role === 'worker' && existingMileage.user_id !== user.id) {
+		if ((membership.role === 'worker' || membership.role === 'ue') && existingMileage.user_id !== user.id) {
 			return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 		}
 

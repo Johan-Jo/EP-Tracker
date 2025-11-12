@@ -52,7 +52,10 @@ export default async function AtaDetailPage({ params }: { params: Promise<{ id: 
 
 			{/* Main Content */}
 			<main className='px-4 md:px-8 py-6'>
-				<AtaDetailClient ataId={id} userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance'} />
+				<AtaDetailClient
+					ataId={id}
+					userRole={membership.role as 'admin' | 'foreman' | 'worker' | 'finance' | 'ue'}
+				/>
 			</main>
 		</div>
 	);

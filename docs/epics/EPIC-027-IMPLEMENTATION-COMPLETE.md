@@ -122,11 +122,11 @@ Successfully implemented voice recording functionality for diary entries with re
 ## Files Changed
 
 ### New Files (12)
-- `docs/EPIC-27-FOUNDATION.md`
-- `docs/EPIC-27-VOICE-NOTES-PRD.md`
-- `docs/EPIC-28-BACKEND-SERVICES.md`
-- `docs/EPIC-29-VOICE-CAPTURE-UI.md`
-- `docs/EPIC-30-DAYBOOK-INTEGRATION.md`
+- `docs/epics/EPIC-027-FOUNDATION.md`
+- `docs/epics/EPIC-027-VOICE-NOTES-PRD.md`
+- `docs/epics/EPIC-028-BACKEND-SERVICES.md`
+- `docs/epics/EPIC-029-VOICE-CAPTURE-UI.md`
+- `docs/epics/EPIC-030-DAYBOOK-INTEGRATION.md`
 - `supabase/migrations/20251029000001_voice_notes_foundation.sql`
 - `supabase/migrations/20251029000002_fix_storage_policies.sql`
 - `components/voice/voice-recorder.tsx`
@@ -219,4 +219,5 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 **Implementation by:** AI Assistant (Cursor)  
 **Reviewed by:** Johan (Product Owner)  
 **Status:** Production Ready ✅
+
 

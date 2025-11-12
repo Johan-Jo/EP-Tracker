@@ -22,7 +22,7 @@
 
 ## ✅ EPIC 22: Planning Foundation - COMPLETE
 
-**Documentation:** `docs/EPIC-22-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-022-COMPLETE.md`
 
 **Goal:** Database schema, API routes, and core types
 
@@ -68,7 +68,7 @@
 
 ## ✅ EPIC 23: Planning UI - COMPLETE
 
-**Documentation:** `docs/EPIC-23-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-023-COMPLETE.md`
 
 **Goal:** Week grid view with assignment management
 
@@ -97,7 +97,7 @@
 
 ## ✅ EPIC 24: Mobile Today - COMPLETE
 
-**Documentation:** `docs/EPIC-24-COMPLETE.md`
+**Documentation:** `docs/epics/EPIC-024-COMPLETE.md`
 
 **Goal:** Mobile today list with check-in/out
 
@@ -194,9 +194,9 @@
 - `scripts/seed-planning.ts` (230 lines)
 
 ### Documentation (4 files)
-- `docs/EPIC-22-PLANNING-FOUNDATION.md`
-- `docs/EPIC-23-PLANNING-UI.md`
-- `docs/EPIC-24-MOBILE-TODAY.md`
+- `docs/epics/EPIC-022-PLANNING-FOUNDATION.md`
+- `docs/epics/EPIC-023-PLANNING-UI.md`
+- `docs/epics/EPIC-024-MOBILE-TODAY.md`
 - `docs/PLANNING-SYSTEM-COMPLETE.md`
 
 ### Modified Files (2 files)
@@ -340,4 +340,5 @@ The implementation provides:
 **Status: ✅ READY FOR PILOT TESTING**
 
 **Next Action:** Run migration and seed script, then begin manual testing.
+
 

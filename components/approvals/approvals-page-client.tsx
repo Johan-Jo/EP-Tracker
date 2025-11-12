@@ -14,7 +14,7 @@ import Link from 'next/link';
 
 type ApprovalsPageClientProps = {
     orgId: string;
-    userRole: 'admin' | 'foreman' | 'worker' | 'finance';
+    userRole: 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 };
 
 export function ApprovalsPageClient({ orgId, userRole }: ApprovalsPageClientProps) {

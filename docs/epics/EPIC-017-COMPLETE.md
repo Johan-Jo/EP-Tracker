@@ -518,9 +518,10 @@ All features use existing packages and Supabase queries.
 
 - `docs/phase-2-super-admin-epics.md` - Overall EPIC plan
 - `docs/SUPER-ADMIN-STATUS.md` - Super Admin status
-- `docs/EPIC-16-COMPLETE.md` - System Configuration
+- `docs/epics/EPIC-016-COMPLETE.md` - System Configuration
 
 ---
 
 **🎉 EPIC 17 100% COMPLETE! 📊**
+
 

@@ -21,6 +21,7 @@ interface Ata {
 	unit_price_sek: number | null;
 	total_sek: number | null;
 	fixed_amount_sek: number | null;
+	materials_amount_sek: number | null;
 	billing_type: BillingType;
 	status: 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'invoiced';
 	created_at: string;
@@ -33,7 +34,7 @@ interface Ata {
 interface AtaListProps {
 	projectId?: string;
 	orgId: string;
-	userRole?: 'admin' | 'foreman' | 'worker' | 'finance';
+	userRole?: 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 }
 
 const statusConfig = {
@@ -47,6 +48,13 @@ const statusConfig = {
 const billingBadgeStyles: Record<BillingType, string> = {
 	FAST: 'bg-orange-500/20 text-orange-700 border-orange-300 dark:bg-[#3a251c] dark:text-[#f8ddba] dark:border-[#4a2f22]',
 	LOPANDE: 'bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-800/60 dark:text-slate-200 dark:border-slate-700',
+};
+
+const toNumber = (value: unknown): number => {
+	if (value === null || value === undefined) return 0;
+	if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+	const parsed = Number(value);
+	return Number.isFinite(parsed) ? parsed : 0;
 };
 
 export function AtaList({ projectId, orgId, userRole }: AtaListProps) {
@@ -115,8 +123,17 @@ export function AtaList({ projectId, orgId, userRole }: AtaListProps) {
 				{ataList.map((ata) => {
 				const config = statusConfig[ata.status];
 				const StatusIcon = config.icon;
-				const totalAmount = ata.fixed_amount_sek ?? ata.total_sek ?? 0;
+				const laborAmount =
+					ata.billing_type === 'FAST'
+						? toNumber(ata.fixed_amount_sek)
+						: toNumber(ata.total_sek);
+				const materialsAmount = toNumber(ata.materials_amount_sek);
+				const totalAmount = laborAmount + materialsAmount;
 				const billingLabel = ata.billing_type === 'FAST' ? 'FAST' : 'LÖPANDE';
+				const qtyDisplay =
+					ata.billing_type === 'LOPANDE' ? toNumber(ata.qty) : 0;
+				const unitPriceDisplay =
+					ata.billing_type === 'LOPANDE' ? toNumber(ata.unit_price_sek) : 0;
 
 				return (
 					<Card key={ata.id} className="hover:shadow-md transition-shadow">
@@ -169,14 +186,21 @@ export function AtaList({ projectId, orgId, userRole }: AtaListProps) {
 									<p className="text-muted-foreground">
 										Projekt: {ata.project.project_number ? `${ata.project.project_number} - ` : ''}{ata.project.name}
 									</p>
-									{ata.billing_type === 'LOPANDE' && ata.qty && ata.unit && ata.unit_price_sek && (
+									{ata.billing_type === 'LOPANDE' && qtyDisplay > 0 && unitPriceDisplay > 0 && (
 										<p className="text-muted-foreground">
-											{ata.qty} {ata.unit} × {ata.unit_price_sek.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} SEK
+											{qtyDisplay.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+											{ata.unit ?? 'tim'} ×{' '}
+											{unitPriceDisplay.toLocaleString('sv-SE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} SEK
 										</p>
 									)}
 									{ata.billing_type === 'FAST' && ata.fixed_amount_sek !== null && (
 										<p className="text-muted-foreground">
 											Fast belopp: {ata.fixed_amount_sek.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} SEK
+										</p>
+									)}
+									{materialsAmount > 0 && (
+										<p className="text-muted-foreground">
+											Material: {materialsAmount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} SEK
 										</p>
 									)}
 									<p className="text-xs text-muted-foreground">

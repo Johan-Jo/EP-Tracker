@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Check, Briefcase, FileText, Users, Calendar, ClipboardCheck, Clock } from 'lucide-react';
 
-type UserRole = 'admin' | 'foreman' | 'worker' | 'finance';
+type UserRole = 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 
 interface RoleContent {
 	title: string;
@@ -76,6 +76,27 @@ const roleContents: Record<UserRole, RoleContent> = {
 				iconName: 'FileText',
 				title: 'Rapportera material',
 				description: 'Fotografera kvitton och registrera material enkelt',
+			},
+		],
+	},
+	ue: {
+		title: 'Välkommen som UE! 🤝',
+		description: 'Du är nu inloggad som underentreprenör. Rapportera din arbetstid, material och kostnader precis som dina egna anställda.',
+		steps: [
+			{
+				iconName: 'Clock',
+				title: 'Registrera arbetstid',
+				description: 'Starta timers och rapportera dina timmar på tilldelade uppdrag',
+			},
+			{
+				iconName: 'Calendar',
+				title: 'Håll koll på uppdrag',
+				description: 'Se dagens jobb och kommande arbetspass i planeringslistan',
+			},
+			{
+				iconName: 'FileText',
+				title: 'Rapportera material & kostnader',
+				description: 'Dokumentera material, resor och utlägg direkt på projektet',
 			},
 		],
 	},

@@ -30,7 +30,7 @@ import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 
 interface ApprovalsPageNewProps {
 	orgId: string;
-	userRole: 'admin' | 'foreman' | 'worker' | 'finance';
+	userRole: 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 }
 
 export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
@@ -48,6 +48,18 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 	const [lockWeek, setLockWeek] = useState(selectedWeek);
 	const [lockYear, setLockYear] = useState(selectedYear);
 	const supabase = createClient();
+
+	const resolveAtaAmount = (entry: any): number => {
+		if (!entry) return 0;
+		const labor =
+			entry.billing_type === 'FAST'
+				? Number(entry.fixed_amount_sek)
+				: Number(entry.total_sek);
+		const materials = Number(entry.materials_amount_sek);
+		const laborValue = Number.isFinite(labor) ? labor : 0;
+		const materialsValue = Number.isFinite(materials) ? materials : 0;
+		return laborValue + materialsValue;
+	};
 
 	// Helper function to calculate ISO week dates (correct calculation)
 	const getWeekDates = (week: number, year: number) => {
@@ -213,7 +225,7 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 				...a,
 				type: 'ÄTA',
 				description: a.title,
-				amount: a.total_sek,
+				amount: resolveAtaAmount(a),
 				user: a.user,
 			}));
 
@@ -306,7 +318,7 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 				...a,
 				type: 'ÄTA',
 				description: a.title,
-				amount: a.total_sek,
+				amount: resolveAtaAmount(a),
 				user: a.user,
 			}));
 

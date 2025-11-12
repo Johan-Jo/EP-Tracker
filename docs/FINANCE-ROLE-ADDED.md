@@ -87,7 +87,7 @@ DROP CONSTRAINT IF EXISTS memberships_role_check;
 -- Add new CHECK constraint with 'finance' role included
 ALTER TABLE memberships
 ADD CONSTRAINT memberships_role_check 
-CHECK (role IN ('admin', 'foreman', 'worker', 'finance'));
+CHECK (role IN ('admin', 'foreman', 'worker', 'finance', 'ue'));
 ```
 
 ### 2. Zod Schema Update
@@ -95,7 +95,7 @@ CHECK (role IN ('admin', 'foreman', 'worker', 'finance'));
 **File:** `lib/schemas/organization.ts`
 
 ```typescript
-export const membershipRoleEnum = z.enum(['admin', 'foreman', 'worker', 'finance']);
+export const membershipRoleEnum = z.enum(['admin', 'foreman', 'worker', 'finance', 'ue']);
 ```
 
 ### 3. API Authorization
@@ -106,8 +106,8 @@ export const membershipRoleEnum = z.enum(['admin', 'foreman', 'worker', 'finance
 
 ```typescript
 // Example: app/api/time/entries/route.ts
-// Workers only see their own entries; admin/foreman/finance see all
-if (membership.role === 'worker') {
+// Workers and UE only see their own entries; admin/foreman/finance see all
+if (membership.role === 'worker' || membership.role === 'ue') {
   query = query.eq('user_id', user.id);
 }
 ```
@@ -156,12 +156,13 @@ All blocked operations return HTTP 403 with descriptive errors:
 
 ## Updated Role Hierarchy
 
-EP-Tracker now has a **4-tier RBAC system:**
+EP-Tracker now has a **5-tier RBAC system:**
 
 1. **Admin** - Full system access
 2. **Foreman** - Site management + crew coordination
 3. **Finance** - Read-only + financial operations ⭐ NEW
 4. **Worker** - Personal data entry only
+5. **UE (Underentreprenör)** - External subcontractors with worker-level access
 
 ---
 

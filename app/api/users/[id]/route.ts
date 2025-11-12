@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
 const updateUserSchema = z.object({
-	role: z.enum(['admin', 'foreman', 'worker', 'finance']).optional(),
+	role: z.enum(['admin', 'foreman', 'worker', 'finance', 'ue']).optional(),
 	hourly_rate_sek: z.number().min(0).nullable().optional(), // Faktureringsvärde
 	salary_per_hour_sek: z.number().min(0).nullable().optional(), // Faktisk lön
 	full_name: z.string().min(1).optional(),

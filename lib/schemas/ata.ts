@@ -48,9 +48,11 @@ export const ataInputSchema = z
 			.optional()
 			.nullable(),
 		unit_price_sek: coerceOptionalNumber({ min: 0 }),
+		materials_amount_sek: coerceOptionalNumber({ min: 0 }),
 		ata_number: z.string().trim().optional().nullable(),
 		billing_type: billingTypeEnum.default('LOPANDE'),
 		fixed_amount_sek: coerceOptionalNumber({ min: 0.01, minMessage: 'Fast belopp måste vara större än 0' }),
+		material_ids: z.array(z.string().uuid()).optional(),
 		status: z.enum(['draft', 'pending_approval', 'approved', 'rejected', 'invoiced']).default('draft'),
 		signed_by_name: z.string().optional(),
 		signed_at: z
@@ -85,6 +87,20 @@ export const ataInputSchema = z
 					path: ['unit_price_sek'],
 				});
 			}
+			if (data.unit_price_sek === undefined || data.unit_price_sek <= 0) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Projektets timtaxa saknas eller är ogiltig',
+					path: ['unit_price_sek'],
+				});
+			}
+		}
+		if (data.materials_amount_sek !== undefined && data.materials_amount_sek < 0) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Materialkostnad kan inte vara negativ',
+				path: ['materials_amount_sek'],
+			});
 		}
 	});
 

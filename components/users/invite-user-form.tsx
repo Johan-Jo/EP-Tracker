@@ -33,10 +33,11 @@ interface InviteUserFormProps {
 
 const roleDescriptions = {
 	worker: 'Kan endast se och redigera sina egna data',
+	ue: 'Underentreprenör med samma behörigheter som en arbetare',
 	foreman: 'Kan se alla data men inte hantera användare eller organisation',
 	finance: 'Skrivskyddad åtkomst för fakturering och lönehantering',
 	admin: 'Full åtkomst till alla funktioner inklusive användarhantering',
-};
+} as const;
 
 export function InviteUserForm({ orgId }: InviteUserFormProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -143,6 +144,7 @@ export function InviteUserForm({ orgId }: InviteUserFormProps) {
 					</SelectTrigger>
 					<SelectContent>
 						<SelectItem value="worker">Arbetare</SelectItem>
+						<SelectItem value="ue">UE (Underentreprenör)</SelectItem>
 						<SelectItem value="foreman">Arbetsledare</SelectItem>
 						<SelectItem value="finance">Ekonomi</SelectItem>
 						<SelectItem value="admin">Admin</SelectItem>

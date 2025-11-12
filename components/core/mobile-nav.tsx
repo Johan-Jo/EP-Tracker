@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type UserRole = 'admin' | 'foreman' | 'worker' | 'finance';
+type UserRole = 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 
 interface NavItem {
 	label: string;
@@ -36,25 +36,25 @@ const mainNavItems: NavItem[] = [
 		label: 'Översikt',
 		href: '/dashboard',
 		icon: LayoutDashboard,
-		roles: ['admin', 'foreman', 'worker', 'finance'],
+		roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 	},
 	{
 		label: 'Projekt',
 		href: '/dashboard/projects',
 		icon: FolderKanban,
-		roles: ['admin', 'foreman', 'worker', 'finance'],
+		roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 	},
 	{
 		label: 'Tid',
 		href: '/dashboard/time',
 		icon: Clock,
-		roles: ['admin', 'foreman', 'worker', 'finance'],
+		roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 	},
 	{
 		label: 'Material',
 		href: '/dashboard/materials',
 		icon: Package,
-		roles: ['admin', 'foreman', 'worker', 'finance'],
+		roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 	},
 ];
 
@@ -76,7 +76,7 @@ const menuItems: NavItem[] = [
 		label: 'ÄTA',
 		href: '/dashboard/ata',
 		icon: FileEdit,
-		roles: ['admin', 'foreman', 'worker'],
+		roles: ['admin', 'foreman', 'worker', 'ue'],
 	},
 	{
 		label: 'Dagbok',
@@ -106,13 +106,13 @@ const menuItems: NavItem[] = [
 		label: 'Hjälp',
 		href: '/dashboard/help',
 		icon: HelpCircle,
-		roles: ['admin', 'foreman', 'worker', 'finance'],
+		roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 	},
 	{
 		label: 'Inställningar',
 		href: '/dashboard/settings',
 		icon: Settings,
-		roles: ['admin', 'foreman', 'worker', 'finance'],
+		roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 	},
 ];
 

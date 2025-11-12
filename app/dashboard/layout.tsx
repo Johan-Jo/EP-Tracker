@@ -31,7 +31,7 @@ export default async function DashboardLayout({
 		redirect('/complete-setup');
 	}
 
-	const userRole = membership.role as 'admin' | 'foreman' | 'worker' | 'finance';
+	const userRole = membership.role as 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 
 	// Check if super admin is impersonating a user
 	const impersonationSession = await getImpersonationSession();
