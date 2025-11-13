@@ -13,8 +13,10 @@ import { MaterialDetailModal } from '@/components/materials/material-detail-moda
 import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { formatUnitLabel } from '@/lib/utils/units';
 
 const DRAFT_MATERIALS_STORAGE_PREFIX = 'ata-draft-materials:';
+const DRAFT_EXPENSES_STORAGE_PREFIX = 'ata-draft-expenses:';
 
 interface MaterialsPageNewProps {
 	orgId: string;
@@ -39,11 +41,13 @@ type RawMaterialRow = {
 	photo_urls?: string[];
 	project: { id: string; name: string } | null;
 	phase: { id: string; name: string } | null;
+	ata?: { id: string; title: string | null } | null;
 };
 
 type RawMaterialRowFromDb = Omit<RawMaterialRow, 'project' | 'phase'> & {
 	project: { id: string; name: string } | { id: string; name: string }[] | null;
 	phase: { id: string; name: string } | { id: string; name: string }[] | null;
+	ata?: { id: string; title: string | null } | { id: string; title: string | null }[] | null;
 };
 
 type RawExpenseRow = {
@@ -56,10 +60,12 @@ type RawExpenseRow = {
 	created_at: string;
 	photo_urls?: string[];
 	project: { id: string; name: string } | null;
+	ata?: { id: string; title: string | null } | null;
 };
 
 type RawExpenseRowFromDb = Omit<RawExpenseRow, 'project'> & {
 	project: { id: string; name: string } | { id: string; name: string }[] | null;
+	ata?: { id: string; title: string | null } | { id: string; title: string | null }[] | null;
 };
 
 type UnifiedItem = {
@@ -86,6 +92,7 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 	const [selectedProject, setSelectedProject] = useState<string>(projectId || 'all');
 	const [entriesLimit, setEntriesLimit] = useState(200);
 	const [ataDraftMaterialIds, setAtaDraftMaterialIds] = useState<string[]>([]);
+	const [ataDraftExpenseIds, setAtaDraftExpenseIds] = useState<string[]>([]);
 	const supabase = createClient();
 
 	const registerMaterialForAta = useCallback(
@@ -110,6 +117,33 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 				window.localStorage.setItem(key, JSON.stringify(next));
 				setAtaDraftMaterialIds(next);
 				toast.success('Material kopplat till ÄTA-utkastet');
+			}
+		},
+		[ataDraftId],
+	);
+
+	const registerExpenseForAta = useCallback(
+		(expenseId: string) => {
+			if (!ataDraftId || typeof window === 'undefined') return;
+			const key = `${DRAFT_EXPENSES_STORAGE_PREFIX}${ataDraftId}`;
+			try {
+				const stored = window.localStorage.getItem(key);
+				const parsed = stored ? JSON.parse(stored) : [];
+				const ids = Array.isArray(parsed)
+					? parsed.filter((id: unknown): id is string => typeof id === 'string')
+					: [];
+				if (!ids.includes(expenseId)) {
+					const next = [...ids, expenseId];
+					window.localStorage.setItem(key, JSON.stringify(next));
+					setAtaDraftExpenseIds(next);
+					toast.success('Utgift kopplad till ÄTA-utkastet');
+				}
+			} catch (error) {
+				console.error('Kunde inte uppdatera ATA-utkastets utgiftslista', error);
+				const next = [expenseId];
+				window.localStorage.setItem(key, JSON.stringify(next));
+				setAtaDraftExpenseIds(next);
+				toast.success('Utgift kopplad till ÄTA-utkastet');
 			}
 		},
 		[ataDraftId],
@@ -166,6 +200,58 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 			document.removeEventListener('visibilitychange', handleVisibility);
 		};
 	}, [ataDraftId]);
+
+	useEffect(() => {
+		if (!ataDraftId || typeof window === 'undefined') {
+			setAtaDraftExpenseIds([]);
+			return;
+		}
+
+		const key = `${DRAFT_EXPENSES_STORAGE_PREFIX}${ataDraftId}`;
+
+		const loadDraftExpenses = () => {
+			try {
+				const stored = window.localStorage.getItem(key);
+				if (!stored) {
+					setAtaDraftExpenseIds([]);
+					return;
+				}
+				const parsed = JSON.parse(stored);
+				if (!Array.isArray(parsed)) {
+					setAtaDraftExpenseIds([]);
+					return;
+				}
+				const unique = Array.from(
+					new Set(parsed.filter((id: unknown): id is string => typeof id === 'string')),
+				);
+				setAtaDraftExpenseIds(unique);
+			} catch {
+				setAtaDraftExpenseIds([]);
+			}
+		};
+
+		loadDraftExpenses();
+
+		const handleStorage = (event: StorageEvent) => {
+			if (event.key === key) {
+				loadDraftExpenses();
+			}
+		};
+
+		const handleVisibility = () => {
+			if (!document.hidden) {
+				loadDraftExpenses();
+			}
+		};
+
+		window.addEventListener('storage', handleStorage);
+		document.addEventListener('visibilitychange', handleVisibility);
+
+		return () => {
+			window.removeEventListener('storage', handleStorage);
+			document.removeEventListener('visibilitychange', handleVisibility);
+		};
+	}, [ataDraftId]);
 	
 	const normalizeSingleRelation = <T,>(relation: T | T[] | null): T | null => {
 		if (!relation) return null;
@@ -177,6 +263,7 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 			...row,
 			project: normalizeSingleRelation(row.project),
 			phase: normalizeSingleRelation(row.phase),
+			ata: normalizeSingleRelation(row.ata),
 		};
 	};
 
@@ -184,6 +271,7 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 		return {
 			...row,
 			project: normalizeSingleRelation(row.project),
+			ata: normalizeSingleRelation(row.ata),
 		};
 	};
 
@@ -238,6 +326,7 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 					notes,
 					created_at,
 					photo_urls,
+					ata:ata(id, title),
 					project:projects(id, name),
 					phase:phases(id, name)
 				`,
@@ -267,6 +356,7 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 					category,
 					created_at,
 					photo_urls,
+					ata:ata(id, title),
 					project:projects(id, name)
 				`,
 				)
@@ -374,6 +464,7 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 		}
 	}, [returnTo]);
 	const draftMaterialSet = useMemo(() => new Set(ataDraftMaterialIds), [ataDraftMaterialIds]);
+	const draftExpenseSet = useMemo(() => new Set(ataDraftExpenseIds), [ataDraftExpenseIds]);
 
 	return (
 		<div className='flex-1 overflow-auto bg-gray-50 pb-20 transition-colors md:pb-0 dark:bg-[#0A0908]'>
@@ -527,6 +618,19 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 						<div className='space-y-3'>
 							{filteredMaterials.map((material: UnifiedItem) => {
 								const Icon = getCategoryIcon(material.category);
+								const isDraftLinked =
+									material.category === 'material'
+										? draftMaterialSet.has(material.id)
+										: draftExpenseSet.has(material.id);
+								const isLinkedToCurrentAta = Boolean(ataDraftId && isDraftLinked);
+								const linkedAtaTitle =
+									material.category === 'material'
+										? material.raw.ata?.title || (isLinkedToCurrentAta ? normalizedAtaTitle : null)
+										: material.raw.ata?.title || (isLinkedToCurrentAta ? normalizedAtaTitle : null);
+								const projectLabel =
+									linkedAtaTitle
+										? `${material.project?.name || 'Inget projekt'} – (${linkedAtaTitle})`
+										: material.project?.name || 'Inget projekt';
 
 								return (
 									<div
@@ -556,21 +660,21 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 														<h4 className='font-semibold mb-1 truncate'>
 															{material.name}
 														</h4>
-														{ataDraftId && draftMaterialSet.has(material.id) && (
+														{linkedAtaTitle && (
 															<Badge className='bg-orange-100 text-orange-700 border-orange-300'>
-																Kopplad till ÄTA-utkast
+																ÄTA: {linkedAtaTitle}
 															</Badge>
 														)}
 														<p className='text-sm text-muted-foreground mb-2'>
-															{material.project?.name || 'Inget projekt'}
+															{projectLabel}
 														</p>
 														<div className='flex flex-wrap gap-x-4 gap-y-1 text-sm'>
 															<span className='text-muted-foreground'>
-																{material.quantity} {material.unit}
+																{material.quantity} {formatUnitLabel(material.unit)}
 															</span>
 															<span className='text-muted-foreground'>
 																{(material.unit_price || 0).toLocaleString('sv-SE')} kr/
-																{material.unit}
+																{formatUnitLabel(material.unit)}
 															</span>
 															{material.supplier && (
 																<span className='text-muted-foreground'>
@@ -661,6 +765,7 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 				ataTitle={normalizedAtaTitle}
 				projectLocked={Boolean(ataDraftId)}
 				onMaterialCreated={ataDraftId ? registerMaterialForAta : undefined}
+				onExpenseCreated={ataDraftId ? registerExpenseForAta : undefined}
 			/>
 
 			{/* Edit Material Dialog */}
@@ -673,6 +778,8 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 				projectId={projectId}
 				ataTitle={normalizedAtaTitle}
 				projectLocked={Boolean(ataDraftId)}
+				onMaterialCreated={ataDraftId ? registerMaterialForAta : undefined}
+				onExpenseCreated={ataDraftId ? registerExpenseForAta : undefined}
 			/>
 			)}
 

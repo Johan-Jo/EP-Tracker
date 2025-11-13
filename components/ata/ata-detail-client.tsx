@@ -20,6 +20,7 @@ import { useState } from 'react';
 import { GalleryViewer } from '@/components/shared/gallery-viewer';
 import Image from 'next/image';
 import type { BillingType } from '@/lib/schemas/billing-types';
+import { formatUnitLabel } from '@/lib/utils/units';
 
 interface AtaDetailClientProps {
 	ataId: string;
@@ -105,6 +106,20 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 		},
 	});
 
+const { data: ataExpenses = [] } = useQuery({
+	queryKey: ['ata-expenses', ataId],
+	queryFn: async () => {
+		const { data, error } = await supabase
+			.from('expenses')
+			.select('id, description, amount_sek, category, status, date')
+			.eq('ata_id', ataId)
+			.order('date', { ascending: false });
+
+		if (error) throw error;
+		return data ?? [];
+	},
+});
+
 	if (isLoading) {
 		return (
 			<div className='flex items-center justify-center py-12'>
@@ -143,8 +158,17 @@ export function AtaDetailClient({ ataId }: AtaDetailClientProps) {
 	const unitPrice = toNumber(ata.unit_price_sek);
 	const fixedAmount = toNumber(ata.fixed_amount_sek);
 	const materialsAmount = toNumber(ata.materials_amount_sek);
+	const materialsCostTotal = ataMaterials.reduce(
+		(sum, material) => sum + toNumber(material.total_sek),
+		0,
+	);
+	const expensesCostTotal = ataExpenses.reduce(
+		(sum, expense) => sum + toNumber(expense.amount_sek),
+		0,
+	);
 	const laborTotal = billingType === 'FAST' ? fixedAmount : qty * unitPrice;
-	const total = laborTotal + materialsAmount;
+	const combinedCostTotal = materialsCostTotal + expensesCostTotal;
+	const total = laborTotal + combinedCostTotal;
 const hoursDisplay =
 	billingType === 'FAST' || qty <= 0
 		? null
@@ -159,14 +183,20 @@ const laborLabel =
 		: hoursDisplay && hourlyRateDisplay
 		? `Arbetstid (${hoursDisplay} h × ${hourlyRateDisplay} SEK)`
 		: 'Arbetstid (från tidrapportering)';
+const hasMaterialsCost = materialsCostTotal > 0;
+const hasExpensesCost = expensesCostTotal > 0;
 const pricingGridCols =
 	billingType === 'FAST'
-		? materialsAmount > 0
+		? hasMaterialsCost && hasExpensesCost
+			? 'md:grid-cols-4'
+			: hasMaterialsCost || hasExpensesCost
 			? 'md:grid-cols-3'
 			: 'md:grid-cols-2'
-		: materialsAmount > 0
-		? 'md:grid-cols-4'
-		: 'md:grid-cols-3';
+		: hasMaterialsCost && hasExpensesCost
+		? 'md:grid-cols-6'
+		: hasMaterialsCost || hasExpensesCost
+		? 'md:grid-cols-5'
+		: 'md:grid-cols-4';
 
 	return (
 		<div className='max-w-5xl space-y-6'>
@@ -283,16 +313,33 @@ const pricingGridCols =
 									{laborTotal.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
 								</p>
 							</div>
-							{materialsAmount > 0 && (
+							{materialsCostTotal > 0 && (
 								<div className='bg-white rounded-xl p-4 md:col-span-1 col-span-2'>
 									<p className='text-sm text-muted-foreground mb-1'>Material</p>
 									<p className='text-2xl text-gray-900'>
-										{materialsAmount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+										{materialsCostTotal.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+									</p>
+								</div>
+							)}
+							{expensesCostTotal > 0 && (
+								<div className='bg-white rounded-xl p-4 md:col-span-1 col-span-2'>
+									<p className='text-sm text-muted-foreground mb-1'>Utgifter</p>
+									<p className='text-2xl text-gray-900'>
+										{expensesCostTotal.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
 									</p>
 								</div>
 							)}
 							<div className='bg-white rounded-xl p-4 md:col-span-1 col-span-2'>
-								<p className='text-sm text-muted-foreground mb-1'>Totalt</p>
+								<p className='text-sm text-muted-foreground mb-1'>
+									Totalt
+									{combinedCostTotal > 0
+										? expensesCostTotal > 0 && materialsCostTotal > 0
+											? ' (inkl. material & utgifter)'
+											: materialsCostTotal > 0
+											? ' (inkl. material)'
+											: ' (inkl. utgifter)'
+										: ''}
+								</p>
 								<p className='text-2xl text-gray-900'>
 									{total.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
 								</p>
@@ -318,17 +365,32 @@ const pricingGridCols =
 									{laborTotal.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
 								</p>
 							</div>
-							{materialsAmount > 0 && (
+							{materialsCostTotal > 0 && (
 								<div className='bg-white rounded-xl p-4'>
 									<p className='text-sm text-muted-foreground mb-1'>Material</p>
 									<p className='text-2xl text-gray-900'>
-										{materialsAmount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+										{materialsCostTotal.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+									</p>
+								</div>
+							)}
+							{expensesCostTotal > 0 && (
+								<div className='bg-white rounded-xl p-4'>
+									<p className='text-sm text-muted-foreground mb-1'>Utgifter</p>
+									<p className='text-2xl text-gray-900'>
+										{expensesCostTotal.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
 									</p>
 								</div>
 							)}
 							<div className='bg-white rounded-xl p-4 md:col-span-1 col-span-2'>
 								<p className='text-sm text-muted-foreground mb-1'>
-									Totalt{materialsAmount > 0 ? ' (inkl. material)' : ''}
+									Totalt
+									{combinedCostTotal > 0
+										? expensesCostTotal > 0 && materialsCostTotal > 0
+											? ' (inkl. material & utgifter)'
+											: materialsCostTotal > 0
+											? ' (inkl. material)'
+											: ' (inkl. utgifter)'
+										: ''}
 								</p>
 								<p className='text-2xl text-gray-900'>
 									{total.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
@@ -364,7 +426,7 @@ const pricingGridCols =
 													minimumFractionDigits: 2,
 													maximumFractionDigits: 2,
 												})}{' '}
-												{material.unit || 'st'} ×{' '}
+												{formatUnitLabel(material.unit)} ×{' '}
 												{unitPriceDisplay.toLocaleString('sv-SE', {
 													minimumFractionDigits: 2,
 													maximumFractionDigits: 2,
@@ -380,6 +442,51 @@ const pricingGridCols =
 									</div>
 									<p className='text-sm font-semibold'>
 										{totalDisplay.toLocaleString('sv-SE', {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										})}{' '}
+										SEK
+									</p>
+								</li>
+							);
+						})}
+					</ul>
+				</div>
+			)}
+
+			{ataExpenses.length > 0 && (
+				<div className='bg-card border-2 border-border rounded-xl p-6 hover:border-orange-300 hover:shadow-md transition-all duration-200'>
+					<div className='flex items-center gap-2 mb-4'>
+						<DollarSign className='w-5 h-5 text-orange-600' />
+						<h2 className='text-xl font-semibold'>Utgifter</h2>
+					</div>
+					<ul className='space-y-3'>
+						{ataExpenses.map((expense) => {
+							const amountDisplay = toNumber(expense.amount_sek);
+							return (
+								<li
+									key={expense.id}
+									className='flex flex-col gap-2 rounded-lg border border-border/60 bg-background p-3 md:flex-row md:items-center md:justify-between'
+								>
+									<div>
+										<p className='text-sm font-medium'>{expense.description}</p>
+										<div className='flex flex-wrap gap-3 text-xs text-muted-foreground'>
+											{expense.category && <span>Kategori: {expense.category}</span>}
+											{expense.date && (
+												<span>
+													Datum:{' '}
+													{new Date(expense.date).toLocaleDateString('sv-SE', {
+														year: 'numeric',
+														month: '2-digit',
+														day: '2-digit',
+													})}
+												</span>
+											)}
+											{expense.status && <span>Status: {expense.status}</span>}
+										</div>
+									</div>
+									<p className='text-sm font-semibold'>
+										{amountDisplay.toLocaleString('sv-SE', {
 											minimumFractionDigits: 2,
 											maximumFractionDigits: 2,
 										})}{' '}

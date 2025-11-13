@@ -53,6 +53,7 @@ export const ataInputSchema = z
 		billing_type: billingTypeEnum.default('LOPANDE'),
 		fixed_amount_sek: coerceOptionalNumber({ min: 0.01, minMessage: 'Fast belopp måste vara större än 0' }),
 		material_ids: z.array(z.string().uuid()).optional(),
+		expense_ids: z.array(z.string().uuid()).optional(),
 		status: z.enum(['draft', 'pending_approval', 'approved', 'rejected', 'invoiced']).default('draft'),
 		signed_by_name: z.string().optional(),
 		signed_at: z

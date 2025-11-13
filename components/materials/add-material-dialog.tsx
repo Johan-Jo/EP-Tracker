@@ -12,6 +12,7 @@ import { Package, Receipt, Loader2, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
 import { PhotoUploadButtons } from '@/components/shared/photo-upload-buttons';
+import { normalizeUnitValue } from '@/lib/utils/units';
 
 interface AddMaterialDialogProps {
 	open: boolean;
@@ -59,7 +60,7 @@ export function AddMaterialDialog({
 			setProject(editingMaterial.project_id);
 			setName(editingMaterial.name);
 			setQuantity(String(editingMaterial.quantity));
-			setUnit(editingMaterial.unit || 'st');
+			setUnit(normalizeUnitValue(editingMaterial.unit));
 			setUnitPrice(String(editingMaterial.unit_price));
 			setSupplier(editingMaterial.supplier || '');
 			setNotes(editingMaterial.notes || '');
@@ -88,7 +89,7 @@ export function AddMaterialDialog({
 
 	const units = [
 		{ value: 'st', label: 'st' },
-		{ value: 'm²', label: 'm²' },
+		{ value: 'm2', label: 'm²' },
 		{ value: 'm', label: 'm' },
 		{ value: 'kg', label: 'kg' },
 		{ value: 'l', label: 'l' },
@@ -159,7 +160,7 @@ export function AddMaterialDialog({
 							project_id: project,
 							description: name,
 							qty: parseFloat(quantity),
-							unit,
+							unit: normalizeUnitValue(unit),
 							unit_price_sek: parseFloat(unitPrice),
 							notes: notes || supplier || null,
 							photo_urls: allPhotoUrls,
@@ -185,6 +186,12 @@ export function AddMaterialDialog({
 			} else {
 				// Create new material/expense
 				if (type === 'material') {
+					const quantityNumber = parseFloat(quantity);
+					const unitPriceNumber = parseFloat(unitPrice);
+					if (!Number.isFinite(quantityNumber) || !Number.isFinite(unitPriceNumber)) {
+						throw new Error('Ogiltiga siffror för antal eller à-pris');
+					}
+
 					const { data: insertedMaterial, error } = await supabase
 						.from('materials')
 						.insert({
@@ -192,9 +199,9 @@ export function AddMaterialDialog({
 							project_id: project,
 							user_id: user.id,
 							description: name,
-							qty: parseFloat(quantity),
-							unit,
-							unit_price_sek: parseFloat(unitPrice),
+							qty: quantityNumber,
+							unit: normalizeUnitValue(unit),
+							unit_price_sek: unitPriceNumber,
 							notes: notes || supplier || null,
 							photo_urls: allPhotoUrls,
 							status: 'draft',
@@ -413,7 +420,10 @@ export function AddMaterialDialog({
 						</div>
 						<div className='space-y-2'>
 							<Label htmlFor='unit'>Enhet</Label>
-							<Select value={unit} onValueChange={setUnit}>
+							<Select
+								value={normalizeUnitValue(unit)}
+								onValueChange={(value) => setUnit(normalizeUnitValue(value))}
+							>
 								<SelectTrigger id='unit' className='h-11'>
 									<SelectValue />
 								</SelectTrigger>

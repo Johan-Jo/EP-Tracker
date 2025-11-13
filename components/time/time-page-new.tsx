@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Calendar, Clock, Save, Filter, Loader2, Trash2, BookOpen, CheckCircle2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,14 @@ interface FixedBlockOption {
 	name: string;
 	amount_sek: number;
 	status: 'open' | 'closed';
+}
+
+interface AtaOption {
+	id: string;
+	title: string;
+	status: 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'invoiced';
+	billing_type: BillingType;
+	created_at: string;
 }
 
 type TimeEntryFormValues = Omit<CreateTimeEntryInput, 'billing_type' | 'fixed_block_id'> & {
@@ -158,6 +166,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 			billing_type: '',
 			fixed_block_id: null,
 			stop_at: null,
+		ata_id: null,
 		},
 	});
 
@@ -184,6 +193,8 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 	const selectedProjectId = watchedProjectId ? String(watchedProjectId) : '';
 	const billingType = watch('billing_type') as TimeEntryFormValues['billing_type'];
 	const fixedBlockId = watch('fixed_block_id') as TimeEntryFormValues['fixed_block_id'];
+const selectedAtaId = watch('ata_id') as string | null;
+const previousProjectIdRef = useRef<string | null>(null);
 
 	// Populate form when editing
 	useEffect(() => {
@@ -203,6 +214,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 			setValue('stop_at', editingEntry.stop_at);
 			setValue('billing_type', editingEntry.billing_type ?? 'LOPANDE', { shouldDirty: true });
 			setValue('fixed_block_id', editingEntry.fixed_block_id ?? null, { shouldDirty: true });
+			setValue('ata_id', editingEntry.ata_id ?? null, { shouldDirty: true });
 		}
 	}, [editingEntry, setValue]);
 
@@ -258,6 +270,36 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 	const hasFixedBlocks = fixedBlocks.length > 0;
 	const fixedBlocksErrorMessage =
 		fixedBlocksError instanceof Error ? fixedBlocksError.message : undefined;
+
+const { data: ataOptions = [], isLoading: ataLoading } = useQuery<AtaOption[]>({
+	queryKey: ['project-ata-options', selectedProjectId],
+	queryFn: async () => {
+		if (!selectedProjectId) return [];
+		const { data, error } = await supabase
+			.from('ata')
+			.select('id, title, status, billing_type, created_at')
+			.eq('project_id', selectedProjectId)
+			.not('status', 'eq', 'rejected')
+			.order('created_at', { ascending: false });
+
+		if (error) throw error;
+		return data ?? [];
+	},
+	enabled: Boolean(selectedProjectId),
+	staleTime: 60 * 1000,
+});
+
+useEffect(() => {
+	const previousProjectId = previousProjectIdRef.current;
+	if (!selectedProjectId) {
+		if (selectedAtaId) {
+			setValue('ata_id', null, { shouldDirty: true });
+		}
+	} else if (previousProjectId && previousProjectId !== selectedProjectId) {
+		setValue('ata_id', null, { shouldDirty: true });
+	}
+	previousProjectIdRef.current = selectedProjectId || null;
+}, [selectedProjectId, selectedAtaId, setValue]);
 
 	useEffect(() => {
 		if (process.env.NODE_ENV !== 'production') {
@@ -509,6 +551,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 			project_id: String(data.project_id),
 			billing_type: normalizedBillingType as BillingType,
 			fixed_block_id: data.fixed_block_id ?? null,
+		ata_id: data.ata_id ?? null,
 		};
 
 		setIsSubmitting(true);
@@ -543,10 +586,12 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 				phase_id: null,
 				work_order_id: null,
 				task_label: '',
+				notes: '',
 				start_at: today + 'T08:00',
 				stop_at: null,
-			billing_type: '',
-			fixed_block_id: null,
+				billing_type: '',
+				fixed_block_id: null,
+				ata_id: null,
 			});
 			setEditingEntry(null);
 
@@ -767,6 +812,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 										notes: '',
 										billing_type: '',
 										fixed_block_id: null,
+										ata_id: null,
 									});
 								}}
 							>
@@ -800,6 +846,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 											setValue('billing_type', '', { shouldDirty: true });
 										}
 										setValue('fixed_block_id', null, { shouldDirty: true });
+										setValue('ata_id', null, { shouldDirty: true });
 									}}
 								>
 									<SelectTrigger className='h-11 justify-between text-left'>
@@ -911,6 +958,67 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 									</p>
 								</div>
 							)}
+
+						{/* ÄTA selection */}
+						{selectedProjectId && (
+							<div>
+								<label className='block text-sm font-medium mb-2'>ÄTA (valfritt)</label>
+								{ataLoading ? (
+									<div className='flex items-center gap-2 text-sm text-muted-foreground'>
+										<Loader2 className='w-4 h-4 animate-spin' />
+										Laddar ÄTA...
+									</div>
+								) : ataOptions.length > 0 ? (
+									<Select
+										value={selectedAtaId ?? 'none'}
+										onValueChange={(value) =>
+											setValue('ata_id', value === 'none' ? null : value, { shouldDirty: true })
+										}
+									>
+										<SelectTrigger className='h-11 justify-between text-left'>
+										<SelectValue placeholder='Koppla till ÄTA (valfritt)' />
+										</SelectTrigger>
+										<SelectContent className='border border-border/60 bg-[var(--color-card)] text-[var(--color-gray-900)] dark:border-[#3b291d] dark:bg-[#1a120d] dark:text-white'>
+											<SelectItem value='none'>Ingen ÄTA</SelectItem>
+											{ataOptions.map((ata) => (
+												<SelectItem
+													key={ata.id}
+													value={ata.id}
+													className='text-sm data-[state=checked]:bg-orange-500/15 data-[state=checked]:text-orange-600 dark:data-[state=checked]:bg-[#3a251c] dark:data-[state=checked]:text-[#f8ddba]'
+												>
+													<div className='flex flex-col'>
+														<span className='font-medium'>{ata.title}</span>
+														<span className='text-xs text-muted-foreground'>
+															{ata.status === 'approved'
+																? 'Godkänd'
+																: ata.status === 'pending_approval'
+																? 'Väntar godkännande'
+																: ata.status === 'draft'
+																? 'Utkast'
+																: ata.status === 'invoiced'
+																? 'Fakturerad'
+																: 'Avvisad'}{' '}
+															· {ata.billing_type === 'FAST' ? 'Fast' : 'Löpande'}
+														</span>
+													</div>
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								) : (
+									<div className='rounded-lg border border-dashed border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground'>
+										Inga ÄTA kopplade till projektet ännu.
+										<div className='mt-2'>
+											<Button variant='outline' size='sm' asChild>
+												<Link href={`/dashboard/ata/new?project_id=${selectedProjectId}`}>
+													Skapa ÄTA
+												</Link>
+											</Button>
+										</div>
+									</div>
+								)}
+							</div>
+						)}
 
 						{/* Date */}
 						<div>

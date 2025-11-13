@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
 	const body = parsed.data;
 	const fixedAmount = body.billing_type === 'FAST' ? body.fixed_amount_sek ?? null : null;
 	const materialIds = Array.from(new Set(body.material_ids ?? [])).filter(Boolean);
+	const expenseIds = Array.from(new Set(body.expense_ids ?? [])).filter(Boolean);
 	let materialsAmount = 0;
 
 	if (materialIds.length > 0) {
@@ -119,6 +120,53 @@ export async function POST(request: NextRequest) {
 		materialsAmount = Math.round(materialsAmount * 100) / 100;
 	}
 
+	if (expenseIds.length > 0) {
+		const { data: expenseRows, error: expensesFetchError } = await supabase
+			.from('expenses')
+			.select('id, org_id, project_id, amount_sek')
+			.in('id', expenseIds);
+
+		if (expensesFetchError) {
+			return NextResponse.json({ error: expensesFetchError.message }, { status: 500 });
+		}
+
+		if (!expenseRows || expenseRows.length !== expenseIds.length) {
+			return NextResponse.json(
+				{
+					error: 'Alla utgiftsposter kunde inte hittas',
+				},
+				{ status: 400 },
+			);
+		}
+
+		const invalidExpenseOrg = expenseRows.find((row) => row.org_id !== membership.org_id);
+		if (invalidExpenseOrg) {
+			return NextResponse.json(
+				{
+					error: 'Utgift tillhör en annan organisation',
+				},
+				{ status: 403 },
+			);
+		}
+
+		const invalidExpenseProject = expenseRows.find((row) => row.project_id !== body.project_id);
+		if (invalidExpenseProject) {
+			return NextResponse.json(
+				{
+					error: 'Utgiften tillhör ett annat projekt',
+				},
+				{ status: 400 },
+			);
+		}
+
+		const expenseTotal = expenseRows.reduce((sum, row) => {
+			const amount = Number(row.amount_sek ?? 0);
+			return sum + (Number.isFinite(amount) ? amount : 0);
+		}, 0);
+
+		materialsAmount += expenseTotal;
+	}
+
 	const signedAt =
 		body.signed_at instanceof Date
 			? body.signed_at.toISOString()
@@ -162,6 +210,18 @@ export async function POST(request: NextRequest) {
 			// Attempt to clean up created ÄTA if linking fails
 			await supabase.from('ata').delete().eq('id', data.id);
 			return NextResponse.json({ error: 'Kunde inte koppla material till ÄTA' }, { status: 500 });
+		}
+	}
+
+	if (expenseIds.length > 0) {
+		const { error: updateExpensesError } = await supabase
+			.from('expenses')
+			.update({ ata_id: data.id })
+			.in('id', expenseIds);
+
+		if (updateExpensesError) {
+			await supabase.from('ata').delete().eq('id', data.id);
+			return NextResponse.json({ error: 'Kunde inte koppla utgifter till ÄTA' }, { status: 500 });
 		}
 	}
 

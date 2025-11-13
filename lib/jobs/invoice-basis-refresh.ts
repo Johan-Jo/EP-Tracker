@@ -250,9 +250,10 @@ export async function refreshInvoiceBasis({
 			.lte('created_at', rangeEnd),
 		supabase
 			.from('expenses')
-			.select('id, project_id, description, amount_sek, vat, status, category, photo_url, date')
+			.select('id, project_id, description, amount_sek, vat, status, category, photo_url, date, ata_id')
 			.eq('org_id', orgId)
 			.eq('project_id', projectId)
+			.is('ata_id', null)
 			.eq('status', 'approved')
 			.gte('date', periodStart)
 			.lte('date', periodEnd),
