@@ -84,7 +84,7 @@ type RouteParams = { id: string };
 
 export async function POST(request: NextRequest, context: RouteContext<RouteParams>) {
 	try {
-		const { params } = await resolveRouteParams(context);
+		const params = await resolveRouteParams(context);
 		const targetId = params.id;
 		if (!targetId) {
 			return NextResponse.json({ error: 'Target customer id is required' }, { status: 400 });

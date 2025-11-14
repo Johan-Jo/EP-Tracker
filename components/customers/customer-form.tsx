@@ -93,7 +93,7 @@ const toPayloadDefaults = (customer?: Partial<Customer>): CustomerPayload => {
 		default_vat_rate: merged.default_vat_rate ?? 25,
 		bankgiro: merged.bankgiro ?? undefined,
 		plusgiro: merged.plusgiro ?? undefined,
-		reference: merged.reference ?? '',
+		reference: merged.reference ?? undefined,
 		invoice_address_street: merged.invoice_address_street ?? '',
 		invoice_address_zip: merged.invoice_address_zip ?? '',
 		invoice_address_city: merged.invoice_address_city ?? '',

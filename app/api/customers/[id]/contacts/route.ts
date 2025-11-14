@@ -9,7 +9,7 @@ type RouteParams = { id: string };
 
 export async function GET(_: NextRequest, context: RouteContext<RouteParams>) {
 	try {
-		const { params } = await resolveRouteParams(context);
+		const params = await resolveRouteParams(context);
 
 		const { user, membership } = await getSession();
 
@@ -40,7 +40,7 @@ export async function GET(_: NextRequest, context: RouteContext<RouteParams>) {
 
 export async function POST(request: NextRequest, context: RouteContext<RouteParams>) {
 	try {
-		const { params } = await resolveRouteParams(context);
+		const params = await resolveRouteParams(context);
 
 		const { user, membership } = await getSession();
 
