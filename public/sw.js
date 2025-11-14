@@ -91,8 +91,22 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('[SW] Precaching assets');
-        return cache.addAll(PRECACHE_ASSETS);
-			})
+        // Use addAll but catch individual failures
+        return Promise.allSettled(
+          PRECACHE_ASSETS.map((url) =>
+            fetch(url)
+              .then((response) => {
+                if (response.ok) {
+                  return cache.put(url, response);
+                }
+                console.warn(`[SW] Failed to cache ${url}: ${response.status}`);
+              })
+              .catch((error) => {
+                console.warn(`[SW] Failed to cache ${url}:`, error);
+              })
+          )
+        );
+      })
   );
 });
 

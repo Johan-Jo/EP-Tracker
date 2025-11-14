@@ -2,30 +2,40 @@ import { z } from 'zod';
 
 const optionalTrimmedString = (max: number) =>
 	z
-		.preprocess((value) => {
-			if (value === null || value === undefined) {
+		.union([z.string(), z.null(), z.undefined(), z.literal('')])
+		.transform((value) => {
+			if (value === null || value === undefined || value === '') {
 				return undefined;
 			}
 			if (typeof value === 'string') {
 				const trimmed = value.trim();
 				return trimmed.length === 0 ? undefined : trimmed;
 			}
-			return value;
-		}, z.string().max(max))
-		.optional();
+			return undefined;
+		})
+		.optional()
+		.refine(
+			(value) => value === undefined || (typeof value === 'string' && value.length <= max),
+			{ message: `Fältet får inte vara längre än ${max} tecken` }
+		);
 
 const optionalEmailString = z
-	.preprocess((value) => {
-		if (value === null || value === undefined) {
+	.union([z.string(), z.null(), z.undefined(), z.literal('')])
+	.transform((value) => {
+		if (value === null || value === undefined || value === '') {
 			return undefined;
 		}
 		if (typeof value !== 'string') {
-			return value;
+			return undefined;
 		}
 		const trimmed = value.trim();
 		return trimmed.length === 0 ? undefined : trimmed.toLowerCase();
-	}, z.string().email('Ogiltig e-postadress'))
-	.optional();
+	})
+	.optional()
+	.refine(
+		(value) => value === undefined || z.string().email().safeParse(value).success,
+		{ message: 'Ogiltig e-postadress' }
+	);
 
 const optionalInteger = z
 	.preprocess((value) => {
@@ -134,12 +144,30 @@ export const customerPayloadSchema = z
 		is_archived: z.boolean().optional().default(false),
 	})
 	.superRefine((data, ctx) => {
-		if (data.type === 'COMPANY' && !data.company_name) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				path: ['company_name'],
-				message: 'Företagsnamn krävs för företagskund',
-			});
+		if (data.type === 'COMPANY') {
+			if (!data.company_name) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['company_name'],
+					message: 'Företagsnamn krävs för företagskund',
+				});
+			}
+
+			if (!data.org_no) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['org_no'],
+					message: 'Organisationsnummer krävs för företagskund',
+				});
+			}
+
+			if (!data.invoice_email) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['invoice_email'],
+					message: 'Fakturamejl krävs för företagskund',
+				});
+			}
 		}
 
 		if (data.type === 'PRIVATE') {
@@ -164,6 +192,22 @@ export const customerPayloadSchema = z
 					code: z.ZodIssueCode.custom,
 					path: ['personal_identity_no'],
 					message: 'Personnummer krävs för privatkund',
+				});
+			}
+
+			if (!data.invoice_email) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['invoice_email'],
+					message: 'Fakturamejl krävs för privatkund',
+				});
+			}
+
+			if (!data.invoice_address_street) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['invoice_address_street'],
+					message: 'Fakturaadress krävs för privatkund',
 				});
 			}
 		}

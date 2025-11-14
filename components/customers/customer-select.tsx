@@ -128,20 +128,21 @@ export function CustomerSelect({
 					}
 				}}
 			>
-				<DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-					<DialogHeader>
+				<DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+					<DialogHeader className="flex-shrink-0">
 						<DialogTitle>Välj kund</DialogTitle>
 						<DialogDescription>
 							Sök efter befintlig kund eller skapa en ny kund direkt.
 						</DialogDescription>
 					</DialogHeader>
-					{showCreate ? (
-						<CustomerForm
-							onSubmit={handleCreate}
-							onCancel={() => setShowCreate(false)}
-							submitLabel="Skapa kund"
-						/>
-					) : (
+					<div className="flex-1 overflow-y-auto min-h-0">
+						{showCreate ? (
+							<CustomerForm
+								onSubmit={handleCreate}
+								onCancel={() => setShowCreate(false)}
+								submitLabel="Skapa kund"
+							/>
+						) : (
 						<div className="space-y-4">
 							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 								<div className="relative flex-1">
@@ -260,6 +261,7 @@ export function CustomerSelect({
 							) : null}
 						</div>
 					)}
+					</div>
 				</DialogContent>
 			</Dialog>
 		</div>

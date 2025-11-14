@@ -8,17 +8,29 @@ import { onMessageListener } from '@/lib/firebase/messaging';
  */
 export function NotificationHandler() {
   useEffect(() => {
-    // Register combined Service Worker
-    // Handles BOTH offline caching AND Firebase push notifications
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => {
-          console.log('✅ Service Worker registered:', registration.scope);
-        })
-        .catch((error) => {
-          console.error('❌ Service Worker registration failed:', error);
+      if (process.env.NODE_ENV === 'production') {
+        // Only register service worker in production
+        navigator.serviceWorker
+          .register('/sw.js')
+          .then((registration) => {
+            console.log('✅ Service Worker registered:', registration.scope);
+          })
+          .catch((error) => {
+            console.error('❌ Service Worker registration failed:', error);
+          });
+      } else {
+        // In development, unregister any existing service workers
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const registration of registrations) {
+            registration.unregister().then((success) => {
+              if (success) {
+                console.log('🔄 Unregistered service worker in dev mode');
+              }
+            });
+          }
         });
+      }
     }
 
     // Listen for foreground messages

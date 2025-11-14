@@ -3,11 +3,19 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 export async function createClient() {
+	// Validate environment variables
+	if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+		throw new Error('NEXT_PUBLIC_SUPABASE_URL is not set');
+	}
+	if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+		throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is not set');
+	}
+
 	const cookieStore = await cookies();
 
 	return createServerClient(
-		process.env.NEXT_PUBLIC_SUPABASE_URL!,
-		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+		process.env.NEXT_PUBLIC_SUPABASE_URL,
+		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 		{
 			cookies: {
 				getAll() {

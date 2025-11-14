@@ -65,6 +65,12 @@ const defaultValues: Partial<CustomerPayload> = {
 	delivery_address_country: 'Sverige',
 };
 
+// Helper to convert empty strings to undefined for optional fields
+const emptyToUndefined = (value: string | null | undefined): string | undefined => {
+	if (value === null || value === undefined) return undefined;
+	return value.trim() === '' ? undefined : value;
+};
+
 const toPayloadDefaults = (customer?: Partial<Customer>): CustomerPayload => {
 	const merged = {
 		...defaultValues,
@@ -73,35 +79,35 @@ const toPayloadDefaults = (customer?: Partial<Customer>): CustomerPayload => {
 
 	return {
 		type: merged.type ?? 'COMPANY',
-		customer_no: merged.customer_no,
+		customer_no: emptyToUndefined(merged.customer_no),
 		company_name: merged.company_name ?? '',
 		org_no: merged.org_no ?? '',
-		vat_no: merged.vat_no ?? '',
+		vat_no: emptyToUndefined(merged.vat_no),
 		f_tax: merged.f_tax ?? false,
 		first_name: merged.first_name ?? '',
 		last_name: merged.last_name ?? '',
 		personal_identity_no: merged.personal_identity_no ?? '',
 		rot_enabled: merged.rot_enabled ?? false,
-		property_designation: merged.property_designation ?? '',
-		housing_assoc_org_no: merged.housing_assoc_org_no ?? '',
-		apartment_no: merged.apartment_no ?? '',
+		property_designation: emptyToUndefined(merged.property_designation),
+		housing_assoc_org_no: emptyToUndefined(merged.housing_assoc_org_no),
+		apartment_no: emptyToUndefined(merged.apartment_no),
 		ownership_share: merged.ownership_share ?? undefined,
 		rot_consent_at: merged.rot_consent_at ? new Date(merged.rot_consent_at) : undefined,
 		invoice_email: merged.invoice_email ?? '',
 		invoice_method: merged.invoice_method ?? 'EMAIL',
-		peppol_id: merged.peppol_id ?? '',
-		gln: merged.gln ?? '',
+		peppol_id: emptyToUndefined(merged.peppol_id),
+		gln: emptyToUndefined(merged.gln),
 		terms: merged.terms ?? 30,
 		default_vat_rate: merged.default_vat_rate ?? 25,
-		bankgiro: merged.bankgiro ?? undefined,
-		plusgiro: merged.plusgiro ?? undefined,
-		reference: merged.reference ?? undefined,
+		bankgiro: emptyToUndefined(merged.bankgiro),
+		plusgiro: emptyToUndefined(merged.plusgiro),
+		reference: emptyToUndefined(merged.reference),
 		invoice_address_street: merged.invoice_address_street ?? '',
 		invoice_address_zip: merged.invoice_address_zip ?? '',
 		invoice_address_city: merged.invoice_address_city ?? '',
 		invoice_address_country: merged.invoice_address_country ?? 'Sverige',
-		phone_mobile: merged.phone_mobile ?? '',
-		notes: merged.notes ?? '',
+		phone_mobile: emptyToUndefined(merged.phone_mobile),
+		notes: emptyToUndefined(merged.notes),
 		is_archived: merged.is_archived ?? false,
 	};
 };
@@ -171,19 +177,63 @@ export function CustomerForm({
 		setValue('rot_enabled', value === 'PRIVATE_ROT', { shouldDirty: true });
 	};
 
-	const submitHandler = handleSubmit(async (values) => {
-		setFormError(null);
-		try {
-			console.log('CustomerForm submit start', values);
-			await onSubmit(values);
-			console.log('CustomerForm submit success');
-		} catch (error) {
-			console.error('Failed to submit customer form', error);
-			setFormError(
-				error instanceof Error ? error.message : 'Kunde inte spara kund'
-			);
+	const submitHandler = handleSubmit(
+		async (values) => {
+			setFormError(null);
+			try {
+				// Ensure required string fields are never undefined (convert to empty string)
+				// This is needed because React Hook Form might return undefined for empty fields
+				const transformedValues: CustomerPayload = {
+					...values,
+					// Required fields - ensure they are strings, not undefined
+					company_name: values.company_name ?? '',
+					org_no: values.org_no ?? '',
+					first_name: values.first_name ?? '',
+					last_name: values.last_name ?? '',
+					personal_identity_no: values.personal_identity_no ?? '',
+					invoice_email: values.invoice_email ?? '',
+					invoice_address_street: values.invoice_address_street ?? '',
+					invoice_address_zip: values.invoice_address_zip ?? '',
+					invoice_address_city: values.invoice_address_city ?? '',
+					invoice_address_country: values.invoice_address_country ?? 'Sverige',
+					// Optional fields - convert empty strings to undefined
+					customer_no: emptyToUndefined(values.customer_no),
+					vat_no: emptyToUndefined(values.vat_no),
+					peppol_id: emptyToUndefined(values.peppol_id),
+					gln: emptyToUndefined(values.gln),
+					bankgiro: emptyToUndefined(values.bankgiro),
+					plusgiro: emptyToUndefined(values.plusgiro),
+					reference: emptyToUndefined(values.reference),
+					phone_mobile: emptyToUndefined(values.phone_mobile),
+					notes: emptyToUndefined(values.notes),
+					property_designation: emptyToUndefined(values.property_designation),
+					housing_assoc_org_no: emptyToUndefined(values.housing_assoc_org_no),
+					apartment_no: emptyToUndefined(values.apartment_no),
+				};
+				await onSubmit(transformedValues);
+			} catch (error) {
+				console.error('[CustomerForm] Submit error:', error);
+				if (error instanceof Error) {
+					// Check if it's a Zod validation error
+					if (error.message.includes('expected string') || error.message.includes('Invalid input')) {
+						setFormError('Kontrollera att alla obligatoriska fält är ifyllda korrekt.');
+					} else {
+						setFormError(error.message);
+					}
+				} else {
+					setFormError('Kunde inte spara kund');
+				}
+			}
+		},
+		(submitErrors) => {
+			const firstError = Object.values(submitErrors)[0];
+			if (firstError && 'message' in firstError && typeof firstError.message === 'string') {
+				setFormError(firstError.message);
+			} else {
+				setFormError('Kunde inte spara kund. Kontrollera fälten.');
+			}
 		}
-	});
+	);
 
 	useEffect(() => {
 		if (!isEditing && !customer?.customer_no) {
@@ -192,7 +242,11 @@ export function CustomerForm({
 	}, [customer?.customer_no, isEditing, setValue]);
 
 	return (
-		<form onSubmit={submitHandler} className="space-y-6">
+		<form onSubmit={submitHandler} className="space-y-6" noValidate>
+			{formError ? (
+				<p className="text-sm text-destructive text-right">{formError}</p>
+			) : null}
+
 			<Card>
 				<CardContent className="space-y-4 pt-6">
 					<div className="grid gap-4 md:grid-cols-2">
@@ -233,26 +287,26 @@ export function CustomerForm({
 							<div className="grid gap-4 md:grid-cols-2">
 								<div>
 									<Label htmlFor="company_name">Företagsnamn *</Label>
-							<Input
-								id="company_name"
-								placeholder="Företagsnamn"
-								{...register('company_name', { required: 'Företagsnamn krävs' })}
-							/>
+									<Input
+										id="company_name"
+										placeholder="Företagsnamn"
+										{...register('company_name', { required: 'Företagsnamn krävs' })}
+									/>
 									<ErrorText message={errors.company_name?.message} />
 								</div>
 								<div>
 									<Label htmlFor="org_no">Organisationsnummer *</Label>
-							<Input
-								id="org_no"
-								placeholder="5560160680"
-								{...register('org_no', { required: 'Organisationsnummer krävs' })}
-							/>
-									{watch('org_no') && (
+									<Input
+										id="org_no"
+										placeholder="5560160680"
+										{...register('org_no', { required: 'Organisationsnummer krävs' })}
+									/>
+									{watch('org_no') ? (
 										<p className="text-xs text-muted-foreground mt-1">
-											{formatSwedishOrganizationNumber(watch('org_no')) ??
+											{formatSwedishOrganizationNumber(String(watch('org_no'))) ??
 												'Kontrollera att numret är korrekt'}
 										</p>
-									)}
+									) : null}
 									<ErrorText message={errors.org_no?.message} />
 								</div>
 							</div>
@@ -303,7 +357,7 @@ export function CustomerForm({
 												type="number"
 												min={0}
 												max={120}
-												value={field.value ?? ''}
+												value={field.value !== undefined ? String(field.value) : ''}
 												onChange={(event) =>
 													field.onChange(
 														event.target.value === ''
@@ -335,7 +389,7 @@ export function CustomerForm({
 									<Input
 										id="bankgiro"
 										placeholder="Valfritt"
-										value={watch('bankgiro') ?? ''}
+										value={(watch('bankgiro') as string | undefined) ?? ''}
 										onChange={(e) =>
 											setValue('bankgiro', e.target.value || undefined, {
 												shouldDirty: true,
@@ -348,7 +402,7 @@ export function CustomerForm({
 									<Input
 										id="plusgiro"
 										placeholder="Valfritt"
-										value={watch('plusgiro') ?? ''}
+										value={(watch('plusgiro') as string | undefined) ?? ''}
 										onChange={(e) =>
 											setValue('plusgiro', e.target.value || undefined, {
 												shouldDirty: true,
@@ -411,7 +465,7 @@ export function CustomerForm({
 									<Input
 										id="reference"
 										placeholder="Valfritt"
-										value={watch('reference') ?? ''}
+										value={(watch('reference') as string | undefined) ?? ''}
 										onChange={(event) =>
 											setValue('reference', event.target.value || undefined, {
 												shouldDirty: true,
@@ -426,12 +480,18 @@ export function CustomerForm({
 							<div className="grid gap-4 md:grid-cols-2">
 								<div>
 									<Label htmlFor="first_name">Förnamn *</Label>
-									<Input id="first_name" {...register('first_name')} />
+									<Input
+										id="first_name"
+										{...register('first_name', { required: 'Förnamn krävs för privatkund' })}
+									/>
 									<ErrorText message={errors.first_name?.message} />
 								</div>
 								<div>
 									<Label htmlFor="last_name">Efternamn *</Label>
-									<Input id="last_name" {...register('last_name')} />
+									<Input
+										id="last_name"
+										{...register('last_name', { required: 'Efternamn krävs för privatkund' })}
+									/>
 									<ErrorText message={errors.last_name?.message} />
 								</div>
 							</div>
@@ -443,15 +503,17 @@ export function CustomerForm({
 									<Input
 										id="personal_identity_no"
 										placeholder="ÅÅMMDDNNNN"
-										{...register('personal_identity_no')}
+										{...register('personal_identity_no', {
+											required: 'Personnummer krävs för privatkund',
+										})}
 									/>
-									{watch('personal_identity_no') && (
+									{watch('personal_identity_no') ? (
 										<p className="text-xs text-muted-foreground mt-1">
 											{formatSwedishPersonalIdentityNumber(
-												watch('personal_identity_no')
+												String(watch('personal_identity_no'))
 											) ?? 'Kontrollera att personnumret är korrekt'}
 										</p>
-									)}
+									) : null}
 									<ErrorText message={errors.personal_identity_no?.message} />
 								</div>
 								<div>
@@ -531,9 +593,9 @@ export function CustomerForm({
 												/>
 											)}
 										/>
-										{ownershipShare !== undefined && (
+										{ownershipShare !== undefined && ownershipShare !== null && (
 											<p className="text-xs text-muted-foreground mt-1">
-												{ownershipShare.toFixed(1)} %
+												{Number(ownershipShare).toFixed(1)} %
 											</p>
 										)}
 										<ErrorText message={errors.ownership_share?.message} />
@@ -550,7 +612,7 @@ export function CustomerForm({
 													id="rot_consent_at"
 													type="date"
 													value={
-														field.value
+														field.value && field.value instanceof Date
 															? field.value.toISOString().slice(0, 10)
 															: ''
 													}
@@ -583,11 +645,19 @@ export function CustomerForm({
 							<Controller
 								name="invoice_address_street"
 								control={control}
+								rules={{
+									validate: (value) => {
+										if (type === 'PRIVATE' && (!value || (typeof value === 'string' && !value.trim()))) {
+											return 'Fakturaadress krävs för privatkund';
+										}
+										return true;
+									},
+								}}
 								render={({ field }) => (
 									<AddressAutocomplete
 										id="invoice_address_street"
 										autoComplete="off"
-										value={field.value ?? ''}
+										value={(field.value as string | undefined) ?? ''}
 										onChange={(value) => field.onChange(value)}
 										onSelect={(addr) => {
 											field.onChange(addr.address_line1);
@@ -605,6 +675,7 @@ export function CustomerForm({
 									/>
 								)}
 							/>
+							<ErrorText message={errors.invoice_address_street?.message} />
 						</div>
 					</div>
 					<div className="grid gap-4 md:grid-cols-4">
@@ -629,7 +700,7 @@ export function CustomerForm({
 							id="notes"
 							rows={4}
 							placeholder='Interna anteckningar (t.ex. "Godkänner endast Peppol")'
-							value={watch('notes') ?? ''}
+							value={(watch('notes') as string | undefined) ?? ''}
 							onChange={(event) =>
 								setValue('notes', event.target.value || undefined, {
 									shouldDirty: true,
@@ -646,13 +717,10 @@ export function CustomerForm({
 						Avbryt
 					</Button>
 				) : null}
-				<Button type="button" disabled={isSubmitting} onClick={() => submitHandler()}>
+				<Button type="submit" disabled={isSubmitting}>
 					{isSubmitting ? 'Sparar...' : submitLabel}
 				</Button>
 			</div>
-			{formError ? (
-				<p className="text-sm text-destructive text-right">{formError}</p>
-			) : null}
 		</form>
 	);
 }

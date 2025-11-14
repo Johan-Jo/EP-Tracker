@@ -108,7 +108,30 @@ export async function POST(request: NextRequest) {
 		}
 
 		const json = await request.json();
-		const payload = parseCustomerPayload(json);
+		
+		// Log the incoming data for debugging
+		console.log('[API] Received customer payload:', JSON.stringify(json, null, 2));
+		
+		let payload;
+		try {
+			payload = parseCustomerPayload(json);
+		} catch (error) {
+			if (error instanceof z.ZodError) {
+				console.error('[API] Validation error:', error.errors);
+				return NextResponse.json(
+					{ 
+						error: 'Invalid input: expected string, received undefined',
+						details: error.errors.map(e => ({
+							path: e.path.join('.'),
+							message: e.message,
+							received: e.code === 'invalid_type' ? e.received : undefined
+						}))
+					},
+					{ status: 422 }
+				);
+			}
+			throw error;
+		}
 		const insertPayload = buildCustomerInsert({
 			payload,
 			orgId: membership.org_id,

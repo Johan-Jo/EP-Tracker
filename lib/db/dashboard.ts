@@ -24,11 +24,18 @@ export async function getDashboardStats(userId: string, orgId: string, startDate
 		return await getDashboardStatsUncached(userId, orgId, startDate);
 	}
 
-	return data as {
-		active_projects: number;
-		total_hours_week: number;
-		total_materials_week: number;
-		total_time_entries_week: number;
+	// Handle case where data might be null or have different structure
+	if (!data || typeof data !== 'object') {
+		console.warn('[DASHBOARD] Invalid cached stats data, using fallback');
+		return await getDashboardStatsUncached(userId, orgId, startDate);
+	}
+
+	// Ensure all required fields exist with defaults
+	return {
+		active_projects: (data as any).active_projects ?? (data as any).projectsCount ?? 0,
+		total_hours_week: (data as any).total_hours_week ?? 0,
+		total_materials_week: (data as any).total_materials_week ?? (data as any).materialsCount ?? 0,
+		total_time_entries_week: (data as any).total_time_entries_week ?? (data as any).timeEntriesCount ?? 0,
 	};
 }
 
@@ -54,11 +61,23 @@ async function getDashboardStatsUncached(userId: string, orgId: string, startDat
 		};
 	}
 
-	return data as {
-		active_projects: number;
-		total_hours_week: number;
-		total_materials_week: number;
-		total_time_entries_week: number;
+	// Handle case where data might be null or have different structure
+	if (!data || typeof data !== 'object') {
+		console.warn('[DASHBOARD] Invalid uncached stats data, using defaults');
+		return {
+			active_projects: 0,
+			total_hours_week: 0,
+			total_materials_week: 0,
+			total_time_entries_week: 0,
+		};
+	}
+
+	// Ensure all required fields exist with defaults
+	return {
+		active_projects: (data as any).active_projects ?? (data as any).projectsCount ?? 0,
+		total_hours_week: (data as any).total_hours_week ?? 0,
+		total_materials_week: (data as any).total_materials_week ?? (data as any).materialsCount ?? 0,
+		total_time_entries_week: (data as any).total_time_entries_week ?? (data as any).timeEntriesCount ?? 0,
 	};
 }
 

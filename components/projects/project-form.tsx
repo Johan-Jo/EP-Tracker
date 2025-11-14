@@ -339,34 +339,19 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 						)}
 					</div>
 
-					<div className='grid gap-4 md:grid-cols-2'>
-						<div className='space-y-2'>
-							<Label htmlFor='project_number'>Projektnummer</Label>
-							<Input
+					<div className='space-y-2'>
+						<Label htmlFor='project_number'>Projektnummer</Label>
+						<Input
 							id='project_number'
 							{...register('project_number')}
 							autoComplete='off'
-							  placeholder='Ex: 2025-001'
+							placeholder='Ex: 2025-001'
 						/>
-							{errors.project_number && (
-								<p className='text-sm text-destructive'>
-									{errors.project_number.message}
-								</p>
-							)}
-						</div>
-
-						<div className='space-y-2'>
-							<Label htmlFor='client_name'>Kundnamn</Label>
-							<Input
-							id='client_name'
-							{...register('client_name')}
-							autoComplete='organization'
-							  placeholder='Ex: Kungsbacka Fastigheter AB'
-						/>
-							{errors.client_name && (
-								<p className='text-sm text-destructive'>{errors.client_name.message}</p>
-							)}
-						</div>
+						{errors.project_number && (
+							<p className='text-sm text-destructive'>
+								{errors.project_number.message}
+							</p>
+						)}
 					</div>
 
 					<div className='space-y-2'>
