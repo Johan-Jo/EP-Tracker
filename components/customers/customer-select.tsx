@@ -128,7 +128,7 @@ export function CustomerSelect({
 					}
 				}}
 			>
-				<DialogContent className="max-w-3xl">
+				<DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>Välj kund</DialogTitle>
 						<DialogDescription>
