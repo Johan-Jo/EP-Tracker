@@ -47,6 +47,8 @@ export const prepareCustomerFields = (payload: CustomerPayload) => {
 		org_no: toNullable(normalizedOrgNo),
 		vat_no: toNullable(payload.vat_no),
 		f_tax: payload.f_tax ?? false,
+		contact_person_name: toNullable(payload.contact_person_name),
+		contact_person_phone: toNullable(payload.contact_person_phone),
 		first_name: toNullable(payload.first_name),
 		last_name: toNullable(payload.last_name),
 		personal_identity_no: toNullable(normalizedPersonalId),
@@ -125,45 +127,84 @@ export const buildCustomerUpdate = ({
 export const parseCustomerPayload = (data: unknown) =>
 	customerPayloadSchema.parse(data);
 
-export const customerToPayload = (customer: Customer): CustomerPayload => ({
-	type: customer.type,
-	customer_no: customer.customer_no,
-	company_name: customer.company_name ?? '',
-	org_no: customer.org_no ?? '',
-	vat_no: customer.vat_no ?? '',
-	f_tax: customer.f_tax ?? false,
-	first_name: customer.first_name ?? '',
-	last_name: customer.last_name ?? '',
-	personal_identity_no: customer.personal_identity_no ?? '',
-	rot_enabled: customer.rot_enabled ?? false,
-	property_designation: customer.property_designation ?? '',
-	housing_assoc_org_no: customer.housing_assoc_org_no ?? '',
-	apartment_no: customer.apartment_no ?? '',
-	ownership_share:
-		customer.ownership_share === null || customer.ownership_share === undefined
-			? undefined
-			: customer.ownership_share,
-	rot_consent_at: customer.rot_consent_at ? new Date(customer.rot_consent_at) : undefined,
-	invoice_email: customer.invoice_email ?? '',
-	invoice_method: customer.invoice_method ?? invoiceMethodEnum.Enum.EMAIL,
-	peppol_id: customer.peppol_id ?? '',
-	gln: customer.gln ?? '',
-	terms: customer.terms ?? undefined,
-	default_vat_rate: customer.default_vat_rate ?? 25,
-	bankgiro: customer.bankgiro ?? '',
-	plusgiro: customer.plusgiro ?? '',
-	reference: customer.reference ?? '',
-	invoice_address_street: customer.invoice_address_street ?? '',
-	invoice_address_zip: customer.invoice_address_zip ?? '',
-	invoice_address_city: customer.invoice_address_city ?? '',
-	invoice_address_country: customer.invoice_address_country ?? 'Sverige',
-	delivery_address_street: customer.delivery_address_street ?? '',
-	delivery_address_zip: customer.delivery_address_zip ?? '',
-	delivery_address_city: customer.delivery_address_city ?? '',
-	delivery_address_country: customer.delivery_address_country ?? 'Sverige',
-	phone_mobile: customer.phone_mobile ?? '',
-	notes: customer.notes ?? '',
-	is_archived: customer.is_archived ?? false,
-});
+export const customerToPayload = (customer: Customer): CustomerPayload => {
+	const toUndefined = (value: string | null | undefined): string | undefined => {
+		return value === null || value === undefined || value === '' ? undefined : value;
+	};
+
+	// Helper to preserve string values for required fields
+	const preserveString = (value: string | null | undefined): string | undefined => {
+		if (typeof value === 'string' && value.trim().length > 0) {
+			return value;
+		}
+		return undefined;
+	};
+
+	// Preserve required fields for company/private customers
+	// For COMPANY: company_name, org_no, invoice_email are required
+	// For PRIVATE: first_name, last_name, personal_identity_no, invoice_email, invoice_address_street are required
+	const payload: CustomerPayload = {
+		type: customer.type,
+		customer_no: customer.customer_no,
+		// For COMPANY, preserve these values (keep string values, convert null/undefined to undefined)
+		company_name: customer.type === 'COMPANY' 
+			? preserveString(customer.company_name)
+			: toUndefined(customer.company_name),
+		org_no: customer.type === 'COMPANY' 
+			? preserveString(customer.org_no)
+			: toUndefined(customer.org_no),
+		vat_no: toUndefined(customer.vat_no),
+		f_tax: customer.f_tax ?? false,
+		contact_person_name: toUndefined(customer.contact_person_name),
+		contact_person_phone: toUndefined(customer.contact_person_phone),
+		// For PRIVATE, preserve these values (null/undefined becomes undefined, but string values are kept)
+		first_name: customer.type === 'PRIVATE' 
+			? (customer.first_name ?? undefined) 
+			: toUndefined(customer.first_name),
+		last_name: customer.type === 'PRIVATE' 
+			? (customer.last_name ?? undefined) 
+			: toUndefined(customer.last_name),
+		personal_identity_no: (customer.type === 'PRIVATE' || customer.rot_enabled)
+			? (customer.personal_identity_no ?? undefined)
+			: toUndefined(customer.personal_identity_no),
+		rot_enabled: customer.rot_enabled ?? false,
+		property_designation: toUndefined(customer.property_designation),
+		housing_assoc_org_no: toUndefined(customer.housing_assoc_org_no),
+		apartment_no: toUndefined(customer.apartment_no),
+		ownership_share:
+			customer.ownership_share === null || customer.ownership_share === undefined
+				? undefined
+				: customer.ownership_share,
+		rot_consent_at: customer.rot_consent_at ? new Date(customer.rot_consent_at) : undefined,
+		// Required for both COMPANY and PRIVATE
+		invoice_email: (customer.type === 'COMPANY' || customer.type === 'PRIVATE') 
+			? preserveString(customer.invoice_email)
+			: toUndefined(customer.invoice_email),
+		invoice_method: customer.invoice_method ?? invoiceMethodEnum.Enum.EMAIL,
+		peppol_id: toUndefined(customer.peppol_id),
+		gln: toUndefined(customer.gln),
+		terms: customer.terms ?? undefined,
+		default_vat_rate: customer.default_vat_rate ?? 25,
+		bankgiro: toUndefined(customer.bankgiro),
+		plusgiro: toUndefined(customer.plusgiro),
+		reference: toUndefined(customer.reference),
+		// Required for PRIVATE
+		invoice_address_street: customer.type === 'PRIVATE' 
+			? (customer.invoice_address_street ?? undefined) 
+			: toUndefined(customer.invoice_address_street),
+		invoice_address_zip: toUndefined(customer.invoice_address_zip),
+		invoice_address_city: toUndefined(customer.invoice_address_city),
+		invoice_address_country: toUndefined(customer.invoice_address_country),
+		delivery_address_street: toUndefined(customer.delivery_address_street),
+		delivery_address_zip: toUndefined(customer.delivery_address_zip),
+		delivery_address_city: toUndefined(customer.delivery_address_city),
+		delivery_address_country: toUndefined(customer.delivery_address_country),
+		phone_mobile: toUndefined(customer.phone_mobile),
+		notes: toUndefined(customer.notes),
+		is_archived: customer.is_archived ?? false,
+	};
+
+	return payload;
+};
 
 

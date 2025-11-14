@@ -36,14 +36,13 @@ export async function GET(request: NextRequest) {
 		let query = supabase
 			.from('customers')
 			.select(
-				'id, customer_no, type, company_name, first_name, last_name, org_no, personal_identity_no, invoice_email, phone_mobile, is_archived, created_at, updated_at',
+				'id, customer_no, type, company_name, first_name, last_name, org_no, personal_identity_no, invoice_email, phone_mobile, contact_person_name, contact_person_phone, is_archived, created_at, updated_at',
 				{ count: 'exact' }
 			)
 			.eq('org_id', membership.org_id)
 			.range(from, to)
-			.order('company_name', { ascending: true })
-			.order('last_name', { ascending: true })
-			.order('first_name', { ascending: true });
+			// Sort by customer_no as primary sort (always present), then by name
+			.order('customer_no', { ascending: true });
 
 		if (!includeArchived) {
 			query = query.eq('is_archived', false);
@@ -122,7 +121,7 @@ export async function POST(request: NextRequest) {
 				return NextResponse.json(
 					{ 
 						error: 'Invalid input: expected string, received undefined',
-						details: zodError.errors.map(e => ({
+						details: (zodError.errors || []).map(e => ({
 							path: e.path.join('.'),
 							message: e.message,
 							received: e.code === 'invalid_type' ? e.received : undefined

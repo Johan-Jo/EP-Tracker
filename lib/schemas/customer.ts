@@ -93,6 +93,8 @@ export const customerPayloadSchema = z
 		org_no: optionalTrimmedString(20),
 		vat_no: optionalTrimmedString(20),
 		f_tax: z.boolean().optional().default(false),
+		contact_person_name: optionalTrimmedString(100),
+		contact_person_phone: optionalTrimmedString(30),
 
 		first_name: optionalTrimmedString(100),
 		last_name: optionalTrimmedString(100),
@@ -161,11 +163,12 @@ export const customerPayloadSchema = z
 				});
 			}
 
-			if (!data.invoice_email) {
+			// Invoice email is only required if invoice method is EMAIL
+			if (data.invoice_method === 'EMAIL' && !data.invoice_email) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					path: ['invoice_email'],
-					message: 'Fakturamejl krävs för företagskund',
+					message: 'Fakturamejl krävs när fakturakanal är E-postfaktura',
 				});
 			}
 		}
@@ -195,11 +198,12 @@ export const customerPayloadSchema = z
 				});
 			}
 
-			if (!data.invoice_email) {
+			// Invoice email is only required if invoice method is EMAIL
+			if (data.invoice_method === 'EMAIL' && !data.invoice_email) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					path: ['invoice_email'],
-					message: 'Fakturamejl krävs för privatkund',
+					message: 'Fakturamejl krävs när fakturakanal är E-postfaktura',
 				});
 			}
 
@@ -281,6 +285,8 @@ export type Customer = {
 	org_no: string | null;
 	vat_no: string | null;
 	f_tax: boolean;
+	contact_person_name: string | null;
+	contact_person_phone: string | null;
 	first_name: string | null;
 	last_name: string | null;
 	personal_identity_no: string | null;

@@ -110,7 +110,7 @@ export function CustomerCard({ customerId, canMerge = true }: CustomerCardProps)
 			return [];
 		}
 
-		return [
+		const details: Array<{ label: string; value?: string }> = [
 			{
 				label: 'Kundnummer',
 				value: customer.customer_no,
@@ -122,6 +122,25 @@ export function CustomerCard({ customerId, canMerge = true }: CustomerCardProps)
 						? customer.org_no ?? undefined
 						: customer.personal_identity_no ?? undefined,
 			},
+		];
+
+		// Add contact person fields for companies
+		if (customer.type === 'COMPANY') {
+			if (customer.contact_person_name) {
+				details.push({
+					label: 'Kontaktperson',
+					value: customer.contact_person_name,
+				});
+			}
+			if (customer.contact_person_phone) {
+				details.push({
+					label: 'Kontaktpersonens telefon',
+					value: customer.contact_person_phone,
+				});
+			}
+		}
+
+		details.push(
 			{
 				label: 'Fakturakanal',
 				value:
@@ -144,8 +163,10 @@ export function CustomerCard({ customerId, canMerge = true }: CustomerCardProps)
 					customer.default_vat_rate !== undefined
 						? `${customer.default_vat_rate} %`
 						: undefined,
-			},
-		];
+			}
+		);
+
+		return details;
 	}, [customer]);
 
 	if (isLoading || !customer) {

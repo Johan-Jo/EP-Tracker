@@ -56,11 +56,42 @@ const MERGEABLE_FIELDS: Array<keyof ReturnType<typeof prepareCustomerFields>> = 
 
 function sanitizeMergedPayload(target: Customer, overrides?: z.infer<typeof mergeRequestSchema>['overrides']) {
 	const basePayload = customerToPayload(target);
+	
+	// Filter out undefined values from overrides to prevent them from overriding basePayload
+	const cleanOverrides = overrides 
+		? Object.fromEntries(
+			Object.entries(overrides).filter(([_, value]) => value !== undefined)
+		)
+		: {};
+	
+	// Ensure required fields are preserved when merging
+	// If overrides doesn't include required fields, keep them from basePayload
+	const finalType = cleanOverrides.type ?? basePayload.type;
+	const finalInvoiceMethod = cleanOverrides.invoice_method ?? basePayload.invoice_method;
+	
 	const mergedPayloadInput = {
 		...basePayload,
-		...(overrides ?? {}),
-		type: overrides?.type ?? basePayload.type,
-		customer_no: overrides?.customer_no ?? basePayload.customer_no,
+		...cleanOverrides,
+		// Always preserve type and customer_no from basePayload unless explicitly overridden
+		type: finalType,
+		customer_no: cleanOverrides.customer_no ?? basePayload.customer_no,
+		invoice_method: finalInvoiceMethod,
+		// For COMPANY: ensure required fields are present (use basePayload values if overrides are undefined)
+		...(finalType === 'COMPANY' && {
+			company_name: cleanOverrides.company_name ?? basePayload.company_name,
+			org_no: cleanOverrides.org_no ?? basePayload.org_no,
+			// Invoice email: use override if provided, otherwise use basePayload
+			invoice_email: cleanOverrides.invoice_email ?? basePayload.invoice_email,
+		}),
+		// For PRIVATE: ensure required fields are present
+		...(finalType === 'PRIVATE' && {
+			first_name: cleanOverrides.first_name ?? basePayload.first_name,
+			last_name: cleanOverrides.last_name ?? basePayload.last_name,
+			personal_identity_no: cleanOverrides.personal_identity_no ?? basePayload.personal_identity_no,
+			// Invoice email: use override if provided, otherwise use basePayload
+			invoice_email: cleanOverrides.invoice_email ?? basePayload.invoice_email,
+			invoice_address_street: cleanOverrides.invoice_address_street ?? basePayload.invoice_address_street,
+		}),
 	};
 
 	const parsedPayload = customerPayloadSchema.parse(mergedPayloadInput);

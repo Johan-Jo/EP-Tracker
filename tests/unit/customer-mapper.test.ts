@@ -54,6 +54,7 @@ describe('customer-mapper', () => {
 			type: 'COMPANY',
 			company_name: 'Example AB',
 			org_no: '5560160680',
+			invoice_email: 'invoice@example.com',
 		});
 
 		const insert = buildCustomerInsert({
@@ -77,6 +78,7 @@ describe('customer-mapper', () => {
 			type: 'COMPANY',
 			company_name: 'Example AB',
 			org_no: '5560160680',
+			invoice_email: 'invoice@example.com',
 			customer_no: 'C-EXISTING',
 		});
 
@@ -101,11 +103,13 @@ describe('customer-mapper', () => {
 			type: 'COMPANY',
 			company_name: 'Example AB',
 			org_no: '5560160680',
-			vat_no: null,
-			f_tax: true,
-			first_name: null,
-			last_name: null,
-			personal_identity_no: null,
+		vat_no: null,
+		f_tax: true,
+		contact_person_name: null,
+		contact_person_phone: null,
+		first_name: null,
+		last_name: null,
+		personal_identity_no: null,
 			rot_enabled: false,
 			property_designation: null,
 			housing_assoc_org_no: null,

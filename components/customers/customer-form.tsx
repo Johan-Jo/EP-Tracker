@@ -53,6 +53,7 @@ const vatRateOptions = [0, 6, 12, 25].map((value) => ({
 }));
 
 type CustomerFormInput = z.input<typeof customerPayloadSchema>;
+type CustomerFormOutput = z.infer<typeof customerPayloadSchema>;
 
 const defaultValues: Partial<CustomerPayload> = {
 	type: 'COMPANY',
@@ -84,6 +85,8 @@ const toPayloadDefaults = (customer?: Partial<Customer>): CustomerPayload => {
 		org_no: merged.org_no ?? '',
 		vat_no: emptyToUndefined(merged.vat_no),
 		f_tax: merged.f_tax ?? false,
+		contact_person_name: emptyToUndefined(merged.contact_person_name),
+		contact_person_phone: emptyToUndefined(merged.contact_person_phone),
 		first_name: merged.first_name ?? '',
 		last_name: merged.last_name ?? '',
 		personal_identity_no: merged.personal_identity_no ?? '',
@@ -188,6 +191,8 @@ export function CustomerForm({
 					// Optional fields - convert empty strings to undefined
 					customer_no: emptyToUndefined(values.customer_no),
 					vat_no: emptyToUndefined(values.vat_no),
+					contact_person_name: emptyToUndefined(values.contact_person_name),
+					contact_person_phone: emptyToUndefined(values.contact_person_phone),
 					peppol_id: emptyToUndefined(values.peppol_id),
 					gln: emptyToUndefined(values.gln),
 					bankgiro: emptyToUndefined(values.bankgiro),
@@ -298,14 +303,38 @@ export function CustomerForm({
 									<ErrorText message={errors.org_no?.message} />
 								</div>
 							</div>
+							<div className="grid gap-4 md:grid-cols-2">
+								<div>
+									<Label htmlFor="contact_person_name">Kontaktperson</Label>
+									<Input
+										id="contact_person_name"
+										placeholder="Namn på kontaktperson"
+										{...register('contact_person_name')}
+									/>
+									<ErrorText message={errors.contact_person_name?.message} />
+								</div>
+								<div>
+									<Label htmlFor="contact_person_phone">Kontaktpersonens telefon</Label>
+									<Input
+										id="contact_person_phone"
+										placeholder="070-123 45 67"
+										{...register('contact_person_phone')}
+									/>
+									<ErrorText message={errors.contact_person_phone?.message} />
+								</div>
+							</div>
 							<div className="grid gap-4 md:grid-cols-3">
 								<div>
-									<Label htmlFor="invoice_email">Fakturamejl *</Label>
+									<Label htmlFor="invoice_email">
+										Fakturamejl {watch('invoice_method') === 'EMAIL' ? '*' : ''}
+									</Label>
 									<Input
 										id="invoice_email"
 										type="email"
 										placeholder="faktura@kund.se"
-										{...register('invoice_email', { required: 'Fakturamejl krävs' })}
+										{...register('invoice_email', {
+											required: watch('invoice_method') === 'EMAIL' ? 'Fakturamejl krävs när fakturakanal är E-postfaktura' : false,
+										})}
 									/>
 									<ErrorText message={errors.invoice_email?.message} />
 								</div>
