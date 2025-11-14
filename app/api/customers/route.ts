@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 			)
 			.eq('org_id', membership.org_id)
 			.range(from, to)
-			.order('company_name', { ascending: true, nullsLast: false })
+			.order('company_name', { ascending: true })
 			.order('last_name', { ascending: true })
 			.order('first_name', { ascending: true });
 
