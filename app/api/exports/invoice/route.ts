@@ -38,16 +38,24 @@ export async function GET(request: NextRequest) {
             { data: expenses },
             { data: atas }
         ] = await Promise.all([
-            // Fetch approved time entries
+            // Fetch approved time entries from subcontractors only
             supabase
                 .from('time_entries')
                 .select(`
                     *,
                     project:projects(name, project_number),
-                    phase:phases(name)
+                    phase:phases(name),
+                    subcontractor:subcontractors!time_entries_subcontractor_id_fkey(
+                        id,
+                        subcontractor_no,
+                        company_name,
+                        hourly_rate_sek,
+                        default_vat_rate
+                    )
                 `)
                 .eq('org_id', membership.org_id)
                 .eq('status', 'approved')
+                .not('subcontractor_id', 'is', null) // Only include subcontractor time entries
                 .gte('start_at', periodStart)
                 .lte('start_at', periodEnd),
 

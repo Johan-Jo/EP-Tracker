@@ -20,6 +20,7 @@ import {
 	DollarSign,
 	ContactRound,
 	Users,
+	Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -72,6 +73,12 @@ const menuItems: NavItem[] = [
 		label: 'Personal',
 		href: '/dashboard/employees',
 		icon: Users,
+		roles: ['admin', 'foreman'],
+	},
+	{
+		label: 'Underentreprenörer',
+		href: '/dashboard/subcontractors',
+		icon: Building2,
 		roles: ['admin', 'foreman'],
 	},
 	{

@@ -38,17 +38,19 @@ export async function GET(request: NextRequest) {
             { data: expenses },
             { data: mileage }
         ] = await Promise.all([
-            // Fetch approved time entries
+            // Fetch approved time entries with employee data
             supabase
                 .from('time_entries')
                 .select(`
                     *,
                     user:profiles!time_entries_user_id_fkey(full_name, email),
                     project:projects(name, project_number),
-                    phase:phases(name)
+                    phase:phases(name),
+                    employee:employees!time_entries_employee_id_fkey(id, employee_no, hourly_rate_sek, salary_per_hour)
                 `)
                 .eq('org_id', membership.org_id)
                 .eq('status', 'approved')
+                .not('employee_id', 'is', null) // Only include employee time entries
                 .gte('start_at', periodStart)
                 .lte('start_at', periodEnd),
 

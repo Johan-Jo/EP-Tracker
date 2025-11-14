@@ -14,6 +14,12 @@ type TimeEntry = {
     phase: {
         name: string;
     } | null;
+    employee: {
+        id: string;
+        employee_no: string;
+        hourly_rate_sek: number | null;
+        salary_per_hour: number | null;
+    } | null;
 };
 
 type Material = {
@@ -82,10 +88,18 @@ export function generateSalaryCSV(
         'Kommentar'
     ].join(';'));
 
-    // Add time entries
+    // Add time entries with salary calculations
     for (const entry of timeEntries) {
         const date = new Date(entry.start_at).toLocaleDateString('sv-SE');
-        const hours = entry.duration_min ? (entry.duration_min / 60).toFixed(2) : '0.00';
+        const hours = entry.duration_min ? (entry.duration_min / 60) : 0;
+        const hoursFormatted = hours.toFixed(2);
+        
+        // Calculate salary amount: use salary_per_hour if available, otherwise hourly_rate_sek
+        let salaryAmount = 0;
+        if (entry.employee) {
+            const hourlyRate = entry.employee.salary_per_hour ?? entry.employee.hourly_rate_sek ?? 0;
+            salaryAmount = hours * hourlyRate;
+        }
         
         rows.push([
             date,
@@ -96,9 +110,9 @@ export function generateSalaryCSV(
             entry.phase?.name || '',
             'Tid',
             entry.task_label || '',
-            hours,
-            '',
-            ''
+            hoursFormatted,
+            salaryAmount > 0 ? salaryAmount.toFixed(2) : '',
+            entry.employee?.employee_no || ''
         ].join(';'));
     }
 

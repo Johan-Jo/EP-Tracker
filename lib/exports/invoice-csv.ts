@@ -10,6 +10,13 @@ type TimeEntry = {
     phase: {
         name: string;
     } | null;
+    subcontractor: {
+        id: string;
+        subcontractor_no: string;
+        company_name: string;
+        hourly_rate_sek: number | null;
+        default_vat_rate: number;
+    } | null;
 };
 
 type Material = {
@@ -92,11 +99,25 @@ export function generateInvoiceCSV(
         }
     }
 
-    // Add grouped time entries
+    // Add grouped time entries with pricing from subcontractors
     for (const [key, data] of timeByProjectPhase.entries()) {
         const firstEntry = data.entries[0];
-        const hours = (data.totalMinutes / 60).toFixed(2);
+        const hours = data.totalMinutes / 60;
+        const hoursFormatted = hours.toFixed(2);
         const date = new Date(firstEntry.start_at).toLocaleDateString('sv-SE');
+        
+        // Calculate total amount: hours × hourly rate
+        let unitPrice = 0;
+        let totalAmount = 0;
+        if (firstEntry.subcontractor?.hourly_rate_sek) {
+            unitPrice = firstEntry.subcontractor.hourly_rate_sek;
+            totalAmount = hours * unitPrice;
+        }
+        
+        // Include subcontractor info in description
+        const description = firstEntry.subcontractor
+            ? `Arbetad tid - ${firstEntry.subcontractor.company_name} (${data.entries.length} registreringar)`
+            : `Arbetad tid (${data.entries.length} registreringar)`;
         
         rows.push([
             date,
@@ -104,11 +125,11 @@ export function generateInvoiceCSV(
             firstEntry.project.project_number || '',
             firstEntry.phase?.name || 'Ingen fas',
             'Arbete',
-            `Arbetad tid (${data.entries.length} registreringar)`,
-            hours,
+            description,
+            hoursFormatted,
             'timmar',
-            '',
-            ''
+            unitPrice > 0 ? unitPrice.toFixed(2) : '',
+            totalAmount > 0 ? totalAmount.toFixed(2) : ''
         ].join(';'));
     }
 

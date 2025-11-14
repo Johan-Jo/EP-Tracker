@@ -137,6 +137,12 @@ const settingsItems: NavItem[] = [
 		roles: ['admin', 'foreman'],
 	},
 	{
+		label: 'Underentreprenörer',
+		href: '/dashboard/subcontractors',
+		icon: Building2,
+		roles: ['admin', 'foreman'],
+	},
+	{
 		label: 'Organisation',
 		href: '/dashboard/settings/organization',
 		icon: Building2,
