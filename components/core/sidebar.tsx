@@ -56,12 +56,6 @@ const navItems: NavItem[] = [
 		],
 	},
 	{
-		label: 'Kunder',
-		href: '/dashboard/customers',
-		icon: ContactRound,
-		roles: ['admin', 'foreman', 'finance'],
-	},
-	{
 		label: 'Planering',
 		href: '/dashboard/planning',
 		icon: Calendar,
@@ -130,6 +124,12 @@ const navItems: NavItem[] = [
 ];
 
 const settingsItems: NavItem[] = [
+	{
+		label: 'Kunder',
+		href: '/dashboard/customers',
+		icon: ContactRound,
+		roles: ['admin', 'foreman', 'finance'],
+	},
 	{
 		label: 'Organisation',
 		href: '/dashboard/settings/organization',

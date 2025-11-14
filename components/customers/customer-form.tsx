@@ -161,20 +161,9 @@ export function CustomerForm({
 	const invoiceMethod = watch('invoice_method');
 	const ownershipShare = watch('ownership_share');
 
-	const customerTypeSelection = useMemo<'COMPANY' | 'PRIVATE_NO_ROT' | 'PRIVATE_ROT'>(() => {
-		if (type === 'COMPANY') return 'COMPANY';
-		return rotEnabled ? 'PRIVATE_ROT' : 'PRIVATE_NO_ROT';
-	}, [type, rotEnabled]);
-
-	const handleCustomerTypeChange = (value: 'COMPANY' | 'PRIVATE_NO_ROT' | 'PRIVATE_ROT') => {
-		if (value === 'COMPANY') {
-			setValue('type', 'COMPANY', { shouldDirty: true });
-			setValue('rot_enabled', false, { shouldDirty: true });
-			return;
-		}
-
-		setValue('type', 'PRIVATE', { shouldDirty: true });
-		setValue('rot_enabled', value === 'PRIVATE_ROT', { shouldDirty: true });
+	const handleCustomerTypeChange = (value: 'COMPANY' | 'PRIVATE') => {
+		setValue('type', value, { shouldDirty: true });
+		// Don't reset rot_enabled - it can be enabled for both company and private customers
 	};
 
 	const submitHandler = handleSubmit(
@@ -253,9 +242,9 @@ export function CustomerForm({
 						<div>
 							<Label htmlFor="customer_type">Kundtyp</Label>
 							<Select
-								value={customerTypeSelection}
+								value={type}
 								onValueChange={(value) =>
-									handleCustomerTypeChange(value as 'COMPANY' | 'PRIVATE_NO_ROT' | 'PRIVATE_ROT')
+									handleCustomerTypeChange(value as 'COMPANY' | 'PRIVATE')
 								}
 							>
 								<SelectTrigger id="customer_type">
@@ -263,8 +252,7 @@ export function CustomerForm({
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="COMPANY">Företag</SelectItem>
-									<SelectItem value="PRIVATE_NO_ROT">Privat (utan ROT)</SelectItem>
-									<SelectItem value="PRIVATE_ROT">Privat (ROT)</SelectItem>
+									<SelectItem value="PRIVATE">Privat</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
