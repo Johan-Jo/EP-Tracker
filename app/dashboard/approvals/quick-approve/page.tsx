@@ -14,7 +14,7 @@ type SearchParams = {
 };
 
 interface QuickApprovePageProps {
-	searchParams: SearchParams;
+	searchParams: Promise<SearchParams>;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -25,7 +25,7 @@ function getErrorMessage(error: unknown): string {
 }
 
 export default async function QuickApprovePage({ searchParams }: QuickApprovePageProps) {
-	const params = searchParams;
+	const params = await searchParams;
 	const { user, membership } = await getSession();
 
 	if (!user) {
