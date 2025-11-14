@@ -115,6 +115,9 @@ export const buildCustomerUpdate = ({
 
 	return {
 		...base,
+		...(payload.customer_no !== undefined
+			? { customer_no: payload.customer_no ?? null }
+			: {}),
 		updated_by: userId,
 	};
 };

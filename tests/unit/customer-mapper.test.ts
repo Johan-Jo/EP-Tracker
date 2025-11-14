@@ -90,6 +90,7 @@ describe('customer-mapper', () => {
 			org_no: '5560160680',
 			updated_by: 'user-456',
 		});
+		expect(update.customer_no).toBe('C-EXISTING');
 	});
 
 	it('maps customer record to payload defaults', () => {

@@ -80,10 +80,6 @@ export async function PUT(request: NextRequest, context: RouteContext<RouteParam
 			userId: user.id,
 		});
 
-		if (payload.customer_no) {
-			updatePayload.customer_no = payload.customer_no;
-		}
-
 		const supabase = await createClient();
 		const { data, error } = await supabase
 			.from('customers')
