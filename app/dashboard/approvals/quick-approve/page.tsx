@@ -162,7 +162,7 @@ export default async function QuickApprovePage({ searchParams }: QuickApprovePag
 					`
 				)
 				.eq('org_id', membership.org_id)
-				.eq('user_id', searchParams.userId)
+				.eq('user_id', params.userId)
 				.in('status', ['draft', 'submitted'])
 				.not('stop_at', 'is', null);
 
