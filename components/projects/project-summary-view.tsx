@@ -29,6 +29,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { ManageTeamDialog } from '@/components/projects/manage-team-dialog';
+import { CustomerSelect } from '@/components/customers/customer-select';
+import { useCustomer } from '@/lib/hooks/use-customers';
+import type { Customer } from '@/lib/schemas/customer';
 
 interface ProjectSummaryViewProps {
 	projectId: string;
@@ -36,6 +39,7 @@ interface ProjectSummaryViewProps {
 	projectName?: string;
 	projectNumber?: string | null;
 	clientName?: string | null;
+	customerId?: string | null;
 	siteAddress?: string | null;
 	status?: string;
 	budgetMode?: string;
@@ -108,7 +112,7 @@ interface ProjectSummary {
 	};
 }
 
-export function ProjectSummaryView({ projectId, canEdit, projectName, projectNumber, clientName, siteAddress, status, budgetMode, budgetHours, budgetAmount, showEditButton = false, initialSummary }: ProjectSummaryViewProps) {
+export function ProjectSummaryView({ projectId, canEdit, projectName, projectNumber, clientName, customerId, siteAddress, status, budgetMode, budgetHours, budgetAmount, showEditButton = false, initialSummary }: ProjectSummaryViewProps) {
 	const router = useRouter();
 	const [summary, setSummary] = useState<ProjectSummary | null>(initialSummary || null);
 	const [isLoading, setIsLoading] = useState(!initialSummary);
@@ -127,8 +131,13 @@ export function ProjectSummaryView({ projectId, canEdit, projectName, projectNum
 	const [editBudgetMode, setEditBudgetMode] = useState('');
 	const [editBudgetHours, setEditBudgetHours] = useState('');
 	const [editBudgetAmount, setEditBudgetAmount] = useState('');
+	const [editCustomerId, setEditCustomerId] = useState<string | null>(null);
+	const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
 	const [isUpdatingProject, setIsUpdatingProject] = useState(false);
 	const [showTeamDialog, setShowTeamDialog] = useState(false);
+	
+	// Fetch current customer if customer_id exists
+	const { data: currentCustomer } = useCustomer(editCustomerId);
 
 	useEffect(() => {
 		// Only fetch if we don't have initial summary
@@ -147,8 +156,18 @@ export function ProjectSummaryView({ projectId, canEdit, projectName, projectNum
 		setEditBudgetMode(budgetMode || 'none');
 		setEditBudgetHours(budgetHours?.toString() || '');
 		setEditBudgetAmount(budgetAmount?.toString() || '');
+		setEditCustomerId(customerId || null);
 		setShowEditProjectDialog(true);
 	};
+	
+	// Update editCustomer when currentCustomer changes
+	useEffect(() => {
+		if (currentCustomer && editCustomerId === currentCustomer.id) {
+			setEditCustomer(currentCustomer);
+		} else if (!editCustomerId) {
+			setEditCustomer(null);
+		}
+	}, [currentCustomer, editCustomerId]);
 
 	const fetchSummary = async () => {
 		try {
@@ -223,6 +242,7 @@ export function ProjectSummaryView({ projectId, canEdit, projectName, projectNum
 					name: editProjectName,
 					project_number: editProjectNumber || null,
 					client_name: editClientName || null,
+					customer_id: editCustomerId || null,
 					site_address: editSiteAddress || null,
 					status: editStatus,
 					budget_mode: editBudgetMode,
@@ -820,14 +840,24 @@ export function ProjectSummaryView({ projectId, canEdit, projectName, projectNum
 							/>
 						</div>
 						<div>
-							<Label htmlFor='edit-client-name'>Kund</Label>
-							<Input
-								id='edit-client-name'
-								value={editClientName}
-								onChange={(e) => setEditClientName(e.target.value)}
-								placeholder='Kundnamn'
-								disabled={isUpdatingProject}
+							<Label>Kund</Label>
+							<CustomerSelect
+								value={editCustomer}
+								onChange={(customer) => {
+									setEditCustomer(customer);
+									setEditCustomerId(customer.id);
+									// Auto-populate client_name for backward compatibility
+									const displayName = customer.type === 'COMPANY'
+										? customer.company_name
+										: `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim();
+									setEditClientName(displayName || null);
+								}}
+								placeholder='Välj kund'
+								allowCreate={true}
 							/>
+							<p className='text-xs text-muted-foreground mt-1'>
+								Välj en kund från kundregistret eller skapa en ny
+							</p>
 						</div>
 						<div>
 							<Label htmlFor='edit-site-address'>Platsadress</Label>

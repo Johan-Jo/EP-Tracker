@@ -260,6 +260,7 @@ export default async function ProjectDetailPage(props: PageProps) {
 					projectName={project.name}
 					projectNumber={project.project_number}
 					clientName={customerDisplayName}
+					customerId={project.customer_id}
 					siteAddress={project.site_address}
 					status={project.status}
 					budgetMode={project.budget_mode}

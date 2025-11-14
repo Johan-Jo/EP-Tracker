@@ -48,6 +48,7 @@ export async function PATCH(request: NextRequest, context: RouteContext<RoutePar
 			name,
 			project_number,
 			client_name,
+			customer_id,
 			site_address,
 			status,
 			budget_mode,
@@ -68,6 +69,7 @@ export async function PATCH(request: NextRequest, context: RouteContext<RoutePar
 		if (name !== undefined) updateData.name = name;
 		if (project_number !== undefined) updateData.project_number = project_number;
 		if (client_name !== undefined) updateData.client_name = client_name;
+		if (customer_id !== undefined) updateData.customer_id = customer_id;
 		if (site_address !== undefined) updateData.site_address = site_address;
 		if (status !== undefined) updateData.status = status;
 		if (budget_mode !== undefined) updateData.budget_mode = budget_mode;
