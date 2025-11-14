@@ -20,6 +20,7 @@ import {
 	Calendar,
 	QrCode,
 	DollarSign,
+	ContactRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -53,6 +54,12 @@ const navItems: NavItem[] = [
 				roles: ['admin', 'foreman'],
 			},
 		],
+	},
+	{
+		label: 'Kunder',
+		href: '/dashboard/customers',
+		icon: ContactRound,
+		roles: ['admin', 'foreman', 'finance'],
 	},
 	{
 		label: 'Planering',

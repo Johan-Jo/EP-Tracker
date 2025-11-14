@@ -18,6 +18,7 @@ import {
 	QrCode,
 	X,
 	DollarSign,
+	ContactRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -60,6 +61,12 @@ const mainNavItems: NavItem[] = [
 
 // Secondary navigation items (shown in menu modal)
 const menuItems: NavItem[] = [
+	{
+		label: 'Kunder',
+		href: '/dashboard/customers',
+		icon: ContactRound,
+		roles: ['admin', 'foreman', 'finance'],
+	},
 	{
 		label: 'Personalliggare',
 		href: '/dashboard/worksites',

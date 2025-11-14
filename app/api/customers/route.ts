@@ -117,11 +117,12 @@ export async function POST(request: NextRequest) {
 			payload = parseCustomerPayload(json);
 		} catch (error) {
 			if (error instanceof z.ZodError) {
-				console.error('[API] Validation error:', error.errors);
+				const zodError = error as z.ZodError;
+				console.error('[API] Validation error:', zodError.errors);
 				return NextResponse.json(
 					{ 
 						error: 'Invalid input: expected string, received undefined',
-						details: error.errors.map(e => ({
+						details: zodError.errors.map(e => ({
 							path: e.path.join('.'),
 							message: e.message,
 							received: e.code === 'invalid_type' ? e.received : undefined
