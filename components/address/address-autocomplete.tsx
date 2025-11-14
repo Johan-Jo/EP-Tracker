@@ -59,11 +59,19 @@ export function AddressAutocomplete({
 	const [loading, setLoading] = useState(false);
 	const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const suggestionsRef = useRef<GeoapifyResult[]>([]);
+	const isFocusedRef = useRef(false);
+
+	// Sync suggestionsRef with suggestions state
+	useEffect(() => {
+		suggestionsRef.current = suggestions;
+	}, [suggestions]);
 
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
 			if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
 				setShowSuggestions(false);
+				isFocusedRef.current = false;
 			}
 		};
 		document.addEventListener('mousedown', handleClickOutside);
@@ -71,8 +79,9 @@ export function AddressAutocomplete({
 	}, []);
 
 	const fetchSuggestions = async (query: string) => {
-		if (!query || query.length < 2) {
+		if (!query || query.length < 3) {
 			setSuggestions([]);
+			suggestionsRef.current = [];
 			setShowSuggestions(false);
 			return;
 		}
@@ -84,17 +93,32 @@ export function AddressAutocomplete({
 		}
 
 		setLoading(true);
+		// Keep suggestions visible while loading new ones
+		const hadSuggestions = suggestionsRef.current.length > 0;
 		try {
 			const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(query)}&apiKey=${apiKey}&limit=5&countrycodes=se,no,dk,fi&lang=sv`;
 			const response = await fetch(url);
 			const data = await response.json();
-			if (data.features && Array.isArray(data.features)) {
+			if (data.features && Array.isArray(data.features) && data.features.length > 0) {
 				setSuggestions(data.features);
+				suggestionsRef.current = data.features;
 				setShowSuggestions(true);
+			} else {
+				// If no results, keep previous suggestions visible if they exist and input is focused
+				if (hadSuggestions && isFocusedRef.current) {
+					setShowSuggestions(true);
+				} else {
+					setShowSuggestions(false);
+				}
 			}
 		} catch (error) {
 			console.error('Geoapify error:', error);
-			setSuggestions([]);
+			// On error, keep previous suggestions visible if they exist and input is focused
+			if (hadSuggestions && isFocusedRef.current) {
+				setShowSuggestions(true);
+			} else {
+				setShowSuggestions(false);
+			}
 		} finally {
 			setLoading(false);
 		}
@@ -108,6 +132,20 @@ export function AddressAutocomplete({
 			clearTimeout(timeoutRef.current);
 		}
 
+		// If query is too short, clear suggestions immediately
+		if (newValue.length < 3) {
+			setSuggestions([]);
+			suggestionsRef.current = [];
+			setShowSuggestions(false);
+			return;
+		}
+
+		// Keep suggestions visible while typing (if we have any)
+		if (suggestionsRef.current.length > 0 && isFocusedRef.current) {
+			setShowSuggestions(true);
+		}
+
+		// Debounce the API call but keep suggestions visible while typing
 		timeoutRef.current = setTimeout(() => {
 			fetchSuggestions(newValue);
 		}, 200);
@@ -127,6 +165,7 @@ export function AddressAutocomplete({
 		});
 		setShowSuggestions(false);
 		setSuggestions([]);
+		suggestionsRef.current = [];
 	};
 
 	return (
@@ -139,7 +178,19 @@ export function AddressAutocomplete({
 					value={value}
 					onChange={handleInputChange}
 					onFocus={() => {
-						if (suggestions.length > 0) setShowSuggestions(true);
+						isFocusedRef.current = true;
+						if (suggestionsRef.current.length > 0) {
+							setShowSuggestions(true);
+						}
+					}}
+					onBlur={() => {
+						// Don't hide immediately on blur - let click handler do it
+						// This allows clicking on suggestions
+						setTimeout(() => {
+							if (!containerRef.current?.contains(document.activeElement)) {
+								isFocusedRef.current = false;
+							}
+						}, 200);
 					}}
 					placeholder={placeholder}
 					disabled={disabled}
@@ -150,9 +201,9 @@ export function AddressAutocomplete({
 					</div>
 				)}
 			</div>
-			{showSuggestions && suggestions.length > 0 && (
+			{((showSuggestions && suggestions.length > 0) || (isFocusedRef.current && suggestionsRef.current.length > 0)) && (
 				<ul className='absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border/60 bg-[var(--color-card)] shadow-lg dark:border-[#3a251d] dark:bg-[#1f140d]'>
-					{suggestions.map((result, idx) => (
+					{(suggestions.length > 0 ? suggestions : suggestionsRef.current).map((result, idx) => (
 						<li
 							key={idx}
 							className='flex cursor-pointer items-start gap-2 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted dark:text-white dark:hover:bg-white/10'

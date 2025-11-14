@@ -131,6 +131,12 @@ const settingsItems: NavItem[] = [
 		roles: ['admin', 'foreman', 'finance'],
 	},
 	{
+		label: 'Personal',
+		href: '/dashboard/employees',
+		icon: Users,
+		roles: ['admin', 'foreman'],
+	},
+	{
 		label: 'Organisation',
 		href: '/dashboard/settings/organization',
 		icon: Building2,
