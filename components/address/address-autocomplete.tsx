@@ -71,7 +71,7 @@ export function AddressAutocomplete({
 	}, []);
 
 	const fetchSuggestions = async (query: string) => {
-		if (!query || query.length < 3) {
+		if (!query || query.length < 2) {
 			setSuggestions([]);
 			setShowSuggestions(false);
 			return;
@@ -110,7 +110,7 @@ export function AddressAutocomplete({
 
 		timeoutRef.current = setTimeout(() => {
 			fetchSuggestions(newValue);
-		}, 300);
+		}, 200);
 	};
 
 	const handleSelect = (result: GeoapifyResult) => {

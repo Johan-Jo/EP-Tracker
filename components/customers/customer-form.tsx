@@ -27,6 +27,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
+import { AddressAutocomplete } from '@/components/address/address-autocomplete';
 
 type CustomerFormProps = {
 	customer?: Partial<Customer>;
@@ -311,11 +312,19 @@ export function CustomerForm({
 							<div className="grid gap-4 md:grid-cols-3">
 								<div>
 									<Label htmlFor="bankgiro">Bankgiro</Label>
-									<Input id="bankgiro" {...register('bankgiro')} />
+									<Input
+										id="bankgiro"
+										placeholder="Valfritt"
+										{...register('bankgiro')}
+									/>
 								</div>
 								<div>
 									<Label htmlFor="plusgiro">Plusgiro</Label>
-									<Input id="plusgiro" {...register('plusgiro')} />
+									<Input
+										id="plusgiro"
+										placeholder="Valfritt"
+										{...register('plusgiro')}
+									/>
 								</div>
 								<div>
 									<Label htmlFor="default_vat_rate">Moms (%)</Label>
@@ -527,25 +536,35 @@ export function CustomerForm({
 
 			<Card>
 				<CardContent className="space-y-4 pt-6">
-					<div className="grid gap-4 md:grid-cols-2">
+					<div className="space-y-4">
 						<div>
 							<Label htmlFor="invoice_address_street">
 								Fakturaadress
 							</Label>
-							<Input
-								id="invoice_address_street"
-								placeholder="Gata 1"
-								{...register('invoice_address_street')}
-							/>
-						</div>
-						<div>
-							<Label htmlFor="delivery_address_street">
-								Leveransadress
-							</Label>
-							<Input
-								id="delivery_address_street"
-								placeholder="Gata 1"
-								{...register('delivery_address_street')}
+							<Controller
+								name="invoice_address_street"
+								control={control}
+								render={({ field }) => (
+									<AddressAutocomplete
+										id="invoice_address_street"
+										autoComplete="off"
+										value={field.value ?? ''}
+										onChange={(value) => field.onChange(value)}
+										onSelect={(addr) => {
+											field.onChange(addr.address_line1);
+											setValue('invoice_address_zip', addr.postal_code ?? '', {
+												shouldDirty: true,
+											});
+											setValue('invoice_address_city', addr.city ?? '', {
+												shouldDirty: true,
+											});
+											setValue('invoice_address_country', addr.country ?? 'Sverige', {
+												shouldDirty: true,
+											});
+										}}
+										placeholder="Gata 1"
+									/>
+								)}
 							/>
 						</div>
 					</div>
@@ -562,20 +581,6 @@ export function CustomerForm({
 							<Input
 								id="invoice_address_city"
 								{...register('invoice_address_city')}
-							/>
-						</div>
-						<div>
-							<Label htmlFor="delivery_address_zip">Leverans-Postnr</Label>
-							<Input
-								id="delivery_address_zip"
-								{...register('delivery_address_zip')}
-							/>
-						</div>
-						<div>
-							<Label htmlFor="delivery_address_city">Leverans-Stad</Label>
-							<Input
-								id="delivery_address_city"
-								{...register('delivery_address_city')}
 							/>
 						</div>
 					</div>

@@ -3,13 +3,14 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
 import { customerContactSchema } from '@/lib/schemas/customer';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
-type RouteParams = {
-	params: { id: string };
-};
+type RouteParams = { id: string };
 
-export async function GET(_: NextRequest, { params }: RouteParams) {
+export async function GET(_: NextRequest, context: RouteContext<RouteParams>) {
 	try {
+		const { params } = await resolveRouteParams(context);
+
 		const { user, membership } = await getSession();
 
 		if (!user || !membership) {
@@ -37,8 +38,10 @@ export async function GET(_: NextRequest, { params }: RouteParams) {
 	}
 }
 
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export async function POST(request: NextRequest, context: RouteContext<RouteParams>) {
 	try {
+		const { params } = await resolveRouteParams(context);
+
 		const { user, membership } = await getSession();
 
 		if (!user || !membership) {
