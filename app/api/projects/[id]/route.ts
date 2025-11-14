@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
-interface RouteParams {
-	params: Promise<{ id: string }>;
-}
+type RouteParams = { id: string };
 
-export async function PATCH(request: NextRequest, props: RouteParams) {
-	const params = await props.params;
+export async function PATCH(request: NextRequest, context: RouteContext<RouteParams>) {
+	const { id } = await resolveRouteParams(context);
 	const supabase = await createClient();
 
 	try {
@@ -23,7 +22,7 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
 		const { data: project, error: projectError } = await supabase
 			.from('projects')
 			.select('org_id, billing_mode, default_time_billing_type')
-			.eq('id', params.id)
+			.eq('id', id)
 			.single();
 
 		if (projectError || !project) {
@@ -97,7 +96,7 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
 		const { data: updatedProject, error: updateError } = await supabase
 			.from('projects')
 			.update(updateData)
-			.eq('id', params.id)
+			.eq('id', id)
 			.select()
 			.single();
 

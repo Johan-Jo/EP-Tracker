@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
-interface Params {
-	id: string;
-}
+type RouteParams = { id: string };
 
 /**
  * GET /api/projects/[id]/summary
@@ -19,7 +18,7 @@ interface Params {
  */
 export async function GET(
 	request: NextRequest,
-	context: { params: Promise<Params> }
+	context: RouteContext<RouteParams>
 ) {
 	const { user, membership } = await getSession();
 
@@ -27,8 +26,7 @@ export async function GET(
 		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
-	const params = await context.params;
-	const projectId = params.id;
+	const { id: projectId } = await resolveRouteParams(context);
 
 	const supabase = await createClient();
 

@@ -6,13 +6,14 @@ import {
 	buildCustomerUpdate,
 	parseCustomerPayload,
 } from '@/lib/services/customer-mapper';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
-type RouteParams = {
-	params: { id: string };
-};
+type RouteParams = { id: string };
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext<RouteParams>) {
 	try {
+		const { params } = await resolveRouteParams(context);
+
 		const { user, membership } = await getSession();
 
 		if (!user || !membership) {
@@ -62,8 +63,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 	}
 }
 
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, context: RouteContext<RouteParams>) {
 	try {
+		const { params } = await resolveRouteParams(context);
+
 		const { user, membership } = await getSession();
 
 		if (!user || !membership) {

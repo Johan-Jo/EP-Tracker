@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
 import { fixedTimeBlockUpdateSchema } from '@/lib/schemas/fixed-time-block';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
-interface RouteParams {
-	params: Promise<{ id: string }>;
-}
+type RouteParams = { id: string };
 
 async function ensureAccess(
 	blockId: string,
@@ -25,9 +24,9 @@ async function ensureAccess(
 	return block;
 }
 
-export async function PATCH(request: NextRequest, props: RouteParams) {
+export async function PATCH(request: NextRequest, context: RouteContext<RouteParams>) {
 	try {
-		const params = await props.params;
+		const { id } = await resolveRouteParams(context);
 		const { user, membership } = await getSession();
 
 		if (!user || !membership) {
@@ -39,7 +38,7 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
 		}
 
 		const supabase = await createClient();
-		const block = await ensureAccess(params.id, supabase, membership.org_id);
+		const block = await ensureAccess(id, supabase, membership.org_id);
 
 		if (!block) {
 			return NextResponse.json({ error: 'Fast post saknas eller åtkomst nekad' }, { status: 404 });
@@ -63,7 +62,7 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
 				...updates,
 				updated_at: new Date().toISOString(),
 			})
-			.eq('id', params.id)
+			.eq('id', id)
 			.select('*')
 			.single();
 
@@ -78,9 +77,9 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
 	}
 }
 
-export async function DELETE(request: NextRequest, props: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteContext<RouteParams>) {
 	try {
-		const params = await props.params;
+		const { id } = await resolveRouteParams(context);
 		const { membership } = await getSession();
 
 		if (!membership) {
@@ -92,7 +91,7 @@ export async function DELETE(request: NextRequest, props: RouteParams) {
 		}
 
 		const supabase = await createClient();
-		const block = await ensureAccess(params.id, supabase, membership.org_id);
+		const block = await ensureAccess(id, supabase, membership.org_id);
 
 		if (!block) {
 			return NextResponse.json({ error: 'Fast post saknas eller åtkomst nekad' }, { status: 404 });
@@ -101,7 +100,7 @@ export async function DELETE(request: NextRequest, props: RouteParams) {
 		const { count, error: usageError } = await supabase
 			.from('time_entries')
 			.select('id', { count: 'exact', head: true })
-			.eq('fixed_block_id', params.id);
+			.eq('fixed_block_id', id);
 
 		if (usageError) {
 			return NextResponse.json({ error: usageError.message }, { status: 500 });
@@ -114,7 +113,7 @@ export async function DELETE(request: NextRequest, props: RouteParams) {
 			);
 		}
 
-		const { error } = await supabase.from('fixed_time_blocks').delete().eq('id', params.id);
+		const { error } = await supabase.from('fixed_time_blocks').delete().eq('id', id);
 
 		if (error) {
 			return NextResponse.json({ error: error.message }, { status: 500 });

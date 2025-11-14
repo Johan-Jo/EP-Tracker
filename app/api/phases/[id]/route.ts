@@ -1,14 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { phaseSchema } from '@/lib/schemas/project';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
-interface RouteParams {
-	params: Promise<{ id: string }>;
-}
+type RouteParams = { id: string };
 
-export async function PATCH(request: NextRequest, props: RouteParams) {
-	const params = await props.params;
+export async function PATCH(request: NextRequest, context: RouteContext<RouteParams>) {
 	try {
+		const { id } = await resolveRouteParams(context);
 		const supabase = await createClient();
 		const {
 			data: { user },
@@ -24,7 +23,7 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
 		const { data: phase } = await supabase
 			.from('phases')
 			.select('project_id, projects(org_id)')
-			.eq('id', params.id)
+			.eq('id', id)
 			.single();
 
 		if (!phase) {
@@ -52,7 +51,7 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
 		const { data: updatedPhase, error } = await supabase
 			.from('phases')
 			.update(validatedData)
-			.eq('id', params.id)
+			.eq('id', id)
 			.select()
 			.single();
 
@@ -71,9 +70,9 @@ export async function PATCH(request: NextRequest, props: RouteParams) {
 	}
 }
 
-export async function DELETE(request: NextRequest, props: RouteParams) {
-	const params = await props.params;
+export async function DELETE(request: NextRequest, context: RouteContext<RouteParams>) {
 	try {
+		const { id } = await resolveRouteParams(context);
 		const supabase = await createClient();
 		const {
 			data: { user },
@@ -87,7 +86,7 @@ export async function DELETE(request: NextRequest, props: RouteParams) {
 		const { data: phase } = await supabase
 			.from('phases')
 			.select('project_id, projects(org_id)')
-			.eq('id', params.id)
+			.eq('id', id)
 			.single();
 
 		if (!phase) {
@@ -109,7 +108,7 @@ export async function DELETE(request: NextRequest, props: RouteParams) {
 		}
 
 		// Delete phase
-		const { error } = await supabase.from('phases').delete().eq('id', params.id);
+		const { error } = await supabase.from('phases').delete().eq('id', id);
 
 		if (error) {
 			console.error('Error deleting phase:', error);

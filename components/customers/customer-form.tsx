@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -84,26 +84,20 @@ const toPayloadDefaults = (customer?: Partial<Customer>): CustomerPayload => {
 		housing_assoc_org_no: merged.housing_assoc_org_no ?? '',
 		apartment_no: merged.apartment_no ?? '',
 		ownership_share: merged.ownership_share ?? undefined,
-		rot_consent_at: merged.rot_consent_at
-			? new Date(merged.rot_consent_at)
-			: undefined,
+		rot_consent_at: merged.rot_consent_at ? new Date(merged.rot_consent_at) : undefined,
 		invoice_email: merged.invoice_email ?? '',
 		invoice_method: merged.invoice_method ?? 'EMAIL',
 		peppol_id: merged.peppol_id ?? '',
 		gln: merged.gln ?? '',
 		terms: merged.terms ?? 30,
 		default_vat_rate: merged.default_vat_rate ?? 25,
-		bankgiro: merged.bankgiro ?? '',
-		plusgiro: merged.plusgiro ?? '',
+		bankgiro: merged.bankgiro ?? undefined,
+		plusgiro: merged.plusgiro ?? undefined,
 		reference: merged.reference ?? '',
 		invoice_address_street: merged.invoice_address_street ?? '',
 		invoice_address_zip: merged.invoice_address_zip ?? '',
 		invoice_address_city: merged.invoice_address_city ?? '',
 		invoice_address_country: merged.invoice_address_country ?? 'Sverige',
-		delivery_address_street: merged.delivery_address_street ?? '',
-		delivery_address_zip: merged.delivery_address_zip ?? '',
-		delivery_address_city: merged.delivery_address_city ?? '',
-		delivery_address_country: merged.delivery_address_country ?? 'Sverige',
 		phone_mobile: merged.phone_mobile ?? '',
 		notes: merged.notes ?? '',
 		is_archived: merged.is_archived ?? false,
@@ -117,6 +111,14 @@ const ErrorText = ({ message }: { message?: string }) =>
 		</p>
 	) : null;
 
+const generateCustomerNumberClient = () => {
+	try {
+		return `C-${crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}`;
+	} catch {
+		return `C-${Math.random().toString(36).toUpperCase().slice(2, 10)}`;
+	}
+};
+
 export function CustomerForm({
 	customer,
 	onSubmit,
@@ -124,10 +126,14 @@ export function CustomerForm({
 	submitLabel = 'Spara kund',
 	isEditing = false,
 }: CustomerFormProps) {
-	const defaultPayload = useMemo(
-		() => toPayloadDefaults(customer),
-		[customer]
-	);
+	const defaultPayload = useMemo(() => {
+		const base = toPayloadDefaults(customer);
+		return {
+			...base,
+			bankgiro: base.bankgiro ?? undefined,
+			plusgiro: base.plusgiro ?? undefined,
+		};
+	}, [customer]);
 	const [formError, setFormError] = useState<string | null>(null);
 
 	const {
@@ -174,6 +180,12 @@ export function CustomerForm({
 			);
 		}
 	});
+
+	useEffect(() => {
+		if (!isEditing && !customer?.customer_no) {
+			setValue('customer_no', generateCustomerNumberClient(), { shouldDirty: false });
+		}
+	}, [customer?.customer_no, isEditing, setValue]);
 
 	return (
 		<form onSubmit={submitHandler} className="space-y-6">
@@ -315,7 +327,12 @@ export function CustomerForm({
 									<Input
 										id="bankgiro"
 										placeholder="Valfritt"
-										{...register('bankgiro')}
+										value={watch('bankgiro') ?? ''}
+										onChange={(e) =>
+											setValue('bankgiro', e.target.value || undefined, {
+												shouldDirty: true,
+											})
+										}
 									/>
 								</div>
 								<div>
@@ -323,7 +340,12 @@ export function CustomerForm({
 									<Input
 										id="plusgiro"
 										placeholder="Valfritt"
-										{...register('plusgiro')}
+										value={watch('plusgiro') ?? ''}
+										onChange={(e) =>
+											setValue('plusgiro', e.target.value || undefined, {
+												shouldDirty: true,
+											})
+										}
 									/>
 								</div>
 								<div>

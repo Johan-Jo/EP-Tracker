@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/get-session';
 import { createClient } from '@/lib/supabase/server';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
 // DELETE /api/approvals/period-locks/[id] - Unlock period
 export async function DELETE(
 	request: NextRequest,
-	context: { params: Promise<{ id: string }> }
+	context: RouteContext<{ id: string }>
 ) {
 	try {
-		const { id } = await context.params;
+		const { id } = await resolveRouteParams(context);
 		const { user, membership } = await getSession();
 
 		if (!user || !membership) {

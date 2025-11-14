@@ -10,6 +10,7 @@ import {
 	customerToPayload,
 	prepareCustomerFields,
 } from '@/lib/services/customer-mapper';
+import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
 const mergeRequestSchema = z.object({
 	duplicateId: z.string().uuid(),
@@ -81,9 +82,10 @@ function sanitizeMergedPayload(target: Customer, overrides?: z.infer<typeof merg
 
 type RouteParams = { id: string };
 
-export async function POST(request: NextRequest, context: { params: RouteParams }) {
+export async function POST(request: NextRequest, context: RouteContext<RouteParams>) {
 	try {
-		const { id: targetId } = context.params;
+		const { params } = await resolveRouteParams(context);
+		const targetId = params.id;
 		if (!targetId) {
 			return NextResponse.json({ error: 'Target customer id is required' }, { status: 400 });
 		}
