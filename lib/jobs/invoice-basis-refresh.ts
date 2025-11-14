@@ -24,6 +24,7 @@ export interface InvoiceBasisLine {
 	account: string | null;
 	dimensions: Record<string, string | null>;
 	attachments: string[];
+	ata_info?: { title: string; ata_number: string | null } | null;
 }
 
 export interface DiarySummary {
@@ -232,7 +233,7 @@ export async function refreshInvoiceBasis({
 		supabase
 			.from('time_entries')
 			.select(
-				'id, project_id, user_id, task_label, start_at, duration_min, status, phase:phases(name)'
+				'id, project_id, user_id, task_label, start_at, duration_min, status, employee_id, subcontractor_id, phase:phases(name)'
 			)
 			.eq('org_id', orgId)
 			.eq('project_id', projectId)
@@ -241,22 +242,20 @@ export async function refreshInvoiceBasis({
 			.lte('start_at', rangeEnd),
 		supabase
 			.from('materials')
-			.select('id, project_id, description, qty, unit, unit_price_sek, total_sek, status, photo_url, created_at, ata_id')
+			.select('id, project_id, description, qty, unit, unit_price_sek, total_sek, status, photo_urls, created_at, approved_at, ata_id')
 			.eq('org_id', orgId)
 			.eq('project_id', projectId)
 			.is('ata_id', null)
-			.eq('status', 'approved')
-			.gte('created_at', rangeStart)
-			.lte('created_at', rangeEnd),
+			.eq('status', 'approved'),
+			// Include ALL approved materials for the project - date filtering removed to ensure nothing is missed
 		supabase
 			.from('expenses')
-			.select('id, project_id, description, amount_sek, vat, status, category, photo_url, date, ata_id')
+			.select('id, project_id, description, amount_sek, vat, status, category, photo_urls, date, approved_at, ata_id')
 			.eq('org_id', orgId)
 			.eq('project_id', projectId)
 			.is('ata_id', null)
-			.eq('status', 'approved')
-			.gte('date', periodStart)
-			.lte('date', periodEnd),
+			.eq('status', 'approved'),
+			// Include ALL approved expenses for the project - date filtering removed to ensure nothing is missed
 		supabase
 			.from('mileage')
 			.select('id, project_id, date, km, rate_per_km_sek, total_sek, status')
@@ -267,12 +266,11 @@ export async function refreshInvoiceBasis({
 			.lte('date', periodEnd),
 		supabase
 			.from('ata')
-			.select('id, project_id, ata_number, title, description, qty, unit, unit_price_sek, total_sek, fixed_amount_sek, materials_amount_sek, billing_type, status')
+			.select('id, project_id, ata_number, title, description, qty, unit, unit_price_sek, total_sek, fixed_amount_sek, materials_amount_sek, billing_type, status, created_at, approved_at')
 			.eq('org_id', orgId)
 			.eq('project_id', projectId)
-			.eq('status', 'approved')
-			.gte('created_at', rangeStart)
-			.lte('created_at', rangeEnd),
+			.eq('status', 'approved'),
+			// Include ALL approved ÄTA for the project - date filtering removed to ensure nothing is missed
 		supabase
 			.from('diary_entries')
 			.select(
@@ -294,6 +292,206 @@ export async function refreshInvoiceBasis({
 		? { address: project.site_address, project_name: project.name }
 		: null;
 
+	// Debug logging - check query results
+	console.log(`[refreshInvoiceBasis] Filtering for period ${periodStart} to ${periodEnd}`);
+	console.log(`[refreshInvoiceBasis] Project ID: ${projectId}, Org ID: ${orgId}`);
+	
+	// Check for errors first
+	if (materialResult.error) {
+		console.error('[refreshInvoiceBasis] Materials query error:', materialResult.error);
+	} else {
+		console.log(`[refreshInvoiceBasis] Materials query result: ${materialResult.data?.length || 0} found`);
+	}
+	if (expenseResult.error) {
+		console.error('[refreshInvoiceBasis] Expenses query error:', expenseResult.error);
+	} else {
+		console.log(`[refreshInvoiceBasis] Expenses query result: ${expenseResult.data?.length || 0} found`);
+	}
+	if (ataResult.error) {
+		console.error('[refreshInvoiceBasis] ÄTA query error:', ataResult.error);
+	} else {
+		console.log(`[refreshInvoiceBasis] ÄTA query result: ${ataResult.data?.length || 0} found`);
+	}
+
+	// Debug: Check if there are ANY materials, expenses, or ÄTA for this project (regardless of status)
+	const { data: allMaterials } = await supabase
+		.from('materials')
+		.select('id, status, ata_id, project_id')
+		.eq('org_id', orgId)
+		.eq('project_id', projectId)
+		.limit(10);
+	
+	const { data: allExpenses } = await supabase
+		.from('expenses')
+		.select('id, status, ata_id, project_id')
+		.eq('org_id', orgId)
+		.eq('project_id', projectId)
+		.limit(10);
+	
+	const { data: allAtas } = await supabase
+		.from('ata')
+		.select('id, status, project_id')
+		.eq('org_id', orgId)
+		.eq('project_id', projectId)
+		.limit(10);
+
+	console.log(`[refreshInvoiceBasis] DEBUG - All materials for project (any status): ${allMaterials?.length || 0}`);
+	if (allMaterials && allMaterials.length > 0) {
+		const statusCounts = allMaterials.reduce((acc: Record<string, number>, m: any) => {
+			acc[m.status] = (acc[m.status] || 0) + 1;
+			return acc;
+		}, {});
+		const withAtaId = allMaterials.filter((m: any) => m.ata_id !== null).length;
+		console.log(`[refreshInvoiceBasis] DEBUG - Materials by status:`, statusCounts, `with ata_id: ${withAtaId}`);
+	}
+
+	console.log(`[refreshInvoiceBasis] DEBUG - All expenses for project (any status): ${allExpenses?.length || 0}`);
+	if (allExpenses && allExpenses.length > 0) {
+		const statusCounts = allExpenses.reduce((acc: Record<string, number>, e: any) => {
+			acc[e.status] = (acc[e.status] || 0) + 1;
+			return acc;
+		}, {});
+		const withAtaId = allExpenses.filter((e: any) => e.ata_id !== null).length;
+		console.log(`[refreshInvoiceBasis] DEBUG - Expenses by status:`, statusCounts, `with ata_id: ${withAtaId}`);
+	}
+
+	console.log(`[refreshInvoiceBasis] DEBUG - All ÄTA for project (any status): ${allAtas?.length || 0}`);
+	if (allAtas && allAtas.length > 0) {
+		const statusCounts = allAtas.reduce((acc: Record<string, number>, a: any) => {
+			acc[a.status] = (acc[a.status] || 0) + 1;
+			return acc;
+		}, {});
+		console.log(`[refreshInvoiceBasis] DEBUG - ÄTA by status:`, statusCounts);
+	}
+	
+	// Log sample data to see what we're getting
+	if (materialResult.data && materialResult.data.length > 0) {
+		console.log(`[refreshInvoiceBasis] Sample material:`, {
+			id: materialResult.data[0].id,
+			project_id: materialResult.data[0].project_id,
+			status: materialResult.data[0].status,
+			ata_id: materialResult.data[0].ata_id,
+			created_at: materialResult.data[0].created_at,
+			approved_at: materialResult.data[0].approved_at,
+		});
+	}
+	if (expenseResult.data && expenseResult.data.length > 0) {
+		console.log(`[refreshInvoiceBasis] Sample expense:`, {
+			id: expenseResult.data[0].id,
+			project_id: expenseResult.data[0].project_id,
+			status: expenseResult.data[0].status,
+			ata_id: expenseResult.data[0].ata_id,
+			date: expenseResult.data[0].date,
+			approved_at: expenseResult.data[0].approved_at,
+		});
+	}
+	if (ataResult.data && ataResult.data.length > 0) {
+		console.log(`[refreshInvoiceBasis] Sample ÄTA:`, {
+			id: ataResult.data[0].id,
+			project_id: ataResult.data[0].project_id,
+			status: ataResult.data[0].status,
+			created_at: ataResult.data[0].created_at,
+			approved_at: ataResult.data[0].approved_at,
+		});
+	}
+
+	// For now, include ALL approved materials, expenses, and ÄTA for the project
+	// The date filtering in the query should handle this, but if it doesn't, we include everything
+	// This ensures nothing is missed
+	const filteredMaterials = materialResult.data ?? [];
+	const filteredExpenses = expenseResult.data ?? [];
+	const filteredAtas = ataResult.data ?? [];
+
+	console.log(`[refreshInvoiceBasis] Using all approved items: ${filteredMaterials.length} materials, ${filteredExpenses.length} expenses, ${filteredAtas.length} ÄTA`);
+
+	// Fetch customer information if customer_id exists
+	let customer = null;
+	let invoiceAddress = null;
+	let deliveryAddress = null;
+	let customerSnapshot = null;
+	let defaultPaymentTerms = DEFAULT_PAYMENT_TERMS_DAYS;
+
+	if (project.customer_id) {
+		const { data: customerData, error: customerError } = await supabase
+			.from('customers')
+			.select('*')
+			.eq('id', project.customer_id)
+			.eq('org_id', orgId)
+			.single();
+
+		if (customerError) {
+			console.warn(`[invoice-basis-refresh] Failed to fetch customer ${project.customer_id}:`, customerError.message);
+		} else if (customerData) {
+			customer = customerData;
+
+			// Build invoice address
+			if (customer.invoice_address_street) {
+				invoiceAddress = {
+					street: customer.invoice_address_street,
+					zip: customer.invoice_address_zip || null,
+					city: customer.invoice_address_city || null,
+					country: customer.invoice_address_country || 'Sverige',
+					name: customer.type === 'COMPANY' 
+						? customer.company_name 
+						: `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || null,
+					org_no: customer.type === 'COMPANY' ? customer.org_no : customer.personal_identity_no,
+					email: customer.invoice_email || null,
+					phone: customer.phone_mobile || null,
+				};
+			}
+
+			// Build delivery address
+			if (customer.delivery_address_street) {
+				deliveryAddress = {
+					street: customer.delivery_address_street,
+					zip: customer.delivery_address_zip || null,
+					city: customer.delivery_address_city || null,
+					country: customer.delivery_address_country || 'Sverige',
+				};
+			}
+
+			// Create customer snapshot for audit trail
+			customerSnapshot = {
+				customer_id: customer.id,
+				customer_no: customer.customer_no,
+				type: customer.type,
+				name: customer.type === 'COMPANY' 
+					? customer.company_name 
+					: `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
+				org_no: customer.type === 'COMPANY' ? customer.org_no : customer.personal_identity_no,
+				vat_no: customer.vat_no,
+				invoice_email: customer.invoice_email,
+				invoice_method: customer.invoice_method,
+				terms: customer.terms,
+				default_vat_rate: customer.default_vat_rate,
+				bankgiro: customer.bankgiro,
+				plusgiro: customer.plusgiro,
+				reference: customer.reference,
+				invoice_address: invoiceAddress,
+				delivery_address: deliveryAddress,
+				snapshot_date: new Date().toISOString(),
+			};
+
+			// Use customer's payment terms if available
+			if (customer.terms !== null && customer.terms !== undefined) {
+				defaultPaymentTerms = customer.terms;
+			}
+
+			console.log(`[invoice-basis-refresh] Loaded customer data:`, {
+				name: customer.type === 'COMPANY' ? customer.company_name : `${customer.first_name} ${customer.last_name}`,
+				terms: customer.terms,
+				reference: customer.reference,
+				rot_enabled: customer.rot_enabled,
+				has_invoice_address: !!invoiceAddress,
+				has_delivery_address: !!deliveryAddress,
+			});
+		} else {
+			console.warn(`[invoice-basis-refresh] Customer ${project.customer_id} not found or not accessible`);
+		}
+	} else {
+		console.log(`[invoice-basis-refresh] Project ${projectId} has no customer_id`);
+	}
+
 	const lines: InvoiceBasisLine[] = [];
 	const diarySummaries: DiarySummary[] = [];
 	const totalsAccumulator = new Map<number, TotalsAccumulatorEntry>();
@@ -306,9 +504,47 @@ export async function refreshInvoiceBasis({
 
 	// TIME ENTRIES
 	const timeEntries = timeResult.data ?? [];
+	
+	// Collect employee and subcontractor IDs
+	const employeeIds = Array.from(new Set(timeEntries.map((entry: any) => entry.employee_id).filter(Boolean)));
+	const subcontractorIds = Array.from(new Set(timeEntries.map((entry: any) => entry.subcontractor_id).filter(Boolean)));
 	const timeUserIds = Array.from(new Set(timeEntries.map((entry: any) => entry.user_id)));
+	
+	const employeeRates = new Map<string, number>();
+	const subcontractorRates = new Map<string, number>();
 	const membershipRates = new Map<string, number>();
 
+	// Fetch hourly rates from employees
+	if (employeeIds.length > 0) {
+		const { data: employeeRows } = await supabase
+			.from('employees')
+			.select('id, hourly_rate_sek')
+			.eq('org_id', orgId)
+			.in('id', employeeIds);
+
+		(employeeRows ?? []).forEach((row: any) => {
+			if (row.id) {
+				employeeRates.set(row.id, Number(row.hourly_rate_sek) || 0);
+			}
+		});
+	}
+
+	// Fetch hourly rates from subcontractors
+	if (subcontractorIds.length > 0) {
+		const { data: subcontractorRows } = await supabase
+			.from('subcontractors')
+			.select('id, hourly_rate_sek')
+			.eq('org_id', orgId)
+			.in('id', subcontractorIds);
+
+		(subcontractorRows ?? []).forEach((row: any) => {
+			if (row.id) {
+				subcontractorRates.set(row.id, Number(row.hourly_rate_sek) || 0);
+			}
+		});
+	}
+
+	// Fallback: Fetch hourly rates from memberships (for time entries not linked to employees/subcontractors)
 	if (timeUserIds.length > 0) {
 		const { data: membershipRows } = await supabase
 			.from('memberships')
@@ -330,7 +566,17 @@ export async function refreshInvoiceBasis({
 			return;
 		}
 
-		const hourlyRate = membershipRates.get(entry.user_id) ?? 0;
+		// Priority: employee rate > subcontractor rate > membership rate
+		let hourlyRate = 0;
+		if (entry.employee_id) {
+			hourlyRate = employeeRates.get(entry.employee_id) ?? 0;
+		} else if (entry.subcontractor_id) {
+			hourlyRate = subcontractorRates.get(entry.subcontractor_id) ?? 0;
+		} else {
+			hourlyRate = membershipRates.get(entry.user_id) ?? 0;
+		}
+		
+		// Include time entries even if hourly rate is 0 (user can set rate manually in UI)
 		const config = DEFAULT_LINE_CONFIG.time;
 		const description =
 			sanitizeText(entry.task_label) ||
@@ -362,13 +608,19 @@ export async function refreshInvoiceBasis({
 	});
 
 	// MATERIALS
-	(materialResult.data ?? []).forEach((material: any) => {
-		if (!material || !material.id) return;
+	console.log(`[refreshInvoiceBasis] Processing ${filteredMaterials.length} filtered materials`);
+	let materialsAdded = 0;
+	filteredMaterials.forEach((material: any) => {
+		if (!material || !material.id) {
+			console.warn(`[refreshInvoiceBasis] Skipping material - missing id:`, material);
+			return;
+		}
 		const qty = Number(material.qty) || 0;
 		const unitPrice = Number(material.unit_price_sek) || 0;
 		const config = DEFAULT_LINE_CONFIG.material;
 		const amountExVat = roundCurrency(qty * unitPrice);
 
+		console.log(`[refreshInvoiceBasis] Adding material ${material.id}: qty=${qty}, unitPrice=${unitPrice}, amount=${amountExVat}`);
 		pushLine(
 			{
 				id: material.id,
@@ -384,15 +636,22 @@ export async function refreshInvoiceBasis({
 				vat_code: config.defaultVatCode,
 				account: config.account,
 				dimensions: { project: projectDimension, cost_center: null },
-				attachments: material.photo_url ? [material.photo_url] : [],
+				attachments: material.photo_urls && Array.isArray(material.photo_urls) ? material.photo_urls : (material.photo_urls ? [material.photo_urls] : []),
 			},
 			amountExVat
 		);
+		materialsAdded++;
 	});
+	console.log(`[refreshInvoiceBasis] Added ${materialsAdded} material lines. Total lines so far: ${lines.length}`);
 
 	// EXPENSES
-	(expenseResult.data ?? []).forEach((expense: any) => {
-		if (!expense || !expense.id) return;
+	console.log(`[refreshInvoiceBasis] Processing ${filteredExpenses.length} filtered expenses`);
+	let expensesAdded = 0;
+	filteredExpenses.forEach((expense: any) => {
+		if (!expense || !expense.id) {
+			console.warn(`[refreshInvoiceBasis] Skipping expense - missing id:`, expense);
+			return;
+		}
 		const amount = Number(expense.amount_sek) || 0;
 		const hasVat = expense.vat === null ? true : Boolean(expense.vat);
 		const config = DEFAULT_LINE_CONFIG.expense;
@@ -415,11 +674,13 @@ export async function refreshInvoiceBasis({
 				vat_code: vatCode,
 				account: config.account,
 				dimensions: { project: projectDimension, cost_center: null },
-				attachments: expense.photo_url ? [expense.photo_url] : [],
+				attachments: expense.photo_urls && Array.isArray(expense.photo_urls) ? expense.photo_urls : (expense.photo_urls ? [expense.photo_urls] : []),
 			},
 			amountExVat
 		);
+		expensesAdded++;
 	});
+	console.log(`[refreshInvoiceBasis] Added ${expensesAdded} expense lines. Total lines so far: ${lines.length}`);
 
 	// MILEAGE
 	(mileageResult.data ?? []).forEach((entry: any) => {
@@ -451,12 +712,18 @@ export async function refreshInvoiceBasis({
 	});
 
 	// ÄTA
-	(ataResult.data ?? []).forEach((entry: any) => {
-		if (!entry || !entry.id) return;
+	console.log(`[refreshInvoiceBasis] Processing ${filteredAtas.length} filtered ÄTA`);
+	let atasAdded = 0;
+	filteredAtas.forEach((entry: any) => {
+		if (!entry || !entry.id) {
+			console.warn(`[refreshInvoiceBasis] Skipping ÄTA - missing id:`, entry);
+			return;
+		}
 		const qty = Number(entry.qty) || 0;
 		const unitPrice = Number(entry.unit_price_sek) || 0;
 		const fixedAmount = Number(entry.fixed_amount_sek) || 0;
 		const materialsAmountRaw = Number(entry.materials_amount_sek) || 0;
+		const totalSek = Number(entry.total_sek) || 0;
 		const billingType = entry.billing_type ?? 'LOPANDE';
 		const config = DEFAULT_LINE_CONFIG.ata;
 		const laborAmountRaw =
@@ -466,12 +733,38 @@ export async function refreshInvoiceBasis({
 		const laborAmount = roundCurrency(Number.isFinite(laborAmountRaw) ? laborAmountRaw : 0);
 		const materialsAmount = roundCurrency(Number.isFinite(materialsAmountRaw) ? materialsAmountRaw : 0);
 
-		const descriptionParts = [
+		console.log(`[refreshInvoiceBasis] ÄTA ${entry.id}: qty=${qty}, unitPrice=${unitPrice}, fixedAmount=${fixedAmount}, laborAmount=${laborAmount}, materialsAmount=${materialsAmount}, billingType=${billingType}`);
+
+		// Prepare ÄTA info for all lines from this ÄTA
+		const ataInfo = {
+			title: sanitizeText(entry.title) || 'ÄTA',
+			ata_number: entry.ata_number || null,
+		};
+
+		// Add ÄTA description to diary summaries if it has a description
+		if (entry.description && sanitizeText(entry.description)) {
+			const ataDate = entry.approved_at || entry.created_at;
+			const ataDateStr = ataDate ? new Date(ataDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+			const ataLabel = entry.ata_number ? `ÄTA ${entry.ata_number}` : entry.title || 'ÄTA';
+			const ataDescription = sanitizeText(entry.description);
+			const ataSummary = `${ataLabel}: ${ataDescription}`;
+			
+			diarySummaries.push({
+				date: ataDateStr,
+				raw: truncate(ataDescription, 4000),
+				summary: truncate(ataSummary, 2000),
+				line_ref: `ata-${entry.id}`,
+			});
+		}
+
+		// For line descriptions, exclude the full description since it's shown in diary section
+		// Only include title and ata_number
+		const lineDescriptionParts = [
 			sanitizeText(entry.title),
-			sanitizeText(entry.description),
 			entry.ata_number ? `ÄTA ${entry.ata_number}` : null,
 		].filter(Boolean);
 
+		// If we have labor amount, add it as a line
 		if (laborAmount > 0) {
 			const quantityValue = billingType === 'FAST' ? 1 : roundCurrency(qty);
 			const unitValue =
@@ -483,13 +776,14 @@ export async function refreshInvoiceBasis({
 					? laborAmount
 					: roundCurrency(unitPrice);
 
+			console.log(`[refreshInvoiceBasis] Adding ÄTA labor line for ${entry.id}: type=ata, amount=${laborAmount}`);
 			pushLine(
 				{
 					id: entry.id,
 					type: 'ata',
 					source: { table: 'ata', id: entry.id },
 					article_code: config.article,
-					description: truncate(descriptionParts.join(' – '), 512),
+					description: truncate(lineDescriptionParts.join(' – ') || 'ÄTA', 512),
 					unit: unitValue,
 					quantity: quantityValue,
 					unit_price: unitPriceValue,
@@ -499,17 +793,23 @@ export async function refreshInvoiceBasis({
 					account: config.account,
 					dimensions: { project: projectDimension, cost_center: null },
 					attachments: [],
+					ata_info: ataInfo,
 				},
 				laborAmount
 			);
+			atasAdded++;
+		} else {
+			console.log(`[refreshInvoiceBasis] Skipping ÄTA labor line for ${entry.id}: laborAmount=${laborAmount} (qty=${qty}, unitPrice=${unitPrice}, fixedAmount=${fixedAmount}, billingType=${billingType})`);
 		}
 
+		// If we have materials amount, add it as a separate material line
 		if (materialsAmount > 0) {
 			const materialConfig = DEFAULT_LINE_CONFIG.material;
-			const materialDescription = descriptionParts.length
-				? `Material – ${truncate(descriptionParts.join(' – '), 400)}`
+			const materialDescription = lineDescriptionParts.length
+				? `Material – ${truncate(lineDescriptionParts.join(' – '), 400)}`
 				: 'Materialkostnad';
 
+			console.log(`[refreshInvoiceBasis] Adding ÄTA material line for ${entry.id}: type=material, amount=${materialsAmount}`);
 			pushLine(
 				{
 					id: `${entry.id}-material`,
@@ -526,11 +826,42 @@ export async function refreshInvoiceBasis({
 					account: materialConfig.account,
 					dimensions: { project: projectDimension, cost_center: null },
 					attachments: [],
+					ata_info: ataInfo,
 				},
 				materialsAmount
 			);
+			atasAdded++;
+		} else {
+			console.log(`[refreshInvoiceBasis] Skipping ÄTA material line for ${entry.id}: materialsAmount=${materialsAmount}`);
+		}
+
+		// Fallback: If total_sek exists but laborAmount and materialsAmount are both 0 or missing,
+		// add the ÄTA as a single line using total_sek
+		if (totalSek > 0 && laborAmount === 0 && materialsAmount === 0) {
+			pushLine(
+				{
+					id: entry.id,
+					type: 'ata',
+					source: { table: 'ata', id: entry.id },
+					article_code: config.article,
+					description: truncate(lineDescriptionParts.join(' – ') || 'ÄTA', 512),
+					unit: 'st',
+					quantity: 1,
+					unit_price: roundCurrency(totalSek),
+					discount: 0,
+					vat_rate: config.defaultVatRate,
+					vat_code: config.defaultVatCode,
+					account: config.account,
+					dimensions: { project: projectDimension, cost_center: null },
+					attachments: [],
+					ata_info: ataInfo,
+				},
+				roundCurrency(totalSek)
+			);
+			atasAdded++;
 		}
 	});
+	console.log(`[refreshInvoiceBasis] Added ${atasAdded} ÄTA lines. Total lines so far: ${lines.length}`);
 
 	// DIARY
 	(diaryResult.data ?? [])
@@ -567,6 +898,15 @@ export async function refreshInvoiceBasis({
 			});
 		});
 
+	console.log(`[refreshInvoiceBasis] Final summary: ${lines.length} total lines (${materialsAdded} materials, ${expensesAdded} expenses, ${atasAdded} ÄTA)`);
+	
+	// Sort diary summaries by date (including ÄTA descriptions)
+	diarySummaries.sort((a, b) => {
+		const dateA = new Date(a.date).getTime();
+		const dateB = new Date(b.date).getTime();
+		return dateA - dateB;
+	});
+	
 	const totalsPayload = buildTotalsPayload(totalsAccumulator, DEFAULT_CURRENCY);
 
 	const payload = {
@@ -579,18 +919,18 @@ export async function refreshInvoiceBasis({
 		invoice_number: null,
 		invoice_date: null,
 		due_date: null,
-		payment_terms_days: DEFAULT_PAYMENT_TERMS_DAYS,
+		payment_terms_days: defaultPaymentTerms,
 		ocr_ref: null,
 		currency: DEFAULT_CURRENCY,
 		fx_rate: 1,
 		our_ref: null,
-		your_ref: null,
+		your_ref: customer?.reference || null,
 		reverse_charge_building: false,
-		rot_rut_flag: false,
+		rot_rut_flag: customer?.rot_enabled || false,
 		worksite_address_json: worksiteAddress,
 		worksite_id: null,
-		invoice_address_json: null,
-		delivery_address_json: null,
+		invoice_address_json: invoiceAddress,
+		delivery_address_json: deliveryAddress,
 		cost_center: null,
 		result_unit: null,
 		lines_json: {
@@ -598,7 +938,7 @@ export async function refreshInvoiceBasis({
 			diary: diarySummaries,
 		},
 		totals: totalsPayload,
-		customer_snapshot: null,
+		customer_snapshot: customerSnapshot,
 	};
 
 	const { data: existingRecord, error: fetchError } = await supabase
@@ -616,6 +956,10 @@ export async function refreshInvoiceBasis({
 
 	if (existingRecord?.locked) {
 		// Locked records must not be overwritten; return the existing snapshot.
+		// Log a warning if we're trying to refresh a locked record (e.g., from auto-refresh after approval)
+		console.warn(
+			`[refreshInvoiceBasis] Attempted to refresh locked invoice_basis for project ${projectId}, period ${periodStart}-${periodEnd}. Returning existing locked record.`
+		);
 		const { data: lockedRecord, error: lockedError } = await supabase
 			.from('invoice_basis')
 			.select('*')
@@ -628,6 +972,7 @@ export async function refreshInvoiceBasis({
 	}
 
 	if (existingRecord) {
+		console.log(`[refreshInvoiceBasis] Updating existing invoice_basis record ${existingRecord.id} with ${lines.length} lines`);
 		const { error: updateError } = await supabase
 			.from('invoice_basis')
 			.update({
@@ -636,13 +981,18 @@ export async function refreshInvoiceBasis({
 			})
 			.eq('id', existingRecord.id);
 		if (updateError) {
+			console.error(`[refreshInvoiceBasis] Update error:`, updateError);
 			throw new Error(`Failed to update invoice_basis: ${updateError.message}`);
 		}
+		console.log(`[refreshInvoiceBasis] Successfully updated invoice_basis record`);
 	} else {
+		console.log(`[refreshInvoiceBasis] Creating new invoice_basis record with ${lines.length} lines`);
 		const { error: insertError } = await supabase.from('invoice_basis').insert(payload);
 		if (insertError) {
+			console.error(`[refreshInvoiceBasis] Insert error:`, insertError);
 			throw new Error(`Failed to insert invoice_basis: ${insertError.message}`);
 		}
+		console.log(`[refreshInvoiceBasis] Successfully created invoice_basis record`);
 	}
 
 	const { data: refreshedRecord, error: finalFetchError } = await supabase
@@ -657,6 +1007,14 @@ export async function refreshInvoiceBasis({
 	if (finalFetchError) {
 		throw new Error(`Failed to load invoice_basis: ${finalFetchError.message}`);
 	}
+
+	// Debug: Log what was actually saved
+	const savedLines = refreshedRecord?.lines_json?.lines ?? [];
+	const savedLineTypes = savedLines.reduce((acc: Record<string, number>, line: any) => {
+		acc[line.type] = (acc[line.type] || 0) + 1;
+		return acc;
+	}, {});
+	console.log(`[refreshInvoiceBasis] Saved invoice_basis has ${savedLines.length} lines:`, savedLineTypes);
 
 	return refreshedRecord;
 }

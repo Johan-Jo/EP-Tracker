@@ -335,6 +335,98 @@ export function InvoiceBasisPage({ projects }: InvoiceBasisPageProps) {
 								Öppna godkännanden
 							</Button>
 						</div>
+						
+						{/* Customer Information Section */}
+						{(invoiceBasis.customer_snapshot || invoiceBasis.invoice_address_json) && (
+							<Card className='border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20'>
+								<CardHeader>
+									<CardTitle className='text-lg'>Kundinformation</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<div className='grid gap-4 md:grid-cols-2'>
+										<div className='space-y-3'>
+											<div>
+												<label className='text-sm font-semibold text-muted-foreground'>Kundnamn</label>
+												<p className='text-base font-medium'>
+													{invoiceBasis.customer_snapshot && typeof invoiceBasis.customer_snapshot === 'object' && invoiceBasis.customer_snapshot !== null
+														? (invoiceBasis.customer_snapshot as { name?: string }).name 
+														: invoiceBasis.invoice_address_json && typeof invoiceBasis.invoice_address_json === 'object'
+														? (invoiceBasis.invoice_address_json as { name?: string }).name
+														: null || 'Ingen kund kopplad'}
+												</p>
+											</div>
+											{invoiceBasis.customer_snapshot && typeof invoiceBasis.customer_snapshot === 'object' && invoiceBasis.customer_snapshot !== null && (invoiceBasis.customer_snapshot as { org_no?: string }).org_no && (
+												<div>
+													<label className='text-sm font-semibold text-muted-foreground'>Organisationsnummer</label>
+													<p className='text-base'>
+														{(invoiceBasis.customer_snapshot as { org_no?: string }).org_no}
+													</p>
+												</div>
+											)}
+											{invoiceBasis.invoice_address_json && typeof invoiceBasis.invoice_address_json === 'object' && (invoiceBasis.invoice_address_json as { org_no?: string }).org_no && (
+												<div>
+													<label className='text-sm font-semibold text-muted-foreground'>Organisationsnummer</label>
+													<p className='text-base'>
+														{(invoiceBasis.invoice_address_json as { org_no?: string }).org_no}
+													</p>
+												</div>
+											)}
+											{invoiceBasis.invoice_address_json && typeof invoiceBasis.invoice_address_json === 'object' && (
+												<div>
+													<label className='text-sm font-semibold text-muted-foreground'>Fakturaadress</label>
+													<div className='text-base'>
+														{invoiceBasis.invoice_address_json.street && <p>{invoiceBasis.invoice_address_json.street}</p>}
+														{invoiceBasis.invoice_address_json.zip && invoiceBasis.invoice_address_json.city && (
+															<p>
+																{invoiceBasis.invoice_address_json.zip} {invoiceBasis.invoice_address_json.city}
+															</p>
+														)}
+														{invoiceBasis.invoice_address_json.country && (
+															<p>{invoiceBasis.invoice_address_json.country}</p>
+														)}
+													</div>
+												</div>
+											)}
+										</div>
+										<div className='space-y-3'>
+											{invoiceBasis.invoice_address_json && typeof invoiceBasis.invoice_address_json === 'object' && (invoiceBasis.invoice_address_json as { email?: string }).email && (
+												<div>
+													<label className='text-sm font-semibold text-muted-foreground'>E-post</label>
+													<p className='text-base'>
+														{(invoiceBasis.invoice_address_json as { email?: string }).email}
+													</p>
+												</div>
+											)}
+											{invoiceBasis.invoice_address_json && typeof invoiceBasis.invoice_address_json === 'object' && (invoiceBasis.invoice_address_json as { phone?: string }).phone && (
+												<div>
+													<label className='text-sm font-semibold text-muted-foreground'>Telefon</label>
+													<p className='text-base'>
+														{(invoiceBasis.invoice_address_json as { phone?: string }).phone}
+													</p>
+												</div>
+											)}
+											{invoiceBasis.delivery_address_json && typeof invoiceBasis.delivery_address_json === 'object' && (
+												<div>
+													<label className='text-sm font-semibold text-muted-foreground'>Leveransadress</label>
+													<div className='text-base'>
+														{invoiceBasis.delivery_address_json.street && <p>{invoiceBasis.delivery_address_json.street}</p>}
+														{invoiceBasis.delivery_address_json.zip && invoiceBasis.delivery_address_json.city && (
+															<p>
+																{invoiceBasis.delivery_address_json.zip} {invoiceBasis.delivery_address_json.city}
+															</p>
+														)}
+														{invoiceBasis.delivery_address_json.country && (
+															<p>{invoiceBasis.delivery_address_json.country}</p>
+														)}
+													</div>
+												</div>
+											)}
+										</div>
+									</div>
+								</CardContent>
+							</Card>
+						)}
+						
 						<Card>
 							<CardHeader className='flex flex-col gap-2 md:flex-row md:items-center md:justify-between'>
 								<CardTitle>Fakturainfo</CardTitle>
@@ -591,7 +683,16 @@ export function InvoiceBasisPage({ projects }: InvoiceBasisPageProps) {
 																	className='h-9'
 																/>
 															) : (
-																line.description || '–'
+																<div className='space-y-1'>
+																	{line.source?.table === 'ata' && line.ata_info && (
+																		<div className='flex items-center gap-2'>
+																			<span className='inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-500/20 dark:text-blue-300'>
+																				ÄTA: {line.ata_info.ata_number ? `ÄTA ${line.ata_info.ata_number}` : line.ata_info.title}
+																			</span>
+																		</div>
+																	)}
+																	<div>{line.description || '–'}</div>
+																</div>
 															)}
 														</td>
 														<td className='px-3 py-3'>
@@ -733,17 +834,27 @@ export function InvoiceBasisPage({ projects }: InvoiceBasisPageProps) {
 								{diaryEntries.length > 0 && (
 									<div className='rounded-lg border border-border/60 bg-background'>
 										<div className='border-b border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground'>
-											Dagboksrader (ingår i fakturatext)
+											Dagboksrader och ÄTA-beskrivningar (ingår i fakturatext)
 										</div>
 										<div className='space-y-3 p-4'>
-											{diaryEntries.map((entry) => (
-												<div key={entry.line_ref} className='rounded-md border border-border/40 bg-muted/40 p-3 text-sm'>
-													<div className='font-semibold text-foreground'>
-														{format(new Date(entry.date), 'PPP', { locale: sv })}
+											{diaryEntries.map((entry) => {
+												const isAta = entry.line_ref?.startsWith('ata-');
+												return (
+													<div key={entry.line_ref} className='rounded-md border border-border/40 bg-muted/40 p-3 text-sm'>
+														<div className='flex items-center gap-2 mb-2'>
+															<div className='font-semibold text-foreground'>
+																{format(new Date(entry.date), 'PPP', { locale: sv })}
+															</div>
+															{isAta && (
+																<span className='inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-500/20 dark:text-blue-300'>
+																	ÄTA
+																</span>
+															)}
+														</div>
+														<div className='text-muted-foreground'>{entry.summary}</div>
 													</div>
-													<div className='text-muted-foreground'>{entry.summary}</div>
-												</div>
-											))}
+												);
+											})}
 										</div>
 									</div>
 								)}
@@ -838,6 +949,21 @@ export function InvoiceBasisPage({ projects }: InvoiceBasisPageProps) {
 										}}
 									>
 										Ladda ner CSV
+									</Button>
+									<Button
+										variant='outline'
+										onClick={() => {
+											if (!invoiceBasis.locked) {
+												toast.error('Lås underlaget innan export');
+												return;
+											}
+											window.open(
+												`/api/exports/invoice/pdf?projectId=${selectedProject}&start=${periodStart}&end=${periodEnd}`,
+												'_blank'
+											);
+										}}
+									>
+										Ladda ner PDF
 									</Button>
 								</div>
 							</CardContent>

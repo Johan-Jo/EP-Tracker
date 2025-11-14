@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
-import { generateInvoiceCSV, generateInvoiceCSVFilename } from '@/lib/exports/invoice-csv';
+import { generateInvoicePDF, generateInvoicePDFFilename } from '@/lib/exports/invoice-pdf';
 import { InvoiceBasisLine } from '@/lib/jobs/invoice-basis-refresh';
 
 export async function GET(request: NextRequest) {
@@ -56,6 +56,35 @@ export async function GET(request: NextRequest) {
             );
         }
 
+        // Fetch organization info (using actual database field names)
+        const { data: organization, error: orgError } = await supabase
+            .from('organizations')
+            .select('name, org_number, address, postal_code, city')
+            .eq('id', membership.org_id)
+            .single();
+
+        if (orgError || !organization) {
+            console.error('Organization fetch error:', orgError);
+            return NextResponse.json(
+                { error: 'Kunde inte hämta organisationsinformation' },
+                { status: 500 }
+            );
+        }
+
+        // Fetch project name
+        const { data: project, error: projectError } = await supabase
+            .from('projects')
+            .select('name')
+            .eq('id', projectId)
+            .single();
+
+        if (projectError || !project) {
+            return NextResponse.json(
+                { error: 'Kunde inte hämta projektinformation' },
+                { status: 500 }
+            );
+        }
+
         // Extract lines and diary from invoice_basis
         const lines = (invoiceBasis.lines_json?.lines || []) as InvoiceBasisLine[];
         const diarySummaries = (invoiceBasis.lines_json?.diary || []) as Array<{
@@ -65,14 +94,16 @@ export async function GET(request: NextRequest) {
             line_ref: string;
         }>;
 
-        // Generate CSV from invoice_basis data
-        const csv = generateInvoiceCSV(
+        // Generate PDF
+        const pdfBuffer = await generateInvoicePDF(
             lines,
             diarySummaries,
-            invoiceBasis
+            invoiceBasis,
+            organization,
+            project.name
         );
 
-        const filename = generateInvoiceCSVFilename(
+        const filename = generateInvoicePDFFilename(
             new Date(periodStart),
             new Date(periodEnd),
             invoiceBasis.invoice_number || undefined
@@ -81,23 +112,24 @@ export async function GET(request: NextRequest) {
         // Track export batch
         await supabase.from('integration_batches').insert({
             org_id: membership.org_id,
-            batch_type: 'invoice_csv',
+            batch_type: 'invoice_pdf',
             period_start: periodStart,
             period_end: periodEnd,
-            file_size_bytes: csv.length,
+            file_size_bytes: pdfBuffer.length,
             record_count: lines.length + diarySummaries.length,
             created_by: user.id,
         });
 
-        // Return CSV file
-        return new NextResponse(csv, {
+        // Return PDF file
+        return new NextResponse(pdfBuffer as unknown as BodyInit, {
             headers: {
-                'Content-Type': 'text/csv; charset=utf-8',
+                'Content-Type': 'application/pdf',
                 'Content-Disposition': `attachment; filename="${filename}"`,
+                'Content-Length': pdfBuffer.length.toString(),
             },
         });
     } catch (error) {
-        console.error('Invoice export error:', error);
+        console.error('Invoice PDF export error:', error);
         return NextResponse.json(
             { error: 'Ett oväntat fel uppstod' },
             { status: 500 }

@@ -71,6 +71,14 @@ export async function GET(request: NextRequest, context: RouteContext<RouteParam
 			periodEnd,
 		});
 
+		// Log summary for debugging
+		const linesCount = invoiceBasis?.lines_json?.lines?.length ?? 0;
+		const lineTypes = (invoiceBasis?.lines_json?.lines ?? []).reduce((acc: Record<string, number>, line: any) => {
+			acc[line.type] = (acc[line.type] || 0) + 1;
+			return acc;
+		}, {});
+		console.log(`[API] Invoice basis returned with ${linesCount} lines:`, lineTypes);
+
 		return NextResponse.json({ invoiceBasis });
 	} catch (error: unknown) {
 		const message = error instanceof Error ? error.message : 'Unexpected error';

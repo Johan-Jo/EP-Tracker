@@ -345,31 +345,26 @@ describe('/api/subcontractors', () => {
 				single: jest.fn().mockResolvedValue({ data: updatedSubcontractor, error: null }),
 			};
 
-			let callCount = 0;
-			mockedCreateClient.mockImplementation(() => {
-				callCount++;
-				if (callCount === 1) {
-					// First call: fetch existing subcontractor
-					return {
-						from: () => fetchBuilder,
-					} as any;
-				} else if (callCount === 2) {
-					// Second call: check for duplicate org_no
-					return {
-						from: () => checkBuilder,
-					} as any;
-				} else if (callCount === 3) {
-					// Third call: check for duplicate user_id
-					return {
-						from: () => checkBuilder,
-					} as any;
-				} else {
-					// Fourth call: update subcontractor
-					return {
-						from: () => updateBuilder,
-					} as any;
-				}
-			});
+			// Use an object to track call count (closure issue fix)
+			const callTracker = { count: 0 };
+			mockedCreateClient.mockResolvedValue({
+				from: jest.fn((table: string) => {
+					callTracker.count++;
+					if (callTracker.count === 1) {
+						// First call: fetch existing subcontractor
+						return fetchBuilder;
+					} else if (callTracker.count === 2) {
+						// Second call: check for duplicate org_no
+						return checkBuilder;
+					} else if (callTracker.count === 3) {
+						// Third call: check for duplicate user_id
+						return checkBuilder;
+					} else {
+						// Fourth call: update subcontractor
+						return updateBuilder;
+					}
+				}),
+			} as any);
 
 			const request = new NextRequest('http://localhost/api/subcontractors/sub-1', {
 				method: 'PUT',

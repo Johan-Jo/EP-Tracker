@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
+import { refreshInvoiceBasisForApprovals } from '@/lib/jobs/refresh-invoice-basis-for-approvals';
 
 type RouteParams = { id: string };
 
@@ -22,10 +23,10 @@ export async function POST(
 			return NextResponse.json({ error: 'Inte autentiserad' }, { status: 401 });
 		}
 
-		// Check user role
+		// Check user role and get org_id
 		const { data: membership } = await supabase
 			.from('memberships')
-			.select('role')
+			.select('role, org_id')
 			.eq('user_id', user.id)
 			.eq('is_active', true)
 			.single();
@@ -70,12 +71,26 @@ export async function POST(
 			.from('ata')
 			.update(updateData)
 			.eq('id', id)
-			.select()
+			.select('project_id, created_at')
 			.single();
 
 		if (error) {
 			console.error('Error updating ÄTA:', error);
 			return NextResponse.json({ error: error.message }, { status: 500 });
+		}
+
+		// Refresh invoice basis for the affected project and period (fire-and-forget)
+		if (action === 'approve' && ata && ata.project_id && ata.created_at) {
+			refreshInvoiceBasisForApprovals(
+				supabase,
+				membership.org_id,
+				[{
+					project_id: ata.project_id,
+					date: ata.created_at,
+				}]
+			).catch((error) => {
+				console.error('[approve-ata] Failed to refresh invoice basis:', error);
+			});
 		}
 
 		return NextResponse.json({ ata });

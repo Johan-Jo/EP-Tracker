@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
 import { approveTimeEntries } from '@/lib/approvals/approve-time-entries';
+import { refreshInvoiceBasisForApprovals } from '@/lib/jobs/refresh-invoice-basis-for-approvals';
 
 export async function POST(request: Request) {
 	try {
@@ -33,6 +34,20 @@ export async function POST(request: Request) {
 			approverId: user.id,
 			orgId: membership.org_id,
 		});
+
+		// Refresh invoice basis for all affected projects and periods (fire-and-forget)
+		if (entries.length > 0) {
+			refreshInvoiceBasisForApprovals(
+				supabase,
+				membership.org_id,
+				entries.map((entry: any) => ({
+					project_id: entry.project_id,
+					date: entry.start_at,
+				}))
+			).catch((error) => {
+				console.error('[approve-time-entries] Failed to refresh invoice basis:', error);
+			});
+		}
 
 		return NextResponse.json({ 
 			success: true, 

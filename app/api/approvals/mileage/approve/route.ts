@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
+import { refreshInvoiceBasisForApprovals } from '@/lib/jobs/refresh-invoice-basis-for-approvals';
 
 export async function POST(request: Request) {
 	try {
@@ -34,10 +35,24 @@ export async function POST(request: Request) {
 			})
 			.in('id', mileage_ids)
 			.eq('org_id', membership.org_id)
-			.select();
+			.select('project_id, date');
 
 		if (error) {
 			return NextResponse.json({ error: error.message }, { status: 500 });
+		}
+
+		// Refresh invoice basis for all affected projects and periods (fire-and-forget)
+		if (data && data.length > 0) {
+			refreshInvoiceBasisForApprovals(
+				supabase,
+				membership.org_id,
+				data.map((mileage: any) => ({
+					project_id: mileage.project_id,
+					date: mileage.date,
+				}))
+			).catch((error) => {
+				console.error('[approve-mileage] Failed to refresh invoice basis:', error);
+			});
 		}
 
 		return NextResponse.json({ success: true, approved_count: data?.length || 0 });

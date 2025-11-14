@@ -70,12 +70,22 @@ export function useInvoiceBasis({ projectId, periodStart, periodEnd, enabled = t
 			if (!projectId || !periodStart || !periodEnd) {
 				throw new Error('projectId, periodStart and periodEnd are required');
 			}
+			console.log(`[useInvoiceBasis] Fetching invoice basis for project ${projectId}, period ${periodStart} to ${periodEnd}`);
 			const response = await fetch(buildInvoiceBasisUrl(projectId, periodStart, periodEnd));
 			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				console.error(`[useInvoiceBasis] Failed to fetch invoice basis:`, errorData);
 				throw new Error('Failed to fetch invoice basis');
 			}
 			const data = await response.json();
-			return data.invoiceBasis as InvoiceBasisRecord;
+			const invoiceBasis = data.invoiceBasis as InvoiceBasisRecord;
+			const linesCount = invoiceBasis?.lines_json?.lines?.length ?? 0;
+			const lineTypes = (invoiceBasis?.lines_json?.lines ?? []).reduce((acc: Record<string, number>, line: any) => {
+				acc[line.type] = (acc[line.type] || 0) + 1;
+				return acc;
+			}, {});
+			console.log(`[useInvoiceBasis] Received invoice basis with ${linesCount} lines:`, lineTypes);
+			return invoiceBasis;
 		},
 	});
 }

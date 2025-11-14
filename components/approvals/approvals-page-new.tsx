@@ -189,11 +189,11 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 					.gte('created_at', start)
 					.lte('created_at', end),
 				supabase
-					.from('atas')
+					.from('ata')
 					.select(
 						`
 						*,
-						user:profiles!atas_user_id_fkey(full_name),
+						user:profiles!ata_created_by_fkey(full_name),
 						project:projects(name)
 					`
 					)
@@ -287,7 +287,20 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 					expensesQuery = expensesQuery.in('status', ['draft', 'submitted']);
 					// For ÄTA, pending is 'pending_approval'
 					ataQuery = ataQuery.eq('status', 'pending_approval');
+				} else if (statusFilter === 'draft') {
+					// For materials and expenses, draft is 'draft'
+					materialsQuery = materialsQuery.eq('status', 'draft');
+					expensesQuery = expensesQuery.eq('status', 'draft');
+					// For ÄTA, draft is 'draft'
+					ataQuery = ataQuery.eq('status', 'draft');
+				} else if (statusFilter === 'submitted') {
+					// For materials and expenses, submitted is 'submitted'
+					materialsQuery = materialsQuery.eq('status', 'submitted');
+					expensesQuery = expensesQuery.eq('status', 'submitted');
+					// For ÄTA, submitted maps to 'pending_approval' (when user submits ÄTA for approval)
+					ataQuery = ataQuery.eq('status', 'pending_approval');
 				} else {
+					// For other statuses (approved, rejected), apply directly
 					materialsQuery = materialsQuery.eq('status', statusFilter);
 					expensesQuery = expensesQuery.eq('status', statusFilter);
 					ataQuery = ataQuery.eq('status', statusFilter);
@@ -299,6 +312,17 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 				expensesQuery,
 				ataQuery,
 			]);
+
+			// Log errors for debugging
+			if (materialsRes.error) {
+				console.error('Error fetching materials:', materialsRes.error);
+			}
+			if (expensesRes.error) {
+				console.error('Error fetching expenses:', expensesRes.error);
+			}
+			if (ataRes.error) {
+				console.error('Error fetching ÄTA:', ataRes.error);
+			}
 
 			const materials = (materialsRes.data || []).map((m: any) => ({
 				...m,
@@ -321,6 +345,18 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 				amount: resolveAtaAmount(a),
 				user: a.user,
 			}));
+
+			// Debug logging
+			if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+				console.log('[Cost Entries Debug]', {
+					statusFilter,
+					materialsCount: materials.length,
+					expensesCount: expenses.length,
+					ataCount: ata.length,
+					ataData: ataRes.data,
+					ataError: ataRes.error,
+				});
+			}
 
 			return [...materials, ...expenses, ...ata];
 		},
@@ -350,14 +386,14 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 		e.status === 'draft' || e.status === 'submitted'
 	).length;
 	const pendingCosts = (allCostEntries || []).filter((e: any) => 
-		e.status === 'draft' || e.status === 'submitted'
+		e.status === 'draft' || e.status === 'submitted' || e.status === 'pending_approval'
 	).length;
 	const uniqueUsers = new Set([
 		...(allTimeEntries || []).filter((e: any) => 
 			e.status === 'draft' || e.status === 'submitted'
 		).map((e: any) => e.user?.full_name).filter(Boolean),
 		...(allCostEntries || []).filter((e: any) => 
-			e.status === 'draft' || e.status === 'submitted'
+			e.status === 'draft' || e.status === 'submitted' || e.status === 'pending_approval'
 		).map((e: any) => e.user?.full_name).filter(Boolean),
 	]).size;
 
@@ -632,35 +668,122 @@ const handleDownloadCurrentView = () => {
 
 	const handleApprove = async () => {
 		if (activeTab === 'time') {
-			// Approve time entries
-			const { error } = await supabase
-				.from('time_entries')
-				.update({ status: 'approved', approved_at: new Date().toISOString() })
-				.in('id', selectedTimeEntries);
+			// Approve time entries via API (which will auto-refresh invoice basis)
+			try {
+				const response = await fetch('/api/approvals/time-entries/approve', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ entry_ids: selectedTimeEntries }),
+				});
 
-			if (!error) {
+				if (!response.ok) {
+					const error = await response.json();
+					toast.error(error.error || 'Kunde inte godkänna tidrapporter');
+					return;
+				}
+
+				toast.success(`${selectedTimeEntries.length} tidrapporter godkända`);
 				setSelectedTimeEntries([]);
 				// Refresh data
 				window.location.reload();
+			} catch (error) {
+				console.error('Approval error:', error);
+				toast.error('Ett fel uppstod vid godkännande');
 			}
 		} else {
 			// Approve cost entries (materials, expenses, ÄTA)
-			await Promise.all(
-				selectedCostEntries.map(async (id) => {
-					const entry = costEntries.find((e: any) => e.id === id);
-					if (!entry) return;
+			// Group by type to use appropriate API endpoints
+			const materials: string[] = [];
+			const expenses: string[] = [];
+			const atas: string[] = [];
 
-					const table = entry.type === 'ÄTA' ? 'ata' : entry.type === 'Material' ? 'materials' : 'expenses';
-					
-					return supabase
-						.from(table)
-						.update({ status: 'approved', approved_at: new Date().toISOString() })
-						.eq('id', id);
-				})
-			);
+			selectedCostEntries.forEach((id) => {
+				const entry = costEntries.find((e: any) => e.id === id);
+				if (!entry) return;
 
-			setSelectedCostEntries([]);
-			window.location.reload();
+				if (entry.type === 'Material') {
+					materials.push(id);
+				} else if (entry.type === 'ÄTA') {
+					atas.push(id);
+				} else {
+					expenses.push(id);
+				}
+			});
+
+			try {
+				// Approve materials
+				if (materials.length > 0) {
+					const response = await fetch('/api/approvals/materials/approve', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ material_ids: materials }),
+					});
+
+					if (!response.ok) {
+						const error = await response.json();
+						toast.error(error.error || 'Kunde inte godkänna material');
+						return;
+					}
+				}
+
+				// Approve expenses
+				if (expenses.length > 0) {
+					const response = await fetch('/api/approvals/expenses/approve', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ expense_ids: expenses }),
+					});
+
+					if (!response.ok) {
+						const error = await response.json();
+						toast.error(error.error || 'Kunde inte godkänna utlägg');
+						return;
+					}
+				}
+
+				// Approve ÄTA (one by one since API expects single ID)
+				if (atas.length > 0) {
+					// Get current user's name for approval signature
+					const { data: { user } } = await supabase.auth.getUser();
+					let approvedByName = 'System';
+					if (user) {
+						const { data: profile } = await supabase
+							.from('profiles')
+							.select('full_name')
+							.eq('id', user.id)
+							.single();
+						if (profile?.full_name) {
+							approvedByName = profile.full_name;
+						}
+					}
+
+					await Promise.all(
+						atas.map(async (id) => {
+							const response = await fetch(`/api/ata/${id}/approve`, {
+								method: 'POST',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify({
+									action: 'approve',
+									approved_by_name: approvedByName,
+								}),
+							});
+
+							if (!response.ok) {
+								const error = await response.json();
+								throw new Error(error.error || 'Kunde inte godkänna ÄTA');
+							}
+						})
+					);
+				}
+
+				const totalApproved = materials.length + expenses.length + atas.length;
+				toast.success(`${totalApproved} kostnader godkända`);
+				setSelectedCostEntries([]);
+				window.location.reload();
+			} catch (error) {
+				console.error('Approval error:', error);
+				toast.error((error as Error)?.message || 'Ett fel uppstod vid godkännande');
+			}
 		}
 	};
 
