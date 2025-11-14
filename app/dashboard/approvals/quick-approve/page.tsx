@@ -86,6 +86,12 @@ export default async function QuickApprovePage({ searchParams }: QuickApprovePag
 				throw new Error('Tidrapporten kunde inte hittas eller så tillhör den inte din organisation.');
 			}
 
+			const normalizedEntry = {
+				...entry,
+				project: Array.isArray(entry.project) ? entry.project[0] ?? null : entry.project,
+				user: Array.isArray(entry.user) ? entry.user[0] ?? null : entry.user,
+			};
+
 			if (params.action === 'approve') {
 				if (entry.status === 'approved') {
 					return (
@@ -127,7 +133,13 @@ export default async function QuickApprovePage({ searchParams }: QuickApprovePag
 
 			const approveUrl = `/dashboard/approvals/quick-approve?mode=single&entryId=${entry.id}&action=approve`;
 
-			return <SingleEntryReview entry={entry} pendingCount={pendingCount ?? 1} approveUrl={approveUrl} />;
+			return (
+				<SingleEntryReview
+					entry={normalizedEntry}
+					pendingCount={pendingCount ?? 1}
+					approveUrl={approveUrl}
+				/>
+			);
 		}
 
 		if (mode === 'all') {
@@ -135,7 +147,7 @@ export default async function QuickApprovePage({ searchParams }: QuickApprovePag
 				throw new Error('Användar-ID saknas i länken.');
 			}
 
-			const { data: pendingEntries, error: pendingError } = await supabase
+			const { data: pendingEntriesRaw, error: pendingError } = await supabase
 				.from('time_entries')
 				.select(
 					`
@@ -158,7 +170,13 @@ export default async function QuickApprovePage({ searchParams }: QuickApprovePag
 				throw new Error('Kunde inte hämta tidrapporter att godkänna.');
 			}
 
-			const entryIds = (pendingEntries ?? []).map((entry) => entry.id);
+			const pendingEntries =
+				pendingEntriesRaw?.map((entry) => ({
+					...entry,
+					project: Array.isArray(entry.project) ? entry.project[0] ?? null : entry.project,
+				})) ?? [];
+
+			const entryIds = pendingEntries.map((entry) => entry.id);
 
 			if (entryIds.length === 0) {
 				throw new Error('Det finns inga tidrapporter i vänteläge för denna medarbetare.');
