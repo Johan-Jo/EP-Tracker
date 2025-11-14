@@ -121,7 +121,77 @@ export async function POST(request: NextRequest, context: RouteContext<RoutePara
 			return NextResponse.json({ error: 'Invoice basis already locked' }, { status: 409 });
 		}
 
-		const invoiceSeries = parseString(body.invoiceSeries ?? body.invoice_series, 'invoice_series') ?? basis.invoice_series;
+		let customerId = basis.customer_id ?? null;
+
+		if (!customerId) {
+			const { data: projectRow } = await supabase
+				.from('projects')
+				.select('customer_id')
+				.eq('org_id', membership.org_id)
+				.eq('id', projectId)
+				.single();
+			customerId = projectRow?.customer_id ?? null;
+		}
+
+		let customerSnapshot: Record<string, unknown> | null = null;
+		if (customerId) {
+			const { data: customerRow } = await supabase
+				.from('customers')
+				.select(
+					'id, customer_no, type, company_name, org_no, vat_no, f_tax, first_name, last_name, personal_identity_no, rot_enabled, property_designation, housing_assoc_org_no, apartment_no, ownership_share, rot_consent_at, invoice_email, invoice_method, peppol_id, gln, terms, default_vat_rate, bankgiro, plusgiro, reference, invoice_address_street, invoice_address_zip, invoice_address_city, invoice_address_country, delivery_address_street, delivery_address_zip, delivery_address_city, delivery_address_country, phone_mobile, notes'
+				)
+				.eq('org_id', membership.org_id)
+				.eq('id', customerId)
+				.single();
+
+			if (customerRow) {
+				customerSnapshot = {
+					captured_at: new Date().toISOString(),
+					id: customerRow.id,
+					customer_no: customerRow.customer_no,
+					type: customerRow.type,
+					company_name: customerRow.company_name,
+					org_no: customerRow.org_no,
+					vat_no: customerRow.vat_no,
+					f_tax: customerRow.f_tax,
+					first_name: customerRow.first_name,
+					last_name: customerRow.last_name,
+					personal_identity_no: customerRow.personal_identity_no,
+					rot_enabled: customerRow.rot_enabled,
+					property_designation: customerRow.property_designation,
+					housing_assoc_org_no: customerRow.housing_assoc_org_no,
+					apartment_no: customerRow.apartment_no,
+					ownership_share: customerRow.ownership_share,
+					rot_consent_at: customerRow.rot_consent_at,
+					invoice_email: customerRow.invoice_email,
+					invoice_method: customerRow.invoice_method,
+					peppol_id: customerRow.peppol_id,
+					gln: customerRow.gln,
+					terms: customerRow.terms,
+					default_vat_rate: customerRow.default_vat_rate,
+					bankgiro: customerRow.bankgiro,
+					plusgiro: customerRow.plusgiro,
+					reference: customerRow.reference,
+					invoice_address: {
+						street: customerRow.invoice_address_street,
+						zip: customerRow.invoice_address_zip,
+						city: customerRow.invoice_address_city,
+						country: customerRow.invoice_address_country,
+					},
+					delivery_address: {
+						street: customerRow.delivery_address_street,
+						zip: customerRow.delivery_address_zip,
+						city: customerRow.delivery_address_city,
+						country: customerRow.delivery_address_country,
+					},
+					phone_mobile: customerRow.phone_mobile,
+					notes: customerRow.notes,
+				};
+			}
+		}
+
+		const invoiceSeries =
+			parseString(body.invoiceSeries ?? body.invoice_series, 'invoice_series') ?? basis.invoice_series;
 		const invoiceNumber =
 			parseString(body.invoiceNumber ?? body.invoice_number, 'invoice_number') ??
 			basis.invoice_number ??
@@ -172,6 +242,8 @@ export async function POST(request: NextRequest, context: RouteContext<RoutePara
 		const { error: updateError } = await supabase
 			.from('invoice_basis')
 			.update({
+				customer_id: customerId,
+				customer_snapshot: customerSnapshot,
 				invoice_series: invoiceSeries,
 				invoice_number: invoiceNumber,
 				invoice_date: invoiceDate,

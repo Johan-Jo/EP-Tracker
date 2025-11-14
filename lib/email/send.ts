@@ -5,6 +5,7 @@ import { AnnouncementEmail } from './templates/announcement';
 import { TrialEndingEmail } from './templates/trial-ending';
 import { PaymentFailedEmail } from './templates/payment-failed';
 import { PaymentSuccessfulEmail } from './templates/payment-successful';
+import { TimeApprovalInviteEmail } from './templates/time-approval-invite';
 import { AccountSuspendedEmail } from './templates/account-suspended';
 import { WelcomeEmail } from './templates/welcome';
 import { PasswordResetEmail } from './templates/password-reset';
@@ -13,7 +14,7 @@ interface SendEmailOptions {
   to: string;
   toName?: string;
   subject: string;
-  template: 'announcement' | 'trial-ending' | 'payment-failed' | 'payment-successful' | 'account-suspended' | 'welcome' | 'password-reset' | 'custom';
+  template: 'announcement' | 'trial-ending' | 'payment-failed' | 'payment-successful' | 'account-suspended' | 'welcome' | 'password-reset' | 'time-approval-invite' | 'custom';
   templateData: Record<string, any>;
   organizationId?: string;
   emailType?: 'announcement' | 'notification' | 'transactional' | 'marketing';
@@ -58,6 +59,9 @@ export async function sendEmail(options: SendEmailOptions) {
         break;
       case 'account-suspended':
         html = await render(AccountSuspendedEmail(templateData as any));
+        break;
+      case 'time-approval-invite':
+        html = await render(TimeApprovalInviteEmail(templateData as any));
         break;
       case 'welcome':
         html = await render(WelcomeEmail(templateData as any));
@@ -346,4 +350,59 @@ export async function sendPaymentFailedNotification(
     emailType: 'notification',
   });
 }
+
+interface TimeApprovalInviteOptions {
+  to: string;
+  toName?: string | null;
+  organizationId: string;
+  workerName: string;
+  projectName?: string | null;
+  entryDate: string;
+  entryHours: string;
+  notes?: string | null;
+  approveUrl: string;
+  approveAllUrl?: string | null;
+  pendingCount?: number;
+  sentBy?: string;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  subject?: string;
+  reviewUrl?: string | null;
+}
+
+/**
+ * Send an approval invitation to an admin/foreman with quick action links
+ */
+export async function sendTimeApprovalInvite(options: TimeApprovalInviteOptions) {
+  const trimmedName = options.workerName.trim();
+  const workerSubjectName = trimmedName.endsWith('s') ? `${trimmedName}’` : `${trimmedName}s`;
+  const subject =
+    options.subject ?? `${workerSubjectName} tidrapport behöver ditt godkännande`;
+
+  return sendEmail({
+    to: options.to,
+    toName: options.toName ?? undefined,
+    subject,
+    template: 'time-approval-invite',
+    templateData: {
+      approverName: options.toName,
+      workerName: options.workerName,
+      projectName: options.projectName,
+      entryDate: options.entryDate,
+      entryHours: options.entryHours,
+      notes: options.notes,
+      approveUrl: options.approveUrl,
+      approveAllUrl: options.approveAllUrl,
+      pendingCount: options.pendingCount,
+      subjectLine: subject,
+      checkInTime: options.checkInTime,
+      checkOutTime: options.checkOutTime,
+      reviewUrl: options.reviewUrl,
+    },
+    organizationId: options.organizationId,
+    emailType: 'notification',
+    sentBy: options.sentBy,
+  });
+}
+
 

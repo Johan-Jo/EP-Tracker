@@ -26,6 +26,8 @@ import { AddressAutocomplete } from '@/components/address/address-autocomplete';
 import { AddressMap } from '@/components/address/address-map';
 import { ProjectAlertSettings } from './project-alert-settings';
 import { QRDialog } from '@/components/worksites/qr-dialog';
+import { CustomerSelect } from '@/components/customers/customer-select';
+import { useCustomer } from '@/lib/hooks/use-customers';
 
 interface ProjectFormProps {
 	project?: ProjectFormData & { id?: string };
@@ -85,37 +87,38 @@ const [error, setError] = useState<string | null>(null);
 		formState: { errors },
 		setValue,
 		watch,
-	} = useForm({
-	resolver: zodResolver(projectSchema),
-	defaultValues: project || {
-	name: '',
-	project_number: null,
-	client_name: null,
-	site_address: null,
-	site_lat: null,
-	site_lon: null,
-	geo_fence_radius_m: 100,
-	budget_mode: 'none' as const,
-	budget_hours: null,
-	budget_amount: null,
-	status: 'active' as const,
-	billing_mode: 'LOPANDE_ONLY',
-	default_time_billing_type: 'LOPANDE',
-	quoted_amount_sek: null,
-	project_hourly_rate_sek: null,
-	// Defaults requested: Stockholm/Sverige
-	timezone: 'Europe/Stockholm',
-	country: 'Sverige',
-	retention_years: 2, // Automatiskt 2 år enligt lagkrav
-	 alert_settings: defaultAlertSettings,
+	} = useForm<ProjectFormData>({
+		resolver: zodResolver(projectSchema),
+		defaultValues: project ?? {
+			name: '',
+			customer_id: '',
+			project_number: null,
+			client_name: null,
+			site_address: null,
+			site_lat: null,
+			site_lon: null,
+			geo_fence_radius_m: 100,
+			budget_mode: 'none',
+			budget_hours: null,
+			budget_amount: null,
+			status: 'active',
+			billing_mode: 'LOPANDE_ONLY',
+			default_time_billing_type: 'LOPANDE',
+			quoted_amount_sek: null,
+			project_hourly_rate_sek: null,
+			timezone: 'Europe/Stockholm',
+			country: 'Sverige',
+			retention_years: 2,
+			alert_settings: defaultAlertSettings,
 		},
-		});
+	});
 
 const budgetMode = watch('budget_mode');
 const status = watch('status');
 const siteAddress = watch('site_address');
 const siteLat = watch('site_lat');
 const siteLon = watch('site_lon');
+const customerId = watch('customer_id');
 const addr1 = watch('address_line1');
 const postal = watch('postal_code');
 const city = watch('city');
@@ -123,6 +126,7 @@ const projNumber = watch('project_number');
 const projName = watch('name');
 const billingMode = watch('billing_mode');
 const defaultTimeBilling = watch('default_time_billing_type');
+const { data: selectedCustomer } = useCustomer(customerId || null);
 const timeBillingOptions = useMemo(() => {
 	if (billingMode === 'FAST_ONLY') return billingTypeOptions.filter((opt) => opt.value === 'FAST');
 	if (billingMode === 'LOPANDE_ONLY') return billingTypeOptions.filter((opt) => opt.value === 'LOPANDE');
@@ -311,6 +315,27 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 					/>
 						{errors.name && (
 							<p className='text-sm text-destructive'>{errors.name.message}</p>
+						)}
+					</div>
+
+					<div className='space-y-2'>
+						<input type='hidden' {...register('customer_id')} />
+						<input type='hidden' {...register('client_name')} />
+						<CustomerSelect
+							value={selectedCustomer ?? null}
+							onChange={(customer) => {
+								setValue('customer_id', customer.id, { shouldDirty: true, shouldValidate: true });
+								const fallbackName =
+									customer.type === 'COMPANY'
+										? customer.company_name
+										: `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim() || null;
+								setValue('client_name', fallbackName, { shouldDirty: true });
+							}}
+							label='Kund'
+							placeholder='Välj kund'
+						/>
+						{errors.customer_id && (
+							<p className='text-sm text-destructive'>{errors.customer_id.message}</p>
 						)}
 					</div>
 

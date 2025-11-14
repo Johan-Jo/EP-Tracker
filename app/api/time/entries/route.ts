@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createTimeEntrySchema } from '@/lib/schemas/time-entry';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
 import { notifyOnCheckIn } from '@/lib/notifications/project-alerts'; // EPIC 25 Phase 2: Project alerts
+import { sendTimeApprovalInviteForEntry } from '@/lib/notifications/time-approval-invite';
 
 const MAX_MINUTES_PER_DAY = 24 * 60;
 
@@ -289,6 +290,12 @@ export async function POST(request: NextRequest) {
 				// Don't fail the request if notification fails
 				console.error('Failed to send check-in notification:', error);
 			}
+		}
+
+		if (entry.stop_at) {
+			sendTimeApprovalInviteForEntry(entry.id).catch((error) => {
+				console.error('Failed to send time approval invite email:', error);
+			});
 		}
 
 		return NextResponse.json({ entry }, { status: 201 });

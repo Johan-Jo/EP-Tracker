@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { updateTimeEntrySchema } from '@/lib/schemas/time-entry';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
 import { notifyOnCheckOut } from '@/lib/notifications/project-alerts'; // EPIC 25 Phase 2: Project alerts
+import { sendTimeApprovalInviteForEntry } from '@/lib/notifications/time-approval-invite';
 import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
 const MAX_MINUTES_PER_DAY = 24 * 60;
@@ -172,7 +173,8 @@ export async function PATCH(
 
 		// EPIC 25 Phase 2: Notify admin/foreman when someone checks out
 		// Detect check-out: entry had no stop_at but now it does
-		if (!existingEntry.stop_at && entry.stop_at && entry.project_id) {
+		const stopAdded = !existingEntry.stop_at && entry.stop_at;
+		if (stopAdded && entry.project_id) {
 			// Get user's full name for notification
 			const { data: profile } = await supabase
 				.from('profiles')
@@ -197,6 +199,12 @@ export async function PATCH(
 				// Don't fail the request if notification fails
 				console.error('Failed to send check-out notification:', error);
 			}
+		}
+
+		if (stopAdded) {
+			sendTimeApprovalInviteForEntry(entry.id).catch((error) => {
+				console.error('Failed to send time approval invite email (update):', error);
+			});
 		}
 
 		return NextResponse.json({ entry }, { status: 200 });

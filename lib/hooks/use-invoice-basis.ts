@@ -16,6 +16,7 @@ export interface InvoiceBasisRecord {
 	period_start: string;
 	period_end: string;
 	customer_id: string | null;
+	customer_snapshot: Record<string, unknown> | null;
 	invoice_series: string | null;
 	invoice_number: string | null;
 	invoice_date: string | null;

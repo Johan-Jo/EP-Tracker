@@ -12,6 +12,7 @@ import { ProjectTeamTab } from '@/components/projects/project-team-tab';
 import { ProjectSummaryView } from '@/components/projects/project-summary-view';
 import { ProjectAlertSettingsDisplay } from '@/components/projects/project-alert-settings-display';
 import { FixedTimeBlocksCard } from '@/components/projects/fixed-time-blocks-card';
+import { CustomerCard } from '@/components/customers/customer-card';
 
 interface PageProps {
 	params: Promise<{ id: string }>;
@@ -35,6 +36,7 @@ export default async function ProjectDetailPage(props: PageProps) {
 		.select(
 			`
 			*,
+			customer:customers(*),
 			phases (*),
 			work_orders (*)
 		`
@@ -60,6 +62,11 @@ export default async function ProjectDetailPage(props: PageProps) {
 	}
 
 	const canEdit = ['admin', 'foreman'].includes(membership.role);
+	const customerDisplayName = project.customer
+		? project.customer.type === 'COMPANY'
+			? project.customer.company_name
+			: `${project.customer.first_name ?? ''} ${project.customer.last_name ?? ''}`.trim()
+		: project.client_name;
 
 	// PERFORMANCE: Fetch project summary on server-side for instant page load
 	// Use internal API call with supabase client instead of HTTP fetch
@@ -252,7 +259,7 @@ export default async function ProjectDetailPage(props: PageProps) {
 					canEdit={canEdit}
 					projectName={project.name}
 					projectNumber={project.project_number}
-					clientName={project.client_name}
+					clientName={customerDisplayName}
 					siteAddress={project.site_address}
 					status={project.status}
 					budgetMode={project.budget_mode}
@@ -261,6 +268,13 @@ export default async function ProjectDetailPage(props: PageProps) {
 					showEditButton={true}
 					initialSummary={initialSummary}
 				/>
+
+				{project.customer_id ? (
+					<CustomerCard
+						customerId={project.customer_id}
+						canMerge={membership.role === 'admin'}
+					/>
+				) : null}
 
 				{/* Alert Settings Display - EPIC 25 Phase 2 */}
 				{canEdit && (

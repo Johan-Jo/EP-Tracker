@@ -225,7 +225,7 @@ export async function refreshInvoiceBasis({
 	] = await Promise.all([
 		supabase
 			.from('projects')
-			.select('id, org_id, name, project_number, site_address')
+			.select('id, org_id, name, project_number, site_address, customer_id')
 			.eq('id', projectId)
 			.eq('org_id', orgId)
 			.single(),
@@ -574,7 +574,7 @@ export async function refreshInvoiceBasis({
 		project_id: projectId,
 		period_start: periodStart,
 		period_end: periodEnd,
-		customer_id: null,
+		customer_id: project.customer_id ?? null,
 		invoice_series: null,
 		invoice_number: null,
 		invoice_date: null,
@@ -598,6 +598,7 @@ export async function refreshInvoiceBasis({
 			diary: diarySummaries,
 		},
 		totals: totalsPayload,
+		customer_snapshot: null,
 	};
 
 	const { data: existingRecord, error: fetchError } = await supabase

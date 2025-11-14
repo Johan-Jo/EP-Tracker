@@ -48,6 +48,7 @@ export const projectSchema = z.object({
 		.string()
 		.min(1, 'Projektnamn krävs')
 		.max(200, 'Projektnamn är för långt'),
+	customer_id: z.string().uuid('Välj eller skapa kund'),
 	project_number: z.string().max(50).optional().nullable(),
 	client_name: z.string().max(200).optional().nullable(),
 	site_address: z.string().max(500).optional().nullable(),
@@ -118,6 +119,7 @@ export type Project = {
 	id: string;
 	org_id: string;
 	name: string;
+	customer_id: string;
 	project_number: string | null;
 	client_name: string | null;
 	site_address: string | null;
@@ -152,6 +154,14 @@ export type ProjectFormData = z.infer<typeof projectSchema>;
 
 // Project with phases (for detail view)
 export type ProjectWithPhases = Project & {
+	customer?: {
+		id: string;
+		type: string;
+		company_name: string | null;
+		first_name: string | null;
+		last_name: string | null;
+		invoice_email: string | null;
+	};
 	phases?: Phase[];
 	work_orders?: WorkOrder[];
 };
