@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
 	customerPayloadSchema,
 	type Customer,
 	type CustomerPayload,
 	invoiceMethodEnum,
-	vatRateEnum,
 } from '@/lib/schemas/customer';
 import {
 	formatSwedishOrganizationNumber,
@@ -51,6 +51,8 @@ const vatRateOptions = [0, 6, 12, 25].map((value) => ({
 	value,
 	label: `${value} %`,
 }));
+
+type CustomerFormInput = z.input<typeof customerPayloadSchema>;
 
 const defaultValues: Partial<CustomerPayload> = {
 	type: 'COMPANY',
@@ -143,9 +145,9 @@ export function CustomerForm({
 		watch,
 		setValue,
 		formState: { errors, isSubmitting },
-	} = useForm<CustomerPayload>({
+	} = useForm<CustomerFormInput, undefined, CustomerPayload>({
 		resolver: zodResolver(customerPayloadSchema),
-		defaultValues: defaultPayload,
+		defaultValues: defaultPayload as CustomerFormInput,
 	});
 
 	const type = watch('type');
@@ -172,7 +174,9 @@ export function CustomerForm({
 	const submitHandler = handleSubmit(async (values) => {
 		setFormError(null);
 		try {
+			console.log('CustomerForm submit start', values);
 			await onSubmit(values);
+			console.log('CustomerForm submit success');
 		} catch (error) {
 			console.error('Failed to submit customer form', error);
 			setFormError(
@@ -229,16 +233,20 @@ export function CustomerForm({
 							<div className="grid gap-4 md:grid-cols-2">
 								<div>
 									<Label htmlFor="company_name">Företagsnamn *</Label>
-									<Input id="company_name" {...register('company_name')} />
+							<Input
+								id="company_name"
+								placeholder="Företagsnamn"
+								{...register('company_name', { required: 'Företagsnamn krävs' })}
+							/>
 									<ErrorText message={errors.company_name?.message} />
 								</div>
 								<div>
 									<Label htmlFor="org_no">Organisationsnummer *</Label>
-									<Input
-										id="org_no"
-										placeholder="5560160680"
-										{...register('org_no')}
-									/>
+							<Input
+								id="org_no"
+								placeholder="5560160680"
+								{...register('org_no', { required: 'Organisationsnummer krävs' })}
+							/>
 									{watch('org_no') && (
 										<p className="text-xs text-muted-foreground mt-1">
 											{formatSwedishOrganizationNumber(watch('org_no')) ??
@@ -250,12 +258,12 @@ export function CustomerForm({
 							</div>
 							<div className="grid gap-4 md:grid-cols-3">
 								<div>
-									<Label htmlFor="invoice_email">Fakturamejl</Label>
+									<Label htmlFor="invoice_email">Fakturamejl *</Label>
 									<Input
 										id="invoice_email"
 										type="email"
 										placeholder="faktura@kund.se"
-										{...register('invoice_email')}
+										{...register('invoice_email', { required: 'Fakturamejl krävs' })}
 									/>
 									<ErrorText message={errors.invoice_email?.message} />
 								</div>
@@ -400,7 +408,16 @@ export function CustomerForm({
 								/>
 								<div>
 									<Label htmlFor="reference">Referens/Kostnadsställe</Label>
-									<Input id="reference" {...register('reference')} />
+									<Input
+										id="reference"
+										placeholder="Valfritt"
+										value={watch('reference') ?? ''}
+										onChange={(event) =>
+											setValue('reference', event.target.value || undefined, {
+												shouldDirty: true,
+											})
+										}
+									/>
 								</div>
 							</div>
 						</>
@@ -612,7 +629,12 @@ export function CustomerForm({
 							id="notes"
 							rows={4}
 							placeholder='Interna anteckningar (t.ex. "Godkänner endast Peppol")'
-							{...register('notes')}
+							value={watch('notes') ?? ''}
+							onChange={(event) =>
+								setValue('notes', event.target.value || undefined, {
+									shouldDirty: true,
+								})
+							}
 						/>
 					</div>
 				</CardContent>
@@ -624,7 +646,7 @@ export function CustomerForm({
 						Avbryt
 					</Button>
 				) : null}
-				<Button type="submit" disabled={isSubmitting}>
+				<Button type="button" disabled={isSubmitting} onClick={() => submitHandler()}>
 					{isSubmitting ? 'Sparar...' : submitLabel}
 				</Button>
 			</div>
