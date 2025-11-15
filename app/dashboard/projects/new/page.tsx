@@ -1,9 +1,10 @@
+import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ProjectForm } from '@/components/projects/project-form';
+import { ProjectFormData } from '@/lib/schemas/project';
+import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
-import { createProject } from '@/app/actions/create-project'; // Server action in separate file
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default async function NewProjectPage() {
 	// EPIC 26: Use cached session to avoid duplicate queries
@@ -34,6 +35,36 @@ export default async function NewProjectPage() {
 		redirect('/dashboard/projects');
 	}
 
+	async function createProject(data: ProjectFormData) {
+		'use server';
+		
+		// EPIC 26: Use cached session in server action
+		const { user, membership } = await getSession();
+
+		if (!user || !membership) {
+			throw new Error('Inte autentiserad');
+		}
+
+		const supabase = await createClient();
+		const { data: project, error } = await supabase
+			.from('projects')
+			.insert({
+				org_id: membership.org_id,
+				created_by: user.id,
+				...data,
+			})
+			.select()
+			.single();
+
+		if (error) {
+			console.error('Error creating project:', error);
+			throw new Error(error.message);
+		}
+
+		revalidatePath('/dashboard/projects');
+		redirect(`/dashboard/projects/${project.id}`);
+	}
+
 	return (
 		<div className='flex-1 overflow-auto pb-20 md:pb-0'>
 			<div className='px-4 md:px-8 py-6'>
@@ -52,14 +83,14 @@ export default async function NewProjectPage() {
 				</nav>
 
 					{/* Header */}
-					<Card>
-						<CardHeader>
-							<CardTitle className='text-3xl tracking-tight'>Skapa nytt projekt</CardTitle>
-							<CardDescription>
-								Fyll i projektets information nedan för att komma igång
-							</CardDescription>
-						</CardHeader>
-					</Card>
+					<div className='bg-gradient-to-r from-orange-50 to-orange-100/50 border border-orange-200 rounded-xl p-6'>
+						<h1 className='text-3xl font-bold tracking-tight text-gray-900'>
+							Skapa nytt projekt
+						</h1>
+						<p className='text-gray-600 mt-2'>
+							Fyll i projektets information nedan för att komma igång
+						</p>
+					</div>
 
 					<ProjectForm orgId={orgId} onSubmit={createProject} />
 				</div>

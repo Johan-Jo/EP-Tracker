@@ -1,174 +1,92 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/server';
-import { sendCheckOutReminder } from '@/lib/notifications/project-alerts';
-
 /**
- * Cron job to send check-out reminders
- * Should run every hour (or every 15 minutes for more precision)
- * Checks all projects with checkout_reminder_enabled=true
- * Sends reminders to checked-in users X minutes before work_day_end
+ * Cron Job: Check-out Reminders
+ * Runs daily at 16:45 to remind workers to check out
+ * Schedule: "45 16 * * 1-5" (Mon-Fri at 16:45)
  */
-export async function GET(request: NextRequest) {
-  // Verify cron secret (Vercel Cron sends this header)
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
-  const adminClient = createAdminClient();
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  const currentTimeMinutes = currentHour * 60 + currentMinute;
+import { createClient } from '@/lib/supabase/server';
+import { sendCheckOutReminder } from '@/lib/notifications';
+import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+export async function GET(request: Request) {
   try {
-    // Get all projects with check-out reminders enabled
-    const { data: projects, error: projectsError } = await adminClient
-      .from('projects')
-      .select('id, name, org_id, alert_settings')
-      .not('alert_settings', 'is', null);
-
-    if (projectsError) {
-      console.error('Error fetching projects for check-out reminders:', projectsError);
-      return NextResponse.json({ error: projectsError.message }, { status: 500 });
+    // Verify cron secret
+    const authHeader = request.headers.get('authorization');
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return new Response('Unauthorized', { status: 401 });
     }
 
-    if (!projects || projects.length === 0) {
-      return NextResponse.json({ sent: 0, message: 'No projects found' });
+    const supabase = await createClient();
+
+    // Find all active time entries (no stop_at)
+    const { data: entries, error } = await supabase
+      .from('time_entries')
+      .select(`
+        id,
+        user_id,
+        project_id,
+        start_at,
+        projects!inner(id, name)
+      `)
+      .is('stop_at', null)
+      .order('start_at', { ascending: true });
+
+    if (error) {
+      console.error('[Checkout Reminders] Error fetching entries:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    let totalSent = 0;
-    const results: any[] = [];
+    if (!entries || entries.length === 0) {
+      console.log('[Checkout Reminders] No active entries found');
+      return NextResponse.json({ message: 'No active entries', sent: 0 });
+    }
 
-    for (const project of projects) {
-      const alertSettings = project.alert_settings as any;
-      
-      // Skip if reminders are disabled
-      if (!alertSettings?.checkout_reminder_enabled) {
-        continue;
-      }
+    // Send reminder to each user
+    let sentCount = 0;
+    let failedCount = 0;
 
-      const workDayEnd = alertSettings.work_day_end || '16:00';
-      const minutesBefore = alertSettings.checkout_reminder_minutes_before || 15;
+    for (const entry of entries) {
+      try {
+        const startTime = new Date(entry.start_at);
+        const now = new Date();
+        const hoursWorked = (now.getTime() - startTime.getTime()) / (1000 * 60 * 60);
 
-      // Parse work day end time
-      const [endHour, endMinute] = workDayEnd.split(':').map(Number);
-      const reminderTimeMinutes = endHour * 60 + endMinute - minutesBefore;
-
-      // Check if current time matches reminder time (within 15 minute window)
-      const timeDiff = Math.abs(currentTimeMinutes - reminderTimeMinutes);
-      if (timeDiff > 15) {
-        continue; // Not time for this reminder yet
-      }
-
-      // Get all users who are currently checked in on this project
-      const todayStart = new Date(now);
-      todayStart.setHours(0, 0, 0, 0);
-      const todayEnd = new Date(now);
-      todayEnd.setHours(23, 59, 59, 999);
-
-      const { data: activeEntries, error: entriesError } = await adminClient
-        .from('time_entries')
-        .select('user_id')
-        .eq('project_id', project.id)
-        .gte('start_at', todayStart.toISOString())
-        .lte('start_at', todayEnd.toISOString())
-        .is('stop_at', null);
-
-      if (entriesError) {
-        console.error(`Error fetching active entries for project ${project.id}:`, entriesError);
-        continue;
-      }
-
-      if (!activeEntries || activeEntries.length === 0) {
-        continue;
-      }
-
-      // Get all memberships for this organization to check roles
-      const { data: memberships } = await adminClient
-        .from('memberships')
-        .select('user_id, role')
-        .eq('org_id', project.org_id)
-        .eq('is_active', true);
-
-      const membershipsMap = new Map(
-        (memberships || []).map(m => [m.user_id, m.role])
-      );
-
-      // Get assignments to identify workers
-      const { data: assignments } = await adminClient
-        .from('assignments')
-        .select('user_id')
-        .eq('project_id', project.id)
-        .eq('status', 'active')
-        .is('end_date', null);
-
-      const workerIds = new Set((assignments || []).map(a => a.user_id));
-
-      // Filter checked-in users based on role settings
-      const usersToRemind = activeEntries
-        .map(e => e.user_id)
-        .filter(userId => {
-          const role = membershipsMap.get(userId);
-          const isWorker = workerIds.has(userId);
-          
-          if (isWorker) {
-            return alertSettings.checkout_reminder_for_workers !== false;
-          } else if (role === 'foreman') {
-            return alertSettings.checkout_reminder_for_foreman !== false;
-          } else if (role === 'admin') {
-            return alertSettings.checkout_reminder_for_admin !== false;
-          }
-          return false;
+        const result = await sendCheckOutReminder({
+          userId: entry.user_id,
+          projectName: Array.isArray(entry.projects) ? entry.projects[0]?.name : entry.projects?.name,
+          projectId: entry.project_id,
+          checkInTime: entry.start_at,
+          hoursWorked,
         });
 
-      if (usersToRemind.length === 0) {
-        continue;
-      }
-
-      // Fetch profiles for checked-in users
-      const { data: profiles } = await adminClient
-        .from('profiles')
-        .select('id, full_name, email')
-        .in('id', usersToRemind);
-
-      const profilesMap = new Map(
-        (profiles || []).map(p => [p.id, p])
-      );
-
-      // Send reminders to checked-in users
-      for (const userId of usersToRemind) {
-        const profile = profilesMap.get(userId);
-        const userName = profile?.full_name || profile?.email || 'Användare';
-
-        try {
-          await sendCheckOutReminder({
-            projectId: project.id,
-            userId,
-            userName,
-            workDayEnd,
-          });
-          totalSent++;
-          results.push({ projectId: project.id, userId, success: true });
-        } catch (error) {
-          console.error(`Error sending check-out reminder to user ${userId}:`, error);
-          results.push({ projectId: project.id, userId, success: false, error: String(error) });
+        if (result.success) {
+          sentCount++;
+        } else {
+          failedCount++;
         }
+      } catch (error) {
+        console.error('[Checkout Reminders] Error sending to user:', entry.user_id, error);
+        failedCount++;
       }
     }
 
-    return NextResponse.json({ 
-      sent: totalSent, 
-      checked: projects.length,
-      results 
+    console.log(`[Checkout Reminders] Sent: ${sentCount}, Failed: ${failedCount}`);
+
+    return NextResponse.json({
+      message: 'Check-out reminders sent',
+      total: entries.length,
+      sent: sentCount,
+      failed: failedCount,
     });
-  } catch (error) {
-    console.error('Error in check-out reminders cron:', error);
-    return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    }, { status: 500 });
+  } catch (error: any) {
+    console.error('[Checkout Reminders] Unexpected error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 

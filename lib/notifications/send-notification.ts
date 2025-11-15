@@ -1,6 +1,10 @@
-import { messaging } from './firebase-admin';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
-import { sendEmail } from '@/lib/email/send';
+/**
+ * Core notification sending service
+ * Handles preference checking, quiet hours, and FCM delivery
+ */
+
+import { getMessaging } from './firebase-admin';
+import { createClient } from '@/lib/supabase/server';
 
 export interface NotificationPayload {
   userId: string;
@@ -8,322 +12,201 @@ export interface NotificationPayload {
   title: string;
   body: string;
   url: string;
-  data?: Record<string, string>;
-  tag?: string; // Optional tag for grouping/replacing notifications
-  skipQuietHours?: boolean; // Skip quiet hours check (e.g., for test notifications)
-  orgId?: string; // Organization ID for logging (optional)
+  data?: Record<string, any>;
+  requireInteraction?: boolean;
+}
+
+export interface SendNotificationResult {
+  success: boolean;
+  sent: number;
+  failed: number;
+  errors?: string[];
 }
 
 /**
- * Helper function to send email notification
+ * Map notification types to preference keys
  */
-async function sendEmailNotification(payload: NotificationPayload, adminClient: ReturnType<typeof createAdminClient>) {
-  try {
-    // Get user's email from profile - use admin client to bypass RLS
-    const { data: profile, error: profileError } = await adminClient
-      .from('profiles')
-      .select('email, full_name')
-      .eq('id', payload.userId)
-      .single();
-
-    if (profileError) {
-      console.error('Failed to fetch profile for email notification:', profileError);
-      return { success: false, error: `Profile query error: ${profileError.message}` };
-    }
-
-    if (!profile) {
-      console.error('Profile not found for email notification:', payload.userId);
-      return { success: false, error: 'Profile not found' };
-    }
-
-    if (!profile.email) {
-      console.error('Profile has no email:', payload.userId);
-      return { success: false, error: 'Profile has no email' };
-    }
-
-  // Build email content
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://eptracker.app';
-  const notificationUrl = payload.url.startsWith('http') ? payload.url : `${baseUrl}${payload.url}`;
-
-  const emailHtml = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">🔔 EP-Tracker Notifikation</h1>
-        </div>
-        <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none;">
-          <h2 style="color: #111827; margin-top: 0; font-size: 20px;">${payload.title}</h2>
-          <p style="color: #4b5563; font-size: 16px; white-space: pre-wrap;">${payload.body}</p>
-          ${payload.url ? `
-            <div style="margin-top: 30px; text-align: center;">
-              <a href="${notificationUrl}" style="display: inline-block; background: #ea580c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">Öppna i EP-Tracker</a>
-            </div>
-          ` : ''}
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-          <p style="color: #6b7280; font-size: 14px; text-align: center; margin: 0;">
-            Detta är en automatisk notifikation från EP-Tracker.<br>
-            Du får detta meddelande via e-post som ett tillägg till push-notifikationen.
-          </p>
-        </div>
-      </body>
-    </html>
-  `;
-
-  // Check RESEND_API_KEY before attempting to send
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey || apiKey === 're_placeholder_key') {
-    console.error('RESEND_API_KEY not set, cannot send email notification');
-    return { success: false, error: 'RESEND_API_KEY not set' };
-  }
-
-  // Send email via Resend
-  let emailResult;
-  try {
-    emailResult = await sendEmail({
-      to: profile.email,
-      toName: profile.full_name || undefined,
-      subject: `🔔 ${payload.title}`,
-      template: 'custom',
-      templateData: {
-        html: emailHtml,
-      },
-      emailType: 'notification',
-    });
-  } catch (emailError) {
-    console.error('Failed to send email notification:', emailError);
-    return { success: false, error: emailError instanceof Error ? emailError.message : String(emailError) };
-  }
-
-  if (!emailResult.success) {
-    console.error('Failed to send notification email:', emailResult.error);
-    return { success: false, error: emailResult.error };
-  }
-
-  // Log notification (use admin client to bypass RLS)
-  if (payload.orgId) {
-    const logAdminClient = createAdminClient();
-    // Try with org_id first, fallback to without if column doesn't exist
-    let logData: any = {
-      user_id: payload.userId,
-      org_id: payload.orgId,
-      type: payload.type,
-      title: payload.title,
-      body: payload.body,
-      status: emailResult.success ? 'sent' : 'failed',
-      error_message: emailResult.success ? null : emailResult.error,
-      project_id: payload.data?.projectId || null,
-    };
-    let { error: logError } = await logAdminClient.from('notification_log').insert(logData);
-    
-    // If org_id column doesn't exist, try without it
-    if (logError && logError.code === 'PGRST204' && logError.message?.includes('org_id')) {
-      const { org_id, ...logDataWithoutOrgId } = logData;
-      ({ error: logError } = await logAdminClient.from('notification_log').insert(logDataWithoutOrgId));
-    }
-    
-    if (logError) {
-      console.error('Failed to log notification:', logError);
-    }
-  }
-
-    return { success: true, method: 'email', messageId: emailResult.messageId };
-  } catch (error) {
-    console.error('Unexpected error in sendEmailNotification:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : String(error) 
-    };
-  }
-}
-
-/**
- * Send a push notification to a user
- */
-export async function sendNotification(payload: NotificationPayload) {
-  // Use admin client to bypass RLS when reading preferences and subscriptions
-  const adminClient = createAdminClient();
-
-  // 1. Check user preferences (use admin client to bypass RLS)
-  const { data: prefs, error: prefsError } = await adminClient
-    .from('notification_preferences')
-    .select('*')
-    .eq('user_id', payload.userId)
-    .single();
-
-  if (prefsError && prefsError.code !== 'PGRST116') { // PGRST116 = no rows returned
-    console.error('Error fetching notification preferences:', prefsError);
-  }
-
-  // Check global enabled flag (default to true if no preferences exist)
-  if (prefs && prefs.enabled === false) {
-    return null;
-  }
-
-  // Check if notification type is enabled (default to true if no preferences exist)
-  const prefKey = getPreferenceKey(payload.type);
-  if (prefs && prefKey && prefs[prefKey] === false) {
-    return null;
-  }
-
-  // 2. Check quiet hours (unless skipQuietHours is true)
-  if (!payload.skipQuietHours && prefs && isInQuietHours(prefs)) {
-    return null;
-  }
-
-  // 3. Get FCM tokens (try Firebase first if available) - use admin client to bypass RLS
-  const { data: subscriptions, error: subsError } = await adminClient
-    .from('push_subscriptions')
-    .select('fcm_token')
-    .eq('user_id', payload.userId)
-    .eq('is_active', true);
-
-  if (subsError) {
-    console.error('Error fetching push subscriptions:', subsError);
-  }
-
-  // Try Firebase first if available and has tokens
-  if (messaging && subscriptions && subscriptions.length > 0) {
-    try {
-      // 4. Send to all devices via Firebase
-      const tokens = subscriptions.map((s) => s.fcm_token);
-      
-      const message: {
-        notification: { title: string; body: string };
-        data: Record<string, string>;
-        tokens: string[];
-        webpush?: { notification: { tag: string } };
-      } = {
-        notification: {
-          title: payload.title,
-          body: payload.body,
-        },
-        data: {
-          url: payload.url,
-          type: payload.type,
-          ...(payload.data || {}),
-        },
-        tokens,
-      };
-
-      // Add tag for web push (grouping/replacing notifications)
-      if (payload.tag) {
-        message.webpush = {
-          notification: {
-            tag: payload.tag,
-          },
-        };
-      }
-
-      const response = await messaging.sendEachForMulticast(message);
-
-      // Log failures if any
-      if (response.failureCount > 0) {
-        response.responses.forEach((resp, idx) => {
-          if (!resp.success) {
-            console.error('Failed to send push notification to token:', resp.error);
-          }
-        });
-      }
-
-      // Log notification (use admin client to bypass RLS)
-      if (payload.orgId) {
-        const adminClient = createAdminClient();
-        // Try with org_id first, fallback to without if column doesn't exist
-        let logData: any = {
-          user_id: payload.userId,
-          org_id: payload.orgId,
-          type: payload.type,
-          title: payload.title,
-          body: payload.body,
-          status: 'sent',
-          project_id: payload.data?.projectId || null,
-        };
-        let { error: logError } = await adminClient.from('notification_log').insert(logData);
-        
-        // If org_id column doesn't exist, try without it
-        if (logError && logError.code === 'PGRST204' && logError.message?.includes('org_id')) {
-          const { org_id, ...logDataWithoutOrgId } = logData;
-          ({ error: logError } = await adminClient.from('notification_log').insert(logDataWithoutOrgId));
-        }
-        
-        if (logError) {
-          console.error('Failed to log notification:', logError);
-        }
-      }
-      
-      // Always send email in addition to push for all notifications
-      // Send email - await it to ensure it completes in serverless environment
-      try {
-        await sendEmailNotification(payload, adminClient);
-      } catch (err) {
-        console.error('Failed to send email notification:', err);
-        // Don't fail the push notification if email fails
-      }
-      
-      return response;
-    } catch (error) {
-      console.error('Error sending Firebase notification, falling back to email:', error);
-    }
-  }
-
-  // Fallback to email if Firebase is not available or no tokens
-  try {
-    const emailResult = await sendEmailNotification(payload, adminClient);
-    if (!emailResult.success) {
-      return null;
-    }
-    return emailResult;
-  } catch (error) {
-    console.error('Error sending notification email:', error);
-    return null;
-  }
-}
-
-/**
- * Map notification type to preference key
- */
-function getPreferenceKey(type: string): string | null {
-  const mapping: Record<string, string> = {
+function getPreferenceKey(type: string): string {
+  const typeMap: Record<string, string> = {
     checkout_reminder: 'checkout_reminders',
-    team_checkin: 'team_checkin', // Matches database column name (singular)
-    team_checkout: 'team_checkin', // Uses same preference as team_checkin
+    team_checkin: 'team_checkins',
+    team_checkout: 'team_checkins',
     approval_needed: 'approvals_needed',
     approval_confirmed: 'approval_confirmed',
     ata_update: 'ata_updates',
     diary_update: 'diary_updates',
     weekly_summary: 'weekly_summary',
+    project_checkin_reminder: 'project_checkin_reminders',
+    project_checkout_reminder: 'project_checkout_reminders',
   };
-  return mapping[type] || null;
+
+  return typeMap[type] || type;
 }
 
 /**
- * Check if current time is within quiet hours
+ * Check if current time is within user's quiet hours
  */
-function isInQuietHours(prefs: { quiet_hours_start?: string; quiet_hours_end?: string }): boolean {
-  if (!prefs.quiet_hours_start || !prefs.quiet_hours_end) {
+async function isInQuietHours(userId: string, supabase: any): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.rpc('is_in_quiet_hours', {
+      p_user_id: userId,
+    });
+
+    if (error) {
+      console.error('[Notifications] Error checking quiet hours:', error);
+      return false;
+    }
+
+    return data || false;
+  } catch (error) {
+    console.error('[Notifications] Exception checking quiet hours:', error);
     return false;
   }
+}
 
-  const now = new Date();
-  const currentTime = now.getHours() * 60 + now.getMinutes(); // Minutes since midnight
+/**
+ * Main function to send a push notification
+ */
+export async function sendNotification(
+  payload: NotificationPayload
+): Promise<SendNotificationResult> {
+  const result: SendNotificationResult = {
+    success: false,
+    sent: 0,
+    failed: 0,
+    errors: [],
+  };
 
-  const [startHour, startMinute] = prefs.quiet_hours_start.split(':').map(Number);
-  const [endHour, endMinute] = prefs.quiet_hours_end.split(':').map(Number);
+  try {
+    const supabase = await createClient();
+    const messaging = getMessaging();
 
-  const quietStart = startHour * 60 + startMinute;
-  const quietEnd = endHour * 60 + endMinute;
+    if (!messaging) {
+      console.error('[Notifications] Firebase not configured');
+      result.errors?.push('Firebase not configured');
+      return result;
+    }
 
-  // Handle overnight quiet hours (e.g., 22:00 to 07:00)
-  if (quietStart > quietEnd) {
-    return currentTime >= quietStart || currentTime < quietEnd;
+    // 1. Check user preferences
+    const { data: prefs } = await supabase
+      .from('notification_preferences')
+      .select('*')
+      .eq('user_id', payload.userId)
+      .maybeSingle();
+
+    // Check if notification type is enabled (default to true if no prefs)
+    const prefKey = getPreferenceKey(payload.type);
+    if (prefs && prefs[prefKey] === false) {
+      console.log(`[Notifications] Type ${payload.type} disabled for user ${payload.userId}`);
+      return result;
+    }
+
+    // 2. Check quiet hours
+    const inQuietHours = await isInQuietHours(payload.userId, supabase);
+    if (inQuietHours) {
+      console.log(`[Notifications] User ${payload.userId} in quiet hours, skipping`);
+      return result;
+    }
+
+    // 3. Get FCM tokens
+    const { data: subscriptions } = await supabase
+      .from('push_subscriptions')
+      .select('fcm_token, id')
+      .eq('user_id', payload.userId)
+      .eq('is_active', true);
+
+    if (!subscriptions || subscriptions.length === 0) {
+      console.log(`[Notifications] No active subscriptions for user ${payload.userId}`);
+      return result;
+    }
+
+    const tokens = subscriptions.map((s) => s.fcm_token);
+
+    // 4. Send notification via FCM
+    const message = {
+      notification: {
+        title: payload.title,
+        body: payload.body,
+        icon: '/images/faviconEP.png',
+      },
+      data: {
+        url: payload.url,
+        type: payload.type,
+        ...payload.data,
+      },
+      tokens,
+    };
+
+    try {
+      const response = await messaging.sendEachForMulticast(message);
+
+      result.sent = response.successCount;
+      result.failed = response.failureCount;
+      result.success = response.successCount > 0;
+
+      // Handle failed tokens
+      if (response.failureCount > 0) {
+        const failedTokens: string[] = [];
+        response.responses.forEach((resp, idx) => {
+          if (!resp.success) {
+            failedTokens.push(tokens[idx]);
+            result.errors?.push(resp.error?.message || 'Unknown error');
+          }
+        });
+
+        // Deactivate failed tokens
+        if (failedTokens.length > 0) {
+          await supabase
+            .from('push_subscriptions')
+            .update({ is_active: false })
+            .in('fcm_token', failedTokens);
+        }
+      }
+
+      console.log(
+        `[Notifications] Sent to ${result.sent}/${tokens.length} devices for user ${payload.userId}`
+      );
+    } catch (error: any) {
+      console.error('[Notifications] FCM send error:', error);
+      result.errors?.push(error.message || 'FCM send failed');
+      return result;
+    }
+
+    // 5. Log notification
+    await supabase.from('notification_log').insert({
+      user_id: payload.userId,
+      type: payload.type,
+      title: payload.title,
+      body: payload.body,
+      data: payload.data || {},
+      delivery_status: result.success ? 'sent' : 'failed',
+      error_message: result.errors && result.errors.length > 0 ? result.errors.join(', ') : null,
+    });
+
+    return result;
+  } catch (error: any) {
+    console.error('[Notifications] Unexpected error:', error);
+    result.errors?.push(error.message || 'Unexpected error');
+    return result;
   }
+}
 
-  // Handle same-day quiet hours (e.g., 12:00 to 14:00)
-  return currentTime >= quietStart && currentTime < quietEnd;
+/**
+ * Send notifications to multiple users
+ */
+export async function sendNotificationToMultipleUsers(
+  userIds: string[],
+  payload: Omit<NotificationPayload, 'userId'>
+): Promise<SendNotificationResult[]> {
+  const results = await Promise.all(
+    userIds.map((userId) =>
+      sendNotification({
+        ...payload,
+        userId,
+      })
+    )
+  );
+
+  return results;
 }
 

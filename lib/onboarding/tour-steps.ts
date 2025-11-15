@@ -71,7 +71,7 @@ export const timeTourSteps = [
 		description:
 			'Fyll i formuläret för att rapportera tid. Välj projekt, datum, start- och sluttid. Du kan också använda slidern på översiktssidan för att checka in/ut.',
 		target: '[data-tour="time-form"]',
-		position: 'top' as const,
+		position: 'bottom' as const,
 	},
 	{
 		id: 'time-entries',
@@ -126,25 +126,6 @@ export const approvalsTourSteps = [
 			'Efter godkännande kan du exportera data till CSV för lönesystem, eller ladda ner alla bilagor som ZIP.',
 		target: '[data-tour="export-buttons"]',
 		position: 'bottom' as const,
-	},
-];
-
-export const checklistsTourSteps = [
-	{
-		id: 'checklists-intro',
-		title: 'Överblick checklistor',
-		description:
-			'Här hittar du alla säkerhets- och kvalitetslistor. Följ status för varje checklista och öppna dem för att uppdatera punkter.',
-		target: 'body',
-		position: 'center' as const,
-	},
-	{
-		id: 'checklists-list',
-		title: 'Detaljer per checklista',
-		description:
-			'I listan ser du projekt, status och hur många punkter som är klara. Klicka på "Visa" för att öppna checklistan och arbeta vidare.',
-		target: '[data-tour="checklists-list"]',
-		position: 'top' as const,
 	},
 ];
 
@@ -210,45 +191,45 @@ export const planningTodayTourSteps = [
 	},
 ];
 
-export const diaryTourSteps = [
+export const notificationsTourSteps = [
 	{
-		id: 'diary-welcome',
-		title: 'Välkommen till Dagboken!',
+		id: 'notifications-welcome',
+		title: 'Push-notiser',
 		description:
-			'Här kan du skriva dagboksanteckningar och använda röstanteckningar för att snabbt rapportera från arbetsplatsen.',
+			'Aktivera pushnotiser för att få realtidsuppdateringar om check-ins, godkännanden och mer. Fungerar på både iOS och Android!',
 		target: 'body',
 		position: 'center' as const,
 	},
 	{
-		id: 'diary-create',
-		title: 'Skapa dagboksanteckning',
+		id: 'enable-notifications',
+		title: 'Aktivera notiser',
 		description:
-			'Klicka här för att skapa en ny dagboksanteckning. Du kan skriva text manuellt eller använda röstinspelning.',
-		target: '[data-tour="add-diary"]',
+			'Klicka för att aktivera pushnotiser. Du kommer bli ombedd att ge behörighet i webbläsaren.',
+		target: '[data-tour="enable-notifications"]',
 		position: 'bottom' as const,
 	},
 	{
-		id: 'diary-voice',
-		title: 'Röstanteckningar (Voice-to-Text)',
+		id: 'notification-types',
+		title: 'Anpassa notis-typer',
 		description:
-			'Klicka på mikrofon-ikonen för att spela in en röstanteckning. Systemet transkriberar automatiskt din röst till text och översätter till svenska om du pratar på annat språk.',
-		target: '[data-tour="voice-record"]',
-		position: 'bottom' as const,
+			'Välj vilka typer av notiser du vill ta emot. Du kan aktivera eller inaktivera varje typ individuellt.',
+		target: '[data-tour="notification-types"]',
+		position: 'top' as const,
 	},
 	{
-		id: 'diary-languages',
-		title: 'Flerspråkigt stöd',
+		id: 'quiet-hours',
+		title: 'Tyst läge',
 		description:
-			'Du kan prata på valfritt språk! Systemet detekterar automatiskt språket och översätter till svenska. Perfekt för internationella team.',
-		target: '[data-tour="voice-record"]',
-		position: 'bottom' as const,
+			'Ställ in tider när du inte vill bli störd av notiser, t.ex. nattetid (22:00-07:00).',
+		target: '[data-tour="quiet-hours"]',
+		position: 'top' as const,
 	},
 	{
-		id: 'diary-list',
-		title: 'Dina dagboksanteckningar',
+		id: 'test-notification',
+		title: 'Testa notiser',
 		description:
-			'Här ser du alla dina dagboksanteckningar sorterade per projekt och datum. Klicka på en anteckning för att se detaljer eller lyssna på originalinspelningen.',
-		target: '[data-tour="diary-list"]',
+			'Skicka en testnotis för att verifiera att allt fungerar. Du kan också se historik över alla notiser du fått.',
+		target: '[data-tour="test-notification"]',
 		position: 'top' as const,
 	},
 ];

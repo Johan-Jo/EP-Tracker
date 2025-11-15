@@ -1,308 +1,57 @@
-'use client';
+/**
+ * Notification Settings Page
+ */
 
-import { useState, useEffect } from 'react';
-import { useNotificationPermission } from '@/lib/hooks/use-notification-permission';
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import { NotificationSettings } from '@/components/notifications/notification-settings';
+import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bell, Check, X, Loader2 } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
+import Link from 'next/link';
 
-export default function NotificationsPage() {
-  const { permission, isSupported, isLoading, requestPermission } = useNotificationPermission();
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
-  const [testErrorMessage, setTestErrorMessage] = useState<string>('');
-  const [isResetting, setIsResetting] = useState(false);
-  const [hasTokens, setHasTokens] = useState<boolean | null>(null);
+export const metadata = {
+  title: 'Notiser - EP-Tracker',
+  description: 'Hantera dina push-notiser och påminnelser',
+};
 
-  // Check if user actually has FCM tokens in database
-  useEffect(() => {
-    if (permission === 'granted') {
-      fetch('/api/notifications/status')
-        .then(res => res.json())
-        .then(data => {
-          setHasTokens(data.hasTokens || false);
-        })
-        .catch(() => setHasTokens(false));
-    }
-  }, [permission]);
+export default async function NotificationsPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const handleEnableNotifications = async () => {
-    const success = await requestPermission();
-    if (success) {
-      console.log('✅ Notifications enabled');
-      setHasTokens(true); // Update state after successful registration
-    }
-  };
-
-  const handleResetNotifications = async () => {
-    if (!confirm('Vill du verkligen återställa alla notis-inställningar? Du måste aktivera notiser igen efteråt.')) {
-      return;
-    }
-
-    setIsResetting(true);
-    setTestResult(null);
-
-    try {
-      // 1. Delete all tokens from database
-      const response = await fetch('/api/notifications/reset', {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to reset on server');
-      }
-
-      // 2. Unregister all service workers
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (const registration of registrations) {
-          await registration.unregister();
-          console.log('🗑️ Unregistered service worker:', registration.scope);
-        }
-      }
-
-      // 3. Update state and show activation button
-      setHasTokens(false);
-      alert('✅ Notiser återställda! Aktivera notiser igen för att fortsätta.');
-      // Don't reload - just update state
-    } catch (error) {
-      console.error('❌ Error resetting notifications:', error);
-      alert('❌ Misslyckades att återställa notiser. Försök igen.');
-    } finally {
-      setIsResetting(false);
-    }
-  };
-
-  const handleTestNotification = async () => {
-    setIsTesting(true);
-    setTestResult(null);
-    setTestErrorMessage('');
-
-    try {
-      const response = await fetch('/api/notifications/test', {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        setTestResult('success');
-      } else {
-        const data = await response.json();
-        setTestResult('error');
-        setTestErrorMessage(data.error || 'Unknown error');
-      }
-    } catch (error) {
-      console.error('Error sending test notification:', error);
-      setTestResult('error');
-      setTestErrorMessage(error instanceof Error ? error.message : 'Network error');
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
-  if (!isSupported) {
-    return (
-      <div className="container max-w-4xl py-8">
-        <h1 className="text-3xl font-bold mb-6">Pushnotiser</h1>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-yellow-600">⚠️ Inte stöd</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">
-              Din webbläsare eller enhet stöder inte pushnotiser.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              För att använda pushnotiser, prova:
-            </p>
-            <ul className="list-disc list-inside mt-2 text-sm text-muted-foreground space-y-1">
-              <li>Chrome, Firefox eller Edge på desktop</li>
-              <li>Chrome eller Firefox på Android</li>
-              <li>Safari på iOS (installera appen på hemskärmen först)</li>
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  if (!user) {
+    redirect('/sign-in');
   }
 
   return (
-    <div className="container max-w-4xl py-8">
-      <h1 className="text-3xl font-bold mb-6">Pushnotiser</h1>
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Notiser</h1>
+            <p className="text-gray-600 mt-2">
+              Hantera push-notiser och påminnelser
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/dashboard/help?section=notifications">
+                <HelpCircle className="h-4 w-4 mr-2" />
+                Hjälp
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
 
-      {/* Permission Status */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="w-5 h-5" />
-            Notiseringsstatus
-          </CardTitle>
-          <CardDescription>
-            Håll dig uppdaterad med realtidsnotiser
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {permission === 'default' && (
-            <div>
-              <p className="mb-4">
-                Du har inte aktiverat pushnotiser än. Aktivera för att få påminnelser och
-                uppdateringar.
-              </p>
-              <Button onClick={handleEnableNotifications} disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Aktiverar...
-                  </>
-                ) : (
-                  <>
-                    <Bell className="mr-2 h-4 w-4" />
-                    Aktivera notiser
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
+      {/* Settings */}
+      <NotificationSettings />
 
-          {permission === 'granted' && hasTokens === false && (
-            <div>
-              <div className="flex items-center gap-2 text-yellow-600 mb-4">
-                <X className="w-5 h-5" />
-                <span className="font-medium">Notiser behöver reaktiveras!</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Chrome-tillstånd finns, men FCM tokens saknas. Klicka för att registrera igen.
-              </p>
-              <Button onClick={handleEnableNotifications} disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Aktiverar...
-                  </>
-                ) : (
-                  <>
-                    <Bell className="mr-2 h-4 w-4" />
-                    Aktivera notiser
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
-
-          {permission === 'granted' && hasTokens !== false && (
-            <div>
-              <div className="flex items-center gap-2 text-green-600 mb-4">
-                <Check className="w-5 h-5" />
-                <span className="font-medium">Notiser är aktiverade!</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Du får nu pushnotiser för check-ins, godkännanden och andra viktiga händelser.
-              </p>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleTestNotification} disabled={isTesting}>
-                  {isTesting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Skickar...
-                    </>
-                  ) : (
-                    <>
-                      <Bell className="mr-2 h-4 w-4" />
-                      Skicka test-notis
-                    </>
-                  )}
-                </Button>
-
-                <Button variant="destructive" onClick={handleResetNotifications} disabled={isResetting}>
-                  {isResetting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Återställer...
-                    </>
-                  ) : (
-                    <>
-                      <X className="mr-2 h-4 w-4" />
-                      Återställ notiser
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {testResult === 'success' && (
-                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md text-green-800 text-sm">
-                  ✅ Test-notis skickad! Kolla din enhet.
-                </div>
-              )}
-
-              {testResult === 'error' && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">
-                  <p className="font-semibold mb-1">❌ Kunde inte skicka test-notis</p>
-                  {testErrorMessage && (
-                    <p className="text-xs whitespace-pre-wrap">{testErrorMessage}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {permission === 'denied' && (
-            <div>
-              <div className="flex items-center gap-2 text-red-600 mb-4">
-                <X className="w-5 h-5" />
-                <span className="font-medium">Notiser blockerade</span>
-              </div>
-              <p className="mb-4">
-                Du har blockerat notiser för denna webbplats. För att aktivera igen:
-              </p>
-              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                <li>Klicka på låsikonen i adressfältet</li>
-                <li>Hitta &quot;Notiser&quot; i listan</li>
-                <li>Ändra till &quot;Tillåt&quot;</li>
-                <li>Ladda om sidan</li>
-              </ol>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* What notifications you'll get */}
-      {permission === 'granted' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Vilka notiser får jag?</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              <li className="flex items-start gap-3">
-                <span className="text-2xl">⏰</span>
-                <div>
-                  <p className="font-medium">Check-out påminnelser</p>
-                  <p className="text-sm text-muted-foreground">
-                    Påminnelse att checka ut i slutet av arbetsdagen
-                  </p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-2xl">👷</span>
-                <div>
-                  <p className="font-medium">Team check-ins</p>
-                  <p className="text-sm text-muted-foreground">
-                    Se när ditt team checkar in och ut (endast för arbetsledare och admins)
-                  </p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="text-2xl">✅</span>
-                <div>
-                  <p className="font-medium">Godkännanden</p>
-                  <p className="text-sm text-muted-foreground">
-                    När din tidrapport eller utgifter godkänns
-                  </p>
-                </div>
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
-      )}
+      {/* Tour Trigger */}
+      <PageTourTrigger tourId="notifications" />
     </div>
   );
 }

@@ -11,7 +11,7 @@ import {
 	approvalsTourSteps,
 	planningTourSteps,
 	planningTodayTourSteps,
-	checklistsTourSteps,
+	notificationsTourSteps
 } from '@/lib/onboarding/tour-steps';
 
 const tourMap = {
@@ -22,7 +22,7 @@ const tourMap = {
 	'approvals': approvalsTourSteps,
 	'planning': planningTourSteps,
 	'planning-today': planningTodayTourSteps,
-	'checklists': checklistsTourSteps,
+	'notifications': notificationsTourSteps,
 };
 
 interface PageTourTriggerProps {

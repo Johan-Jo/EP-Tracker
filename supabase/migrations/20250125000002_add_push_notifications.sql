@@ -1,244 +1,106 @@
--- EPIC 25: Web Push Notifications
--- Add tables for push notification functionality
+-- Migration: Add Push Notifications Support
+-- Epic 25: Web Push Notifications
+-- Created: 2025-01-25
 
 -- =====================================================
--- PART 1: Push Subscriptions Table
+-- PUSH SUBSCRIPTIONS TABLE
+-- Stores FCM tokens for each user's devices
 -- =====================================================
-
 CREATE TABLE IF NOT EXISTS push_subscriptions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  org_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  
-  -- FCM token
-  fcm_token text NOT NULL UNIQUE,
-  
-  -- Device info
-  device_type text CHECK (device_type IN ('desktop', 'mobile', 'tablet')),
-  browser text,
-  os text,
-  
-  -- Status
-  is_active boolean DEFAULT true,
-  
-  -- Timestamps
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  last_used_at timestamptz DEFAULT now()
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  fcm_token TEXT NOT NULL UNIQUE,
+  device_type TEXT CHECK (device_type IN ('android', 'ios', 'desktop', 'unknown')),
+  device_name TEXT,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  last_used_at TIMESTAMPTZ DEFAULT NOW(),
+  is_active BOOLEAN DEFAULT true
 );
 
--- Indexes
-CREATE INDEX idx_push_subscriptions_user ON push_subscriptions(user_id) WHERE is_active = true;
-CREATE INDEX idx_push_subscriptions_org ON push_subscriptions(org_id) WHERE is_active = true;
-CREATE INDEX idx_push_subscriptions_token ON push_subscriptions(fcm_token) WHERE is_active = true;
-
--- RLS Policies
-ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own subscriptions"
-  ON push_subscriptions
-  FOR SELECT
-  TO authenticated
-  USING (user_id = auth.uid());
-
-CREATE POLICY "Users can insert own subscriptions"
-  ON push_subscriptions
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Users can update own subscriptions"
-  ON push_subscriptions
-  FOR UPDATE
-  TO authenticated
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Users can delete own subscriptions"
-  ON push_subscriptions
-  FOR DELETE
-  TO authenticated
-  USING (user_id = auth.uid());
+-- Index for faster user lookups
+CREATE INDEX idx_push_subs_user ON push_subscriptions(user_id) WHERE is_active = true;
+CREATE INDEX idx_push_subs_token ON push_subscriptions(fcm_token) WHERE is_active = true;
 
 -- =====================================================
--- PART 2: Notification Preferences Table
+-- NOTIFICATION PREFERENCES TABLE
+-- User preferences for different notification types
 -- =====================================================
-
 CREATE TABLE IF NOT EXISTS notification_preferences (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
-  org_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   
-  -- Global toggle
-  enabled boolean DEFAULT true,
+  -- General notification types
+  checkout_reminders BOOLEAN DEFAULT true,
+  team_checkins BOOLEAN DEFAULT true,
+  approvals_needed BOOLEAN DEFAULT true,
+  approval_confirmed BOOLEAN DEFAULT true,
+  ata_updates BOOLEAN DEFAULT true,
+  diary_updates BOOLEAN DEFAULT true,
+  weekly_summary BOOLEAN DEFAULT true,
   
-  -- Notification types
-  checkout_reminders boolean DEFAULT true,
-  team_checkin boolean DEFAULT true,
-  approvals boolean DEFAULT true,
-  project_alerts boolean DEFAULT true,
+  -- Project-specific alerts
+  project_checkin_reminders BOOLEAN DEFAULT true,
+  project_checkout_reminders BOOLEAN DEFAULT true,
   
   -- Quiet hours
-  quiet_hours_enabled boolean DEFAULT false,
-  quiet_hours_start time,
-  quiet_hours_end time,
-  
-  -- Timestamps
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-
--- Indexes
-CREATE INDEX idx_notification_preferences_user ON notification_preferences(user_id);
-CREATE INDEX idx_notification_preferences_enabled ON notification_preferences(user_id) WHERE enabled = true;
-
--- RLS Policies
-ALTER TABLE notification_preferences ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own preferences"
-  ON notification_preferences
-  FOR SELECT
-  TO authenticated
-  USING (user_id = auth.uid());
-
-CREATE POLICY "Users can insert own preferences"
-  ON notification_preferences
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (user_id = auth.uid());
-
-CREATE POLICY "Users can update own preferences"
-  ON notification_preferences
-  FOR UPDATE
-  TO authenticated
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
-
--- =====================================================
--- PART 3: Notification Log Table
--- =====================================================
-
-CREATE TABLE IF NOT EXISTS notification_log (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  org_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  
-  -- Notification details
-  type text NOT NULL CHECK (type IN (
-    'checkout_reminder',
-    'team_checkin',
-    'approval_needed',
-    'approval_confirmed',
-    'late_checkin_alert',
-    'forgotten_checkout_alert'
-  )),
-  title text NOT NULL,
-  body text NOT NULL,
+  quiet_hours_enabled BOOLEAN DEFAULT true,
+  quiet_hours_start TIME DEFAULT '22:00',
+  quiet_hours_end TIME DEFAULT '07:00',
   
   -- Metadata
-  project_id uuid REFERENCES projects(id) ON DELETE SET NULL,
-  related_entity_type text, -- 'time_entry', 'material', 'expense', etc.
-  related_entity_id uuid,
-  
-  -- Status
-  status text DEFAULT 'sent' CHECK (status IN ('sent', 'delivered', 'failed', 'skipped')),
-  fcm_response jsonb,
-  error_message text,
-  
-  -- Timestamps
-  created_at timestamptz DEFAULT now(),
-  delivered_at timestamptz,
-  read_at timestamptz
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Indexes
-CREATE INDEX idx_notification_log_user ON notification_log(user_id, created_at DESC);
-CREATE INDEX idx_notification_log_org ON notification_log(org_id, created_at DESC);
-CREATE INDEX idx_notification_log_type ON notification_log(type, created_at DESC);
-CREATE INDEX idx_notification_log_project ON notification_log(project_id) WHERE project_id IS NOT NULL;
-
--- RLS Policies
-ALTER TABLE notification_log ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own notification log"
-  ON notification_log
-  FOR SELECT
-  TO authenticated
-  USING (user_id = auth.uid());
-
--- Service role can insert (for backend)
-CREATE POLICY "Service can insert notifications"
-  ON notification_log
-  FOR INSERT
-  TO service_role
-  WITH CHECK (true);
-
--- =====================================================
--- PART 4: Helper Functions
--- =====================================================
-
--- Function to check if user is in quiet hours
-CREATE OR REPLACE FUNCTION is_in_quiet_hours(
-  p_user_id uuid,
-  p_now_time time DEFAULT LOCALTIME
-)
-RETURNS boolean
-LANGUAGE plpgsql
-STABLE
-AS $$
-DECLARE
-  v_enabled boolean;
-  v_start time;
-  v_end time;
-  v_in_quiet_hours boolean;
+-- Auto-update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_notification_preferences_updated_at()
+RETURNS TRIGGER AS $$
 BEGIN
-  -- Get user's quiet hours settings
-  SELECT 
-    quiet_hours_enabled,
-    quiet_hours_start,
-    quiet_hours_end
-  INTO v_enabled, v_start, v_end
-  FROM notification_preferences
-  WHERE user_id = p_user_id;
-  
-  -- If not enabled or no settings, return false
-  IF NOT v_enabled OR v_start IS NULL OR v_end IS NULL THEN
-    RETURN false;
-  END IF;
-  
-  -- Check if current time is within quiet hours
-  IF v_start < v_end THEN
-    -- Normal case: e.g., 22:00 to 07:00 (next day)
-    v_in_quiet_hours := p_now_time >= v_start OR p_now_time < v_end;
-  ELSE
-    -- Wraps midnight: e.g., 22:00 to 07:00
-    v_in_quiet_hours := p_now_time >= v_start OR p_now_time < v_end;
-  END IF;
-  
-  RETURN v_in_quiet_hours;
+  NEW.updated_at = NOW();
+  RETURN NEW;
 END;
-$$;
+$$ LANGUAGE plpgsql;
 
--- Function to get active FCM tokens for a user
-CREATE OR REPLACE FUNCTION get_user_fcm_tokens(p_user_id uuid)
-RETURNS TABLE (fcm_token text)
-LANGUAGE plpgsql
-STABLE
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT ps.fcm_token
-  FROM push_subscriptions ps
-  WHERE ps.user_id = p_user_id
-    AND ps.is_active = true;
-END;
-$$;
+CREATE TRIGGER notification_preferences_updated_at
+  BEFORE UPDATE ON notification_preferences
+  FOR EACH ROW
+  EXECUTE FUNCTION update_notification_preferences_updated_at();
 
 -- =====================================================
--- PART 5: Add Project Alert Settings
+-- NOTIFICATION LOG TABLE
+-- History of all sent notifications
 -- =====================================================
+CREATE TABLE IF NOT EXISTS notification_log (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  
+  -- Notification content
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  data JSONB DEFAULT '{}'::jsonb,
+  
+  -- Delivery info
+  sent_at TIMESTAMPTZ DEFAULT NOW(),
+  delivery_status TEXT DEFAULT 'sent' CHECK (delivery_status IN ('sent', 'delivered', 'failed', 'clicked')),
+  error_message TEXT,
+  
+  -- User interaction
+  read_at TIMESTAMPTZ,
+  clicked_at TIMESTAMPTZ,
+  dismissed_at TIMESTAMPTZ
+);
 
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS alert_settings jsonb DEFAULT '{
+-- Indexes for efficient querying
+CREATE INDEX idx_notif_log_user_sent ON notification_log(user_id, sent_at DESC);
+CREATE INDEX idx_notif_log_type_sent ON notification_log(type, sent_at DESC);
+CREATE INDEX idx_notif_log_user_unread ON notification_log(user_id, read_at) WHERE read_at IS NULL;
+
+-- =====================================================
+-- ADD ALERT_SETTINGS TO PROJECTS TABLE
+-- Project-specific notification settings
+-- =====================================================
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS alert_settings JSONB DEFAULT '{
   "work_day_start": "07:00",
   "work_day_end": "16:00",
   "checkin_reminder_enabled": true,
@@ -252,46 +114,178 @@ ALTER TABLE projects ADD COLUMN IF NOT EXISTS alert_settings jsonb DEFAULT '{
   "alert_recipients": ["foreman", "admin"]
 }'::jsonb;
 
+-- Index for projects with alerts enabled
+CREATE INDEX idx_projects_alerts ON projects USING GIN (alert_settings) 
+  WHERE (alert_settings->>'checkin_reminder_enabled')::boolean = true 
+     OR (alert_settings->>'checkout_reminder_enabled')::boolean = true
+     OR (alert_settings->>'late_checkin_alert_enabled')::boolean = true
+     OR (alert_settings->>'forgotten_checkout_alert_enabled')::boolean = true;
+
 -- =====================================================
--- PART 6: Cleanup Function
+-- ROW LEVEL SECURITY (RLS) POLICIES
 -- =====================================================
 
--- Clean up old notifications (run periodically)
+-- Enable RLS on all notification tables
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_log ENABLE ROW LEVEL SECURITY;
+
+-- Push Subscriptions Policies
+CREATE POLICY "Users can view their own subscriptions"
+  ON push_subscriptions FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own subscriptions"
+  ON push_subscriptions FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own subscriptions"
+  ON push_subscriptions FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own subscriptions"
+  ON push_subscriptions FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Notification Preferences Policies
+CREATE POLICY "Users can view their own preferences"
+  ON notification_preferences FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own preferences"
+  ON notification_preferences FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own preferences"
+  ON notification_preferences FOR UPDATE
+  USING (auth.uid() = user_id);
+
+-- Notification Log Policies
+CREATE POLICY "Users can view their own notification log"
+  ON notification_log FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own notification log"
+  ON notification_log FOR UPDATE
+  USING (auth.uid() = user_id);
+
+-- =====================================================
+-- HELPER FUNCTIONS
+-- =====================================================
+
+-- Function to clean up old notifications (older than 30 days)
 CREATE OR REPLACE FUNCTION cleanup_old_notifications()
-RETURNS void
-LANGUAGE plpgsql
-AS $$
+RETURNS INTEGER AS $$
+DECLARE
+  deleted_count INTEGER;
 BEGIN
-  -- Delete notifications older than 30 days
   DELETE FROM notification_log
-  WHERE created_at < NOW() - INTERVAL '30 days';
+  WHERE sent_at < NOW() - INTERVAL '30 days';
   
-  -- Deactivate unused subscriptions (no activity in 90 days)
-  UPDATE push_subscriptions
-  SET is_active = false
-  WHERE last_used_at < NOW() - INTERVAL '90 days'
-    AND is_active = true;
-    
-  RAISE NOTICE 'Cleaned up old notifications and inactive subscriptions';
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
 END;
-$$;
+$$ LANGUAGE plpgsql;
+
+-- Function to get unread notification count for a user
+CREATE OR REPLACE FUNCTION get_unread_notification_count(p_user_id UUID)
+RETURNS INTEGER AS $$
+BEGIN
+  RETURN (
+    SELECT COUNT(*)
+    FROM notification_log
+    WHERE user_id = p_user_id
+    AND read_at IS NULL
+    AND sent_at > NOW() - INTERVAL '7 days'
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to mark notification as read
+CREATE OR REPLACE FUNCTION mark_notification_read(p_notification_id UUID, p_user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  UPDATE notification_log
+  SET read_at = NOW(),
+      delivery_status = 'delivered'
+  WHERE id = p_notification_id
+  AND user_id = p_user_id
+  AND read_at IS NULL;
+  
+  RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to mark notification as clicked
+CREATE OR REPLACE FUNCTION mark_notification_clicked(p_notification_id UUID, p_user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  UPDATE notification_log
+  SET clicked_at = NOW(),
+      read_at = COALESCE(read_at, NOW()),
+      delivery_status = 'clicked'
+  WHERE id = p_notification_id
+  AND user_id = p_user_id;
+  
+  RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to check if user is in quiet hours
+CREATE OR REPLACE FUNCTION is_in_quiet_hours(p_user_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+  prefs RECORD;
+  current_time TIME;
+BEGIN
+  SELECT quiet_hours_enabled, quiet_hours_start, quiet_hours_end
+  INTO prefs
+  FROM notification_preferences
+  WHERE user_id = p_user_id;
+  
+  IF NOT FOUND OR NOT prefs.quiet_hours_enabled THEN
+    RETURN false;
+  END IF;
+  
+  current_time := LOCALTIME;
+  
+  -- Handle quiet hours that span midnight
+  IF prefs.quiet_hours_start > prefs.quiet_hours_end THEN
+    RETURN current_time >= prefs.quiet_hours_start OR current_time < prefs.quiet_hours_end;
+  ELSE
+    RETURN current_time >= prefs.quiet_hours_start AND current_time < prefs.quiet_hours_end;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
 
 -- =====================================================
--- PART 7: Grants
+-- GRANTS
 -- =====================================================
 
+-- Grant authenticated users access to notification tables
 GRANT SELECT, INSERT, UPDATE, DELETE ON push_subscriptions TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON notification_preferences TO authenticated;
-GRANT SELECT ON notification_log TO authenticated;
-GRANT ALL ON notification_log TO service_role;
+GRANT SELECT, UPDATE ON notification_log TO authenticated;
+
+-- Grant execute on helper functions
+GRANT EXECUTE ON FUNCTION cleanup_old_notifications() TO authenticated;
+GRANT EXECUTE ON FUNCTION get_unread_notification_count(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION mark_notification_read(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION mark_notification_clicked(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION is_in_quiet_hours(UUID) TO authenticated;
 
 -- =====================================================
--- PART 8: Comments
+-- COMMENTS
 -- =====================================================
 
-COMMENT ON TABLE push_subscriptions IS 'EPIC 25: Stores FCM tokens for push notifications';
-COMMENT ON TABLE notification_preferences IS 'EPIC 25: User notification preferences and quiet hours';
-COMMENT ON TABLE notification_log IS 'EPIC 25: Audit trail of sent notifications';
-COMMENT ON FUNCTION is_in_quiet_hours IS 'EPIC 25: Check if user is currently in quiet hours';
-COMMENT ON FUNCTION get_user_fcm_tokens IS 'EPIC 25: Get all active FCM tokens for a user';
+COMMENT ON TABLE push_subscriptions IS 'Stores FCM tokens for push notifications per user device';
+COMMENT ON TABLE notification_preferences IS 'User preferences for different types of notifications';
+COMMENT ON TABLE notification_log IS 'History of all sent notifications with delivery status';
+COMMENT ON COLUMN projects.alert_settings IS 'Project-specific alert configuration for check-ins and check-outs';
+COMMENT ON FUNCTION cleanup_old_notifications() IS 'Deletes notification_log entries older than 30 days';
+COMMENT ON FUNCTION is_in_quiet_hours(UUID) IS 'Checks if current time is within users quiet hours';
+
+-- =====================================================
+-- END OF MIGRATION
+-- =====================================================
 

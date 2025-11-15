@@ -1,6 +1,11 @@
+/**
+ * Approval confirmed notifications
+ * Sent to workers when their time reports are approved
+ */
+
 import { sendNotification } from './send-notification';
 
-interface ApprovalConfirmedPayload {
+export interface ApprovalConfirmedData {
   userId: string;
   weekNumber: number;
   year: number;
@@ -8,21 +13,21 @@ interface ApprovalConfirmedPayload {
   totalHours: number;
 }
 
-/**
- * Send notification when time/expense report is approved
- */
-export async function sendApprovalConfirmed(payload: ApprovalConfirmedPayload) {
-  return sendNotification({
-    userId: payload.userId,
+export async function sendApprovalConfirmedNotification(data: ApprovalConfirmedData) {
+  const weekText = `vecka ${data.weekNumber}`;
+  const hoursText = `${data.totalHours} timmar`;
+
+  return await sendNotification({
+    userId: data.userId,
     type: 'approval_confirmed',
-    title: '✅ Tidrapport godkänd',
-    body: `Din veckorapport för vecka ${payload.weekNumber} (${payload.totalHours}h) har godkänts av ${payload.approverName}`,
-    url: '/dashboard/time',
+    title: '✅ Din tidrapport har godkänts',
+    body: `${weekText} (${hoursText}) godkänd av ${data.approverName}`,
+    url: `/dashboard/time?week=${data.weekNumber}&year=${data.year}`,
     data: {
-      week_number: payload.weekNumber.toString(),
-      year: payload.year.toString(),
-      approver_name: payload.approverName,
-      total_hours: payload.totalHours.toString(),
+      week_number: data.weekNumber.toString(),
+      year: data.year.toString(),
+      approver_name: data.approverName,
+      total_hours: data.totalHours.toString(),
     },
   });
 }

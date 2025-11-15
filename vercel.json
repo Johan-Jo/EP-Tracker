@@ -28,28 +28,16 @@
           "value": "/"
         }
       ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/checkout-reminders",
+      "schedule": "45 16 * * 1-5"
     },
     {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        },
-        {
-          "key": "Referrer-Policy",
-          "value": "strict-origin-when-cross-origin"
-        }
-      ]
+      "path": "/api/cron/weekly-approval-summary",
+      "schedule": "0 8 * * 1"
     }
   ]
 }
-

@@ -1,55 +1,49 @@
-import { sendNotification } from './send-notification';
+/**
+ * Approval needed notifications
+ * Sent to admins/foremen when time reports need approval
+ */
+
+import { sendNotificationToMultipleUsers } from './send-notification';
 import { createClient } from '@/lib/supabase/server';
 
-/**
- * Send weekly approval reminder to admins/foremen
- */
-export async function sendApprovalNeededNotifications(orgId: string) {
-  try {
-    const supabase = await createClient();
+export interface ApprovalNeededData {
+  orgId: string;
+  count: number;
+  weekNumber: number;
+  year: number;
+}
 
-    // 1. Count pending approvals
-    const { count } = await supabase
-      .from('time_entries')
-      .select('*', { count: 'exact', head: true })
-      .eq('org_id', orgId)
-      .eq('approved', false);
+export async function sendApprovalNeededNotification(data: ApprovalNeededData) {
+  const supabase = await createClient();
 
-    if (!count || count === 0) {
-      console.log('✅ No pending approvals');
-      return;
-    }
+  // Get all admins and foremen in the organization
+  const { data: members } = await supabase
+    .from('memberships')
+    .select('user_id, role')
+    .eq('org_id', data.orgId)
+    .eq('is_active', true)
+    .in('role', ['admin', 'foreman']);
 
-    // 2. Find all admins/foremen in the org
-    const { data: approvers } = await supabase
-      .from('memberships')
-      .select('user_id')
-      .eq('org_id', orgId)
-      .in('role', ['admin', 'foreman']);
-
-    if (!approvers || approvers.length === 0) {
-      console.log('📭 No approvers found');
-      return;
-    }
-
-    // 3. Send notification to each approver
-    const notifications = approvers.map((approver) =>
-      sendNotification({
-        userId: approver.user_id,
-        type: 'approval_needed',
-        title: '📊 Tidrapporter väntar på godkännande',
-        body: `${count} tidrapporter behöver granskas`,
-        url: '/dashboard/approvals',
-        data: {
-          count: count.toString(),
-        },
-      })
-    );
-
-    await Promise.all(notifications);
-    console.log(`✅ Sent approval reminders to ${approvers.length} approvers`);
-  } catch (error) {
-    console.error('❌ Error sending approval needed notifications:', error);
+  if (!members || members.length === 0) {
+    console.log('[Approval Needed] No admins/foremen to notify for org', data.orgId);
+    return;
   }
+
+  const recipientIds = members.map((m) => m.user_id);
+
+  const weekText = `vecka ${data.weekNumber}`;
+  const countText = data.count === 1 ? 'tidrapport' : 'tidrapporter';
+
+  return await sendNotificationToMultipleUsers(recipientIds, {
+    type: 'approval_needed',
+    title: '📊 Tidrapporter väntar på godkännande',
+    body: `${data.count} ${countText} för ${weekText} behöver granskas`,
+    url: '/dashboard/approvals',
+    data: {
+      count: data.count.toString(),
+      week_number: data.weekNumber.toString(),
+      year: data.year.toString(),
+    },
+  });
 }
 

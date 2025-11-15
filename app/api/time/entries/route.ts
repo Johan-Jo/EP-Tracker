@@ -2,21 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createTimeEntrySchema } from '@/lib/schemas/time-entry';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
-import { notifyOnCheckIn } from '@/lib/notifications/project-alerts'; // EPIC 25 Phase 2: Project alerts
-import { sendTimeApprovalInviteForEntry } from '@/lib/notifications/time-approval-invite';
-
-const MAX_MINUTES_PER_DAY = 24 * 60;
-
-function calculateDurationMinutes(startISO: string, stopISO?: string | null, fallbackMinutes?: number | null) {
-	if (!stopISO) return 0;
-	const start = new Date(startISO);
-	const stop = new Date(stopISO);
-	const diff = stop.getTime() - start.getTime();
-	if (Number.isNaN(diff) || diff <= 0) {
-		return Math.max(0, fallbackMinutes ?? 0);
-	}
-	return Math.round(diff / 60000);
-}
+import { sendTeamCheckInNotification } from '@/lib/notifications'; // EPIC 25: Push notifications
 
 // GET /api/time/entries - List time entries with filters
 export async function GET(request: NextRequest) {
@@ -47,7 +33,7 @@ export async function GET(request: NextRequest) {
 		const status = searchParams.get('status');
 		const start_date = searchParams.get('start_date');
 		const end_date = searchParams.get('end_date');
-		const limit = parseInt(searchParams.get('limit') || '500');
+		const limit = parseInt(searchParams.get('limit') || '100');
 
 	// Build query
 	let query = supabase
@@ -66,16 +52,13 @@ export async function GET(request: NextRequest) {
 
 		// Apply filters
 		if (project_id) query = query.eq('project_id', project_id);
+		if (user_id) query = query.eq('user_id', user_id);
 		if (status) query = query.eq('status', status);
 		if (start_date) query = query.gte('start_at', start_date);
 		if (end_date) query = query.lte('start_at', end_date);
 
-		// Workers and UE only see their own entries; admin/foreman/finance see all
-		// But if user_id param is provided, filter by that user (for viewing specific user's entries)
-		if (user_id) {
-			query = query.eq('user_id', user_id);
-		} else if (membership.role === 'worker' || membership.role === 'ue') {
-			// Only apply worker filter if no user_id param (worker always sees own entries)
+		// Workers only see their own entries; admin/foreman/finance see all
+		if (membership.role === 'worker') {
 			query = query.eq('user_id', user.id);
 		}
 
@@ -86,76 +69,7 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: error.message }, { status: 500 });
 		}
 
-		if (!entries || entries.length === 0) {
-			return NextResponse.json({ entries: [] }, { status: 200 });
-		}
-
-		// Map diary notes to time entries (per project + user + date)
-		const diaryLookupKeys = new Set<string>();
-		const projectIds = new Set<string>();
-		const userIds = new Set<string>();
-		let minDate: string | null = null;
-		let maxDate: string | null = null;
-
-		for (const entry of entries) {
-			if (!entry?.project_id || !entry?.user_id || !entry?.start_at) continue;
-			const entryDate = new Date(entry.start_at).toISOString().split('T')[0];
-			const lookupKey = `${entry.project_id}:${entry.user_id}:${entryDate}`;
-			diaryLookupKeys.add(lookupKey);
-			projectIds.add(entry.project_id);
-			userIds.add(entry.user_id);
-
-			if (!minDate || entryDate < minDate) {
-				minDate = entryDate;
-			}
-			if (!maxDate || entryDate > maxDate) {
-				maxDate = entryDate;
-			}
-		}
-
-		const diaryEntriesByKey: Record<string, { id: string; work_performed: string | null; created_by: string; date: string }> = {};
-
-		if (diaryLookupKeys.size > 0 && projectIds.size > 0 && userIds.size > 0 && minDate && maxDate) {
-			const { data: diaryEntries, error: diaryError } = await supabase
-				.from('diary_entries')
-				.select('id, project_id, created_by, date, work_performed')
-				.eq('org_id', membership.org_id)
-				.in('project_id', Array.from(projectIds))
-				.in('created_by', Array.from(userIds))
-				.gte('date', minDate)
-				.lte('date', maxDate);
-
-			if (diaryError) {
-				console.error('Error fetching diary entries for time history:', diaryError);
-				return NextResponse.json({ error: diaryError.message }, { status: 500 });
-			}
-
-			for (const diary of diaryEntries ?? []) {
-				if (!diary.project_id || !diary.created_by || !diary.date) continue;
-				const key = `${diary.project_id}:${diary.created_by}:${diary.date}`;
-				diaryEntriesByKey[key] = {
-					id: diary.id,
-					work_performed: diary.work_performed ?? null,
-					created_by: diary.created_by,
-					date: diary.date,
-				};
-			}
-		}
-
-		const enrichedEntries = entries.map((entry) => {
-			if (!entry?.project_id || !entry?.user_id || !entry?.start_at) {
-				return { ...entry, diary_entry: null };
-			}
-			const entryDate = new Date(entry.start_at).toISOString().split('T')[0];
-			const key = `${entry.project_id}:${entry.user_id}:${entryDate}`;
-			const diaryEntry = diaryEntriesByKey[key] ?? null;
-			return {
-				...entry,
-				diary_entry: diaryEntry,
-			};
-		});
-
-		return NextResponse.json({ entries: enrichedEntries }, { status: 200 });
+		return NextResponse.json({ entries }, { status: 200 });
 	} catch (error) {
 		console.error('Error in GET /api/time/entries:', error);
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -190,52 +104,6 @@ export async function POST(request: NextRequest) {
 		// This saves 1 query and makes the API faster
 		const supabase = await createClient();
 
-		const startDate = new Date(data.start_at);
-		const stopDate = data.stop_at ? new Date(data.stop_at) : null;
-
-		if (stopDate) {
-			const newEntryMinutes = calculateDurationMinutes(data.start_at, data.stop_at);
-
-			if (newEntryMinutes > MAX_MINUTES_PER_DAY) {
-				return NextResponse.json(
-					{ error: 'En användare kan inte registrera mer än 24 timmar på ett dygn.' },
-					{ status: 400 },
-				);
-			}
-
-			const dayStart = new Date(startDate);
-			dayStart.setHours(0, 0, 0, 0);
-			const dayEnd = new Date(dayStart);
-			dayEnd.setDate(dayEnd.getDate() + 1);
-
-			const { data: existingDayEntries, error: dayError } = await supabase
-				.from('time_entries')
-				.select('id, start_at, stop_at, duration_min')
-				.eq('org_id', membership.org_id)
-				.eq('user_id', user.id)
-				.gte('start_at', dayStart.toISOString())
-				.lt('start_at', dayEnd.toISOString());
-
-			if (dayError) {
-				return NextResponse.json({ error: dayError.message }, { status: 500 });
-			}
-
-			const accumulatedMinutes =
-				(existingDayEntries || []).reduce((sum, entry) => {
-					return (
-						sum +
-						calculateDurationMinutes(entry.start_at, entry.stop_at, entry.duration_min ?? 0)
-					);
-				}, 0) + newEntryMinutes;
-
-			if (accumulatedMinutes > MAX_MINUTES_PER_DAY) {
-				return NextResponse.json(
-					{ error: 'Summan av registrerad arbetstid får inte överstiga 24 timmar för samma dag.' },
-					{ status: 400 },
-				);
-			}
-		}
-
 		// EPIC 26: Insert time entry without JOINs for maximum speed
 		// Client already has project/phase data cached, no need to fetch it again
 		const { data: entry, error: insertError } = await supabase
@@ -250,15 +118,13 @@ export async function POST(request: NextRequest) {
 				start_at: data.start_at,
 				stop_at: data.stop_at,
 				notes: data.notes,
-				billing_type: data.billing_type ?? 'LOPANDE',
-				fixed_block_id: data.billing_type === 'FAST' ? data.fixed_block_id ?? null : null,
-				ata_id: data.ata_id ?? null,
 				status: 'draft',
 			})
 			.select('*')
 			.single();
 
 		if (insertError) {
+			console.error('Error creating time entry:', insertError);
 			// Better error message if project doesn't exist or access denied
 			if (insertError.code === '23503') {
 				return NextResponse.json({ error: 'Project not found or access denied' }, { status: 404 });
@@ -266,35 +132,17 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: insertError.message }, { status: 500 });
 		}
 
-		// EPIC 25 Phase 2: Notify admin/foreman when someone checks in
-		// Only notify on check-in (no stop_at), not on full entry creation
-		if (!entry.stop_at && entry.project_id) {
-			// Get user's full name for notification
-			const { data: profile } = await supabase
-				.from('profiles')
-				.select('full_name')
-				.eq('id', user.id)
-				.single();
-
-			const userName = profile?.full_name || user.email || 'Okänd användare';
-
-			// Call notification function and await it to catch errors
-			try {
-				await notifyOnCheckIn({
-					projectId: entry.project_id,
-					userId: user.id,
-					userName,
-					checkinTime: new Date(entry.start_at),
-				});
-			} catch (error) {
-				// Don't fail the request if notification fails
-				console.error('Failed to send check-in notification:', error);
-			}
-		}
-
-		if (entry.stop_at) {
-			sendTimeApprovalInviteForEntry(entry.id).catch((error) => {
-				console.error('Failed to send time approval invite email:', error);
+		// EPIC 25: Send team check-in notification
+		// Don't await - fire and forget to keep API fast
+		if (entry) {
+			sendTeamCheckInNotification({
+				userId: user.id,
+				userName: user.user_metadata?.full_name || user.email || 'Unknown',
+				projectId: entry.project_id,
+				action: entry.stop_at ? 'checkout' : 'checkin',
+				timestamp: entry.stop_at || entry.start_at,
+			}).catch((err) => {
+				console.error('[Time Entry] Failed to send team notification:', err);
 			});
 		}
 

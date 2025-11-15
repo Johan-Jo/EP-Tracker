@@ -1,75 +1,64 @@
-import { sendNotification } from './send-notification';
+/**
+ * Team check-in/check-out notifications
+ * Sent to foremen/admins when team members check in or out
+ */
+
+import { sendNotificationToMultipleUsers } from './send-notification';
 import { createClient } from '@/lib/supabase/server';
 
-interface TeamCheckInPayload {
-  userId: string; // The user who checked in/out
+export interface TeamCheckInData {
+  userId: string;
+  userName: string;
   projectId: string;
+  projectName: string;
   action: 'check_in' | 'check_out';
+  timestamp: string;
 }
 
-/**
- * Notify team leads when a team member checks in or out
- */
-export async function notifyTeamCheckIn(payload: TeamCheckInPayload) {
-  try {
-    const supabase = await createClient();
+export async function sendTeamCheckInNotification(data: TeamCheckInData) {
+  const supabase = await createClient();
 
-    // 1. Get user info
-    const { data: userProfile } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', payload.userId)
-      .single();
+  // Get all foremen and admins who have access to this project
+  const { data: members } = await supabase
+    .from('project_members')
+    .select('user_id, profiles(full_name), memberships(role)')
+    .eq('project_id', data.projectId)
+    .in('memberships.role', ['admin', 'foreman']);
 
-    // 2. Get project info
-    const { data: project } = await supabase
-      .from('projects')
-      .select('name, org_id')
-      .eq('id', payload.projectId)
-      .single();
-
-    if (!userProfile || !project) {
-      console.error('❌ Could not find user or project for team check-in notification');
-      return;
-    }
-
-    // 3. Find team leads (admins and foremen in the same org)
-    const { data: teamLeads } = await supabase
-      .from('memberships')
-      .select('user_id')
-      .eq('org_id', project.org_id)
-      .in('role', ['admin', 'foreman'])
-      .neq('user_id', payload.userId); // Don't notify the user who checked in
-
-    if (!teamLeads || teamLeads.length === 0) {
-      console.log('📭 No team leads to notify');
-      return;
-    }
-
-    // 4. Send notification to each team lead
-    const action = payload.action === 'check_in' ? 'checkade in' : 'checkade ut';
-    const emoji = payload.action === 'check_in' ? '👷' : '🏠';
-
-    const notifications = teamLeads.map((lead) =>
-      sendNotification({
-        userId: lead.user_id,
-        type: `team_${payload.action}`,
-        title: `${emoji} ${userProfile.full_name} ${action}`,
-        body: `På projekt: ${project.name}`,
-        url: '/dashboard',
-        data: {
-          project_id: payload.projectId,
-          project_name: project.name,
-          user_name: userProfile.full_name,
-          action: payload.action,
-        },
-      })
-    );
-
-    await Promise.all(notifications);
-    console.log(`✅ Sent team check-in notifications to ${teamLeads.length} team leads`);
-  } catch (error) {
-    console.error('❌ Error sending team check-in notification:', error);
+  if (!members || members.length === 0) {
+    console.log('[Team Check-in] No foremen/admins to notify for project', data.projectId);
+    return;
   }
+
+  // Filter out the user who checked in/out
+  const recipientIds = members
+    .filter((m) => m.user_id !== data.userId)
+    .map((m) => m.user_id);
+
+  if (recipientIds.length === 0) {
+    return;
+  }
+
+  const actionText = data.action === 'check_in' ? 'checkade in' : 'checkade ut';
+  const emoji = data.action === 'check_in' ? '✅' : '👋';
+  const time = new Date(data.timestamp).toLocaleTimeString('sv-SE', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  return await sendNotificationToMultipleUsers(recipientIds, {
+    type: data.action === 'check_in' ? 'team_checkin' : 'team_checkout',
+    title: `${emoji} ${data.userName} ${actionText}`,
+    body: `Projekt: ${data.projectName} • ${time}`,
+    url: '/dashboard/planning/today',
+    data: {
+      user_id: data.userId,
+      user_name: data.userName,
+      project_id: data.projectId,
+      project_name: data.projectName,
+      action: data.action,
+      timestamp: data.timestamp,
+    },
+  });
 }
 

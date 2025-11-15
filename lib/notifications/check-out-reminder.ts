@@ -1,28 +1,49 @@
+/**
+ * Check-out reminder notifications
+ * Sent to users who haven't checked out at end of day
+ */
+
 import { sendNotification } from './send-notification';
 
-interface CheckOutReminderPayload {
+export interface CheckOutReminderData {
   userId: string;
   projectName: string;
+  projectId: string;
   checkInTime: string;
+  hoursWorked: number;
 }
 
-/**
- * Send check-out reminder notification
- */
-export async function sendCheckOutReminder(payload: CheckOutReminderPayload) {
-  const checkInDate = new Date(payload.checkInTime);
-  const hoursWorked = Math.floor((Date.now() - checkInDate.getTime()) / (1000 * 60 * 60));
+export async function sendCheckOutReminder(data: CheckOutReminderData) {
+  const duration = formatDuration(data.hoursWorked);
 
-  return sendNotification({
-    userId: payload.userId,
+  return await sendNotification({
+    userId: data.userId,
     type: 'checkout_reminder',
     title: 'Glöm inte checka ut!',
-    body: `Du är incheckad på ${payload.projectName} sedan ${hoursWorked}h`,
+    body: `Du är incheckad på ${data.projectName} sedan ${duration}`,
     url: '/dashboard',
     data: {
-      project_name: payload.projectName,
-      hours_worked: hoursWorked.toString(),
+      project_id: data.projectId,
+      project_name: data.projectName,
+      check_in_time: data.checkInTime,
     },
+    requireInteraction: true,
   });
+}
+
+function formatDuration(hours: number): string {
+  if (hours < 1) {
+    const minutes = Math.round(hours * 60);
+    return `${minutes} minuter`;
+  }
+  
+  const wholeHours = Math.floor(hours);
+  const minutes = Math.round((hours - wholeHours) * 60);
+  
+  if (minutes === 0) {
+    return `${wholeHours} timmar`;
+  }
+  
+  return `${wholeHours}h ${minutes}min`;
 }
 

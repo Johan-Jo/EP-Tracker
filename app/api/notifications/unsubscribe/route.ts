@@ -1,17 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-
 /**
+ * API Route: Unsubscribe from push notifications
  * POST /api/notifications/unsubscribe
- * Unsubscribe from push notifications by removing FCM token
  */
-export async function POST(request: NextRequest) {
+
+import { createClient } from '@/lib/supabase/server';
+import { NextResponse } from 'next/server';
+
+export async function POST(request: Request) {
   try {
     const { token } = await request.json();
-
-    if (!token) {
-      return NextResponse.json({ error: 'FCM token required' }, { status: 400 });
-    }
 
     const supabase = await createClient();
     const {
@@ -22,24 +19,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Delete subscription
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('fcm_token', token);
+    if (token) {
+      // Unsubscribe specific token
+      const { error } = await supabase
+        .from('push_subscriptions')
+        .update({ is_active: false })
+        .eq('user_id', user.id)
+        .eq('fcm_token', token);
 
-    if (error) {
-      console.error('Error removing subscription:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) {
+        console.error('[Unsubscribe] Error deactivating token:', error);
+        return NextResponse.json({ error: 'Failed to unsubscribe' }, { status: 500 });
+      }
+
+      console.log(`[Unsubscribe] User ${user.id} unsubscribed token ${token.slice(0, 20)}...`);
+    } else {
+      // Unsubscribe all tokens for user
+      const { error } = await supabase
+        .from('push_subscriptions')
+        .update({ is_active: false })
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('[Unsubscribe] Error deactivating all tokens:', error);
+        return NextResponse.json({ error: 'Failed to unsubscribe' }, { status: 500 });
+      }
+
+      console.log(`[Unsubscribe] User ${user.id} unsubscribed all devices`);
     }
 
-    console.log(`✅ Unsubscribed user ${user.id} from push notifications`);
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Unsubscribe error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({
+      success: true,
+      message: 'Successfully unsubscribed from push notifications',
+    });
+  } catch (error: any) {
+    console.error('[Unsubscribe] Unexpected error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 

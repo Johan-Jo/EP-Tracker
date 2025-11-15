@@ -1,67 +1,47 @@
 // Firebase Cloud Messaging Service Worker
-// This file MUST be in the public directory at the root level
+// This file must be served from the root (public/) directory
 
-// Import Firebase scripts
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+// Import Firebase scripts (using importScripts for service workers)
+importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js');
+
+// Firebase configuration will be injected by the app
+// Using a placeholder config that will be overridden
+const firebaseConfig = {
+  apiKey: 'PLACEHOLDER',
+  authDomain: 'PLACEHOLDER',
+  projectId: 'PLACEHOLDER',
+  storageBucket: 'PLACEHOLDER',
+  messagingSenderId: 'PLACEHOLDER',
+  appId: 'PLACEHOLDER',
+};
 
 // Initialize Firebase
-// Note: This config is safe to expose (it's public info)
-// The actual security is handled by Firebase security rules
-firebase.initializeApp({
-  apiKey: "AIzaSyAcsNNhpRiqIvVNiyd16aZeOOknKxdsZJo",
-  authDomain: "ep-tracker-dev-6202a.firebaseapp.com",
-  projectId: "ep-tracker-dev-6202a",
-  storageBucket: "ep-tracker-dev-6202a.firebasestorage.app",
-  messagingSenderId: "117589001561",
-  appId: "1:117589001561:web:b69baface5a06172d43848"
-});
-
-const messaging = firebase.messaging();
-
-// Handle background messages (when app is not in focus)
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message:', payload);
-
-  const notificationTitle = payload.notification?.title || payload.data?.title || 'EP-Tracker';
-  const notificationOptions = {
-    body: payload.notification?.body || payload.data?.body || 'Ny notifikation',
-    icon: payload.notification?.icon || payload.data?.icon || '/images/faviconEP.png',
-    badge: '/images/faviconEP.png',
-    data: payload.data || {},
-    tag: payload.data?.tag || 'ep-tracker-notification',
-    requireInteraction: false,
-    vibrate: [200, 100, 200],
-  };
-
-  return self.registration.showNotification(notificationTitle, notificationOptions);
-});
-
-// Handle notification clicks
-self.addEventListener('notificationclick', (event) => {
-  console.log('[firebase-messaging-sw.js] Notification clicked:', event);
+try {
+  firebase.initializeApp(firebaseConfig);
   
-  event.notification.close();
+  const messaging = firebase.messaging();
   
-  const urlToOpen = event.notification.data?.url || '/dashboard';
+  console.log('[FCM SW] Firebase Messaging initialized');
   
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        for (let i = 0; i < clientList.length; i++) {
-          const client = clientList[i];
-          if (client.url.includes(self.location.origin) && 'focus' in client) {
-            return client.focus().then(() => {
-              if (client.navigate) {
-                return client.navigate(urlToOpen);
-              }
-            });
-          }
-        }
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
-        }
-      })
-  );
-});
+  // Handle background messages
+  messaging.onBackgroundMessage((payload) => {
+    console.log('[FCM SW] Received background message:', payload);
+    
+    const notificationTitle = payload.notification?.title || payload.data?.title || 'EP-Tracker';
+    const notificationOptions = {
+      body: payload.notification?.body || payload.data?.body || 'Du har en ny notifikation',
+      icon: payload.notification?.icon || payload.data?.icon || '/images/faviconEP.png',
+      badge: payload.data?.badge || '/images/faviconEP.png',
+      data: payload.data || {},
+      tag: payload.data?.type || 'ep-tracker-notification',
+      requireInteraction: payload.data?.requireInteraction === 'true',
+      vibrate: [200, 100, 200],
+    };
+    
+    return self.registration.showNotification(notificationTitle, notificationOptions);
+  });
+} catch (error) {
+  console.error('[FCM SW] Error initializing Firebase:', error);
+}
 

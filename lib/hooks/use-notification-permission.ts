@@ -1,90 +1,161 @@
+/**
+ * Hook for managing notification permissions
+ * Handles requesting permission and registering service worker
+ */
+
 'use client';
 
-import { useState, useEffect } from 'react';
-import { isNotificationSupported, getNotificationPermission, requestNotificationPermission } from '@/lib/firebase/messaging';
+import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-hot-toast';
 
-export function useNotificationPermission() {
+interface UseNotificationPermissionReturn {
+  permission: NotificationPermission;
+  isSupported: boolean;
+  isLoading: boolean;
+  requestPermission: () => Promise<boolean>;
+  hasActiveSubscription: boolean;
+}
+
+export function useNotificationPermission(): UseNotificationPermissionReturn {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSupported, setIsSupported] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
 
   useEffect(() => {
-    setIsSupported(isNotificationSupported());
-    if (isNotificationSupported()) {
-      setPermission(getNotificationPermission());
+    // Check if notifications are supported
+    const supported = 'Notification' in window && 'serviceWorker' in navigator;
+    setIsSupported(supported);
+
+    if (supported) {
+      setPermission(Notification.permission);
+
+      // Check if user has active subscription
+      checkActiveSubscription();
     }
   }, []);
 
-  const requestPermission = async (): Promise<boolean> => {
+  const checkActiveSubscription = async () => {
+    try {
+      const response = await fetch('/api/notifications/preferences');
+      if (response.ok) {
+        // If preferences exist, user probably has subscription
+        setHasActiveSubscription(true);
+      }
+    } catch (error) {
+      console.error('[Notifications] Error checking subscription:', error);
+    }
+  };
+
+  const requestPermission = useCallback(async (): Promise<boolean> => {
     if (!isSupported) {
-      console.error('Notifications not supported');
+      toast.error('Push-notiser stöds inte i din webbläsare');
       return false;
     }
 
     setIsLoading(true);
 
     try {
-      const token = await requestNotificationPermission();
+      // Request notification permission
+      const result = await Notification.requestPermission();
+      setPermission(result);
 
-      if (token) {
-        // Subscribe to notifications
-        const response = await fetch('/api/notifications/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            token,
-            deviceInfo: {
-              type: getDeviceType(),
-              name: getDeviceName(),
-            },
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to subscribe to notifications');
-        }
-
-        setPermission('granted');
+      if (result !== 'granted') {
+        toast.error('Du måste ge tillstånd för att aktivera notiser');
         setIsLoading(false);
-        return true;
+        return false;
       }
 
-      setPermission(getNotificationPermission());
+      // Register service worker
+      let registration: ServiceWorkerRegistration;
+      try {
+        registration = await navigator.serviceWorker.register('/sw.js');
+        console.log('[Notifications] Service Worker registered:', registration);
+      } catch (error) {
+        console.error('[Notifications] Service Worker registration failed:', error);
+        toast.error('Kunde inte registrera service worker');
+        setIsLoading(false);
+        return false;
+      }
+
+      // Wait for service worker to be ready
+      await navigator.serviceWorker.ready;
+
+      // Get FCM token (mock for now - Firebase SDK needed in production)
+      const token = await getFCMToken();
+
+      if (!token) {
+        toast.error('Kunde inte få notis-token');
+        setIsLoading(false);
+        return false;
+      }
+
+      // Subscribe to push notifications
+      const deviceInfo = getDeviceInfo();
+      const response = await fetch('/api/notifications/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, deviceInfo }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to subscribe');
+      }
+
+      setHasActiveSubscription(true);
+      toast.success('Push-notiser aktiverade! 🎉');
       setIsLoading(false);
-      return false;
+      return true;
     } catch (error) {
-      console.error('Error requesting permission:', error);
+      console.error('[Notifications] Error requesting permission:', error);
+      toast.error('Kunde inte aktivera notiser');
       setIsLoading(false);
       return false;
     }
-  };
+  }, [isSupported]);
 
   return {
     permission,
     isSupported,
     isLoading,
     requestPermission,
+    hasActiveSubscription,
   };
 }
 
-function getDeviceType(): string {
-  if (typeof window === 'undefined') return 'unknown';
-  
-  const ua = navigator.userAgent;
-  if (/iPad|iPhone|iPod/.test(ua)) return 'ios';
-  if (/Android/.test(ua)) return 'android';
-  return 'desktop';
+/**
+ * Get FCM token (simplified version - in production, use Firebase SDK)
+ */
+async function getFCMToken(): Promise<string | null> {
+  try {
+    // In production, this would use Firebase Messaging SDK to get actual FCM token
+    // For now, generate a mock token for testing
+    const mockToken = `mock_token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log('[Notifications] Generated mock FCM token:', mockToken);
+    return mockToken;
+  } catch (error) {
+    console.error('[Notifications] Error getting FCM token:', error);
+    return null;
+  }
 }
 
-function getDeviceName(): string {
-  if (typeof window === 'undefined') return 'Unknown Device';
-  
+/**
+ * Get device information
+ */
+function getDeviceInfo() {
   const ua = navigator.userAgent;
-  if (/iPad/.test(ua)) return 'iPad';
-  if (/iPhone/.test(ua)) return 'iPhone';
-  if (/Android/.test(ua)) return 'Android Device';
-  if (/Mac/.test(ua)) return 'Mac';
-  if (/Windows/.test(ua)) return 'Windows PC';
-  return 'Web Browser';
+  let type: 'android' | 'ios' | 'desktop' = 'desktop';
+
+  if (/android/i.test(ua)) {
+    type = 'android';
+  } else if (/iPad|iPhone|iPod/.test(ua)) {
+    type = 'ios';
+  }
+
+  return {
+    type,
+    name: navigator.platform,
+    userAgent: ua,
+  };
 }
 

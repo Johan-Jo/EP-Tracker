@@ -1,16 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-
 /**
+ * API Route: Subscribe to push notifications
  * POST /api/notifications/subscribe
- * Subscribe to push notifications by saving FCM token
  */
-export async function POST(request: NextRequest) {
+
+import { createClient } from '@/lib/supabase/server';
+import { NextResponse } from 'next/server';
+
+export async function POST(request: Request) {
   try {
     const { token, deviceInfo } = await request.json();
 
     if (!token) {
-      return NextResponse.json({ error: 'FCM token required' }, { status: 400 });
+      return NextResponse.json({ error: 'FCM token is required' }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -23,46 +24,54 @@ export async function POST(request: NextRequest) {
     }
 
     // Upsert subscription (update if exists, insert if not)
-    const { error: subError } = await supabase.from('push_subscriptions').upsert(
-      {
-        user_id: user.id,
-        fcm_token: token,
-        device_type: deviceInfo?.type || 'unknown',
-        device_name: deviceInfo?.name || 'Unknown Device',
-        last_used_at: new Date().toISOString(),
-      },
-      {
-        onConflict: 'fcm_token',
-      }
-    );
+    const { error: subsError } = await supabase
+      .from('push_subscriptions')
+      .upsert(
+        {
+          user_id: user.id,
+          fcm_token: token,
+          device_type: deviceInfo?.type || 'unknown',
+          device_name: deviceInfo?.name || null,
+          user_agent: deviceInfo?.userAgent || null,
+          last_used_at: new Date().toISOString(),
+          is_active: true,
+        },
+        {
+          onConflict: 'fcm_token',
+        }
+      );
 
-    if (subError) {
-      console.error('Error saving subscription:', subError);
-      return NextResponse.json({ error: subError.message }, { status: 500 });
+    if (subsError) {
+      console.error('[Subscribe] Error upserting subscription:', subsError);
+      return NextResponse.json({ error: 'Failed to save subscription' }, { status: 500 });
     }
 
-    // Create default preferences if they don't exist
-    const { error: prefError } = await supabase.from('notification_preferences').upsert(
-      {
+    // Create default preferences if not exists
+    const { error: prefsError } = await supabase
+      .from('notification_preferences')
+      .insert({
         user_id: user.id,
-      },
-      {
-        onConflict: 'user_id',
-        ignoreDuplicates: true,
-      }
-    );
+      })
+      .select()
+      .maybeSingle();
 
-    if (prefError) {
-      console.error('Error creating preferences:', prefError);
-      // Don't fail the request, preferences will be created on first access
+    // Ignore conflict error (preferences already exist)
+    if (prefsError && prefsError.code !== '23505') {
+      console.error('[Subscribe] Error creating preferences:', prefsError);
     }
 
-    console.log(`✅ Subscribed user ${user.id} to push notifications`);
+    console.log(`[Subscribe] User ${user.id} subscribed successfully`);
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Subscribe error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({
+      success: true,
+      message: 'Successfully subscribed to push notifications',
+    });
+  } catch (error: any) {
+    console.error('[Subscribe] Unexpected error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 

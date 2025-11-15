@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+/**
+ * API Route: Send test notification
+ * POST /api/notifications/test
+ */
+
 import { createClient } from '@/lib/supabase/server';
 import { sendNotification } from '@/lib/notifications';
+import { NextResponse } from 'next/server';
 
-/**
- * POST /api/notifications/test
- * Send a test notification to the current user
- */
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const supabase = await createClient();
     const {
@@ -17,79 +18,63 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user profile for name
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', user.id)
-      .single();
+    // Check if user has any active subscriptions
+    const { data: subs, error: subsError } = await supabase
+      .from('push_subscriptions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .limit(1);
 
-    const userName = profile?.full_name || 'där';
-
-    // Check if Firebase is configured
-    const { messaging } = await import('@/lib/notifications/firebase-admin');
-    
-    if (!messaging) {
-      console.error('❌ Firebase Admin SDK not initialized');
-      return NextResponse.json(
-        { 
-          error: 'Firebase not configured. Check environment variables:\n' +
-                 '- FIREBASE_PROJECT_ID\n' +
-                 '- FIREBASE_CLIENT_EMAIL\n' +
-                 '- FIREBASE_PRIVATE_KEY'
-        },
-        { status: 500 }
-      );
+    if (subsError) {
+      console.error('[Test Notification] Error checking subscriptions:', subsError);
+      return NextResponse.json({ error: 'Failed to check subscriptions' }, { status: 500 });
     }
 
-    // Check if user has FCM token
-    const { data: subscriptions } = await supabase
-      .from('push_subscriptions')
-      .select('fcm_token')
-      .eq('user_id', user.id);
-
-    if (!subscriptions || subscriptions.length === 0) {
-      console.error('❌ No FCM tokens found for user');
+    if (!subs || subs.length === 0) {
       return NextResponse.json(
-        { 
-          error: 'No FCM tokens found. Please enable notifications first by clicking "Aktivera notiser".'
-        },
+        { error: 'No active subscriptions found. Please enable notifications first.' },
         { status: 400 }
       );
     }
 
-    console.log(`📤 Sending test notification to user ${user.id} (${subscriptions.length} devices)`);
-
-    // Send test notification (skip quiet hours for test)
+    // Send test notification
     const result = await sendNotification({
       userId: user.id,
       type: 'test',
-      title: '🎉 Test-notis fungerar!',
-      body: `Hej ${userName}! Dina pushnotiser är korrekt konfigurerade.`,
-      url: '/dashboard',
+      title: '🎉 EP-Tracker Testnotis',
+      body: 'Allt fungerar! Du får nu pushnotiser från EP-Tracker.',
+      url: '/dashboard/settings/notifications',
       data: {
         test: 'true',
+        timestamp: new Date().toISOString(),
       },
-      skipQuietHours: true, // Always send test notifications
     });
 
-    if (!result) {
-      console.error('❌ Failed to send notification (null result)');
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Failed to send notification. Check server logs for details.' },
+        {
+          error: 'Failed to send notification',
+          details: result.errors,
+        },
         { status: 500 }
       );
     }
 
-    console.log(`✅ Test notification sent successfully!`);
+    console.log(`[Test Notification] Sent to user ${user.id}`);
 
     return NextResponse.json({
       success: true,
-      message: 'Test notification sent',
+      message: 'Test notification sent successfully',
+      sent: result.sent,
+      failed: result.failed,
     });
-  } catch (error) {
-    console.error('Test notification error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('[Test Notification] Unexpected error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
