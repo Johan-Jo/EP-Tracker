@@ -171,8 +171,17 @@ export function CustomerMergeDialog({ customer, canMerge = true }: CustomerMerge
 	);
 
 	const candidateList = useMemo(() => {
-		const items = duplicateSearch?.items ?? [];
-		return items.filter((item) => item.id !== customer.id);
+		type CustomerListResponse = {
+			items: Customer[];
+			page: number;
+			pageSize: number;
+			total: number;
+		};
+		const searchData = duplicateSearch && typeof duplicateSearch === 'object' && 'items' in duplicateSearch 
+			? (duplicateSearch as CustomerListResponse)
+			: null;
+		const items = searchData?.items ?? [];
+		return items.filter((item: Customer) => item.id !== customer.id);
 	}, [duplicateSearch, customer.id]);
 
 	const handleChoiceChange = (key: string, choice: Choice) => {
@@ -301,7 +310,7 @@ export function CustomerMergeDialog({ customer, canMerge = true }: CustomerMerge
 							</div>
 							{candidateList.length > 0 && !duplicate && (
 								<div className="grid gap-2 rounded-md border p-3">
-									{candidateList.map((item) => (
+									{candidateList.map((item: Customer) => (
 										<button
 											key={item.id}
 											type="button"

@@ -106,7 +106,7 @@ type CreateAtaPayload = {
 	materials_amount_sek: number;
 	material_ids: string[];
 	expense_ids: string[];
-	status: 'draft' | 'pending_approval';
+	status: 'draft' | 'submitted' | 'pending_approval';
 	signed_by_name?: string | null;
 	signed_at?: string | null;
 };
@@ -540,7 +540,7 @@ const updateDraftExpenses = useCallback(
 		},
 		onSuccess: (_result, variables) => {
 			const message =
-				variables.status === 'pending_approval'
+				variables.status === 'submitted' || variables.status === 'pending_approval'
 					? 'ÄTA skickad för godkännande!'
 					: 'ÄTA sparad som utkast!';
 			toast.success(message);
@@ -886,7 +886,7 @@ useEffect(() => {
 			materials_amount_sek: Math.round(materialsSubtotal * 100) / 100,
 			material_ids: materialIdsForSubmit,
 			expense_ids: expenseIdsForSubmit,
-			status: submitAsPending ? 'pending_approval' : 'draft',
+			status: submitAsPending ? 'submitted' : 'draft',
 			signed_by_name: signature?.name ?? null,
 			signed_at: signature?.timestamp ?? null,
 		};
@@ -1340,7 +1340,7 @@ useEffect(() => {
 				</div>
 			</div>
 
-			{/* Signature - optional for draft, required for pending_approval */}
+			{/* Signature - optional for draft, required for submitted */}
 			<div className="border-t pt-6">
 				<SignatureInput
 					onSign={setSignature}

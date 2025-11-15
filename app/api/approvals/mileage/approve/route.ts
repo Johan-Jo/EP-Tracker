@@ -8,18 +8,21 @@ export async function POST(request: Request) {
 		const { user, membership } = await getSession();
 
 		if (!user || !membership) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+			return NextResponse.json({ error: 'Inte autentiserad' }, { status: 401 });
 		}
 
 		if (membership.role !== 'admin' && membership.role !== 'foreman') {
-			return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+			return NextResponse.json(
+				{ error: 'Endast administratörer och arbetsledare kan godkänna miltal' },
+				{ status: 403 }
+			);
 		}
 
 		const { mileage_ids } = await request.json();
 
 		if (!mileage_ids || !Array.isArray(mileage_ids) || mileage_ids.length === 0) {
 			return NextResponse.json(
-				{ error: 'mileage_ids array is required' },
+				{ error: 'Välj minst ett miltal att godkänna' },
 				{ status: 400 }
 			);
 		}

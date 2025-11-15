@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
 	if (membership.role !== 'admin' && membership.role !== 'foreman') {
 		return NextResponse.json(
-			{ error: 'Endast administratörer och arbetsledare kan granska miltal' },
+			{ error: 'Endast administratörer och arbetsledare kan granska ÄTA' },
 			{ status: 403 }
 		);
 	}
@@ -30,22 +30,22 @@ export async function GET(request: NextRequest) {
 	}
 
 	const { data, error } = await supabase
-		.from('mileage')
+		.from('ata')
 		.select(`
 			*,
-			user:profiles!mileage_user_id_fkey(full_name),
+			created_by_profile:profiles!ata_created_by_fkey(full_name),
 			project:projects(name, project_number)
 		`)
 		.eq('org_id', membership.org_id)
-		.gte('date', periodStart)
-		.lte('date', periodEnd)
+		.gte('created_at', periodStart)
+		.lte('created_at', periodEnd)
 		.eq('status', status)
-		.order('date', { ascending: false });
+		.order('created_at', { ascending: false });
 
 	if (error) {
 		return NextResponse.json({ error: error.message }, { status: 500 });
 	}
 
-	return NextResponse.json({ mileage: data });
+	return NextResponse.json({ atas: data });
 }
 

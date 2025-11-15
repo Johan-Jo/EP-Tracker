@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Building2, CalendarClock, Loader2, MapPin, Phone, Plus, Receipt, Trash2 } from 'lucide-react';
+import { Building2, CalendarClock, CreditCard, Loader2, MapPin, Phone, Plus, Receipt, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +40,10 @@ interface OrganizationPageNewProps {
 		default_work_day_end: string | null;
 		standard_work_hours_per_day: number | null;
 		standard_breaks: OrganizationBreak[];
+		bankgiro: string | null;
+		plusgiro: string | null;
+		iban: string | null;
+		bic: string | null;
 		created_at: string;
 	};
 }
@@ -58,6 +62,10 @@ type OrganizationUpdatePayload = {
 	defaultWorkDayEnd: string;
 	standardWorkHours?: string | number | null;
 	breaks: Array<{ label?: string | null; start: string; end: string }>;
+	bankgiro?: string | null;
+	plusgiro?: string | null;
+	iban?: string | null;
+	bic?: string | null;
 };
 
 const generateId = () =>
@@ -140,6 +148,10 @@ export function OrganizationPageNew({ organization }: OrganizationPageNewProps) 
 	const [addressSelectionValid, setAddressSelectionValid] = useState<boolean>(
 		Boolean((organization.address ?? '').trim() && (organization.postal_code ?? '').trim() && (organization.city ?? '').trim())
 	);
+	const [bankgiro, setBankgiro] = useState(organization.bankgiro ?? '');
+	const [plusgiro, setPlusgiro] = useState(organization.plusgiro ?? '');
+	const [iban, setIban] = useState(organization.iban ?? '');
+	const [bic, setBic] = useState(organization.bic ?? '');
 
 	const initialBreaks = useMemo(() => formatBreaks(organization.standard_breaks), [organization.standard_breaks]);
 	const [breaks, setBreaks] = useState<BreakRow[]>(initialBreaks);
@@ -316,6 +328,10 @@ const handleAddressSelect = (selected: {
 			defaultWorkDayEnd: workDayEnd,
 			standardWorkHours: standardWorkHours ? Number(standardWorkHours) : null,
 			breaks: breakPayload,
+			bankgiro: bankgiro.trim() || null,
+			plusgiro: plusgiro.trim() || null,
+			iban: iban.trim() || null,
+			bic: bic.trim() || null,
 		};
 
 		updateOrganizationMutation.mutate(payload);
@@ -484,6 +500,71 @@ const handleAddressSelect = (selected: {
 								</div>
 							</div>
 						)}
+					</section>
+
+					<section className='bg-card border-2 border-border rounded-xl p-6'>
+						<div className='flex items-start gap-3 mb-6'>
+							<div className='p-2 rounded-lg bg-accent shrink-0'>
+								<CreditCard className='w-5 h-5 text-primary' />
+							</div>
+							<div>
+								<h2 className='text-lg font-semibold mb-1'>Bankinformation</h2>
+								<p className='text-sm text-muted-foreground'>
+									Betalningsuppgifter som visas på fakturor för kunder
+								</p>
+							</div>
+						</div>
+
+						<div className='grid grid-cols-1 md:grid-cols-2 gap-5'>
+							<div className='space-y-2'>
+								<Label htmlFor='bankgiro'>Bankgiro</Label>
+								<Input
+									id='bankgiro'
+									value={bankgiro}
+									onChange={(event) => setBankgiro(event.target.value)}
+									placeholder='123-4567'
+								/>
+								<p className='text-xs text-muted-foreground'>
+									Svenskt bankgironummer (format: 123-4567)
+								</p>
+							</div>
+							<div className='space-y-2'>
+								<Label htmlFor='plusgiro'>Plusgiro</Label>
+								<Input
+									id='plusgiro'
+									value={plusgiro}
+									onChange={(event) => setPlusgiro(event.target.value)}
+									placeholder='12 34 56-7'
+								/>
+								<p className='text-xs text-muted-foreground'>
+									Svenskt plusgironummer (format: 12 34 56-7)
+								</p>
+							</div>
+							<div className='space-y-2'>
+								<Label htmlFor='iban'>IBAN</Label>
+								<Input
+									id='iban'
+									value={iban}
+									onChange={(event) => setIban(event.target.value)}
+									placeholder='SE35 5000 0000 0549 1000 0003'
+								/>
+								<p className='text-xs text-muted-foreground'>
+									Internationellt bankkontonummer
+								</p>
+							</div>
+							<div className='space-y-2'>
+								<Label htmlFor='bic'>BIC/SWIFT</Label>
+								<Input
+									id='bic'
+									value={bic}
+									onChange={(event) => setBic(event.target.value)}
+									placeholder='ESSESESS'
+								/>
+								<p className='text-xs text-muted-foreground'>
+									Bankidentifieringskod för internationella överföringar
+								</p>
+							</div>
+						</div>
 					</section>
 
 					<section className='bg-card border-2 border-border rounded-xl p-6'>

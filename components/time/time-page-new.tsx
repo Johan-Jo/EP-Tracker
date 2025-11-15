@@ -55,7 +55,7 @@ interface FixedBlockOption {
 interface AtaOption {
 	id: string;
 	title: string;
-	status: 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'invoiced';
+	status: 'draft' | 'submitted' | 'approved' | 'rejected' | 'invoiced';
 	billing_type: BillingType;
 	created_at: string;
 }
@@ -991,7 +991,7 @@ useEffect(() => {
 														<span className='text-xs text-muted-foreground'>
 															{ata.status === 'approved'
 																? 'Godkänd'
-																: ata.status === 'pending_approval'
+																: ata.status === 'submitted'
 																? 'Väntar godkännande'
 																: ata.status === 'draft'
 																? 'Utkast'

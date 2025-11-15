@@ -9,19 +9,22 @@ export async function POST(request: Request) {
 		const { user, membership } = await getSession();
 
 		if (!user || !membership) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+			return NextResponse.json({ error: 'Inte autentiserad' }, { status: 401 });
 		}
 
 		// Only admin and foreman can approve
 		if (membership.role !== 'admin' && membership.role !== 'foreman') {
-			return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+			return NextResponse.json(
+				{ error: 'Endast administratörer och arbetsledare kan godkänna tidrapporter' },
+				{ status: 403 }
+			);
 		}
 
 		const { entry_ids } = await request.json();
 
 		if (!entry_ids || !Array.isArray(entry_ids) || entry_ids.length === 0) {
 			return NextResponse.json(
-				{ error: 'entry_ids array is required' },
+				{ error: 'Välj minst en tidrapport att godkänna' },
 				{ status: 400 }
 			);
 		}

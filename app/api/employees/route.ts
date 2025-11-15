@@ -101,11 +101,11 @@ export async function POST(request: NextRequest) {
 		} catch (error) {
 			if (error instanceof z.ZodError) {
 				const zodError = error as z.ZodError;
-				console.error('[API] Validation error:', zodError.errors);
+				console.error('[API] Validation error:', zodError.issues);
 				return NextResponse.json(
 					{
 						error: 'Invalid input: expected string, received undefined',
-						details: zodError.errors,
+						details: zodError.issues,
 					},
 					{ status: 422 }
 				);

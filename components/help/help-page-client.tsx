@@ -180,26 +180,36 @@ export function HelpPageClient({ userRole }: HelpPageClientProps) {
                                 <CardHeader>
                                     <CheckSquare className="w-8 h-8 text-primary mb-2" />
                                     <CardTitle>Godkännanden</CardTitle>
-                                    <CardDescription>Granska och godkänn tidrapporter</CardDescription>
+                                    <CardDescription>Granska och godkänn poster</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
                                     <div className="text-sm space-y-2">
-                                        <h4 className="font-medium">Godkänn tidrapporter:</h4>
+                                        <h4 className="font-medium">Godkänn poster:</h4>
                                         <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
                                     <li>Gå till &quot;Godkännanden&quot;</li>
                                     <li>Välj vecka att granska</li>
-                                    <li>Granska tidrapporter i tabellen</li>
-                                    <li>Markera de du vill godkänna</li>
-                                    <li>Klicka &quot;Godkänn&quot;</li>
+                                    <li>Välj flik: &quot;Tidrapporter&quot; eller &quot;Kostnader&quot;</li>
+                                    <li>Markera de poster du vill godkänna</li>
+                                    <li>Klicka &quot;Godkänn&quot; för bulk-godkännande</li>
                                         </ol>
                                     </div>
                                     <div className="text-sm space-y-2">
-                                        <h4 className="font-medium">Begär ändringar:</h4>
+                                        <h4 className="font-medium">Godkännandetyper:</h4>
+                                        <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                                            <li>Tidrapporter - Arbetsrapporter från användare</li>
+                                            <li>Material - Material som beställts eller använts</li>
+                                            <li>Utlägg - Kostnader och utgifter</li>
+                                            <li>Miltal - Miltalsersättning</li>
+                                            <li>ÄTA - Ändringsbeslut</li>
+                                        </ul>
+                                    </div>
+                                    <div className="text-sm space-y-2">
+                                        <h4 className="font-medium">Avvisa poster:</h4>
                                         <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                                            <li>Klicka meddelande-ikonen på tidrapport</li>
-                                            <li>Skriv vad som behöver ändras</li>
-                                            <li>Skicka feedback</li>
-                                            <li>Användaren ser din kommentar</li>
+                                            <li>Markera poster som behöver ändras</li>
+                                            <li>Klicka &quot;Avvisa&quot;-knappen</li>
+                                            <li>Skriv kommentar med anledning (obligatoriskt)</li>
+                                            <li>Användaren får notifikation och kan redigera</li>
                                         </ol>
                                     </div>
                                 </CardContent>

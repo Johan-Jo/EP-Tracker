@@ -84,8 +84,7 @@ export const useCustomers = (params?: CustomerListParams) => {
 	return useQuery({
 		queryKey: ['customers', Object.fromEntries(searchParams)],
 		queryFn: () => fetchJson<CustomerListResponse>(url),
-		keepPreviousData: true,
-	retry: (failureCount, error) =>
+		retry: (failureCount, error) =>
 		error instanceof Error && /Unauthorized/.test(error.message)
 			? false
 			: failureCount < 3,

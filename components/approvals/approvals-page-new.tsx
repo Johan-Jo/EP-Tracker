@@ -285,8 +285,8 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 					// For materials and expenses, pending is 'draft' or 'submitted'
 					materialsQuery = materialsQuery.in('status', ['draft', 'submitted']);
 					expensesQuery = expensesQuery.in('status', ['draft', 'submitted']);
-					// For ÄTA, pending is 'pending_approval'
-					ataQuery = ataQuery.eq('status', 'pending_approval');
+					// For ÄTA, pending is 'submitted'
+					ataQuery = ataQuery.eq('status', 'submitted');
 				} else if (statusFilter === 'draft') {
 					// For materials and expenses, draft is 'draft'
 					materialsQuery = materialsQuery.eq('status', 'draft');
@@ -297,8 +297,8 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 					// For materials and expenses, submitted is 'submitted'
 					materialsQuery = materialsQuery.eq('status', 'submitted');
 					expensesQuery = expensesQuery.eq('status', 'submitted');
-					// For ÄTA, submitted maps to 'pending_approval' (when user submits ÄTA for approval)
-					ataQuery = ataQuery.eq('status', 'pending_approval');
+					// For ÄTA, submitted maps to 'submitted' (when user submits ÄTA for approval)
+					ataQuery = ataQuery.eq('status', 'submitted');
 				} else {
 					// For other statuses (approved, rejected), apply directly
 					materialsQuery = materialsQuery.eq('status', statusFilter);
@@ -386,14 +386,14 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 		e.status === 'draft' || e.status === 'submitted'
 	).length;
 	const pendingCosts = (allCostEntries || []).filter((e: any) => 
-		e.status === 'draft' || e.status === 'submitted' || e.status === 'pending_approval'
+		e.status === 'draft' || e.status === 'submitted'
 	).length;
 	const uniqueUsers = new Set([
 		...(allTimeEntries || []).filter((e: any) => 
 			e.status === 'draft' || e.status === 'submitted'
 		).map((e: any) => e.user?.full_name).filter(Boolean),
 		...(allCostEntries || []).filter((e: any) => 
-			e.status === 'draft' || e.status === 'submitted' || e.status === 'pending_approval'
+			e.status === 'draft' || e.status === 'submitted'
 		).map((e: any) => e.user?.full_name).filter(Boolean),
 	]).size;
 
@@ -757,23 +757,19 @@ const handleDownloadCurrentView = () => {
 						}
 					}
 
-					await Promise.all(
-						atas.map(async (id) => {
-							const response = await fetch(`/api/ata/${id}/approve`, {
-								method: 'POST',
-								headers: { 'Content-Type': 'application/json' },
-								body: JSON.stringify({
-									action: 'approve',
-									approved_by_name: approvedByName,
-								}),
-							});
+					// Approve ÄTA using bulk approval endpoint
+					const ataResponse = await fetch('/api/approvals/ata/approve', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							ata_ids: atas,
+						}),
+					});
 
-							if (!response.ok) {
-								const error = await response.json();
-								throw new Error(error.error || 'Kunde inte godkänna ÄTA');
-							}
-						})
-					);
+					if (!ataResponse.ok) {
+						const error = await ataResponse.json();
+						throw new Error(error.error || 'Kunde inte godkänna ÄTA');
+					}
 				}
 
 				const totalApproved = materials.length + expenses.length + atas.length;

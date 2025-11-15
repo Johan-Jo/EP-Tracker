@@ -272,7 +272,7 @@ CREATE TABLE ata (
             ELSE NULL 
         END
     ) STORED,
-    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'pending_approval', 'approved', 'rejected', 'invoiced')),
+    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'submitted', 'approved', 'rejected', 'invoiced')),
     approved_by UUID REFERENCES profiles(id),
     approved_at TIMESTAMPTZ,
     signature_name TEXT,

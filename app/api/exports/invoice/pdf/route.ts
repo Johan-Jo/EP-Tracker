@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
         // Fetch organization info (using actual database field names)
         const { data: organization, error: orgError } = await supabase
             .from('organizations')
-            .select('name, org_number, address, postal_code, city')
+            .select('name, org_number, address, postal_code, city, bankgiro, plusgiro, iban, bic')
             .eq('id', membership.org_id)
             .single();
 

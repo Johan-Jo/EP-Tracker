@@ -30,7 +30,7 @@ export function MaterialDetailModal({ material, open, onClose, onEdit }: Materia
 			case 'purchased':
 			case 'approved':
 				return 'bg-green-100 text-green-700 border-green-200';
-			case 'pending_approval':
+			case 'submitted':
 				return 'bg-yellow-100 text-yellow-700 border-yellow-200';
 			default:
 				return 'bg-gray-100 text-gray-700 border-gray-200';
@@ -43,7 +43,7 @@ export function MaterialDetailModal({ material, open, onClose, onEdit }: Materia
 				return 'Köpt';
 			case 'approved':
 				return 'Godkänd';
-			case 'pending_approval':
+			case 'submitted':
 				return 'Väntar godkännande';
 			case 'draft':
 				return 'Utkast';

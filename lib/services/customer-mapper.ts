@@ -64,7 +64,7 @@ export const prepareCustomerFields = (payload: CustomerPayload) => {
 			? payload.rot_consent_at.toISOString()
 			: null,
 		invoice_email: toNullable(payload.invoice_email),
-		invoice_method: payload.invoice_method ?? invoiceMethodEnum.Enum.EMAIL,
+		invoice_method: payload.invoice_method ?? invoiceMethodEnum.enum.EMAIL,
 		peppol_id: toNullable(payload.peppol_id),
 		gln: toNullable(payload.gln),
 		terms: payload.terms ?? null,
@@ -180,7 +180,7 @@ export const customerToPayload = (customer: Customer): CustomerPayload => {
 		invoice_email: (customer.type === 'COMPANY' || customer.type === 'PRIVATE') 
 			? preserveString(customer.invoice_email)
 			: toUndefined(customer.invoice_email),
-		invoice_method: customer.invoice_method ?? invoiceMethodEnum.Enum.EMAIL,
+		invoice_method: customer.invoice_method ?? invoiceMethodEnum.enum.EMAIL,
 		peppol_id: toUndefined(customer.peppol_id),
 		gln: toUndefined(customer.gln),
 		terms: customer.terms ?? undefined,

@@ -103,7 +103,7 @@ export function EmployeeCard({ employeeId }: EmployeeCardProps) {
 				const formatted = formatSwedishPersonalIdentityNumber(employee.personal_identity_no);
 				details.push({
 					label: 'Personnummer',
-					value: formatted,
+					value: formatted ?? undefined,
 				});
 			} catch {
 				details.push({

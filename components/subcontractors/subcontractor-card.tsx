@@ -86,7 +86,7 @@ export function SubcontractorCard({ subcontractorId }: SubcontractorCardProps) {
 			{
 				label: 'Organisationsnummer',
 				value: subcontractor.org_no
-					? formatSwedishOrganizationNumber(subcontractor.org_no)
+					? formatSwedishOrganizationNumber(subcontractor.org_no) ?? undefined
 					: undefined,
 			},
 		];

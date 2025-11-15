@@ -127,7 +127,6 @@ export const buildEmployeeInsert = ({
 
 	return {
 		org_id: orgId,
-		employee_no: employeeNo,
 		...base,
 		employee_no: employeeNo, // Override base.employee_no which might be null
 		created_by: userId,

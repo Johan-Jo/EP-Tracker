@@ -44,6 +44,10 @@ export default async function OrganizationSettingsPage() {
 				default_work_day_end: organization.default_work_day_end ?? null,
 				standard_work_hours_per_day: organization.standard_work_hours_per_day ?? null,
 				standard_breaks: organization.standard_breaks ?? [],
+				bankgiro: organization.bankgiro ?? null,
+				plusgiro: organization.plusgiro ?? null,
+				iban: organization.iban ?? null,
+				bic: organization.bic ?? null,
 				created_at: organization.created_at,
 			}}
 		/>

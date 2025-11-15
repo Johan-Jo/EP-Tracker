@@ -81,11 +81,14 @@ export async function sendTimeApprovalInviteForEntry(entryId: string) {
 
     const recipients =
       admins
-        ?.map((membership) => ({
-          userId: membership.user_id,
-          name: membership.profile?.full_name ?? null,
-          email: membership.profile?.email ?? null,
-        }))
+        ?.map((membership) => {
+          const profile = Array.isArray(membership.profile) ? membership.profile[0] : membership.profile;
+          return {
+            userId: membership.user_id,
+            name: (profile as { full_name?: string; email?: string } | null)?.full_name ?? null,
+            email: (profile as { full_name?: string; email?: string } | null)?.email ?? null,
+          };
+        })
         .filter((recipient) => Boolean(recipient.email) && recipient.userId !== entry.user_id) ?? [];
 
     if (recipients.length === 0) {
@@ -101,11 +104,13 @@ export async function sendTimeApprovalInviteForEntry(entryId: string) {
       ? `${baseUrl}/dashboard/approvals/quick-approve?mode=all&userId=${encodeURIComponent(entry.user_id)}`
       : undefined;
 
-    const workerName = entry.user?.full_name ?? 'Okänd användare';
+    const user = Array.isArray(entry.user) ? entry.user[0] : entry.user;
+    const project = Array.isArray(entry.project) ? entry.project[0] : entry.project;
+    const workerName = (user as { full_name?: string } | null)?.full_name ?? 'Okänd användare';
     const workerSubjectName = workerName.trim().endsWith('s')
-      ? `${workerName}’`
+      ? `${workerName}'`
       : `${workerName}s`;
-    const projectName = entry.project?.name ?? null;
+    const projectName = (project as { name?: string } | null)?.name ?? null;
     const trimmedNotes = entry.notes?.trim() ? entry.notes.trim() : null;
     const checkInTime = entry.start_at
       ? new Date(entry.start_at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })

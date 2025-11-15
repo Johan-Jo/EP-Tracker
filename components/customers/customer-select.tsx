@@ -21,6 +21,13 @@ import {
 	useCreateCustomer,
 	useCustomers,
 } from '@/lib/hooks/use-customers';
+
+type CustomerListResponse = {
+	items: Customer[];
+	page: number;
+	pageSize: number;
+	total: number;
+};
 import { CustomerForm } from './customer-form';
 
 type CustomerSelectProps = {
@@ -86,8 +93,9 @@ export function CustomerSelect({
 	});
 	const createCustomerMutation = useCreateCustomer();
 
+	const customerData = data && typeof data === 'object' && 'items' in data ? (data as CustomerListResponse) : null;
 	const hasMore =
-		data?.total && data.total > page * (data.pageSize ?? pageSize);
+		customerData && customerData.total && customerData.total > page * (customerData.pageSize ?? pageSize);
 
 	const handleSelect = (customer: Customer) => {
 		onChange(customer);
@@ -181,8 +189,8 @@ export function CustomerSelect({
 									</div>
 								) : (
 									<div className="h-64 overflow-y-auto rounded-md border divide-y">
-										{data?.items?.length ? (
-											data.items.map((customer) => {
+										{customerData && customerData.items?.length ? (
+											customerData.items.map((customer: Customer) => {
 												const Icon =
 													customer.type === 'COMPANY'
 														? Building2
@@ -234,10 +242,10 @@ export function CustomerSelect({
 								) : null}
 							</div>
 
-							{data?.items?.length ? (
+							{customerData && customerData.items?.length ? (
 								<div className="flex items-center justify-between text-sm text-muted-foreground">
 									<span>
-										Visar {data.items.length} av {data.total} kunder
+										Visar {customerData.items.length} av {customerData.total} kunder
 									</span>
 									<div className="space-x-2">
 										<Button

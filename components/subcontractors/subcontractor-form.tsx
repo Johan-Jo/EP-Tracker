@@ -91,7 +91,9 @@ const toPayloadDefaults = (subcontractor?: Partial<Subcontractor>): Subcontracto
 		peppol_id: emptyToUndefined(merged.peppol_id),
 		gln: emptyToUndefined(merged.gln),
 		terms: merged.terms ?? 30,
-		default_vat_rate: merged.default_vat_rate ?? 25,
+		default_vat_rate: (merged.default_vat_rate === 0 || merged.default_vat_rate === 6 || merged.default_vat_rate === 12 || merged.default_vat_rate === 25) 
+			? merged.default_vat_rate 
+			: 25,
 		bankgiro: emptyToUndefined(merged.bankgiro),
 		plusgiro: emptyToUndefined(merged.plusgiro),
 		reference: emptyToUndefined(merged.reference),

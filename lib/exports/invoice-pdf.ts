@@ -380,11 +380,37 @@ export async function generateInvoicePDF(
             let paymentInfoY = paymentY + 15;
             doc.fontSize(9).font('Helvetica').fillColor(secondaryColor);
 
-            // Note: Bankgiro, Plusgiro, IBAN, BIC are not stored in organizations table
-            // They would need to be added to the organizations table or fetched from another source
-            // For now, we only show OCR if available
+            // Display bank information from organization
+            const paymentLines: string[] = [];
+            
+            if (organization.bankgiro) {
+                paymentLines.push(`Bankgiro: ${organization.bankgiro}`);
+            }
+            
+            if (organization.plusgiro) {
+                paymentLines.push(`Plusgiro: ${organization.plusgiro}`);
+            }
+            
+            if (organization.iban) {
+                paymentLines.push(`IBAN: ${organization.iban}`);
+            }
+            
+            if (organization.bic) {
+                paymentLines.push(`BIC/SWIFT: ${organization.bic}`);
+            }
+            
+            // Show OCR reference if available
             if (invoiceBasis.ocr_ref) {
-                doc.text(`Använd OCR-nummer vid betalning: ${invoiceBasis.ocr_ref}`, 50, paymentInfoY);
+                paymentLines.push(`OCR-nummer: ${invoiceBasis.ocr_ref}`);
+            }
+            
+            // Display payment information
+            if (paymentLines.length > 0) {
+                paymentLines.forEach((line, index) => {
+                    doc.text(line, 50, paymentInfoY + (index * 12));
+                });
+            } else {
+                doc.text('Kontakta oss för betalningsuppgifter.', 50, paymentInfoY);
             }
 
             // Finalize PDF

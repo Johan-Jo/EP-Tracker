@@ -23,7 +23,7 @@ interface Ata {
 	fixed_amount_sek: number | null;
 	materials_amount_sek: number | null;
 	billing_type: BillingType;
-	status: 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'invoiced';
+	status: 'draft' | 'submitted' | 'approved' | 'rejected' | 'invoiced';
 	created_at: string;
 	project: {
 		name: string;
@@ -39,7 +39,7 @@ interface AtaListProps {
 
 const statusConfig = {
 	draft: { label: 'Utkast', icon: FileText, variant: 'secondary' as const },
-	pending_approval: { label: 'Väntar godkännande', icon: Clock, variant: 'default' as const },
+	submitted: { label: 'Väntar godkännande', icon: Clock, variant: 'default' as const },
 	approved: { label: 'Godkänd', icon: CheckCircle, variant: 'default' as const },
 	rejected: { label: 'Avvisad', icon: XCircle, variant: 'destructive' as const },
 	invoiced: { label: 'Fakturerad', icon: CheckCircle, variant: 'default' as const },
@@ -162,7 +162,7 @@ export function AtaList({ projectId, orgId, userRole }: AtaListProps) {
 									)}
 								</div>
 								<div className="flex gap-2">
-									{canApprove && ata.status === 'pending_approval' && (
+									{canApprove && ata.status === 'submitted' && (
 										<Button
 											variant="default"
 											size="sm"

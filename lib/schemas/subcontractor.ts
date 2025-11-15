@@ -124,21 +124,31 @@ export const subcontractorPayloadSchema = z
 			});
 		} else {
 			// Validate and normalize organization number
-			try {
-				const normalized = normalizeSwedishOrganizationNumber(data.org_no);
-				if (!isValidSwedishOrganizationNumber(normalized)) {
+			// TypeScript guard: we know org_no is truthy, but need to ensure it's a string
+			const orgNo = String(data.org_no);
+			if (orgNo.trim().length === 0) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					path: ['org_no'],
+					message: 'Organisationsnummer krävs',
+				});
+			} else {
+				try {
+					const normalized = normalizeSwedishOrganizationNumber(orgNo);
+					if (!normalized || !isValidSwedishOrganizationNumber(normalized)) {
+						ctx.addIssue({
+							code: z.ZodIssueCode.custom,
+							path: ['org_no'],
+							message: 'Ogiltigt organisationsnummer',
+						});
+					}
+				} catch {
 					ctx.addIssue({
 						code: z.ZodIssueCode.custom,
 						path: ['org_no'],
 						message: 'Ogiltigt organisationsnummer',
 					});
 				}
-			} catch {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					path: ['org_no'],
-					message: 'Ogiltigt organisationsnummer',
-				});
 			}
 		}
 

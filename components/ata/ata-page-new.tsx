@@ -84,7 +84,7 @@ export function AtaPageNew({ orgId, userRole, projectId }: AtaPageNewProps) {
 		switch (status) {
 			case 'draft':
 				return 'bg-gray-100 text-gray-700 border-gray-200';
-			case 'pending_approval':
+			case 'submitted':
 				return 'bg-yellow-100 text-yellow-700 border-yellow-200';
 			case 'approved':
 				return 'bg-green-100 text-green-700 border-green-200';
@@ -101,7 +101,7 @@ export function AtaPageNew({ orgId, userRole, projectId }: AtaPageNewProps) {
 		switch (status) {
 			case 'draft':
 				return 'Utkast';
-			case 'pending_approval':
+			case 'submitted':
 				return 'Väntar godkännande';
 			case 'approved':
 				return 'Godkänd';
@@ -125,7 +125,7 @@ export function AtaPageNew({ orgId, userRole, projectId }: AtaPageNewProps) {
 
 	// Calculate stats
 	const totalAmount = ataRecords.reduce((sum: number, ata: any) => sum + resolveAtaAmount(ata), 0);
-	const pendingCount = ataRecords.filter((ata: any) => ata.status === 'pending_approval').length;
+	const pendingCount = ataRecords.filter((ata: any) => ata.status === 'submitted').length;
 	const approvedAmount = ataRecords
 		.filter((ata: any) => ata.status === 'approved' || ata.status === 'invoiced')
 		.reduce((sum: number, ata: any) => sum + resolveAtaAmount(ata), 0);

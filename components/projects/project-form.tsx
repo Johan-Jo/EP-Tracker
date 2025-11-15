@@ -88,7 +88,7 @@ const [error, setError] = useState<string | null>(null);
 		setValue,
 		watch,
 	} = useForm<ProjectFormData>({
-		resolver: zodResolver(projectSchema),
+		resolver: zodResolver(projectSchema) as any,
 		defaultValues: project ?? {
 			name: '',
 			customer_id: '',

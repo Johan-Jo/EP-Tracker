@@ -850,7 +850,7 @@ export function ProjectSummaryView({ projectId, canEdit, projectName, projectNum
 									const displayName = customer.type === 'COMPANY'
 										? customer.company_name
 										: `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim();
-									setEditClientName(displayName || null);
+									setEditClientName(displayName || '');
 								}}
 								placeholder='Välj kund'
 								allowCreate={true}

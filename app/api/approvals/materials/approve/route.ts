@@ -8,18 +8,21 @@ export async function POST(request: Request) {
 		const { user, membership } = await getSession();
 
 		if (!user || !membership) {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+			return NextResponse.json({ error: 'Inte autentiserad' }, { status: 401 });
 		}
 
 		if (membership.role !== 'admin' && membership.role !== 'foreman') {
-			return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+			return NextResponse.json(
+				{ error: 'Endast administratörer och arbetsledare kan godkänna material' },
+				{ status: 403 }
+			);
 		}
 
 		const { material_ids } = await request.json();
 
 		if (!material_ids || !Array.isArray(material_ids) || material_ids.length === 0) {
 			return NextResponse.json(
-				{ error: 'material_ids array is required' },
+				{ error: 'Välj minst ett material att godkänna' },
 				{ status: 400 }
 			);
 		}

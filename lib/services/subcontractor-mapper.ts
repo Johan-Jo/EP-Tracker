@@ -113,7 +113,9 @@ export const subcontractorToPayload = (subcontractor: Subcontractor): Subcontrac
 		peppol_id: toUndefined(subcontractor.peppol_id),
 		gln: toUndefined(subcontractor.gln),
 		terms: subcontractor.terms ?? undefined,
-		default_vat_rate: subcontractor.default_vat_rate ?? 25,
+		default_vat_rate: (subcontractor.default_vat_rate === 0 || subcontractor.default_vat_rate === 6 || subcontractor.default_vat_rate === 12 || subcontractor.default_vat_rate === 25)
+			? subcontractor.default_vat_rate
+			: 25,
 		hourly_rate_sek: subcontractor.hourly_rate_sek ?? undefined,
 		bankgiro: toUndefined(subcontractor.bankgiro),
 		plusgiro: toUndefined(subcontractor.plusgiro),

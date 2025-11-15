@@ -6,12 +6,15 @@ export async function GET(request: NextRequest) {
 	const { user, membership } = await getSession();
 
 	if (!user || !membership) {
-		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		return NextResponse.json({ error: 'Inte autentiserad' }, { status: 401 });
 	}
 
 	// Only admin and foreman can review time entries
 	if (membership.role !== 'admin' && membership.role !== 'foreman') {
-		return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+		return NextResponse.json(
+			{ error: 'Endast administratörer och arbetsledare kan granska tidrapporter' },
+			{ status: 403 }
+		);
 	}
 
 	const supabase = await createClient();
@@ -22,7 +25,7 @@ export async function GET(request: NextRequest) {
 
 	if (!periodStart || !periodEnd) {
 		return NextResponse.json(
-			{ error: 'period_start and period_end are required' },
+			{ error: 'period_start och period_end krävs' },
 			{ status: 400 }
 		);
 	}

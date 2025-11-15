@@ -530,6 +530,10 @@
 - Multi-tenancy root
 - Subscription info
 - Settings
+- Company details: name, org_number, phone, address, postal_code, city
+- VAT registration: vat_registered, vat_number, default_vat_rate
+- Bank information: bankgiro, plusgiro, iban, bic (for invoice generation)
+- Work defaults: default_work_day_start, default_work_day_end, standard_work_hours_per_day, standard_breaks
 
 #### `profiles`
 - User profiles

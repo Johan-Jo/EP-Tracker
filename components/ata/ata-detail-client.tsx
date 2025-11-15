@@ -33,7 +33,7 @@ const statusConfig = {
 		label: 'Utkast',
 		color: 'bg-gray-100 text-gray-700 border-gray-200',
 	},
-	pending_approval: {
+	submitted: {
 		icon: Clock,
 		label: 'Väntar på godkännande',
 		color: 'bg-yellow-100 text-yellow-700 border-yellow-200',

@@ -13,16 +13,16 @@ export async function POST(request: Request) {
 
 		if (membership.role !== 'admin' && membership.role !== 'foreman') {
 			return NextResponse.json(
-				{ error: 'Endast administratörer och arbetsledare kan godkänna utlägg' },
+				{ error: 'Endast administratörer och arbetsledare kan godkänna ÄTA' },
 				{ status: 403 }
 			);
 		}
 
-		const { expense_ids } = await request.json();
+		const { ata_ids } = await request.json();
 
-		if (!expense_ids || !Array.isArray(expense_ids) || expense_ids.length === 0) {
+		if (!ata_ids || !Array.isArray(ata_ids) || ata_ids.length === 0) {
 			return NextResponse.json(
-				{ error: 'Välj minst ett utlägg att godkänna' },
+				{ error: 'Välj minst en ÄTA att godkänna' },
 				{ status: 400 }
 			);
 		}
@@ -30,15 +30,15 @@ export async function POST(request: Request) {
 		const supabase = await createClient();
 
 		const { data, error } = await supabase
-			.from('expenses')
+			.from('ata')
 			.update({
 				status: 'approved',
 				approved_by: user.id,
 				approved_at: new Date().toISOString(),
 			})
-			.in('id', expense_ids)
+			.in('id', ata_ids)
 			.eq('org_id', membership.org_id)
-			.select('project_id, date, created_at');
+			.select('project_id, created_at');
 
 		if (error) {
 			return NextResponse.json({ error: error.message }, { status: 500 });
@@ -49,17 +49,18 @@ export async function POST(request: Request) {
 			refreshInvoiceBasisForApprovals(
 				supabase,
 				membership.org_id,
-				data.map((expense: any) => ({
-					project_id: expense.project_id,
-					date: expense.date || expense.created_at,
+				data.map((ata: any) => ({
+					project_id: ata.project_id,
+					date: ata.created_at,
 				}))
 			).catch((error) => {
-				console.error('[approve-expenses] Failed to refresh invoice basis:', error);
+				console.error('[approve-ata] Failed to refresh invoice basis:', error);
 			});
 		}
 
 		return NextResponse.json({ success: true, approved_count: data?.length || 0 });
 	} catch (error) {
+		console.error('Approval error:', error);
 		return NextResponse.json({ error: 'Ett oväntat fel uppstod' }, { status: 500 });
 	}
 }

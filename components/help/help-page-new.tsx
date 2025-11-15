@@ -58,6 +58,17 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 					],
 				},
 				{
+					title: 'Bankinformation',
+					items: [
+						'Bankinformation visas på fakturor som genereras för kunder.',
+						'Fyll i Bankgiro (format: 123-4567) för svenska betalningar.',
+						'Fyll i Plusgiro (format: 12 34 56-7) om du använder Plusgiro.',
+						'För internationella betalningar: fyll i IBAN och BIC/SWIFT-kod.',
+						'Alla fält är valfria - fyll bara i de som är relevanta för din organisation.',
+						'Bankinformationen sparas och används automatiskt vid fakturaexport (PDF).',
+					],
+				},
+				{
 					title: 'Standardarbetstid & raster',
 					items: [
 						'Starttid, sluttid och ordinarie arbetstid är förifyllt till 07:00 – 16:00 (8 timmar).',
@@ -259,27 +270,55 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 		},
 		{
 			title: 'Godkännanden',
-			description: 'Granska och godkänn tidrapporter',
+			description: 'Granska och godkänn poster',
 			icon: CheckSquare,
 			roles: ['admin', 'foreman'],
 			sections: [
 				{
-					title: 'Godkänna tidrapporter',
+					title: 'Godkänn poster',
 					items: [
 						'Gå till "Godkännanden"',
 						'Välj vecka att granska',
-						'Granska tidrapporter i tabellen',
-						'Markera de du vill godkänna',
-						'Klicka "Godkänn"',
+						'Välj flik: "Tidrapporter" eller "Kostnader"',
+						'Markera de poster du vill godkänna',
+						'Klicka "Godkänn" för bulk-godkännande',
 					],
 				},
 				{
-					title: 'Hantera avslag',
+					title: 'Godkännandetyper',
 					items: [
-						'Klicka meddelande-ikonen på tidrapport',
-						'Skriv vad som behöver ändras',
-						'Skicka feedback',
-						'Användaren ser din kommentar',
+						'Tidrapporter - Arbetsrapporter från användare',
+						'Material - Material som beställts eller använts',
+						'Utlägg - Kostnader och utgifter',
+						'Miltal - Miltalsersättning',
+						'ÄTA - Ändringsbeslut',
+					],
+				},
+				{
+					title: 'Statusvärden',
+					items: [
+						'Utkast - Posten är inte skickad än',
+						'Väntar godkännande - Posten väntar på ditt godkännande',
+						'Godkänd - Posten är godkänd och kan faktureras',
+						'Avvisad - Posten är avvisad och kan redigeras',
+					],
+				},
+				{
+					title: 'Avvisa poster',
+					items: [
+						'Markera poster som behöver ändras',
+						'Klicka "Avvisa"-knappen',
+						'Skriv kommentar med anledning (obligatoriskt)',
+						'Användaren får notifikation och kan redigera',
+					],
+				},
+				{
+					title: 'Tips',
+					items: [
+						'Använd bulk-godkännande för att spara tid',
+						'Godkänn alla poster från samma användare i taget',
+						'Kontrollera att material och utlägg är kopplade till rätt projekt',
+						'Dagboksposter kräver inte godkännande',
 					],
 				},
 			],

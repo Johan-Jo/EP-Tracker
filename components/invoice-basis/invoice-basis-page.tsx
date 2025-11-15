@@ -5,6 +5,18 @@ import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { toast } from 'sonner';
 import {
+	FileText,
+	Calendar,
+	Filter,
+	RefreshCw,
+	CheckCircle2,
+	Info,
+	Clock,
+	Package,
+	Receipt,
+	BookOpen,
+} from 'lucide-react';
+import {
 	Select,
 	SelectContent,
 	SelectItem,
@@ -256,82 +268,155 @@ export function InvoiceBasisPage({ projects }: InvoiceBasisPageProps) {
 	return (
 		<div className='flex h-full flex-col bg-gray-50 dark:bg-black'>
 			<header className='sticky top-0 z-10 border-b border-border/70 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80'>
-				<div className='mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 md:flex-row md:items-end md:justify-between md:px-8'>
-					<div>
-						<h1 className='text-2xl font-semibold text-foreground'>Fakturaunderlag</h1>
-						<p className='text-sm text-muted-foreground'>
-							Välj projekt och period för att granska och låsa fakturaunderlag. Dagbok, tid, material och kostnader
-							ingår automatiskt.
-						</p>
+				<div className='mx-auto max-w-7xl px-4 py-6 md:px-8'>
+					{/* Header Title Section */}
+					<div className='mb-6 flex items-start gap-4'>
+						<div className='rounded-lg bg-primary/10 p-3 dark:bg-primary/20'>
+							<FileText className='h-6 w-6 text-primary' />
+						</div>
+						<div className='flex-1'>
+							<h1 className='mb-2 text-3xl font-bold tracking-tight text-foreground'>
+								Fakturaunderlag
+							</h1>
+							<p className='mb-3 text-base text-muted-foreground'>
+								Skapa och granska fakturaunderlag baserat på godkänd tid, material, kostnader och dagboksanteckningar.
+							</p>
+							{/* Info Badge with what's included */}
+							<div className='flex flex-wrap items-center gap-4 text-xs text-muted-foreground'>
+								<div className='flex items-center gap-1.5 rounded-md bg-muted/60 px-2.5 py-1.5'>
+									<Clock className='h-3.5 w-3.5' />
+									<span>Godkänd tid</span>
+								</div>
+								<div className='flex items-center gap-1.5 rounded-md bg-muted/60 px-2.5 py-1.5'>
+									<Package className='h-3.5 w-3.5' />
+									<span>Material & kostnader</span>
+								</div>
+								<div className='flex items-center gap-1.5 rounded-md bg-muted/60 px-2.5 py-1.5'>
+									<BookOpen className='h-3.5 w-3.5' />
+									<span>Dagboksposter</span>
+								</div>
+								<div className='flex items-center gap-1.5 rounded-md bg-muted/60 px-2.5 py-1.5'>
+									<Receipt className='h-3.5 w-3.5' />
+									<span>ÄTA-rader</span>
+								</div>
+							</div>
+						</div>
 					</div>
-					<div className='flex flex-wrap gap-3'>
-						<div className='w-56'>
-							<Select value={selectedProject} onValueChange={setSelectedProject}>
-								<SelectTrigger>
-									<SelectValue placeholder='Välj projekt' />
-								</SelectTrigger>
-								<SelectContent>
-									{projects.map((project) => (
-										<SelectItem key={project.id} value={project.id}>
-											{project.projectNumber ? `${project.projectNumber} – ${project.name}` : project.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+
+					{/* Filter Controls */}
+					<div className='rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm'>
+						<div className='mb-3 flex items-center gap-2'>
+							<Filter className='h-4 w-4 text-muted-foreground' />
+							<span className='text-sm font-semibold text-foreground'>Filtrera och välj period</span>
 						</div>
-						<div className='flex items-center gap-2'>
-							<label className='text-sm font-medium text-muted-foreground'>Från</label>
-							<Input
-								type='date'
-								value={periodStart}
-								onChange={(event) => setPeriodStart(event.target.value)}
-							/>
+						<div className='flex flex-col gap-4 md:flex-row md:items-end'>
+							<div className='flex-1 space-y-2'>
+								<label className='text-xs font-medium text-muted-foreground'>Projekt</label>
+								<Select value={selectedProject} onValueChange={setSelectedProject}>
+									<SelectTrigger className='h-10'>
+										<SelectValue placeholder='Välj projekt' />
+									</SelectTrigger>
+									<SelectContent>
+										{projects.map((project) => (
+											<SelectItem key={project.id} value={project.id}>
+												{project.projectNumber ? `${project.projectNumber} – ${project.name}` : project.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+							<div className='flex flex-1 gap-3'>
+								<div className='flex-1 space-y-2'>
+									<label className='flex items-center gap-1.5 text-xs font-medium text-muted-foreground'>
+										<Calendar className='h-3 w-3' />
+										Från
+									</label>
+									<Input
+										type='date'
+										value={periodStart}
+										onChange={(event) => setPeriodStart(event.target.value)}
+										className='h-10'
+									/>
+								</div>
+								<div className='flex-1 space-y-2'>
+									<label className='flex items-center gap-1.5 text-xs font-medium text-muted-foreground'>
+										<Calendar className='h-3 w-3' />
+										Till
+									</label>
+									<Input
+										type='date'
+										value={periodEnd}
+										onChange={(event) => setPeriodEnd(event.target.value)}
+										className='h-10'
+									/>
+								</div>
+							</div>
+							<div className='flex items-end gap-2'>
+								<Button
+									variant='outline'
+									size='default'
+									className='h-10'
+									onClick={() => {
+										setPeriodStart(formatDefaultPeriodStart());
+										setPeriodEnd(formatDefaultPeriodEnd());
+									}}
+								>
+									Denna vecka
+								</Button>
+								{selectedProject && (
+									<Button
+										variant='default'
+										size='default'
+										className='h-10'
+										onClick={() => refetch()}
+										disabled={isFetching}
+									>
+										<RefreshCw className={cn('mr-2 h-4 w-4', isFetching && 'animate-spin')} />
+										{isFetching ? 'Uppdaterar...' : 'Uppdatera'}
+									</Button>
+								)}
+							</div>
 						</div>
-						<div className='flex items-center gap-2'>
-							<label className='text-sm font-medium text-muted-foreground'>Till</label>
-							<Input
-								type='date'
-								value={periodEnd}
-								onChange={(event) => setPeriodEnd(event.target.value)}
-							/>
-						</div>
-						<Button
-							variant='outline'
-							onClick={() => {
-								setPeriodStart(formatDefaultPeriodStart());
-								setPeriodEnd(formatDefaultPeriodEnd());
-							}}
-						>
-							Denna vecka
-						</Button>
 					</div>
 				</div>
 			</header>
 
 			<main className='mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 md:px-8'>
 				{!selectedProject ? (
-					<div className='rounded-lg border border-dashed border-border/60 bg-background/60 p-6 text-center text-sm text-muted-foreground'>
-						Välj ett projekt för att se fakturaunderlag.
-					</div>
+					<Card className='border-dashed'>
+						<CardContent className='flex flex-col items-center justify-center py-12 text-center'>
+							<div className='mb-4 rounded-full bg-muted p-4'>
+								<FileText className='h-8 w-8 text-muted-foreground' />
+							</div>
+							<h3 className='mb-2 text-lg font-semibold text-foreground'>Välj ett projekt</h3>
+							<p className='max-w-md text-sm text-muted-foreground'>
+								Börja med att välja ett projekt ovan för att se och hantera fakturaunderlag för vald period.
+							</p>
+						</CardContent>
+					</Card>
 				) : isLoading || isFetching ? (
-					<div className='rounded-lg border border-border/60 bg-background/60 p-6 text-center text-sm text-muted-foreground'>
-						Hämtar fakturaunderlag…
-					</div>
+					<Card className='border-dashed'>
+						<CardContent className='flex flex-col items-center justify-center py-12 text-center'>
+							<div className='mb-4 rounded-full bg-muted p-4'>
+								<RefreshCw className='h-8 w-8 animate-spin text-muted-foreground' />
+							</div>
+							<h3 className='mb-2 text-lg font-semibold text-foreground'>Hämtar fakturaunderlag</h3>
+							<p className='max-w-md text-sm text-muted-foreground'>
+								Samlar ihop alla godkända poster för den valda perioden...
+							</p>
+						</CardContent>
+					</Card>
 				) : invoiceBasis ? (
 					<>
+						{/* Quick Actions */}
 						<div className='flex flex-wrap items-center justify-end gap-3'>
-							<Button variant='outline' onClick={() => refetch()} disabled={isFetching}>
-								{isFetching ? 'Uppdaterar…' : 'Uppdatera underlag'}
-							</Button>
 							<Button
-								variant='ghost'
+								variant='outline'
 								onClick={() => {
-									window.open(
-										'/dashboard/approvals',
-										'_blank'
-									);
+									window.open('/dashboard/approvals', '_blank');
 								}}
 							>
+								<CheckCircle2 className='mr-2 h-4 w-4' />
 								Öppna godkännanden
 							</Button>
 						</div>
@@ -349,10 +434,10 @@ export function InvoiceBasisPage({ projects }: InvoiceBasisPageProps) {
 												<label className='text-sm font-semibold text-muted-foreground'>Kundnamn</label>
 												<p className='text-base font-medium'>
 													{invoiceBasis.customer_snapshot && typeof invoiceBasis.customer_snapshot === 'object' && invoiceBasis.customer_snapshot !== null
-														? (invoiceBasis.customer_snapshot as { name?: string }).name 
+														? (invoiceBasis.customer_snapshot as { name?: string }).name ?? 'Ingen kund kopplad'
 														: invoiceBasis.invoice_address_json && typeof invoiceBasis.invoice_address_json === 'object'
-														? (invoiceBasis.invoice_address_json as { name?: string }).name
-														: null || 'Ingen kund kopplad'}
+														? (invoiceBasis.invoice_address_json as { name?: string }).name ?? 'Ingen kund kopplad'
+														: 'Ingen kund kopplad'}
 												</p>
 											</div>
 											{invoiceBasis.customer_snapshot && typeof invoiceBasis.customer_snapshot === 'object' && invoiceBasis.customer_snapshot !== null && (invoiceBasis.customer_snapshot as { org_no?: string }).org_no && (
@@ -375,14 +460,14 @@ export function InvoiceBasisPage({ projects }: InvoiceBasisPageProps) {
 												<div>
 													<label className='text-sm font-semibold text-muted-foreground'>Fakturaadress</label>
 													<div className='text-base'>
-														{invoiceBasis.invoice_address_json.street && <p>{invoiceBasis.invoice_address_json.street}</p>}
-														{invoiceBasis.invoice_address_json.zip && invoiceBasis.invoice_address_json.city && (
+														{(invoiceBasis.invoice_address_json as { street?: string }).street && <p>{(invoiceBasis.invoice_address_json as { street?: string }).street}</p>}
+														{(invoiceBasis.invoice_address_json as { zip?: string; city?: string }).zip && (invoiceBasis.invoice_address_json as { zip?: string; city?: string }).city && (
 															<p>
-																{invoiceBasis.invoice_address_json.zip} {invoiceBasis.invoice_address_json.city}
+																{(invoiceBasis.invoice_address_json as { zip?: string; city?: string }).zip} {(invoiceBasis.invoice_address_json as { zip?: string; city?: string }).city}
 															</p>
 														)}
-														{invoiceBasis.invoice_address_json.country && (
-															<p>{invoiceBasis.invoice_address_json.country}</p>
+														{(invoiceBasis.invoice_address_json as { country?: string }).country && (
+															<p>{(invoiceBasis.invoice_address_json as { country?: string }).country}</p>
 														)}
 													</div>
 												</div>
@@ -409,14 +494,14 @@ export function InvoiceBasisPage({ projects }: InvoiceBasisPageProps) {
 												<div>
 													<label className='text-sm font-semibold text-muted-foreground'>Leveransadress</label>
 													<div className='text-base'>
-														{invoiceBasis.delivery_address_json.street && <p>{invoiceBasis.delivery_address_json.street}</p>}
-														{invoiceBasis.delivery_address_json.zip && invoiceBasis.delivery_address_json.city && (
+														{(invoiceBasis.delivery_address_json as { street?: string }).street && <p>{(invoiceBasis.delivery_address_json as { street?: string }).street}</p>}
+														{(invoiceBasis.delivery_address_json as { zip?: string; city?: string }).zip && (invoiceBasis.delivery_address_json as { zip?: string; city?: string }).city && (
 															<p>
-																{invoiceBasis.delivery_address_json.zip} {invoiceBasis.delivery_address_json.city}
+																{(invoiceBasis.delivery_address_json as { zip?: string; city?: string }).zip} {(invoiceBasis.delivery_address_json as { zip?: string; city?: string }).city}
 															</p>
 														)}
-														{invoiceBasis.delivery_address_json.country && (
-															<p>{invoiceBasis.delivery_address_json.country}</p>
+														{(invoiceBasis.delivery_address_json as { country?: string }).country && (
+															<p>{(invoiceBasis.delivery_address_json as { country?: string }).country}</p>
 														)}
 													</div>
 												</div>
@@ -970,23 +1055,44 @@ export function InvoiceBasisPage({ projects }: InvoiceBasisPageProps) {
 						</Card>
 					</>
 				) : (
-					<div className='flex flex-col items-center gap-4 rounded-lg border border-dashed border-border/60 bg-background/60 p-6 text-center text-sm text-muted-foreground'>
-						<p>
-							Inget underlag hittades för vald period. Kontrollera att tid, material, utlägg och ÄTA är
-							godkända och att en dagbokspost finns om du vill se fakturatext.
-						</p>
-						<div className='flex flex-wrap items-center justify-center gap-3 text-xs'>
-							<Button variant='outline' onClick={() => refetch()}>
-								Försök igen
-							</Button>
-							<Button
-								variant='ghost'
-								onClick={() => window.open('/dashboard/approvals', '_blank')}
-							>
-								Öppna godkännanden
-							</Button>
-						</div>
-					</div>
+					<Card className='border-dashed border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20'>
+						<CardContent className='flex flex-col items-center justify-center py-12 text-center'>
+							<div className='mb-4 rounded-full bg-amber-100 p-4 dark:bg-amber-900/30'>
+								<Info className='h-8 w-8 text-amber-600 dark:text-amber-400' />
+							</div>
+							<h3 className='mb-2 text-lg font-semibold text-foreground'>Inget underlag hittades</h3>
+							<p className='mb-6 max-w-md text-sm text-muted-foreground'>
+								Inget fakturaunderlag kunde skapas för den valda perioden. För att skapa ett underlag behöver du:
+							</p>
+							<div className='mb-6 grid max-w-md gap-2 text-left text-sm'>
+								<div className='flex items-start gap-2'>
+									<CheckCircle2 className='mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground' />
+									<span className='text-muted-foreground'>
+										Godkänd tid, material, utlägg eller ÄTA-rader för perioden
+									</span>
+								</div>
+								<div className='flex items-start gap-2'>
+									<CheckCircle2 className='mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground' />
+									<span className='text-muted-foreground'>
+										Dagboksposter om du vill inkludera fakturatext
+									</span>
+								</div>
+							</div>
+							<div className='flex flex-wrap items-center justify-center gap-3'>
+								<Button variant='outline' onClick={() => refetch()}>
+									<RefreshCw className='mr-2 h-4 w-4' />
+									Försök igen
+								</Button>
+								<Button
+									variant='default'
+									onClick={() => window.open('/dashboard/approvals', '_blank')}
+								>
+									<CheckCircle2 className='mr-2 h-4 w-4' />
+									Öppna godkännanden
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
 				)}
 			</main>
 		</div>

@@ -15,7 +15,25 @@ export async function PATCH(request: NextRequest) {
 
 	try {
 		const body = await request.json();
-		const { name } = body;
+		const {
+			name,
+			orgNumber,
+			phone,
+			address,
+			postalCode,
+			city,
+			vatRegistered,
+			vatNumber,
+			defaultVatRate,
+			defaultWorkDayStart,
+			defaultWorkDayEnd,
+			standardWorkHours,
+			breaks,
+			bankgiro,
+			plusgiro,
+			iban,
+			bic,
+		} = body;
 
 		if (!name || !name.trim()) {
 			return NextResponse.json({ error: 'Organisationsnamn krävs' }, { status: 400 });
@@ -38,13 +56,32 @@ export async function PATCH(request: NextRequest) {
 			return NextResponse.json({ error: 'Endast administratörer kan uppdatera organisationen' }, { status: 403 });
 		}
 
+		// Build update object
+		const updateData: Record<string, unknown> = {
+			name: name.trim(),
+			org_number: orgNumber || null,
+			phone: phone || null,
+			address: address || null,
+			postal_code: postalCode || null,
+			city: city || null,
+			vat_registered: vatRegistered ?? false,
+			vat_number: vatRegistered ? (vatNumber || null) : null,
+			default_vat_rate: vatRegistered ? (defaultVatRate ? Number(defaultVatRate) : null) : null,
+			default_work_day_start: defaultWorkDayStart || null,
+			default_work_day_end: defaultWorkDayEnd || null,
+			standard_work_hours_per_day: standardWorkHours ? Number(standardWorkHours) : null,
+			standard_breaks: breaks || [],
+			bankgiro: bankgiro || null,
+			plusgiro: plusgiro || null,
+			iban: iban || null,
+			bic: bic || null,
+			updated_at: new Date().toISOString(),
+		};
+
 		// Update organization
 		const { data, error } = await supabase
 			.from('organizations')
-			.update({
-				name: name.trim(),
-				updated_at: new Date().toISOString(),
-			})
+			.update(updateData)
 			.eq('id', membership.org_id)
 			.select()
 			.single();

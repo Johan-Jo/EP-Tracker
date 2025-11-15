@@ -1,0 +1,468 @@
+
+> ep-tracker@0.1.0 build
+> next build
+
+   Ôû▓ Next.js 15.5.6
+   - Environments: .env.local
+   - Experiments (use with caution):
+     ┬À optimizePackageImports
+
+   Creating an optimized production build ...
+ Ô£ô Compiled successfully in 11.4s
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+(node:36800) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+­ƒöì Firebase credentials check:
+  PROJECT_ID: ep-tracker-dev-6202a
+  CLIENT_EMAIL: firebase-adminsdk-fbsvc@ep-tracker-dev-6202a.iam.gserviceaccount.com
+  PRIVATE_KEY length: 1704
+  PRIVATE_KEY starts with: -----BEGIN PRIVATE KEY-----
+MI
+  PRIVATE_KEY ends with: Hg=
+-----END PRIVATE KEY-----
+
+­ƒöæ Attempting to initialize Firebase Admin SDK...
+Ô£à Firebase Admin SDK initialized successfully
+(node:18616) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:3712) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:12056) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:34836) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:38768) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:33932) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:37500) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:38264) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:32156) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+­ƒöì Firebase credentials check:
+  PROJECT_ID: ep-tracker-dev-6202a
+  CLIENT_EMAIL: firebase-adminsdk-fbsvc@ep-tracker-dev-6202a.iam.gserviceaccount.com
+  PRIVATE_KEY length: 1704
+  PRIVATE_KEY starts with: -----BEGIN PRIVATE KEY-----
+MI
+  PRIVATE_KEY ends with: Hg=
+-----END PRIVATE KEY-----
+
+­ƒöæ Attempting to initialize Firebase Admin SDK...
+Ô£à Firebase Admin SDK initialized successfully
+­ƒöì Firebase credentials check:
+  PROJECT_ID: ep-tracker-dev-6202a
+  CLIENT_EMAIL: firebase-adminsdk-fbsvc@ep-tracker-dev-6202a.iam.gserviceaccount.com
+  PRIVATE_KEY length: 1704
+  PRIVATE_KEY starts with: -----BEGIN PRIVATE KEY-----
+MI
+  PRIVATE_KEY ends with: Hg=
+-----END PRIVATE KEY-----
+
+­ƒöæ Attempting to initialize Firebase Admin SDK...
+Ô£à Firebase Admin SDK initialized successfully
+­ƒöì Firebase credentials check:
+­ƒöì Firebase credentials check:
+  PROJECT_ID: ep-tracker-dev-6202a
+  CLIENT_EMAIL: firebase-adminsdk-fbsvc@ep-tracker-dev-6202a.iam.gserviceaccount.com
+  PROJECT_ID: ep-tracker-dev-6202a
+  PRIVATE_KEY length: 1704
+  PRIVATE_KEY starts with: -----BEGIN PRIVATE KEY-----
+MI
+  CLIENT_EMAIL: firebase-adminsdk-fbsvc@ep-tracker-dev-6202a.iam.gserviceaccount.com
+  PRIVATE_KEY ends with: Hg=
+-----END PRIVATE KEY-----
+
+­ƒöæ Attempting to initialize Firebase Admin SDK...
+  PRIVATE_KEY length: 1704
+  PRIVATE_KEY starts with: -----BEGIN PRIVATE KEY-----
+MI
+  PRIVATE_KEY ends with: Hg=
+-----END PRIVATE KEY-----
+
+­ƒöæ Attempting to initialize Firebase Admin SDK...
+­ƒöì Firebase credentials check:
+  PROJECT_ID: ep-tracker-dev-6202a
+  CLIENT_EMAIL: firebase-adminsdk-fbsvc@ep-tracker-dev-6202a.iam.gserviceaccount.com
+  PRIVATE_KEY length: 1704
+  PRIVATE_KEY starts with: -----BEGIN PRIVATE KEY-----
+MI
+  PRIVATE_KEY ends with: Hg=
+-----END PRIVATE KEY-----
+
+­ƒöæ Attempting to initialize Firebase Admin SDK...
+Ô£à Firebase Admin SDK initialized successfully
+Ô£à Firebase Admin SDK initialized successfully
+­ƒöì Firebase credentials check:
+  PROJECT_ID: ep-tracker-dev-6202a
+  CLIENT_EMAIL: firebase-adminsdk-fbsvc@ep-tracker-dev-6202a.iam.gserviceaccount.com
+  PRIVATE_KEY length: 1704
+  PRIVATE_KEY starts with: -----BEGIN PRIVATE KEY-----
+MI
+  PRIVATE_KEY ends with: Hg=
+-----END PRIVATE KEY-----
+
+­ƒöæ Attempting to initialize Firebase Admin SDK...
+Ô£à Firebase Admin SDK initialized successfully
+(node:32944) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Ô£à Firebase Admin SDK initialized successfully
+­ƒöì Firebase credentials check:
+  PROJECT_ID: ep-tracker-dev-6202a
+  CLIENT_EMAIL: firebase-adminsdk-fbsvc@ep-tracker-dev-6202a.iam.gserviceaccount.com
+  PRIVATE_KEY length: 1704
+  PRIVATE_KEY starts with: -----BEGIN PRIVATE KEY-----
+MI
+  PRIVATE_KEY ends with: Hg=
+-----END PRIVATE KEY-----
+
+­ƒöæ Attempting to initialize Firebase Admin SDK...
+­ƒöì Firebase credentials check:
+  PROJECT_ID: ep-tracker-dev-6202a
+  CLIENT_EMAIL: firebase-adminsdk-fbsvc@ep-tracker-dev-6202a.iam.gserviceaccount.com
+  PRIVATE_KEY length: 1704
+  PRIVATE_KEY starts with: -----BEGIN PRIVATE KEY-----
+MI
+  PRIVATE_KEY ends with: Hg=
+-----END PRIVATE KEY-----
+
+­ƒöæ Attempting to initialize Firebase Admin SDK...
+Ô£à Firebase Admin SDK initialized successfully
+Ô£à Firebase Admin SDK initialized successfully
+   Generating static pages (0/159) ...
+(node:29756) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:29620) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:38592) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:16632) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:11040) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+   Generating static pages (39/159) 
+­ƒöì Firebase credentials check:
+  PROJECT_ID: ep-tracker-dev-6202a
+  CLIENT_EMAIL: firebase-adminsdk-fbsvc@ep-tracker-dev-6202a.iam.gserviceaccount.com
+  PRIVATE_KEY length: 1704
+  PRIVATE_KEY starts with: -----BEGIN PRIVATE KEY-----
+MI
+  PRIVATE_KEY ends with: Hg=
+-----END PRIVATE KEY-----
+
+­ƒöæ Attempting to initialize Firebase Admin SDK...
+Ô£à Firebase Admin SDK initialized successfully
+­ƒöì Firebase credentials check:
+  PROJECT_ID: ep-tracker-dev-6202a
+  CLIENT_EMAIL: firebase-adminsdk-fbsvc@ep-tracker-dev-6202a.iam.gserviceaccount.com
+  PRIVATE_KEY length: 1704
+  PRIVATE_KEY starts with: -----BEGIN PRIVATE KEY-----
+MI
+[DASHBOARD] Error getting session: Error: Dynamic server usage: Route /dashboard couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+  PRIVATE_KEY ends with: Hg=
+-----END PRIVATE KEY-----
+    at s (C:\Users\johan\Cursor Portfolio\EP-Tracker\.next\server\chunks\4996.js:1:23405)
+
+    at n (C:\Users\johan\Cursor Portfolio\EP-Tracker\.next\server\chunks\991.js:5:8037)
+    at g (C:\Users\johan\Cursor Portfolio\EP-Tracker\.next\server\chunks\1332.js:12:37016)
+­ƒöæ Attempting to initialize Firebase Admin SDK...
+Ô£à Firebase Admin SDK initialized successfully
+    at <unknown> (C:\Users\johan\Cursor Portfolio\EP-Tracker\.next\server\chunks\1332.js:12:26565)
+    at r (C:\Users\johan\Cursor Portfolio\EP-Tracker\.next\server\chunks\1332.js:12:38472) {
+  description: "Route /dashboard couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+(node:34944) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+­ƒöì Firebase credentials check:
+  PROJECT_ID: ep-tracker-dev-6202a
+  CLIENT_EMAIL: firebase-adminsdk-fbsvc@ep-tracker-dev-6202a.iam.gserviceaccount.com
+  PRIVATE_KEY length: 1704
+  PRIVATE_KEY starts with: -----BEGIN PRIVATE KEY-----
+MI
+  PRIVATE_KEY ends with: Hg=
+-----END PRIVATE KEY-----
+
+­ƒöæ Attempting to initialize Firebase Admin SDK...
+Ô£à Firebase Admin SDK initialized successfully
+(Use `node --trace-deprecation ...` to show where the warning was created)
+   Generating static pages (79/159) 
+­ƒöì Firebase credentials check:
+  PROJECT_ID: ep-tracker-dev-6202a
+  CLIENT_EMAIL: firebase-adminsdk-fbsvc@ep-tracker-dev-6202a.iam.gserviceaccount.com
+  PRIVATE_KEY length: 1704
+  PRIVATE_KEY starts with: -----BEGIN PRIVATE KEY-----
+MI
+  PRIVATE_KEY ends with: Hg=
+-----END PRIVATE KEY-----
+
+­ƒöæ Attempting to initialize Firebase Admin SDK...
+Ô£à Firebase Admin SDK initialized successfully
+(node:20056) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+   Generating static pages (119/159) 
+­ƒöì Firebase credentials check:
+  PROJECT_ID: ep-tracker-dev-6202a
+  CLIENT_EMAIL: firebase-adminsdk-fbsvc@ep-tracker-dev-6202a.iam.gserviceaccount.com
+  PRIVATE_KEY length: 1704
+  PRIVATE_KEY starts with: -----BEGIN PRIVATE KEY-----
+MI
+  PRIVATE_KEY ends with: Hg=
+-----END PRIVATE KEY-----
+
+­ƒöæ Attempting to initialize Firebase Admin SDK...
+Ô£à Firebase Admin SDK initialized successfully
+ Ô£ô Generating static pages (159/159)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                                     Size  First Load JS
+Ôöî ãÆ /                                                        14.4 kB         139 kB
+Ôö£ Ôùï /_not-found                                                 1 kB         104 kB
+Ôö£ ãÆ /api/absences                                              514 B         103 kB
+Ôö£ ãÆ /api/admin/build-sessions                                  514 B         103 kB
+Ôö£ ãÆ /api/approvals/expenses                                    514 B         103 kB
+Ôö£ ãÆ /api/approvals/expenses/approve                            514 B         103 kB
+Ôö£ ãÆ /api/approvals/materials                                   514 B         103 kB
+Ôö£ ãÆ /api/approvals/materials/approve                           514 B         103 kB
+Ôö£ ãÆ /api/approvals/mileage                                     514 B         103 kB
+Ôö£ ãÆ /api/approvals/mileage/approve                             514 B         103 kB
+Ôö£ ãÆ /api/approvals/period-locks                                514 B         103 kB
+Ôö£ ãÆ /api/approvals/period-locks/[id]                           514 B         103 kB
+Ôö£ ãÆ /api/approvals/time-entries                                514 B         103 kB
+Ôö£ ãÆ /api/approvals/time-entries/approve                        514 B         103 kB
+Ôö£ ãÆ /api/approvals/time-entries/reject                         514 B         103 kB
+Ôö£ ãÆ /api/approvals/time-entries/request-changes                514 B         103 kB
+Ôö£ ãÆ /api/assignments                                           514 B         103 kB
+Ôö£ ãÆ /api/assignments/[id]                                      514 B         103 kB
+Ôö£ ãÆ /api/ata                                                   514 B         103 kB
+Ôö£ ãÆ /api/ata/[id]/approve                                      514 B         103 kB
+Ôö£ ãÆ /api/ata/photos                                            514 B         103 kB
+Ôö£ ãÆ /api/attendance/build                                      514 B         103 kB
+Ôö£ ãÆ /api/audit-logs                                            514 B         103 kB
+Ôö£ ãÆ /api/auth/callback                                         514 B         103 kB
+Ôö£ ãÆ /api/auth/change-password                                  514 B         103 kB
+Ôö£ ãÆ /api/auth/complete-organization                            514 B         103 kB
+Ôö£ ãÆ /api/auth/complete-signup                                  514 B         103 kB
+Ôö£ ãÆ /api/auth/magic-link                                       514 B         103 kB
+Ôö£ ãÆ /api/auth/signin                                           514 B         103 kB
+Ôö£ ãÆ /api/auth/signout                                          514 B         103 kB
+Ôö£ ãÆ /api/auth/signup                                           514 B         103 kB
+Ôö£ ãÆ /api/checklists                                            514 B         103 kB
+Ôö£ ãÆ /api/checklists/templates                                  514 B         103 kB
+Ôö£ ãÆ /api/cron/checkin-reminders                                514 B         103 kB
+Ôö£ ãÆ /api/cron/checkout-reminders                               514 B         103 kB
+Ôö£ ãÆ /api/cron/forgotten-checkout-alerts                        514 B         103 kB
+Ôö£ ãÆ /api/cron/late-checkin-alerts                              514 B         103 kB
+Ôö£ ãÆ /api/customers                                             514 B         103 kB
+Ôö£ ãÆ /api/customers/[id]                                        514 B         103 kB
+Ôö£ ãÆ /api/customers/[id]/contacts                               514 B         103 kB
+Ôö£ ãÆ /api/customers/[id]/merge                                  514 B         103 kB
+Ôö£ ãÆ /api/diary                                                 514 B         103 kB
+Ôö£ ãÆ /api/diary/[id]                                            514 B         103 kB
+Ôö£ ãÆ /api/diary/find                                            514 B         103 kB
+Ôö£ ãÆ /api/diary/photos                                          514 B         103 kB
+Ôö£ ãÆ /api/diary/voice                                           514 B         103 kB
+Ôö£ ãÆ /api/employees                                             514 B         103 kB
+Ôö£ ãÆ /api/employees/[id]                                        514 B         103 kB
+Ôö£ ãÆ /api/expenses                                              514 B         103 kB
+Ôö£ ãÆ /api/expenses/[id]                                         514 B         103 kB
+Ôö£ ãÆ /api/exports/attachments                                   514 B         103 kB
+Ôö£ ãÆ /api/exports/history                                       514 B         103 kB
+Ôö£ ãÆ /api/exports/invoice                                       514 B         103 kB
+Ôö£ ãÆ /api/exports/invoice/pdf                                   514 B         103 kB
+Ôö£ ãÆ /api/exports/invoice/preview                               514 B         103 kB
+Ôö£ ãÆ /api/exports/salary                                        514 B         103 kB
+Ôö£ ãÆ /api/exports/salary/preview                                514 B         103 kB
+Ôö£ ãÆ /api/exports/worksite                                      514 B         103 kB
+Ôö£ ãÆ /api/fixed-time-blocks                                     514 B         103 kB
+Ôö£ ãÆ /api/fixed-time-blocks/[id]                                514 B         103 kB
+Ôö£ ãÆ /api/invoice-basis/[projectId]                             514 B         103 kB
+Ôö£ ãÆ /api/invoice-basis/[projectId]/header                      514 B         103 kB
+Ôö£ ãÆ /api/invoice-basis/[projectId]/lines/[lineId]              514 B         103 kB
+Ôö£ ãÆ /api/invoice-basis/[projectId]/lock                        514 B         103 kB
+Ôö£ ãÆ /api/invoice-basis/[projectId]/unlock                      514 B         103 kB
+Ôö£ ãÆ /api/materials                                             514 B         103 kB
+Ôö£ ãÆ /api/materials/[id]                                        514 B         103 kB
+Ôö£ ãÆ /api/mileage                                               514 B         103 kB
+Ôö£ ãÆ /api/mileage/[id]                                          514 B         103 kB
+Ôö£ ãÆ /api/mobile/checkins                                       514 B         103 kB
+Ôö£ ãÆ /api/mobile/today                                          514 B         103 kB
+Ôö£ ãÆ /api/notifications/history                                 514 B         103 kB
+Ôö£ ãÆ /api/notifications/preferences                             514 B         103 kB
+Ôö£ ãÆ /api/notifications/reset                                   514 B         103 kB
+Ôö£ ãÆ /api/notifications/status                                  514 B         103 kB
+Ôö£ ãÆ /api/notifications/subscribe                               514 B         103 kB
+Ôö£ ãÆ /api/notifications/test                                    514 B         103 kB
+Ôö£ ãÆ /api/notifications/unsubscribe                             514 B         103 kB
+Ôö£ ãÆ /api/organizations                                         514 B         103 kB
+Ôö£ ãÆ /api/organizations/members                                 514 B         103 kB
+Ôö£ ãÆ /api/payroll/basis                                         514 B         103 kB
+Ôö£ ãÆ /api/payroll/basis/debug                                   514 B         103 kB
+Ôö£ ãÆ /api/payroll/basis/export                                  514 B         103 kB
+Ôö£ ãÆ /api/payroll/basis/lock                                    514 B         103 kB
+Ôö£ ãÆ /api/payroll/basis/refresh                                 514 B         103 kB
+Ôö£ ãÆ /api/payroll/debug                                         514 B         103 kB
+Ôö£ ãÆ /api/payroll/rules                                         514 B         103 kB
+Ôö£ ãÆ /api/phases                                                514 B         103 kB
+Ôö£ ãÆ /api/phases/[id]                                           514 B         103 kB
+Ôö£ ãÆ /api/planning                                              514 B         103 kB
+Ôö£ ãÆ /api/projects/[id]                                         514 B         103 kB
+Ôö£ ãÆ /api/projects/[id]/members                                 514 B         103 kB
+Ôö£ ãÆ /api/projects/[id]/summary                                 514 B         103 kB
+Ôö£ ãÆ /api/stripe/create-checkout-session                        514 B         103 kB
+Ôö£ ãÆ /api/stripe/create-portal-session                          514 B         103 kB
+Ôö£ ãÆ /api/stripe/webhooks                                       514 B         103 kB
+Ôö£ ãÆ /api/subcontractors                                        514 B         103 kB
+Ôö£ ãÆ /api/subcontractors/[id]                                   514 B         103 kB
+Ôö£ ãÆ /api/subcontractors/[id]/invoices                          514 B         103 kB
+Ôö£ ãÆ /api/super-admin/analytics/churn-risk                      514 B         103 kB
+Ôö£ ãÆ /api/super-admin/analytics/content                         514 B         103 kB
+Ôö£ ãÆ /api/super-admin/analytics/features                        514 B         103 kB
+Ôö£ ãÆ /api/super-admin/analytics/overview                        514 B         103 kB
+Ôö£ ãÆ /api/super-admin/analytics/performance                     514 B         103 kB
+Ôö£ ãÆ /api/super-admin/billing/metrics/mrr                       514 B         103 kB
+Ôö£ ãÆ /api/super-admin/billing/payments                          514 B         103 kB
+Ôö£ ãÆ /api/super-admin/billing/payments/[id]                     514 B         103 kB
+Ôö£ ãÆ /api/super-admin/billing/plans                             514 B         103 kB
+Ôö£ ãÆ /api/super-admin/billing/plans/[id]                        514 B         103 kB
+Ôö£ ãÆ /api/super-admin/billing/subscriptions                     514 B         103 kB
+Ôö£ ãÆ /api/super-admin/billing/subscriptions/[id]                514 B         103 kB
+Ôö£ ãÆ /api/super-admin/billing/subscriptions/[id]/cancel         514 B         103 kB
+Ôö£ ãÆ /api/super-admin/check-status                              514 B         103 kB
+Ôö£ ãÆ /api/super-admin/email-templates                           514 B         103 kB
+Ôö£ ãÆ /api/super-admin/email-templates/[id]                      514 B         103 kB
+Ôö£ ãÆ /api/super-admin/email/logs                                514 B         103 kB
+Ôö£ ãÆ /api/super-admin/email/send-announcement                   514 B         103 kB
+Ôö£ ãÆ /api/super-admin/grant                                     514 B         103 kB
+Ôö£ ãÆ /api/super-admin/logs                                      514 B         103 kB
+Ôö£ ãÆ /api/super-admin/logs/export                               514 B         103 kB
+Ôö£ ãÆ /api/super-admin/metrics/dashboard                         514 B         103 kB
+Ôö£ ãÆ /api/super-admin/organizations                             514 B         103 kB
+Ôö£ ãÆ /api/super-admin/organizations/[id]                        514 B         103 kB
+Ôö£ ãÆ /api/super-admin/organizations/[id]/restore                514 B         103 kB
+Ôö£ ãÆ /api/super-admin/organizations/[id]/suspend                514 B         103 kB
+Ôö£ ãÆ /api/super-admin/organizations/[id]/usage                  514 B         103 kB
+Ôö£ ãÆ /api/super-admin/organizations/[id]/users                  514 B         103 kB
+Ôö£ ãÆ /api/super-admin/organizations/find-duplicates             514 B         103 kB
+Ôö£ ãÆ /api/super-admin/revoke                                    514 B         103 kB
+Ôö£ ãÆ /api/super-admin/search                                    514 B         103 kB
+Ôö£ ãÆ /api/super-admin/support/exit-impersonate                  514 B         103 kB
+Ôö£ ãÆ /api/super-admin/support/extend-trial                      514 B         103 kB
+Ôö£ ãÆ /api/super-admin/support/impersonate                       514 B         103 kB
+Ôö£ ãÆ /api/super-admin/support/reset-password                    514 B         103 kB
+Ôö£ ãÆ /api/super-admin/support/search                            514 B         103 kB
+Ôö£ ãÆ /api/super-admin/system/features                           514 B         103 kB
+Ôö£ ãÆ /api/super-admin/system/features/[flag]                    514 B         103 kB
+Ôö£ ãÆ /api/super-admin/system/maintenance                        514 B         103 kB
+Ôö£ ãÆ /api/super-admin/system/maintenance/disable                514 B         103 kB
+Ôö£ ãÆ /api/super-admin/system/maintenance/enable                 514 B         103 kB
+Ôö£ ãÆ /api/super-admin/system/status                             514 B         103 kB
+Ôö£ ãÆ /api/super-admin/test-notifications/send                   514 B         103 kB
+Ôö£ ãÆ /api/super-admin/users                                     514 B         103 kB
+Ôö£ ãÆ /api/super-admin/users/[id]                                514 B         103 kB
+Ôö£ ãÆ /api/super-admin/verify                                    514 B         103 kB
+Ôö£ ãÆ /api/test/checkin-notification                             514 B         103 kB
+Ôö£ ãÆ /api/test/notify-debug                                     514 B         103 kB
+Ôö£ ãÆ /api/test/resend-email                                     514 B         103 kB
+Ôö£ ãÆ /api/time/crew                                             514 B         103 kB
+Ôö£ ãÆ /api/time/entries                                          514 B         103 kB
+Ôö£ ãÆ /api/time/entries/[id]                                     514 B         103 kB
+Ôö£ ãÆ /api/time/entries/stats                                    514 B         103 kB
+Ôö£ ãÆ /api/users/[id]                                            514 B         103 kB
+Ôö£ ãÆ /api/users/delete-completely                               514 B         103 kB
+Ôö£ ãÆ /api/users/invite                                          514 B         103 kB
+Ôö£ ãÆ /api/users/resend-invite                                   514 B         103 kB
+Ôö£ ãÆ /api/users/reset-to-pending                                514 B         103 kB
+Ôö£ ãÆ /api/users/status                                          514 B         103 kB
+Ôö£ ãÆ /api/voice/stream                                          514 B         103 kB
+Ôö£ ãÆ /api/voice/upload                                          514 B         103 kB
+Ôö£ ãÆ /api/worksites/[projectId]/active                          514 B         103 kB
+Ôö£ ãÆ /api/worksites/[projectId]/control-token                   514 B         103 kB
+Ôö£ ãÆ /api/worksites/[projectId]/sessions                        514 B         103 kB
+Ôö£ ãÆ /api/worksites/[projectId]/sessions/[sessionId]/correct    514 B         103 kB
+Ôö£ ãÆ /api/worksites/checkin                                     514 B         103 kB
+Ôö£ ãÆ /api/worksites/checkout                                    514 B         103 kB
+Ôö£ Ôùï /complete-setup                                           3.4 kB         157 kB
+Ôö£ ãÆ /dashboard                                               12.9 kB         191 kB
+Ôö£ ãÆ /dashboard/approvals                                     13.8 kB         230 kB
+Ôö£ ãÆ /dashboard/approvals/audit-logs                          4.72 kB         157 kB
+Ôö£ ãÆ /dashboard/approvals/history                             2.56 kB         122 kB
+Ôö£ ãÆ /dashboard/approvals/quick-approve                         192 B         106 kB
+Ôö£ ãÆ /dashboard/ata                                            5.4 kB         204 kB
+Ôö£ ãÆ /dashboard/ata/[id]                                      7.21 kB         182 kB
+Ôö£ ãÆ /dashboard/ata/new                                       10.1 kB         261 kB
+Ôö£ ãÆ /dashboard/checklists                                    4.58 kB         132 kB
+Ôö£ ãÆ /dashboard/checklists/[id]                                  3 kB         173 kB
+Ôö£ ãÆ /dashboard/checklists/new                                10.4 kB         246 kB
+Ôö£ ãÆ /dashboard/customers                                     5.06 kB         120 kB
+Ôö£ ãÆ /dashboard/customers/[id]                                3.42 kB         203 kB
+Ôö£ ãÆ /dashboard/customers/new                                 3.63 kB         189 kB
+Ôö£ ãÆ /dashboard/diary                                         6.27 kB         176 kB
+Ôö£ ãÆ /dashboard/diary/[id]                                    9.85 kB         180 kB
+Ôö£ ãÆ /dashboard/diary/new                                     10.6 kB         218 kB
+Ôö£ ãÆ /dashboard/employees                                     4.66 kB         119 kB
+Ôö£ ãÆ /dashboard/employees/[id]                                9.93 kB         202 kB
+Ôö£ ãÆ /dashboard/employees/new                                 2.71 kB         186 kB
+Ôö£ ãÆ /dashboard/help                                          17.5 kB         142 kB
+Ôö£ ãÆ /dashboard/invoice-basis                                 13.5 kB         177 kB
+Ôö£ ãÆ /dashboard/materials                                     7.97 kB         236 kB
+Ôö£ ãÆ /dashboard/payroll                                         15 kB         179 kB
+Ôö£ ãÆ /dashboard/payroll/preview                               6.44 kB         126 kB
+Ôö£ ãÆ /dashboard/planning                                      1.53 kB         104 kB
+Ôö£ ãÆ /dashboard/planning/today                                 8.3 kB         148 kB
+Ôö£ ãÆ /dashboard/projects                                      5.29 kB         121 kB
+Ôö£ ãÆ /dashboard/projects/[id]                                 20.7 kB         249 kB
+Ôö£ ãÆ /dashboard/projects/new                                  9.06 kB         214 kB
+Ôö£ ãÆ /dashboard/settings                                      2.43 kB         108 kB
+Ôö£ ãÆ /dashboard/settings/notifications                        5.63 kB         130 kB
+Ôö£ ãÆ /dashboard/settings/organization                         12.5 kB         136 kB
+Ôö£ ãÆ /dashboard/settings/profile                              4.55 kB         116 kB
+Ôö£ ãÆ /dashboard/settings/users                                10.7 kB         191 kB
+Ôö£ ãÆ /dashboard/settings/users/invite                         3.71 kB         175 kB
+Ôö£ ãÆ /dashboard/subcontractors                                4.29 kB         119 kB
+Ôö£ ãÆ /dashboard/subcontractors/[id]                           8.55 kB         196 kB
+Ôö£ ãÆ /dashboard/subcontractors/new                            3.51 kB         187 kB
+Ôö£ ãÆ /dashboard/time                                          12.4 kB         256 kB
+Ôö£ ãÆ /dashboard/worksites                                      5.6 kB         180 kB
+Ôö£ Ôùï /invite-callback                                         2.39 kB         152 kB
+Ôö£ Ôùï /set-password                                             4.7 kB         163 kB
+Ôö£ Ôùï /sign-in                                                 3.61 kB         110 kB
+Ôö£ Ôùï /sign-up                                                 4.78 kB         111 kB
+Ôö£ ãÆ /super-admin                                               192 B         106 kB
+Ôö£ ãÆ /super-admin/analytics                                   3.15 kB         118 kB
+Ôö£ ãÆ /super-admin/analytics/performance                        2.5 kB         117 kB
+Ôö£ ãÆ /super-admin/billing                                       192 B         106 kB
+Ôö£ ãÆ /super-admin/billing/payments                              514 B         103 kB
+Ôö£ ãÆ /super-admin/billing/plans                                 192 B         106 kB
+Ôö£ ãÆ /super-admin/billing/subscriptions                         192 B         106 kB
+Ôö£ ãÆ /super-admin/email-logs                                    192 B         106 kB
+Ôö£ ãÆ /super-admin/email-templates                               192 B         106 kB
+Ôö£ ãÆ /super-admin/email-templates/[id]                        4.27 kB         119 kB
+Ôö£ ãÆ /super-admin/logs                                        4.28 kB         154 kB
+Ôö£ ãÆ /super-admin/organizations                               7.11 kB         159 kB
+Ôö£ ãÆ /super-admin/organizations/[id]                          7.48 kB         131 kB
+Ôö£ ãÆ /super-admin/support                                     1.94 kB         116 kB
+Ôö£ ãÆ /super-admin/system                                      2.52 kB         117 kB
+Ôö£ ãÆ /super-admin/system/features                                7 kB         127 kB
+Ôö£ ãÆ /super-admin/system/maintenance                          5.67 kB         126 kB
+Ôö£ ãÆ /super-admin/test-notifications                          4.51 kB         144 kB
+Ôö£ ãÆ /super-admin/users                                       7.89 kB         162 kB
+Ôö£ Ôùï /verify-email                                            3.82 kB         118 kB
+Ôö£ ãÆ /welcome                                                   192 B         106 kB
+Ôö£ ãÆ /worksites/[projectId]/checkin                           5.76 kB         138 kB
+Ôöö ãÆ /worksites/[projectId]/control                           1.13 kB         150 kB
++ First Load JS shared by all                                 103 kB
+  Ôö£ chunks/1255-26f05d8bf86e016d.js                          45.5 kB
+  Ôö£ chunks/4bd1b696-100b9d70ed4e49c1.js                      54.2 kB
+  Ôöö other shared chunks (total)                              2.89 kB
+
+
+ãÆ Middleware                                                 74.4 kB
+
+Ôùï  (Static)   prerendered as static content
+ãÆ  (Dynamic)  server-rendered on demand
+
