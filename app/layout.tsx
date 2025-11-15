@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { QueryProvider } from '@/lib/providers/query-provider';
 import { ToasterProvider } from '@/components/core/toaster';
+import ThemeProvider from '@/components/core/theme-provider';
 import { ZodInit } from '@/components/core/zod-init';
 
 const inter = Inter({
@@ -38,9 +39,11 @@ export default function RootLayout({
 	return (
 		<html lang='sv'>
 			<body className={`${inter.variable} font-sans antialiased`}>
-				<ZodInit />
-				<QueryProvider>{children}</QueryProvider>
-				<ToasterProvider />
+				<ThemeProvider>
+					<ZodInit />
+					<QueryProvider>{children}</QueryProvider>
+					<ToasterProvider />
+				</ThemeProvider>
 			</body>
 		</html>
 	);
