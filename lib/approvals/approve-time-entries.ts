@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { sendApprovalConfirmed } from '@/lib/notifications';
+import { sendApprovalConfirmedNotification } from '@/lib/notifications';
 
 interface ApproveTimeEntriesOptions {
   supabase: SupabaseClient<any, 'public', any>;
@@ -78,7 +78,7 @@ export async function approveTimeEntries(options: ApproveTimeEntriesOptions) {
       const weekNumber = getWeekNumber(entryDate);
       const year = entryDate.getFullYear();
 
-      await sendApprovalConfirmed({
+      await sendApprovalConfirmedNotification({
         userId,
         weekNumber,
         year,
