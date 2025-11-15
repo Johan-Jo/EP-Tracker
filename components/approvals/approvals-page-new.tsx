@@ -61,6 +61,23 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 		return laborValue + materialsValue;
 	};
 
+	const getStatusLabel = (status: string): string => {
+		switch (status) {
+			case 'draft':
+				return 'Utkast';
+			case 'submitted':
+				return 'Väntar godkännande';
+			case 'approved':
+				return 'Godkänd';
+			case 'rejected':
+				return 'Avvisad';
+			case 'invoiced':
+				return 'Fakturerad';
+			default:
+				return status;
+		}
+	};
+
 	// Helper function to calculate ISO week dates (correct calculation)
 	const getWeekDates = (week: number, year: number) => {
 		// ISO week calculation: Week 1 is the week containing Jan 4
@@ -1127,7 +1144,7 @@ const handleDownloadCurrentView = () => {
 													</td>
 													<td className='p-3'>
 														<span className='inline-flex px-2 py-1 rounded-lg text-xs bg-yellow-100 text-yellow-700'>
-															{entry.status}
+															{getStatusLabel(entry.status)}
 														</span>
 													</td>
 												</tr>
@@ -1251,7 +1268,7 @@ const handleDownloadCurrentView = () => {
 													<td className='p-3 text-sm'>{(entry.amount || 0).toLocaleString('sv-SE')} kr</td>
 													<td className='p-3'>
 														<span className='inline-flex px-2 py-1 rounded-lg text-xs bg-yellow-100 text-yellow-700'>
-															{entry.status}
+															{getStatusLabel(entry.status)}
 														</span>
 													</td>
 												</tr>
