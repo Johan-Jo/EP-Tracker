@@ -22,6 +22,11 @@ import {
 	Mic,
 	DollarSign,
 	Building2,
+	QrCode,
+	FileEdit,
+	Settings,
+	LayoutDashboard,
+	ContactRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -576,6 +581,449 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			],
 		},
 		{
+			title: 'Personalliggare',
+			description: 'QR-kod check-in/out system för projekt',
+			icon: QrCode,
+			roles: ['admin', 'foreman'],
+			sections: [
+				{
+					title: 'Aktivera personalliggare för projekt',
+					items: [
+						'Öppna ett projekt',
+						'Gå till projektinställningar',
+						'Aktivera "Personalliggare"',
+						'Ett unikt QR-kod genereras automatiskt',
+						'QR-koden kan skrivas ut och placeras på byggplatsen',
+					],
+				},
+				{
+					title: 'Check-in via QR-kod',
+					items: [
+						'Öppna EP Tracker-appen på din telefon',
+						'Gå till "Personalliggare"-sidan',
+						'Skanna QR-koden på byggplatsen',
+						'Du checkas automatiskt in på projektet',
+						'Check-in-tid registreras automatiskt',
+					],
+				},
+				{
+					title: 'Check-out via QR-kod',
+					items: [
+						'Skanna samma QR-kod igen när du är klar',
+						'Du checkas automatiskt ut',
+						'Check-out-tid registreras',
+						'Total arbetad tid beräknas automatiskt',
+					],
+				},
+				{
+					title: 'Hantera worksite-koder',
+					items: [
+						'Varje projekt får en unik worksite-kod',
+						'Koden kan återställas om den komprometteras',
+						'QR-koden fungerar offline och synkroniseras senare',
+						'Endast användare med åtkomst till projektet kan checka in',
+					],
+				},
+			],
+		},
+		{
+			title: 'ÄTA (Ändringsbeslut)',
+			description: 'Skapa och hantera ändrings- och tilläggsarbeten',
+			icon: FileEdit,
+			roles: ['admin', 'foreman', 'worker', 'ue'],
+			sections: [
+				{
+					title: 'Skapa ÄTA-förslag',
+					items: [
+						'Gå till "ÄTA"-sidan',
+						'Klicka "Ny ÄTA"',
+						'Fyll i titel, beskrivning och kategori',
+						'Välj projekt och fas',
+						'Ange uppskattad kostnad eller debiteringstyp',
+						'Ladda upp foton (valfritt)',
+						'Spara som utkast',
+					],
+				},
+				{
+					title: 'Debiteringstyper',
+					items: [
+						'Fast belopp - Ange ett fast belopp som ska faktureras',
+						'Löpande - Ange enhet, antal och à-pris',
+						'Projektets timtaxa används automatiskt om inget à-pris anges',
+					],
+				},
+				{
+					title: 'Skicka för godkännande',
+					items: [
+						'Öppna ÄTA-förslaget',
+						'Klicka "Skicka för godkännande"',
+						'Status ändras till "Väntar godkännande"',
+						'Admin eller arbetsledare får notifikation',
+					],
+				},
+				{
+					title: 'Godkänna eller avvisa ÄTA',
+					items: [
+						'Gå till "Godkännanden"-sidan',
+						'Välj flik "ÄTA"',
+						'Granska ÄTA-förslaget',
+						'Klicka "Godkänn" för att acceptera',
+						'Eller klicka "Avvisa" och skriv kommentar',
+						'Godkända ÄTA kan faktureras',
+					],
+				},
+				{
+					title: 'Statusvärden',
+					items: [
+						'Utkast - ÄTA är inte skickad än',
+						'Väntar godkännande - Väntar på godkännande',
+						'Godkänd - ÄTA är godkänd och kan faktureras',
+						'Avvisad - ÄTA är avvisad och kan redigeras',
+					],
+				},
+			],
+		},
+		{
+			title: 'Checklista',
+			description: 'Skapa och använda checklistor för projektspecifika kontroller',
+			icon: CheckSquare,
+			roles: ['admin', 'foreman'],
+			sections: [
+				{
+					title: 'Skapa ny checklista',
+					items: [
+						'Gå till "Checklista"-sidan',
+						'Klicka "Ny checklista"',
+						'Välj projekt',
+						'Ange titel för checklistan',
+						'Lägg till uppgifter manuellt eller använd en mall',
+					],
+				},
+				{
+					title: 'Använda mallar',
+					items: [
+						'Välj en mall från listan (t.ex. "Riskanalys", "Egenkontroll målning")',
+						'Mallens uppgifter fylls i automatiskt',
+						'Du kan lägga till eller ta bort uppgifter',
+						'Anpassa checklistan efter projektets behov',
+					],
+				},
+				{
+					title: 'Markera uppgifter som klara',
+					items: [
+						'Öppna checklistan',
+						'Klicka på checkboxen för varje genomförd uppgift',
+						'Lägg till anteckningar vid behov',
+						'Checklistan markeras som klar när alla uppgifter är avklarade',
+					],
+				},
+				{
+					title: 'Signera checklista',
+					items: [
+						'När alla uppgifter är klara kan du signera',
+						'Skriv ditt namn',
+						'Signaturen sparas med tidsstämpel',
+						'Signerade checklistor kan inte redigeras',
+					],
+				},
+				{
+					title: 'Visa och hantera checklistor',
+					items: [
+						'Alla checklistor visas per projekt',
+						'Filtrera på status (klar/ej klar)',
+						'Öppna checklistor för att se detaljer',
+						'Checklistor kan tas bort om de inte är signerade',
+					],
+				},
+			],
+		},
+		{
+			title: 'Fakturaunderlag',
+			description: 'Granska, låsa och exportera faktureringsdata',
+			icon: FileText,
+			roles: ['admin', 'foreman', 'finance'],
+			sections: [
+				{
+					title: 'Översikt',
+					items: [
+						'Fakturaunderlag samlar all fakturerbar data för en period',
+						'Inkluderar: tid, material, utlägg, ÄTA och dagbok',
+						'Data måste vara godkänd innan den kan faktureras',
+					],
+				},
+				{
+					title: 'Granska fakturaunderlag',
+					items: [
+						'Gå till "Fakturaunderlag"-sidan',
+						'Välj projekt och datumintervall',
+						'Granska alla rader som ska faktureras',
+						'Kontrollera att belopp och beskrivningar stämmer',
+						'Redigera rader vid behov',
+					],
+				},
+				{
+					title: 'Låsa underlag',
+					items: [
+						'Efter granskning, lås underlaget',
+						'Låsta underlag kan inte ändras',
+						'Låsning krävs för export',
+						'Du kan låsa upp om du behöver göra ändringar',
+					],
+				},
+				{
+					title: 'Exportera CSV',
+					items: [
+						'När underlaget är låst, klicka "Ladda ner CSV"',
+						'CSV-filen innehåller alla faktureringsrader',
+						'Formatet är kompatibelt med Fortnox och Visma',
+						'Filen kan importeras direkt i faktureringssystemet',
+					],
+				},
+				{
+					title: 'Tips',
+					items: [
+						'Granska alltid underlaget innan låsning',
+						'Kontrollera att alla godkända poster är med',
+						'Lås endast när du är säker på att allt stämmer',
+						'Exportera direkt efter låsning för bästa översikt',
+					],
+				},
+			],
+		},
+		{
+			title: 'Kunder',
+			description: 'Hantera kundinformation och koppla till projekt',
+			icon: ContactRound,
+			roles: ['admin', 'foreman', 'finance'],
+			sections: [
+				{
+					title: 'Lägga till kund',
+					items: [
+						'Gå till "Inställningar → Kunder"',
+						'Klicka "Ny kund"',
+						'Fyll i kundnamn och kontaktinformation',
+						'Välj kundtyp (företag, privatperson, etc.)',
+						'Spara',
+					],
+				},
+				{
+					title: 'Redigera kundinformation',
+					items: [
+						'Öppna kunden från listan',
+						'Klicka "Redigera"',
+						'Uppdatera kontaktuppgifter, adress eller annan information',
+						'Spara ändringar',
+					],
+				},
+				{
+					title: 'Koppla kund till projekt',
+					items: [
+						'När du skapar ett nytt projekt, välj kund',
+						'Eller redigera befintligt projekt och välj kund',
+						'Kunden visas på projektsidan',
+						'Kundinformation används i fakturor',
+					],
+				},
+				{
+					title: 'Hantera kundtyper',
+					items: [
+						'Kundtyper hjälper till att organisera kunder',
+						'Vanliga typer: Företag, Privatperson, Fastighetsägare',
+						'Du kan skapa egna kundtyper',
+						'Filtrera kunder efter typ',
+					],
+				},
+			],
+		},
+		{
+			title: 'Personal',
+			description: 'Hantera anställda och personalinformation',
+			icon: Users,
+			roles: ['admin', 'foreman'],
+			sections: [
+				{
+					title: 'Lägga till anställd',
+					items: [
+						'Gå till "Inställningar → Personal"',
+						'Klicka "Ny anställd"',
+						'Fyll i namn, e-post och kontaktinformation',
+						'Ange anställningsnummer om tillämpligt',
+						'Spara',
+					],
+				},
+				{
+					title: 'Redigera personalinformation',
+					items: [
+						'Öppna anställd från listan',
+						'Klicka "Redigera"',
+						'Uppdatera kontaktuppgifter eller annan information',
+						'Spara ändringar',
+					],
+				},
+				{
+					title: 'Hantera anställdstatus',
+					items: [
+						'Markera anställd som aktiv eller inaktiv',
+						'Inaktiva anställda visas inte i dropdowns',
+						'Historisk data bevaras',
+						'Återaktivera när behövs',
+					],
+				},
+				{
+					title: 'Koppla till projekt',
+					items: [
+						'Anställda kan kopplas till projekt via teammedlemskap',
+						'Gå till projektets "Team"-flik',
+						'Lägg till anställd som teammedlem',
+						'Anställda kan nu rapportera tid på projektet',
+					],
+				},
+			],
+		},
+		{
+			title: 'Underentreprenörer',
+			description: 'Hantera underentreprenörer och deras projekt',
+			icon: Building2,
+			roles: ['admin', 'foreman'],
+			sections: [
+				{
+					title: 'Lägga till underentreprenör',
+					items: [
+						'Gå till "Inställningar → Underentreprenörer"',
+						'Klicka "Ny underentreprenör"',
+						'Fyll i företagsnamn och kontaktinformation',
+						'Ange organisationsnummer',
+						'Spara',
+					],
+				},
+				{
+					title: 'Hantera underentreprenörsinformation',
+					items: [
+						'Öppna underentreprenör från listan',
+						'Redigera kontaktuppgifter, adress eller annan information',
+						'Uppdatera organisationsnummer vid behov',
+						'Spara ändringar',
+					],
+				},
+				{
+					title: 'Koppla till projekt',
+					items: [
+						'Underentreprenörer kan kopplas till projekt',
+						'Används för att spåra externa leverantörer',
+						'Koppling visas i projektöversikten',
+						'Används i rapporter och export',
+					],
+				},
+			],
+		},
+		{
+			title: 'Inställningar',
+			description: 'Navigera och konfigurera systeminställningar',
+			icon: Settings,
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
+			sections: [
+				{
+					title: 'Översikt',
+					items: [
+						'Inställningar-sidan är din centrala plats för att konfigurera systemet',
+						'Här hittar du alla inställningar för din profil och organisation',
+					],
+				},
+				{
+					title: 'Profilinställningar',
+					items: [
+						'Gå till "Inställningar → Profil"',
+						'Uppdatera ditt namn, e-post och telefonnummer',
+						'Ladda upp profilbild',
+						'Ändra lösenord',
+						'Spara ändringar',
+					],
+				},
+				{
+					title: 'Notifikationsinställningar',
+					items: [
+						'Gå till "Inställningar → Notiser"',
+						'Aktivera eller inaktivera push-notiser',
+						'Välj vilka typer av notiser du vill ta emot',
+						'Ställ in tysta timmar',
+						'Spara inställningar',
+					],
+				},
+				{
+					title: 'Organisationsinställningar (Admin)',
+					items: [
+						'Endast admins kan ändra organisationsinställningar',
+						'Gå till "Inställningar → Organisation"',
+						'Uppdatera organisationsinformation, adress och bankuppgifter',
+						'Konfigurera standardarbetstider och raster',
+						'Se guiden "Organisationsinställningar" för mer detaljer',
+					],
+				},
+				{
+					title: 'Användarhantering (Admin)',
+					items: [
+						'Gå till "Inställningar → Användare"',
+						'Bjud in nya användare',
+						'Hantera användarroller',
+						'Se guiden "Bjud in användare" för mer detaljer',
+					],
+				},
+			],
+		},
+		{
+			title: 'Översikt (Dashboard)',
+			description: 'Förstå dashboard-widgets och snabbåtgärder',
+			icon: LayoutDashboard,
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
+			sections: [
+				{
+					title: 'Dashboard-widgets',
+					items: [
+						'Översiktssidan visar viktig information på en plats',
+						'Statistik för den aktuella veckan',
+						'Aktiva projekt och senaste aktiviteter',
+						'Snabbåtgärder för vanliga uppgifter',
+					],
+				},
+				{
+					title: 'Statistik',
+					items: [
+						'Se totala arbetstimmar för veckan',
+						'Antal aktiva projekt',
+						'Pågående tidsregistreringar',
+						'Väntande godkännanden',
+					],
+				},
+				{
+					title: 'Snabbåtgärder',
+					items: [
+						'Starta timer direkt från dashboard',
+						'Skapa ny tidrapport',
+						'Lägg till material eller utlägg',
+						'Gå till vanliga sidor med ett klick',
+					],
+				},
+				{
+					title: 'Aktivitetsflöde',
+					items: [
+						'Se senaste aktiviteter i organisationen',
+						'Filtrera efter typ (tid, material, ÄTA, etc.)',
+						'Klicka på aktivitet för att se detaljer',
+						'Håll koll på vad som händer i projekten',
+					],
+				},
+				{
+					title: 'Check-in/Check-out',
+					items: [
+						'Om du har en aktiv check-in, visas den på dashboard',
+						'Klicka "Checka ut" för att avsluta arbetsdagen',
+						'En bekräftelsedialog visar din arbetstid',
+						'Justera tiden om behövs innan du sparar',
+					],
+				},
+			],
+		},
+		{
 			title: 'Offline-läge',
 			description: 'Arbeta utan internetanslutning',
 			icon: Info,
@@ -666,6 +1114,70 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			icon: DollarSign,
 			page: '/dashboard/payroll',
 			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'worksites',
+			title: 'Personalliggare',
+			description: 'QR-kod check-in/out system för projekt',
+			icon: QrCode,
+			page: '/dashboard/worksites',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'ata',
+			title: 'ÄTA',
+			description: 'Skapa och hantera ändrings- och tilläggsarbeten',
+			icon: FileEdit,
+			page: '/dashboard/ata',
+			roles: ['admin', 'foreman', 'worker', 'ue'],
+		},
+		{
+			id: 'checklists',
+			title: 'Checklista',
+			description: 'Skapa och använda checklistor för projektspecifika kontroller',
+			icon: CheckSquare,
+			page: '/dashboard/checklists',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'invoice-basis',
+			title: 'Fakturaunderlag',
+			description: 'Granska, låsa och exportera faktureringsdata',
+			icon: FileText,
+			page: '/dashboard/invoice-basis',
+			roles: ['admin', 'foreman', 'finance'],
+		},
+		{
+			id: 'customers',
+			title: 'Kunder',
+			description: 'Hantera kundinformation och koppla till projekt',
+			icon: ContactRound,
+			page: '/dashboard/customers',
+			roles: ['admin', 'foreman', 'finance'],
+		},
+		{
+			id: 'employees',
+			title: 'Personal',
+			description: 'Hantera anställda och personalinformation',
+			icon: Users,
+			page: '/dashboard/employees',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'subcontractors',
+			title: 'Underentreprenörer',
+			description: 'Hantera underentreprenörer och deras projekt',
+			icon: Building2,
+			page: '/dashboard/subcontractors',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'settings',
+			title: 'Inställningar',
+			description: 'Navigera och konfigurera systeminställningar',
+			icon: Settings,
+			page: '/dashboard/settings',
+			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 		},
 	];
 
@@ -951,6 +1463,83 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			question: 'Hur fungerar automatiska rastar?',
 			answer:
 				'Systemet beräknar automatiskt rasttimmar baserat på arbetstid per projekt per dag. Om arbetstiden är mer än 5 timmar i ett projekt under en dag, dras automatiskt 1 timme av för rast. Denna rast dras av från totala arbetstimmar innan normaltid och övertid beräknas.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-40',
+			question: 'Hur fungerar personalliggare med QR-koder?',
+			answer:
+				'Personalliggare använder QR-koder för snabb check-in och check-out på byggplatser. Varje projekt kan ha en unik QR-kod som genereras automatiskt när personalliggare aktiveras. Arbetare skannar QR-koden med sin telefon för att checka in/ut automatiskt. Systemet fungerar även offline och synkroniseras när internetanslutning finns.',
+			roles: ['admin', 'foreman', 'worker', 'ue'],
+		},
+		{
+			id: 'faq-41',
+			question: 'Kan jag återställa en QR-kod om den komprometteras?',
+			answer:
+				'Ja, du kan återställa worksite-koden för ett projekt om den komprometteras. Gå till projektinställningar och återställ koden. En ny QR-kod genereras automatiskt. Den gamla koden fungerar inte längre.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-42',
+			question: 'Hur skapar jag ett ÄTA-förslag?',
+			answer:
+				'Gå till "ÄTA"-sidan och klicka "Ny ÄTA". Fyll i titel, beskrivning, kategori och välj projekt. Välj debiteringstyp (fast belopp eller löpande) och ange kostnader. Du kan ladda upp foton för att dokumentera arbetet. Spara som utkast och skicka för godkännande när du är klar.',
+			roles: ['admin', 'foreman', 'worker', 'ue'],
+		},
+		{
+			id: 'faq-43',
+			question: 'Vad är skillnaden mellan fast belopp och löpande debitering för ÄTA?',
+			answer:
+				'Fast belopp innebär att du anger ett fast belopp som ska faktureras direkt. Löpande debitering innebär att du anger enhet (t.ex. timmar, m²), antal och à-pris. Om inget à-pris anges används projektets timtaxa automatiskt. Välj den typ som passar bäst för ändringsarbetet.',
+			roles: ['admin', 'foreman', 'worker', 'ue'],
+		},
+		{
+			id: 'faq-44',
+			question: 'Hur använder jag checklistmallar?',
+			answer:
+				'När du skapar en ny checklista kan du välja en mall från listan (t.ex. "Riskanalys", "Egenkontroll målning"). Mallens uppgifter fylls i automatiskt, men du kan anpassa dem efter projektets behov. Du kan lägga till eller ta bort uppgifter, och lägga till anteckningar vid behov.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-45',
+			question: 'Kan jag redigera en signerad checklista?',
+			answer:
+				'Nej, signerade checklistor kan inte redigeras. Detta säkerställer att signerade dokument förblir oförändrade. Om du behöver göra ändringar, skapa en ny checklista istället.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-46',
+			question: 'Varför måste jag låsa fakturaunderlag innan export?',
+			answer:
+				'Låsning säkerställer att faktureringsdata inte ändras efter granskning. Detta ger dig kontroll över vad som faktureras och förhindrar oavsiktliga ändringar. Låsta underlag kan inte ändras, men du kan låsa upp om du behöver göra ändringar innan fakturering.',
+			roles: ['admin', 'foreman', 'finance'],
+		},
+		{
+			id: 'faq-47',
+			question: 'Vad ingår i fakturaunderlag?',
+			answer:
+				'Fakturaunderlag inkluderar all fakturerbar data för en period: godkända tidrapporter, material, utlägg, ÄTA och dagbok. All data måste vara godkänd innan den kan inkluderas i fakturaunderlag. Du kan granska och redigera rader innan låsning och export.',
+			roles: ['admin', 'foreman', 'finance'],
+		},
+		{
+			id: 'faq-48',
+			question: 'Hur kopplar jag en kund till ett projekt?',
+			answer:
+				'När du skapar ett nytt projekt kan du välja kund från dropdown-menyn. För befintliga projekt, öppna projektet och redigera kundinformation. Kunden visas på projektsidan och kundinformation används automatiskt i fakturor som genereras för projektet.',
+			roles: ['admin', 'foreman', 'finance'],
+		},
+		{
+			id: 'faq-49',
+			question: 'Vad är skillnaden mellan personal och användare?',
+			answer:
+				'Personal är en lista över anställda med kontaktinformation och anställningsnummer. Användare är personer som har inloggning i systemet och kan rapportera tid, material etc. En anställd kan vara personal utan att vara användare, men användare är vanligtvis också personal.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-50',
+			question: 'Hur använder jag underentreprenörer i systemet?',
+			answer:
+				'Underentreprenörer är externa leverantörer som kan kopplas till projekt. De används för att spåra externa leverantörer och visas i projektöversikten. Underentreprenörsinformation används i rapporter och export för att identifiera externa kostnader.',
 			roles: ['admin', 'foreman'],
 		},
 	];

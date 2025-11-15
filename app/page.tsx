@@ -32,7 +32,8 @@ export default async function Home({
   if (code) {
     console.log('[Landing] Auth code detected, redirecting to callback');
     // Preserve the code and any other params
-    const callbackUrl = new URL('/api/auth/callback', 'https://eptracker.app');
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const callbackUrl = new URL('/api/auth/callback', baseUrl);
     callbackUrl.searchParams.set('code', code);
     redirect(callbackUrl.toString());
   }
