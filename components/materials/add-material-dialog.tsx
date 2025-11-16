@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
 import { PhotoUploadButtons } from '@/components/shared/photo-upload-buttons';
 import { normalizeUnitValue } from '@/lib/utils/units';
+import { toast } from 'react-hot-toast';
 
 interface AddMaterialDialogProps {
 	open: boolean;
@@ -241,12 +242,24 @@ export function AddMaterialDialog({
 			// Invalidate cache
 			queryClient.invalidateQueries({ queryKey: ['materials-expenses', orgId] });
 
-			// Reset form
-			handleReset();
-			onClose();
+			// Show success toast
+			if (editingMaterial) {
+				toast.success(`${type === 'material' ? 'Material' : 'Utgift'} uppdaterad`);
+				// Close dialog when editing
+				handleReset();
+				onClose();
+			} else {
+				// Show success toast and keep dialog open when adding new
+				const itemName = name.length > 30 ? name.substring(0, 30) + '...' : name;
+				toast.success(`${type === 'material' ? 'Material' : 'Utgift'} tillagt: ${itemName}`, {
+					duration: 3000,
+				});
+				// Reset form but preserve project selection and keep dialog open
+				handleReset(true);
+			}
 		} catch (error) {
 			console.error('Error adding material:', error);
-			alert('Ett fel uppstod vid sparande. Försök igen.');
+			toast.error('Ett fel uppstod vid sparande. Försök igen.');
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -255,7 +268,7 @@ export function AddMaterialDialog({
 	const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = Array.from(e.target.files || []);
 		if (photos.length + photosPreviews.length + files.length > 10) {
-			alert('Max 10 foton tillåtna');
+			toast.error('Max 10 foton tillåtna');
 			return;
 		}
 
@@ -289,9 +302,15 @@ export function AddMaterialDialog({
 		setProject(projectId || '');
 	}, [open, editingMaterial, projectId]);
 
-	const handleReset = () => {
-		setType('material');
-		setProject(projectId || '');
+	const handleReset = (preserveProject = false) => {
+		// Only reset type if not preserving project/type
+		if (!preserveProject) {
+			setType('material');
+		}
+		// Only reset project if not preserving it
+		if (!preserveProject) {
+			setProject(projectId || '');
+		}
 		setName('');
 		setQuantity('');
 		setUnit('st');
