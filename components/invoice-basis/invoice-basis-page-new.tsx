@@ -37,6 +37,8 @@ import { InvoiceProjectFilter } from './invoice-project-filter';
 import { InvoicePendingApprovals } from './invoice-pending-approvals';
 import { InvoiceLanding } from '@/components/invoices/invoice-landing';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown } from 'lucide-react';
 
 interface InvoiceBasisPageProps {
 	orgId: string;
@@ -86,6 +88,7 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 	const [periodEnd, setPeriodEnd] = useState<string>('');
 	const [currentStep, setCurrentStep] = useState<Step>('select');
 	const [hasFetchedBasis, setHasFetchedBasis] = useState(false);
+	const [isFetchingDateRange, setIsFetchingDateRange] = useState(false);
 
 	// Step 3: Invoice Preview (for single project - TODO: support multi-project)
 	const [selectedProject, setSelectedProject] = useState<string>(projects[0]?.id ?? '');
@@ -228,11 +231,69 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 	}, [invoiceBasis?.id]);
 
 	const diaryEntries = invoiceBasis?.lines_json?.diary ?? [];
+	const allLines = invoiceBasis?.lines_json?.lines ?? [];
 	const nonDiaryLines = useMemo(
-		() => (invoiceBasis?.lines_json?.lines ?? []).filter((line) => line.type !== 'diary'),
-		[invoiceBasis?.lines_json?.lines]
+		() => allLines.filter((line) => line.type !== 'diary'),
+		[allLines]
 	);
 	const hasInvoiceLines = (invoiceBasis?.lines_json?.lines?.length ?? 0) > 0;
+
+	// Calculate totals: hours and material
+	const totalHours = useMemo(() => {
+		return allLines
+			.filter((line) => line.type === 'time')
+			.reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
+	}, [allLines]);
+
+	const totalMaterialQuantity = useMemo(() => {
+		return allLines
+			.filter((line) => line.type === 'material')
+			.reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
+	}, [allLines]);
+
+	const totalMaterialAmount = useMemo(() => {
+		return allLines
+			.filter((line) => line.type === 'material')
+			.reduce((sum, line) => {
+				const quantity = Number(line.quantity) || 0;
+				const unitPrice = Number(line.unit_price) || 0;
+				const discount = Number(line.discount) || 0;
+				const discountFactor = discount > 0 ? 1 - discount / 100 : 1;
+				const amountExVat = Math.round(quantity * unitPrice * discountFactor * 100) / 100;
+				return sum + amountExVat;
+			}, 0);
+	}, [allLines]);
+
+	const totalTimeAmount = useMemo(() => {
+		return allLines
+			.filter((line) => line.type === 'time')
+			.reduce((sum, line) => {
+				const quantity = Number(line.quantity) || 0;
+				const unitPrice = Number(line.unit_price) || 0;
+				const discount = Number(line.discount) || 0;
+				const discountFactor = discount > 0 ? 1 - discount / 100 : 1;
+				const amountExVat = Math.round(quantity * unitPrice * discountFactor * 100) / 100;
+				return sum + amountExVat;
+			}, 0);
+	}, [allLines]);
+
+	const averageHourlyRate = useMemo(() => {
+		if (totalHours === 0) return 0;
+		return totalTimeAmount / totalHours;
+	}, [totalHours, totalTimeAmount]);
+
+	const totalExpenseAmount = useMemo(() => {
+		return allLines
+			.filter((line) => line.type === 'expense')
+			.reduce((sum, line) => {
+				const quantity = Number(line.quantity) || 0;
+				const unitPrice = Number(line.unit_price) || 0;
+				const discount = Number(line.discount) || 0;
+				const discountFactor = discount > 0 ? 1 - discount / 100 : 1;
+				const amountExVat = Math.round(quantity * unitPrice * discountFactor * 100) / 100;
+				return sum + amountExVat;
+			}, 0);
+	}, [allLines]);
 
 	const handleHeaderSubmit = async () => {
 		if (!selectedProject || !periodStart || !periodEnd) return;
@@ -366,6 +427,7 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 
 		// Hämta datumintervall för relevanta rader
 		const fetchRange = async () => {
+			setIsFetchingDateRange(true);
 			try {
 				const params = new URLSearchParams({ projectId });
 				const res = await fetch(`/api/invoice/project-date-range?${params.toString()}`, {
@@ -402,6 +464,8 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 				toast.error('Kunde inte hämta period automatiskt.', {
 					description: 'Kontrollera din uppkoppling och försök igen.',
 				});
+			} finally {
+				setIsFetchingDateRange(false);
 			}
 		};
 
@@ -432,6 +496,7 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 					onFetchBasis={handleFetchBasis}
 					isLoading={isLoadingGrouped}
 					canFetch={canFetch}
+					isFetchingDateRange={isFetchingDateRange}
 				/>
 			</section>
 
@@ -479,64 +544,74 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 								</div>
 
 								{/* Customer Information Section */}
-								{(invoiceBasis.customer_snapshot || invoiceBasis.invoice_address_json) && (
-									<Card>
-										<CardHeader>
-											<CardTitle className='text-lg'>Kundinformation</CardTitle>
-										</CardHeader>
-										<CardContent>
+								{(invoiceBasis.customer_snapshot || invoiceBasis.invoice_address_json) && (() => {
+									const customerName = (() => {
+										if (
+											invoiceBasis.customer_snapshot &&
+											typeof invoiceBasis.customer_snapshot === 'object' &&
+											invoiceBasis.customer_snapshot !== null
+										) {
+											const snap = invoiceBasis.customer_snapshot as {
+												name?: string;
+												company_name?: string;
+												first_name?: string;
+												last_name?: string;
+											};
+											const fromSnapshot =
+												snap.name ||
+												snap.company_name ||
+												[snap.first_name, snap.last_name].filter(Boolean).join(' ');
+											if (fromSnapshot) return fromSnapshot;
+										}
+
+										if (
+											invoiceBasis.invoice_address_json &&
+											typeof invoiceBasis.invoice_address_json === 'object'
+										) {
+											const addr = invoiceBasis.invoice_address_json as { name?: string };
+											if (addr.name) return addr.name;
+										}
+
+										return 'Ingen kund kopplad';
+									})();
+
+									return (
+										<Card>
+											<Collapsible defaultOpen={false}>
+												<CollapsibleTrigger asChild>
+													<CardHeader className='cursor-pointer hover:bg-muted/50 transition-colors'>
+														<div className='flex items-center justify-between'>
+															<CardTitle className='text-lg'>Kundinformation</CardTitle>
+															<div className='flex items-center gap-2'>
+																<span className='text-sm font-medium text-muted-foreground'>{customerName}</span>
+																<ChevronDown className='h-4 w-4 text-muted-foreground transition-transform duration-200 data-[state=open]:rotate-180' />
+															</div>
+														</div>
+													</CardHeader>
+												</CollapsibleTrigger>
+												<CollapsibleContent>
+													<CardContent>
 											<div className='grid gap-4 md:grid-cols-2'>
 												<div className='space-y-3'>
 													<div>
 														<label className='text-sm font-semibold text-muted-foreground'>Kundnamn</label>
-														<p className='text-base font-medium'>
-															{(() => {
-																if (
-																	invoiceBasis.customer_snapshot &&
-																	typeof invoiceBasis.customer_snapshot === 'object' &&
-																	invoiceBasis.customer_snapshot !== null
-																) {
-																	const snap = invoiceBasis.customer_snapshot as {
-																		name?: string;
-																		company_name?: string;
-																		first_name?: string;
-																		last_name?: string;
-																	};
-																	const fromSnapshot =
-																		snap.name ||
-																		snap.company_name ||
-																		[snap.first_name, snap.last_name].filter(Boolean).join(' ');
-																	if (fromSnapshot) return fromSnapshot;
-																}
-
-																if (
-																	invoiceBasis.invoice_address_json &&
-																	typeof invoiceBasis.invoice_address_json === 'object'
-																) {
-																	const addr = invoiceBasis.invoice_address_json as { name?: string };
-																	if (addr.name) return addr.name;
-																}
-
-																return 'Ingen kund kopplad';
-															})()}
-														</p>
+														<p className='text-base font-medium'>{customerName}</p>
 													</div>
-													{invoiceBasis.customer_snapshot && typeof invoiceBasis.customer_snapshot === 'object' && invoiceBasis.customer_snapshot !== null && (invoiceBasis.customer_snapshot as { org_no?: string }).org_no && (
-														<div>
-															<label className='text-sm font-semibold text-muted-foreground'>Organisationsnummer</label>
-															<p className='text-base'>
-																{(invoiceBasis.customer_snapshot as { org_no?: string }).org_no}
-															</p>
-														</div>
-													)}
-													{invoiceBasis.invoice_address_json && typeof invoiceBasis.invoice_address_json === 'object' && (invoiceBasis.invoice_address_json as { org_no?: string }).org_no && (
-														<div>
-															<label className='text-sm font-semibold text-muted-foreground'>Organisationsnummer</label>
-															<p className='text-base'>
-																{(invoiceBasis.invoice_address_json as { org_no?: string }).org_no}
-															</p>
-														</div>
-													)}
+													{(() => {
+														const orgNoFromSnapshot = invoiceBasis.customer_snapshot && typeof invoiceBasis.customer_snapshot === 'object' && invoiceBasis.customer_snapshot !== null
+															? (invoiceBasis.customer_snapshot as { org_no?: string }).org_no
+															: null;
+														const orgNoFromAddress = invoiceBasis.invoice_address_json && typeof invoiceBasis.invoice_address_json === 'object'
+															? (invoiceBasis.invoice_address_json as { org_no?: string }).org_no
+															: null;
+														const orgNo = orgNoFromSnapshot || orgNoFromAddress;
+														return orgNo ? (
+															<div>
+																<label className='text-sm font-semibold text-muted-foreground'>Organisationsnummer</label>
+																<p className='text-base'>{orgNo}</p>
+															</div>
+														) : null;
+													})()}
 													{invoiceBasis.invoice_address_json && typeof invoiceBasis.invoice_address_json === 'object' && (
 														<div>
 															<label className='text-sm font-semibold text-muted-foreground'>Fakturaadress</label>
@@ -589,9 +664,12 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 													)}
 												</div>
 											</div>
-										</CardContent>
-									</Card>
-								)}
+													</CardContent>
+												</CollapsibleContent>
+											</Collapsible>
+										</Card>
+									);
+								})()}
 
 								{/* Fakturainfo Card */}
 								<Card>
@@ -767,6 +845,113 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 												</Button>
 											</div>
 										)}
+									</CardContent>
+								</Card>
+
+								{/* Totals Card */}
+								<Card>
+									<CardHeader>
+										<CardTitle>Summeringar</CardTitle>
+									</CardHeader>
+									<CardContent className='space-y-6'>
+										{/* Totals grid */}
+										<div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
+											<div className='rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4'>
+												<div className='text-xs uppercase text-emerald-600 dark:text-emerald-300'>Netto exkl. moms</div>
+												<div className='text-2xl font-semibold text-foreground'>
+													{totals?.total_ex_vat?.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) ?? '0,00'} kr
+												</div>
+											</div>
+											<div className='rounded-lg border border-amber-500/30 bg-amber-500/5 p-4'>
+												<div className='text-xs uppercase text-amber-600 dark:text-amber-300'>Moms</div>
+												<div className='text-2xl font-semibold text-foreground'>
+													{totals?.total_vat?.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) ?? '0,00'} kr
+												</div>
+											</div>
+											<div className='rounded-lg border border-blue-500/30 bg-blue-500/5 p-4'>
+												<div className='text-xs uppercase text-blue-600 dark:text-blue-300'>Totalt</div>
+												<div className='text-2xl font-semibold text-foreground'>
+													{totals?.total_inc_vat?.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) ?? '0,00'} kr
+												</div>
+											</div>
+											{totals?.per_vat_rate &&
+												Object.entries(totals.per_vat_rate).map(([rate, values]) => (
+													<div key={rate} className='rounded-lg border border-border/60 bg-muted/40 p-4'>
+														<div className='text-xs uppercase text-muted-foreground'>Moms {rate}%</div>
+														<div className='text-sm text-muted-foreground'>
+															Exkl: {values.base.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+														</div>
+														<div className='text-sm text-muted-foreground'>
+															Moms: {values.vat.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+														</div>
+														<div className='text-sm text-muted-foreground'>
+															Inkl: {values.total.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+														</div>
+													</div>
+												))}
+											{/* Summary of hours, material, expenses - in line with VAT breakdown */}
+											{(totalHours > 0 || totalMaterialAmount > 0 || totalExpenseAmount > 0) && (
+												<div className='rounded-lg border border-border/60 bg-muted/30 p-4'>
+													<div className='mb-3 text-xs uppercase text-muted-foreground'>Summering</div>
+													<div className='space-y-2.5'>
+														{totalHours > 0 && (
+															<div className='flex items-baseline gap-2 text-sm'>
+																<span className='text-muted-foreground'>Tid:</span>
+																<span className='text-muted-foreground'>
+																	{new Intl.NumberFormat('sv-SE', {
+																		minimumFractionDigits: 2,
+																		maximumFractionDigits: 2,
+																	}).format(totalHours)} timmar ×
+																</span>
+																<span className='font-semibold'>
+																	{new Intl.NumberFormat('sv-SE', {
+																		style: 'currency',
+																		currency: 'SEK',
+																		minimumFractionDigits: 2,
+																		maximumFractionDigits: 2,
+																	}).format(averageHourlyRate)}
+																</span>
+																<span className='text-muted-foreground'>=</span>
+																<span className='font-semibold'>
+																	{new Intl.NumberFormat('sv-SE', {
+																		style: 'currency',
+																		currency: 'SEK',
+																		minimumFractionDigits: 2,
+																		maximumFractionDigits: 2,
+																	}).format(totalTimeAmount)}
+																</span>
+															</div>
+														)}
+														{totalMaterialAmount > 0 && (
+															<div className='flex items-baseline gap-2 text-sm'>
+																<span className='text-muted-foreground'>Material:</span>
+																<span className='font-semibold'>
+																	{new Intl.NumberFormat('sv-SE', {
+																		style: 'currency',
+																		currency: 'SEK',
+																		minimumFractionDigits: 2,
+																		maximumFractionDigits: 2,
+																	}).format(totalMaterialAmount)}
+																</span>
+															</div>
+														)}
+														{totalExpenseAmount > 0 && (
+															<div className='flex items-baseline gap-2 text-sm'>
+																<span className='text-muted-foreground'>Utlägg:</span>
+																<span className='font-semibold'>
+																	{new Intl.NumberFormat('sv-SE', {
+																		style: 'currency',
+																		currency: 'SEK',
+																		minimumFractionDigits: 2,
+																		maximumFractionDigits: 2,
+																	}).format(totalExpenseAmount)}
+																</span>
+															</div>
+														)}
+													</div>
+												</div>
+											)}
+										</div>
 									</CardContent>
 								</Card>
 
@@ -1028,48 +1213,6 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 												</div>
 											</div>
 										)}
-									</CardContent>
-								</Card>
-
-								{/* Totals Card */}
-								<Card>
-									<CardHeader>
-										<CardTitle>Summeringar</CardTitle>
-									</CardHeader>
-									<CardContent className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
-										<div className='rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4'>
-											<div className='text-xs uppercase text-emerald-600 dark:text-emerald-300'>Netto exkl. moms</div>
-											<div className='text-2xl font-semibold text-foreground'>
-												{totals?.total_ex_vat?.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) ?? '0,00'} kr
-											</div>
-										</div>
-										<div className='rounded-lg border border-amber-500/30 bg-amber-500/5 p-4'>
-											<div className='text-xs uppercase text-amber-600 dark:text-amber-300'>Moms</div>
-											<div className='text-2xl font-semibold text-foreground'>
-												{totals?.total_vat?.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) ?? '0,00'} kr
-											</div>
-										</div>
-										<div className='rounded-lg border border-blue-500/30 bg-blue-500/5 p-4'>
-											<div className='text-xs uppercase text-blue-600 dark:text-blue-300'>Totalt</div>
-											<div className='text-2xl font-semibold text-foreground'>
-												{totals?.total_inc_vat?.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) ?? '0,00'} kr
-											</div>
-										</div>
-										{totals?.per_vat_rate &&
-											Object.entries(totals.per_vat_rate).map(([rate, values]) => (
-												<div key={rate} className='rounded-lg border border-border/60 bg-muted/40 p-4'>
-													<div className='text-xs uppercase text-muted-foreground'>Moms {rate}%</div>
-													<div className='text-sm text-muted-foreground'>
-														Exkl: {values.base.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
-													</div>
-													<div className='text-sm text-muted-foreground'>
-														Moms: {values.vat.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
-													</div>
-													<div className='text-sm text-muted-foreground'>
-														Inkl: {values.total.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
-													</div>
-												</div>
-											))}
 									</CardContent>
 								</Card>
 

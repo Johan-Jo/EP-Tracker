@@ -1,12 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Check, ChevronDown, Filter } from 'lucide-react';
+import { Calendar, Check, ChevronDown, Filter, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
 interface Project {
@@ -26,12 +25,13 @@ interface InvoiceProjectFilterProps {
 	onFetchBasis: () => void;
 	isLoading?: boolean;
 	canFetch?: boolean;
+	isFetchingDateRange?: boolean;
 }
 
 /**
  * Step 1: Project & Period Filter Component
  * 
- * Multi-select project filter with date range and "Hämta underlag" button.
+ * Single-select project filter with date range and "Hämta underlag" button.
  */
 export function InvoiceProjectFilter({
 	projects,
@@ -44,31 +44,27 @@ export function InvoiceProjectFilter({
 	onFetchBasis,
 	isLoading = false,
 	canFetch = false,
+	isFetchingDateRange = false,
 }: InvoiceProjectFilterProps) {
 	const [isProjectPopoverOpen, setIsProjectPopoverOpen] = useState(false);
 
-	const toggleProject = (projectId: string) => {
-		if (selectedProjectIds.includes(projectId)) {
-			onProjectIdsChange(selectedProjectIds.filter((id) => id !== projectId));
+	const selectedProjectId = selectedProjectIds[0] || null;
+
+	const selectProject = (projectId: string) => {
+		if (selectedProjectId === projectId) {
+			// Om samma projekt väljs igen, avmarkera det
+			onProjectIdsChange([]);
 		} else {
-			onProjectIdsChange([...selectedProjectIds, projectId]);
+			// Välj det nya projektet (ersätt tidigare val)
+			onProjectIdsChange([projectId]);
 		}
-	};
-
-	const selectAllProjects = () => {
-		onProjectIdsChange(projects.map((p) => p.id));
-	};
-
-	const deselectAllProjects = () => {
-		onProjectIdsChange([]);
+		setIsProjectPopoverOpen(false);
 	};
 
 	const selectedProjectsDisplay =
-		selectedProjectIds.length === 0
-			? 'Välj projekt'
-			: selectedProjectIds.length === 1
-			? projects.find((p) => p.id === selectedProjectIds[0])?.name || 'Välj projekt'
-			: `${selectedProjectIds.length} projekt valda`;
+		selectedProjectId
+			? projects.find((p) => p.id === selectedProjectId)?.name || 'Välj projekt'
+			: 'Välj projekt';
 
 	return (
 		<div className="rounded-lg border border-border/60 bg-card/50 p-4 shadow-sm">
@@ -77,7 +73,7 @@ export function InvoiceProjectFilter({
 				<span className="text-sm font-semibold text-foreground">Steg 1: Välj projekt & period</span>
 			</div>
 			<div className="flex flex-col gap-4 md:flex-row md:items-end">
-				{/* Multi-select Project */}
+				{/* Single-select Project */}
 				<div className="flex-1 space-y-2">
 					<Label className="text-xs font-medium text-muted-foreground">Projekt *</Label>
 					<Popover open={isProjectPopoverOpen} onOpenChange={setIsProjectPopoverOpen}>
@@ -87,7 +83,7 @@ export function InvoiceProjectFilter({
 								role="combobox"
 								className={cn(
 									'h-10 w-full justify-between',
-									!selectedProjectIds.length && 'text-muted-foreground'
+									!selectedProjectId && 'text-muted-foreground'
 								)}
 							>
 								<span className="truncate">{selectedProjectsDisplay}</span>
@@ -96,46 +92,36 @@ export function InvoiceProjectFilter({
 						</PopoverTrigger>
 						<PopoverContent className="w-[400px] p-0" align="start">
 							<div className="p-3">
-								<div className="mb-2 flex items-center justify-between">
+								<div className="mb-2">
 									<span className="text-sm font-medium">Välj projekt</span>
-									<div className="flex gap-2">
-										<Button
-											type="button"
-											variant="ghost"
-											size="sm"
-											onClick={selectAllProjects}
-											className="h-7 text-xs"
-										>
-											Välj alla
-										</Button>
-										<Button
-											type="button"
-											variant="ghost"
-											size="sm"
-											onClick={deselectAllProjects}
-											className="h-7 text-xs"
-										>
-											Avmarkera alla
-										</Button>
-									</div>
 								</div>
 								<div className="max-h-[300px] overflow-y-auto">
-									<div className="space-y-2">
+									<div className="space-y-1">
 										{projects.map((project) => {
-											const isSelected = selectedProjectIds.includes(project.id);
+											const isSelected = selectedProjectId === project.id;
 											return (
 												<div
 													key={project.id}
-													className="flex items-center space-x-2 rounded-md p-2 hover:bg-accent"
+													onClick={() => selectProject(project.id)}
+													className={cn(
+														"flex items-center space-x-2 rounded-md p-2 cursor-pointer hover:bg-accent",
+														isSelected && "bg-accent"
+													)}
 												>
-													<Checkbox
-														id={`project-${project.id}`}
-														checked={isSelected}
-														onCheckedChange={() => toggleProject(project.id)}
-													/>
+													<div
+														className={cn(
+															"flex h-4 w-4 items-center justify-center rounded-full border-2",
+															isSelected
+																? "border-primary bg-primary"
+																: "border-input"
+														)}
+													>
+														{isSelected && (
+															<div className="h-2 w-2 rounded-full bg-primary-foreground" />
+														)}
+													</div>
 													<label
-														htmlFor={`project-${project.id}`}
-														className="flex-1 cursor-pointer text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+														className="flex-1 cursor-pointer text-sm leading-none"
 													>
 														{project.projectNumber ? (
 															<span>
@@ -160,7 +146,11 @@ export function InvoiceProjectFilter({
 				<div className="flex flex-1 gap-3">
 					<div className="flex-1 space-y-2">
 						<Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-							<Calendar className="h-3 w-3" />
+							{isFetchingDateRange ? (
+								<Loader2 className="h-3 w-3 animate-spin" />
+							) : (
+								<Calendar className="h-3 w-3" />
+							)}
 							Från *
 						</Label>
 						<Input
@@ -168,11 +158,17 @@ export function InvoiceProjectFilter({
 							value={periodStart}
 							onChange={(e) => onPeriodStartChange(e.target.value)}
 							className="h-10"
+							disabled={isFetchingDateRange}
+							placeholder={isFetchingDateRange ? 'Hämtar...' : undefined}
 						/>
 					</div>
 					<div className="flex-1 space-y-2">
 						<Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-							<Calendar className="h-3 w-3" />
+							{isFetchingDateRange ? (
+								<Loader2 className="h-3 w-3 animate-spin" />
+							) : (
+								<Calendar className="h-3 w-3" />
+							)}
 							Till *
 						</Label>
 						<Input
@@ -181,6 +177,8 @@ export function InvoiceProjectFilter({
 							onChange={(e) => onPeriodEndChange(e.target.value)}
 							className="h-10"
 							min={periodStart}
+							disabled={isFetchingDateRange}
+							placeholder={isFetchingDateRange ? 'Hämtar...' : undefined}
 						/>
 					</div>
 				</div>
