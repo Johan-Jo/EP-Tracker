@@ -1139,7 +1139,23 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 																return;
 															}
 															window.open(
-																`/api/exports/invoice/pdf?projectId=${selectedProject}&start=${periodStart}&end=${periodEnd}`,
+																`/invoices/print?projectId=${encodeURIComponent(selectedProject)}&start=${encodeURIComponent(periodStart)}&end=${encodeURIComponent(periodEnd)}`,
+																'_blank'
+															);
+														}}
+														disabled={!invoiceBasis.locked}
+													>
+														Förhandsvisa
+													</Button>
+													<Button
+														variant='outline'
+														onClick={() => {
+															if (!invoiceBasis.locked) {
+																toast.error('Lås underlaget innan export');
+																return;
+															}
+															window.open(
+																`/api/invoices/pdf?projectId=${encodeURIComponent(selectedProject)}&start=${encodeURIComponent(periodStart)}&end=${encodeURIComponent(periodEnd)}`,
 																'_blank'
 															);
 														}}
