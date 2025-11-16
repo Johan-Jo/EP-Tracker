@@ -218,9 +218,8 @@ export async function POST(request: NextRequest, context: RouteContext<RoutePara
 		const lines: InvoiceBasisLine[] = basis.lines_json?.lines ?? [];
 		const totals = basis.totals ?? calculateTotalsFromLines(lines, currency);
 
-		const ocrRef =
-			parseString(body.ocr_ref ?? body.ocrRef, 'ocr_ref') ??
-			generateOcrMod10(`${invoiceNumber}${basis.project_id.replace(/[^0-9]/g, '').slice(-4) || '0000'}`);
+		// OCR är avstängt: använd endast värde om det uttryckligen skickas, generera aldrig automatiskt
+		const ocrRef = parseString(body.ocr_ref ?? body.ocrRef, 'ocr_ref') ?? null;
 
 		const signaturePayload = {
 			project_id: basis.project_id,

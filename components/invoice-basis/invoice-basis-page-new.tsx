@@ -96,7 +96,6 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 		invoice_date: '',
 		due_date: '',
 		payment_terms_days: '',
-		ocr_ref: '',
 		our_ref: '',
 		your_ref: '',
 		currency: 'SEK',
@@ -214,7 +213,6 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 			invoice_date: invoiceBasis.invoice_date ?? '',
 			due_date: invoiceBasis.due_date ?? '',
 			payment_terms_days: invoiceBasis.payment_terms_days?.toString() ?? '',
-			ocr_ref: invoiceBasis.ocr_ref ?? '',
 			our_ref: invoiceBasis.our_ref ?? '',
 			your_ref: invoiceBasis.your_ref ?? '',
 			currency: invoiceBasis.currency ?? 'SEK',
@@ -249,7 +247,6 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 					invoice_date: headerState.invoice_date || null,
 					due_date: headerState.due_date || null,
 					payment_terms_days: headerState.payment_terms_days ? Number(headerState.payment_terms_days) : null,
-					ocr_ref: headerState.ocr_ref || null,
 					our_ref: headerState.our_ref || null,
 					your_ref: headerState.your_ref || null,
 					currency: headerState.currency || 'SEK',
@@ -327,7 +324,6 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 					currency: headerState.currency || undefined,
 					reverse_charge_building: headerState.reverse_charge_building,
 					rot_rut_flag: headerState.rot_rut_flag,
-					ocr_ref: headerState.ocr_ref || undefined,
 				},
 			});
 			toast.success('Fakturaunderlaget är låst');
@@ -671,16 +667,6 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 												/>
 											</div>
 											<div className='space-y-2'>
-												<label className='text-sm font-medium text-muted-foreground'>OCR</label>
-												<Input
-													value={headerState.ocr_ref}
-													onChange={(event) =>
-														setHeaderState((state) => ({ ...state, ocr_ref: event.target.value }))
-													}
-													disabled={invoiceBasis.locked || updateHeader.isPending || !canEdit}
-												/>
-											</div>
-											<div className='space-y-2'>
 												<label className='text-sm font-medium text-muted-foreground'>Vår referens</label>
 												<Input
 													value={headerState.our_ref}
@@ -766,7 +752,6 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 															invoice_date: invoiceBasis.invoice_date ?? '',
 															due_date: invoiceBasis.due_date ?? '',
 															payment_terms_days: invoiceBasis.payment_terms_days?.toString() ?? '',
-															ocr_ref: invoiceBasis.ocr_ref ?? '',
 															our_ref: invoiceBasis.our_ref ?? '',
 															your_ref: invoiceBasis.your_ref ?? '',
 															currency: invoiceBasis.currency ?? 'SEK',

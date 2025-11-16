@@ -39,6 +39,7 @@ interface InvoiceBasisRecord {
 interface OrganizationInfo {
     name: string;
     org_number?: string | null;
+    phone?: string | null;
     address?: string | null;
     postal_code?: string | null;
     city?: string | null;
@@ -48,6 +49,7 @@ interface OrganizationInfo {
     bic?: string | null;
     logo_url?: string | null;
     vat_number?: string | null;
+    vat_registered?: boolean | null;
 }
 
 // Helper to format currency
@@ -234,10 +236,7 @@ export async function generateInvoicePDF(
             doc.text(`Betalvillkor: ${paymentTerms} dagar`, headerInfoX, infoY);
             infoY += 12;
 
-            if (invoiceBasis.ocr_ref) {
-                doc.text(`OCR: ${invoiceBasis.ocr_ref}`, headerInfoX, infoY);
-                infoY += 12;
-            }
+            // OCR visas inte längre i headern (inaktiverat)
 
             // ============================================================
             // Seller / Buyer blocks
@@ -272,6 +271,16 @@ export async function generateInvoicePDF(
 
             if (organization.vat_number) {
                 doc.text(`Momsreg.nr: ${organization.vat_number}`, contentLeft, sellerY);
+                sellerY += 12;
+            }
+
+            if (organization.phone) {
+                doc.text(`Telefon: ${organization.phone}`, contentLeft, sellerY);
+                sellerY += 12;
+            }
+
+            if (organization.vat_registered) {
+                doc.text('Godkänd för F-skatt', contentLeft, sellerY);
                 sellerY += 12;
             }
 
@@ -628,12 +637,7 @@ export async function generateInvoicePDF(
                 paymentLines.push(`BIC/SWIFT: ${organization.bic}`);
             }
             
-            // Show OCR reference if available
-            if (invoiceBasis.ocr_ref) {
-                paymentLines.push(`OCR-nummer: ${invoiceBasis.ocr_ref}`);
-            }
-            
-            // Standard instruction
+            // Standard instruktion (utan OCR-koppling)
             paymentLines.push('Ange fakturanummer som referens vid betalning.');
 
             // Display payment information

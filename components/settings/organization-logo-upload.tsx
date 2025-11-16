@@ -36,10 +36,10 @@ export function OrganizationLogoUpload({ orgId, logoUrl, onChange }: Organizatio
 
 		try {
 			const ext = file.name.split('.').pop() || 'png';
-			const path = `${orgId}/logo.${ext}`;
+			const path = `org-logos/${orgId}/logo.${ext}`;
 
-			// Upload to dedicated organization-logos bucket (must exist in Supabase)
-			const { data, error } = await supabase.storage.from('organization-logos').upload(path, file, {
+			// Upload to receipts bucket (reuses existing working policies), in a dedicated org-logos prefix
+			const { data, error } = await supabase.storage.from('receipts').upload(path, file, {
 				cacheControl: '3600',
 				upsert: true,
 			});
@@ -52,7 +52,7 @@ export function OrganizationLogoUpload({ orgId, logoUrl, onChange }: Organizatio
 
 			const {
 				data: { publicUrl },
-			} = supabase.storage.from('organization-logos').getPublicUrl(data.path);
+			} = supabase.storage.from('receipts').getPublicUrl(data.path);
 
 			onChange(publicUrl || null);
 		} finally {
