@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { AddressAutocomplete } from '@/components/address/address-autocomplete';
+import { OrganizationLogoUpload } from '@/components/settings/organization-logo-upload';
 
 type BreakRow = {
 	id: string;
@@ -44,6 +45,7 @@ interface OrganizationPageNewProps {
 		plusgiro: string | null;
 		iban: string | null;
 		bic: string | null;
+		logo_url?: string | null;
 		created_at: string;
 	};
 }
@@ -66,6 +68,7 @@ type OrganizationUpdatePayload = {
 	plusgiro?: string | null;
 	iban?: string | null;
 	bic?: string | null;
+	logoUrl?: string | null;
 };
 
 const generateId = () =>
@@ -152,6 +155,7 @@ export function OrganizationPageNew({ organization }: OrganizationPageNewProps) 
 	const [plusgiro, setPlusgiro] = useState(organization.plusgiro ?? '');
 	const [iban, setIban] = useState(organization.iban ?? '');
 	const [bic, setBic] = useState(organization.bic ?? '');
+	const [logoUrl, setLogoUrl] = useState<string | null>(organization.logo_url ?? null);
 
 	const initialBreaks = useMemo(() => formatBreaks(organization.standard_breaks), [organization.standard_breaks]);
 	const [breaks, setBreaks] = useState<BreakRow[]>(initialBreaks);
@@ -332,6 +336,7 @@ const handleAddressSelect = (selected: {
 			plusgiro: plusgiro.trim() || null,
 			iban: iban.trim() || null,
 			bic: bic.trim() || null,
+			logoUrl: logoUrl ?? null,
 		};
 
 		updateOrganizationMutation.mutate(payload);
@@ -431,6 +436,19 @@ const handleAddressSelect = (selected: {
 									readOnly
 									placeholder='Stockholm'
 								/>
+							</div>
+						</div>
+
+						<div className='mt-6 grid grid-cols-1 md:grid-cols-[auto,1fr] gap-5 items-start'>
+							<div className='space-y-2'>
+								<Label>Logotyp</Label>
+								<p className='text-xs text-muted-foreground max-w-xs'>
+									Valfri logotyp som visas på fakturaunderlag (PDF). Rekommenderat format är PNG eller SVG, minst 200×200
+									pixlar.
+								</p>
+							</div>
+							<div className='max-w-sm'>
+								<OrganizationLogoUpload orgId={organization.id} logoUrl={logoUrl} onChange={setLogoUrl} />
 							</div>
 						</div>
 

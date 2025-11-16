@@ -33,6 +33,7 @@ export async function PATCH(request: NextRequest) {
 			plusgiro,
 			iban,
 			bic,
+			logoUrl,
 		} = body;
 
 		if (!name || !name.trim()) {
@@ -75,6 +76,7 @@ export async function PATCH(request: NextRequest) {
 			plusgiro: plusgiro || null,
 			iban: iban || null,
 			bic: bic || null,
+			logo_url: logoUrl || null,
 			updated_at: new Date().toISOString(),
 		};
 

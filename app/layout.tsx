@@ -37,7 +37,28 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang='sv'>
+		<html lang='sv' suppressHydrationWarning>
+			<head>
+				{/* Förhindra vit flash genom att sätta tema innan sidan renderas */}
+				<script
+					// eslint-disable-next-line react/no-danger
+					dangerouslySetInnerHTML={{
+						__html: `(() => {
+  try {
+    const stored = window.localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = stored === 'light' || stored === 'dark' ? stored : (prefersDark ? 'dark' : 'light');
+    const root = document.documentElement;
+    const isDark = theme === 'dark';
+    root.classList.toggle('dark', isDark);
+    root.style.colorScheme = isDark ? 'dark' : 'light';
+  } catch (e) {
+    // ignore
+  }
+})();`,
+					}}
+				/>
+			</head>
 			<body className={`${inter.variable} font-sans antialiased`}>
 				<ThemeProvider>
 					<ZodInit />

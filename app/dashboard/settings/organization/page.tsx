@@ -48,6 +48,7 @@ export default async function OrganizationSettingsPage() {
 				plusgiro: organization.plusgiro ?? null,
 				iban: organization.iban ?? null,
 				bic: organization.bic ?? null,
+				logo_url: organization.logo_url ?? null,
 				created_at: organization.created_at,
 			}}
 		/>

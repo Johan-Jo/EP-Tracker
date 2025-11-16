@@ -46,6 +46,8 @@ interface OrganizationInfo {
     plusgiro?: string | null;
     iban?: string | null;
     bic?: string | null;
+    logo_url?: string | null;
+    vat_number?: string | null;
 }
 
 // Helper to format currency
@@ -55,6 +57,14 @@ function formatCurrency(amount: number): string {
         currency: 'SEK',
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
+    }).format(amount);
+}
+
+// Helper to format generic numbers (e.g. quantities) with Swedish locale
+function formatNumber(amount: number, decimals = 2): string {
+    return new Intl.NumberFormat('sv-SE', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
     }).format(amount);
 }
 
@@ -87,6 +97,51 @@ function calculateLineAmounts(line: InvoiceBasisLine): {
     return { amountExclVAT, amountVAT, amountInclVAT };
 }
 
+// Build a safe, Swedish-style filename for invoice PDFs
+export function buildInvoicePdfFilename(
+    invoiceBasis: InvoiceBasisRecord,
+    customerName?: string | null
+): string {
+    const isCredit = (invoiceBasis.totals?.total_inc_vat ?? 0) < 0;
+    const prefix = isCredit ? 'Kreditfaktura_' : 'Faktura_';
+
+    const seriesPart = invoiceBasis.invoice_series ? `${invoiceBasis.invoice_series}-` : '';
+    const invoiceNoRaw = invoiceBasis.invoice_number
+        ? `${seriesPart}${invoiceBasis.invoice_number}`
+        : `${invoiceBasis.period_start}_${invoiceBasis.period_end}`;
+
+    // Slugify customer name
+    let slug = (customerName || '').toLowerCase();
+    // Normalize and strip accents
+    slug = slug
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/å/g, 'a')
+        .replace(/ä/g, 'a')
+        .replace(/ö/g, 'o');
+
+    slug = slug
+        .replace(/[^a-z0-9]+/g, '-') // non-allowed chars → dash
+        .replace(/-+/g, '-') // collapse multiple
+        .replace(/^-|-$/g, ''); // trim dashes
+
+    if (!slug) slug = 'kund';
+    if (slug.length > 30) slug = slug.slice(0, 30).replace(/-+$/g, '');
+
+    // Date part YYYYMMDD from invoice_date or period_end
+    const dateSource = invoiceBasis.invoice_date || invoiceBasis.period_end;
+    const date = new Date(dateSource);
+    const yyyy = date.getFullYear().toString().padStart(4, '0');
+    const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+    const dd = date.getDate().toString().padStart(2, '0');
+    const datePart = `${yyyy}${mm}${dd}`;
+
+    // Sanitize invoice number for filename (ASCII, no spaces)
+    const safeInvoiceNo = invoiceNoRaw.replace(/[^A-Za-z0-9-_]/g, '_');
+
+    return `${prefix}${safeInvoiceNo}_${slug}_${datePart}.pdf`;
+}
+
 export async function generateInvoicePDF(
     lines: InvoiceBasisLine[],
     diarySummaries: DiarySummary[],
@@ -94,11 +149,11 @@ export async function generateInvoicePDF(
     organization: OrganizationInfo,
     projectName: string
 ): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         try {
             const doc = new PDFDocument({
                 size: 'A4',
-                margins: { top: 50, bottom: 50, left: 50, right: 50 },
+                margins: { top: 60, bottom: 60, left: 50, right: 50 },
             });
 
             const buffers: Buffer[] = [];
@@ -111,142 +166,239 @@ export async function generateInvoicePDF(
 
             // Colors
             const primaryColor = '#1a1a1a';
-            const secondaryColor = '#666666';
+            const secondaryColor = '#555555';
             const borderColor = '#e0e0e0';
 
-            // Header - Company info
-            doc.fontSize(20).font('Helvetica-Bold').fillColor(primaryColor);
-            doc.text(organization.name, 50, 50);
+            // ============================================================
+            // Header: Logo + Fakturainformation
+            // ============================================================
+            const pageWidth = doc.page.width;
+            const contentLeft = 50;
+            const contentRight = pageWidth - 50;
 
-            if (organization.org_number) {
-                doc.fontSize(10).font('Helvetica').fillColor(secondaryColor);
-                doc.text(`Org.nr: ${organization.org_number}`, 50, 75);
-            }
+            let headerTopY = 60;
 
-            // Company address
-            if (organization.address) {
-                doc.fontSize(9).font('Helvetica').fillColor(secondaryColor);
-                let addressY = 95;
-                doc.text(organization.address, 50, addressY);
-                if (organization.postal_code && organization.city) {
-                    addressY += 12;
-                    doc.text(`${organization.postal_code} ${organization.city}`, 50, addressY);
+            // Left: logo or org-name
+            let logoBoxWidth = 120;
+            let logoBoxHeight = 60;
+            let logoRendered = false;
+
+            if (organization.logo_url) {
+                try {
+                    const response = await fetch(organization.logo_url);
+                    if (response.ok) {
+                        const arrayBuffer = await response.arrayBuffer();
+                        const buffer = Buffer.from(arrayBuffer);
+                        doc.image(buffer, contentLeft, headerTopY, {
+                            fit: [logoBoxWidth, logoBoxHeight],
+                        });
+                        logoRendered = true;
+                    }
+                } catch {
+                    // Silent fallback to text header below
                 }
             }
 
-            // Invoice header (right side)
-            doc.fontSize(16).font('Helvetica-Bold').fillColor(primaryColor);
-            const invoiceTitle = invoiceBasis.invoice_series && invoiceBasis.invoice_number
-                ? `FAKTURA ${invoiceBasis.invoice_series} ${invoiceBasis.invoice_number}`
-                : 'FAKTURA';
-            // Calculate width and position to prevent line breaks
-            const invoiceTitleWidth = doc.widthOfString(invoiceTitle);
-            const invoiceTitleX = doc.page.width - 50 - invoiceTitleWidth;
-            // Use text without width option to prevent wrapping - just position it
-            doc.text(invoiceTitle, invoiceTitleX, 50);
+            if (!logoRendered) {
+                doc.fontSize(18).font('Helvetica-Bold').fillColor(primaryColor);
+                doc.text(organization.name, contentLeft, headerTopY);
+            }
 
-            // Invoice details (right side)
-            let detailY = 75;
+            // Right: FAKTURA + fakturainfo
+            const headerInfoX = pageWidth - 220;
+            doc.fontSize(20).font('Helvetica-Bold').fillColor(primaryColor);
+            doc.text('FAKTURA', headerInfoX, headerTopY);
+
+            let infoY = headerTopY + 26;
             doc.fontSize(9).font('Helvetica').fillColor(secondaryColor);
 
+            const invoiceNo =
+                (invoiceBasis.invoice_series ? `${invoiceBasis.invoice_series} ` : '') +
+                (invoiceBasis.invoice_number ?? '');
+            if (invoiceNo.trim()) {
+                doc.text(`Fakturanummer: ${invoiceNo.trim()}`, headerInfoX, infoY);
+                infoY += 12;
+            }
+
             if (invoiceBasis.invoice_date) {
-                doc.text(`Fakturadatum: ${formatDate(invoiceBasis.invoice_date)}`, doc.page.width - 200, detailY);
-                detailY += 12;
+                doc.text(`Fakturadatum: ${formatDate(invoiceBasis.invoice_date)}`, headerInfoX, infoY);
+                infoY += 12;
             }
 
             if (invoiceBasis.due_date) {
-                doc.text(`Förfallodatum: ${formatDate(invoiceBasis.due_date)}`, doc.page.width - 200, detailY);
-                detailY += 12;
+                doc.text(`Förfallodatum: ${formatDate(invoiceBasis.due_date)}`, headerInfoX, infoY);
+                infoY += 12;
             }
 
-            if (invoiceBasis.payment_terms_days) {
-                doc.text(`Betalvillkor: ${invoiceBasis.payment_terms_days} dagar`, doc.page.width - 200, detailY);
-                detailY += 12;
-            }
+            const paymentTerms = invoiceBasis.payment_terms_days ?? 30;
+            doc.text(`Betalvillkor: ${paymentTerms} dagar`, headerInfoX, infoY);
+            infoY += 12;
 
             if (invoiceBasis.ocr_ref) {
-                doc.text(`OCR: ${invoiceBasis.ocr_ref}`, doc.page.width - 200, detailY);
-                detailY += 12;
+                doc.text(`OCR: ${invoiceBasis.ocr_ref}`, headerInfoX, infoY);
+                infoY += 12;
             }
 
-            // Customer address
-            let customerY = 150;
-            if (invoiceBasis.invoice_address_json && typeof invoiceBasis.invoice_address_json === 'object') {
-                const invoiceAddr = invoiceBasis.invoice_address_json as Record<string, unknown>;
-                
-                doc.fontSize(10).font('Helvetica-Bold').fillColor(primaryColor);
-                if (invoiceAddr.name) {
-                    doc.text(String(invoiceAddr.name), 50, customerY);
-                    customerY += 15;
-                }
+            // ============================================================
+            // Seller / Buyer blocks
+            // ============================================================
+            let blockTop = headerTopY + Math.max(logoBoxHeight, infoY - headerTopY) + 20;
 
-                doc.fontSize(9).font('Helvetica').fillColor(secondaryColor);
-                if (invoiceAddr.street) {
-                    doc.text(String(invoiceAddr.street), 50, customerY);
-                    customerY += 12;
-                }
-                if (invoiceAddr.zip && invoiceAddr.city) {
-                    doc.text(`${invoiceAddr.zip} ${invoiceAddr.city}`, 50, customerY);
-                    customerY += 12;
-                }
-                if (invoiceAddr.country) {
-                    doc.text(String(invoiceAddr.country), 50, customerY);
-                    customerY += 12;
-                }
-                if (invoiceAddr.org_no) {
-                    doc.text(`Org.nr: ${invoiceAddr.org_no}`, 50, customerY);
-                    customerY += 12;
-                }
+            const columnWidth = (contentRight - contentLeft) / 2 - 10;
+
+            // Seller (our org)
+            doc.fontSize(10).font('Helvetica-Bold').fillColor(primaryColor);
+            doc.text('Säljare', contentLeft, blockTop);
+            let sellerY = blockTop + 14;
+
+            doc.fontSize(9).font('Helvetica').fillColor(primaryColor);
+            doc.text(organization.name, contentLeft, sellerY);
+            sellerY += 12;
+            doc.fontSize(9).font('Helvetica').fillColor(secondaryColor);
+
+            if (organization.address) {
+                doc.text(organization.address, contentLeft, sellerY);
+                sellerY += 12;
+            }
+            if (organization.postal_code && organization.city) {
+                doc.text(`${organization.postal_code} ${organization.city}`, contentLeft, sellerY);
+                sellerY += 12;
             }
 
-            // References
-            let refY = customerY + 20;
-            if (invoiceBasis.our_ref || invoiceBasis.your_ref) {
-                doc.fontSize(9).font('Helvetica').fillColor(secondaryColor);
-                if (invoiceBasis.our_ref) {
-                    doc.text(`Vårt ref: ${invoiceBasis.our_ref}`, 50, refY);
-                    refY += 12;
-                }
-                if (invoiceBasis.your_ref) {
-                    doc.text(`Ert ref: ${invoiceBasis.your_ref}`, 50, refY);
-                    refY += 12;
-                }
+            if (organization.org_number) {
+                doc.text(`Org.nr: ${organization.org_number}`, contentLeft, sellerY);
+                sellerY += 12;
             }
 
-            // Project info
+            if (organization.vat_number) {
+                doc.text(`Momsreg.nr: ${organization.vat_number}`, contentLeft, sellerY);
+                sellerY += 12;
+            }
+
+            // Buyer (customer)
+            const buyerX = contentLeft + columnWidth + 20;
+            doc.fontSize(10).font('Helvetica-Bold').fillColor(primaryColor);
+            doc.text('Kund', buyerX, blockTop);
+            let buyerY = blockTop + 14;
+
+            const invoiceAddr =
+                invoiceBasis.invoice_address_json && typeof invoiceBasis.invoice_address_json === 'object'
+                    ? (invoiceBasis.invoice_address_json as Record<string, unknown>)
+                    : null;
+
+            doc.fontSize(9).font('Helvetica').fillColor(primaryColor);
+            if (invoiceAddr && invoiceAddr.name) {
+                doc.text(String(invoiceAddr.name), buyerX, buyerY);
+                buyerY += 12;
+            }
+            doc.fontSize(9).font('Helvetica').fillColor(secondaryColor);
+            if (invoiceAddr && invoiceAddr.street) {
+                doc.text(String(invoiceAddr.street), buyerX, buyerY);
+                buyerY += 12;
+            }
+            if (invoiceAddr && invoiceAddr.zip && invoiceAddr.city) {
+                doc.text(`${invoiceAddr.zip} ${invoiceAddr.city}`, buyerX, buyerY);
+                buyerY += 12;
+            }
+            if (invoiceAddr && invoiceAddr.country) {
+                doc.text(String(invoiceAddr.country), buyerX, buyerY);
+                buyerY += 12;
+            }
+            if (invoiceAddr && invoiceAddr.org_no) {
+                doc.text(`Org.nr: ${invoiceAddr.org_no}`, buyerX, buyerY);
+                buyerY += 12;
+            }
+
+            // Small info block (project, period, refs)
+            let infoBlockTop = Math.max(sellerY, buyerY) + 16;
+
+            doc.fontSize(9).font('Helvetica-Bold').fillColor(primaryColor);
+            doc.text('Fakturaöversikt', contentLeft, infoBlockTop);
+            let overviewY = infoBlockTop + 14;
+            doc.fontSize(9).font('Helvetica').fillColor(secondaryColor);
+
             if (projectName) {
-                doc.fontSize(9).font('Helvetica').fillColor(secondaryColor);
-                doc.text(`Projekt: ${projectName}`, 50, refY);
-                refY += 12;
+                doc.text(`Projekt: ${projectName}`, contentLeft, overviewY);
+                overviewY += 12;
             }
 
-            // Period
-            doc.text(`Period: ${formatDate(invoiceBasis.period_start)} - ${formatDate(invoiceBasis.period_end)}`, 50, refY);
+            const periodText = `${formatDate(invoiceBasis.period_start)} – ${formatDate(invoiceBasis.period_end)}`;
+            doc.text(`Period: ${periodText}`, contentLeft, overviewY);
+            overviewY += 12;
 
-            // Line items table
-            let tableY = refY + 30;
+            if (invoiceBasis.our_ref) {
+                doc.text(`Vår referens: ${invoiceBasis.our_ref}`, contentLeft, overviewY);
+                overviewY += 12;
+            }
+            if (invoiceBasis.your_ref) {
+                doc.text(`Er referens: ${invoiceBasis.your_ref}`, contentLeft, overviewY);
+                overviewY += 12;
+            }
+
+            // ============================================================
+            // Line items table (Swedish layout)
+            // ============================================================
+            let tableY = overviewY + 24;
             const tableTop = tableY;
             const tableLeft = 50;
             const tableWidth = doc.page.width - 100;
             const colWidths = {
-                description: tableWidth * 0.4,
+                description: tableWidth * 0.38,
                 quantity: tableWidth * 0.1,
                 unit: tableWidth * 0.1,
-                unitPrice: tableWidth * 0.15,
-                total: tableWidth * 0.15,
+                unitPrice: tableWidth * 0.16,
+                vatRate: tableWidth * 0.08,
+                total: tableWidth * 0.18,
             };
 
-            // Table header
-            doc.fontSize(9).font('Helvetica-Bold').fillColor(primaryColor);
-            doc.text('Beskrivning', tableLeft, tableY);
-            doc.text('Antal', tableLeft + colWidths.description, tableY, { width: colWidths.quantity, align: 'right' });
-            doc.text('Enhet', tableLeft + colWidths.description + colWidths.quantity, tableY, { width: colWidths.unit, align: 'center' });
-            doc.text('Á-pris', tableLeft + colWidths.description + colWidths.quantity + colWidths.unit, tableY, { width: colWidths.unitPrice, align: 'right' });
-            doc.text('Totalt', tableLeft + colWidths.description + colWidths.quantity + colWidths.unit + colWidths.unitPrice, tableY, { width: colWidths.total, align: 'right' });
+            const drawTableHeader = () => {
+                doc.fontSize(9).font('Helvetica-Bold').fillColor(primaryColor);
+                doc.text('Beskrivning', tableLeft, tableY);
+                doc.text('Antal', tableLeft + colWidths.description, tableY, {
+                    width: colWidths.quantity,
+                    align: 'right',
+                });
+                doc.text(
+                    'Enhet',
+                    tableLeft + colWidths.description + colWidths.quantity,
+                    tableY,
+                    { width: colWidths.unit, align: 'center' },
+                );
+                doc.text(
+                    'Á-pris',
+                    tableLeft + colWidths.description + colWidths.quantity + colWidths.unit,
+                    tableY,
+                    { width: colWidths.unitPrice, align: 'right' },
+                );
+                doc.text(
+                    'Moms %',
+                    tableLeft +
+                        colWidths.description +
+                        colWidths.quantity +
+                        colWidths.unit +
+                        colWidths.unitPrice,
+                    tableY,
+                    { width: colWidths.vatRate, align: 'right' },
+                );
+                doc.text(
+                    'Belopp exkl. moms',
+                    tableLeft +
+                        colWidths.description +
+                        colWidths.quantity +
+                        colWidths.unit +
+                        colWidths.unitPrice +
+                        colWidths.vatRate,
+                    tableY,
+                    { width: colWidths.total, align: 'right' },
+                );
 
-            tableY += 20;
-            doc.moveTo(tableLeft, tableY).lineTo(tableLeft + tableWidth, tableY).stroke(borderColor);
-            tableY += 10;
+                tableY += 20;
+                doc.moveTo(tableLeft, tableY).lineTo(tableLeft + tableWidth, tableY).stroke(borderColor);
+                tableY += 10;
+            };
+
+            // Initial header
+            drawTableHeader();
 
             // Table rows (non-diary lines)
             doc.fontSize(9).font('Helvetica').fillColor(primaryColor);
@@ -268,17 +420,54 @@ export async function generateInvoicePDF(
                 const descriptionHeight = doc.heightOfString(description, { width: colWidths.description });
                 
                 doc.text(description, tableLeft, tableY, { width: colWidths.description });
-                doc.text((line.quantity || 0).toFixed(2), tableLeft + colWidths.description, tableY, { width: colWidths.quantity, align: 'right' });
-                doc.text(line.unit || '', tableLeft + colWidths.description + colWidths.quantity, tableY, { width: colWidths.unit, align: 'center' });
-                doc.text(formatCurrency(line.unit_price || 0), tableLeft + colWidths.description + colWidths.quantity + colWidths.unit, tableY, { width: colWidths.unitPrice, align: 'right' });
-                doc.text(formatCurrency(amountExclVAT), tableLeft + colWidths.description + colWidths.quantity + colWidths.unit + colWidths.unitPrice, tableY, { width: colWidths.total, align: 'right' });
+                doc.text(
+                    formatNumber(line.quantity || 0),
+                    tableLeft + colWidths.description,
+                    tableY,
+                    { width: colWidths.quantity, align: 'right' },
+                );
+                doc.text(
+                    line.unit || '',
+                    tableLeft + colWidths.description + colWidths.quantity,
+                    tableY,
+                    { width: colWidths.unit, align: 'center' },
+                );
+                doc.text(
+                    formatCurrency(line.unit_price || 0),
+                    tableLeft + colWidths.description + colWidths.quantity + colWidths.unit,
+                    tableY,
+                    { width: colWidths.unitPrice, align: 'right' },
+                );
+                const vatRate = line.vat_rate || 0;
+                doc.text(
+                    `${formatNumber(vatRate, 0)} %`,
+                    tableLeft +
+                        colWidths.description +
+                        colWidths.quantity +
+                        colWidths.unit +
+                        colWidths.unitPrice,
+                    tableY,
+                    { width: colWidths.vatRate, align: 'right' },
+                );
+                doc.text(
+                    formatCurrency(amountExclVAT),
+                    tableLeft +
+                        colWidths.description +
+                        colWidths.quantity +
+                        colWidths.unit +
+                        colWidths.unitPrice +
+                        colWidths.vatRate,
+                    tableY,
+                    { width: colWidths.total, align: 'right' },
+                );
 
                 tableY += Math.max(descriptionHeight, 15) + 5;
 
                 // Check if we need a new page
                 if (tableY > doc.page.height - 150) {
                     doc.addPage();
-                    tableY = 50;
+                    tableY = 60;
+                    drawTableHeader();
                 }
             }
 
@@ -294,9 +483,9 @@ export async function generateInvoicePDF(
 
                 doc.fontSize(9).font('Helvetica').fillColor(secondaryColor);
                 for (const diary of diarySummaries) {
-                    const date = formatDate(diary.date);
+                    const date = diary.date ? String(diary.date).slice(0, 10) : '';
                     const summary = diary.summary.replace(/[\r\n]+/g, ' ').trim();
-                    const diaryText = `${date}: ${summary}`;
+                    const diaryText = `${date} – ${summary}`;
                     const diaryHeight = doc.heightOfString(diaryText, { width: tableWidth });
                     
                     doc.text(diaryText, tableLeft, tableY, { width: tableWidth });
@@ -317,17 +506,44 @@ export async function generateInvoicePDF(
 
             const totals = invoiceBasis.totals;
             if (totals && totals.per_vat_rate) {
-                // VAT breakdown
+                // VAT breakdown per rate
+                doc.fontSize(9).font('Helvetica-Bold').fillColor(primaryColor);
+                doc.text('Momsöversikt', tableLeft + tableWidth - 200, tableY, {
+                    width: 200,
+                    align: 'right',
+                });
+                tableY += 14;
+
                 doc.fontSize(9).font('Helvetica').fillColor(secondaryColor);
                 for (const [vatRateStr, vatData] of Object.entries(totals.per_vat_rate)) {
                     if (vatData.base > 0) {
                         const vatRate = parseFloat(vatRateStr);
-                        doc.text(`Exkl. moms (${vatRate}%):`, tableLeft + tableWidth - 200, tableY, { width: 150, align: 'right' });
-                        doc.text(formatCurrency(vatData.base), tableLeft + tableWidth - 50, tableY, { width: 50, align: 'right' });
+                        doc.text(
+                            `Exkl. moms (${vatRate}%):`,
+                            tableLeft + tableWidth - 200,
+                            tableY,
+                            { width: 150, align: 'right' },
+                        );
+                        doc.text(
+                            formatCurrency(vatData.base),
+                            tableLeft + tableWidth - 50,
+                            tableY,
+                            { width: 50, align: 'right' },
+                        );
                         tableY += 12;
 
-                        doc.text(`Moms (${vatRate}%):`, tableLeft + tableWidth - 200, tableY, { width: 150, align: 'right' });
-                        doc.text(formatCurrency(vatData.vat), tableLeft + tableWidth - 50, tableY, { width: 50, align: 'right' });
+                        doc.text(
+                            `Moms ${vatRate}%:`,
+                            tableLeft + tableWidth - 200,
+                            tableY,
+                            { width: 150, align: 'right' },
+                        );
+                        doc.text(
+                            formatCurrency(vatData.vat),
+                            tableLeft + tableWidth - 50,
+                            tableY,
+                            { width: 50, align: 'right' },
+                        );
                         tableY += 12;
                     }
                 }
@@ -340,29 +556,42 @@ export async function generateInvoicePDF(
 
             if (totals) {
                 doc.fontSize(10).font('Helvetica-Bold').fillColor(primaryColor);
-                // Calculate text width to prevent wrapping
-                const totalExVatLabel = 'Totalt exkl. moms:';
-                const totalExVatLabelWidth = doc.widthOfString(totalExVatLabel);
+
+                const totalExVatLabel = 'Summa exkl. moms:';
                 const totalExVatValue = formatCurrency(totals.total_ex_vat);
-                const totalExVatValueWidth = doc.widthOfString(totalExVatValue);
-                doc.text(totalExVatLabel, tableLeft + tableWidth - 200, tableY, { width: 150, align: 'right' });
-                doc.text(totalExVatValue, tableLeft + tableWidth - 50, tableY, { width: 50, align: 'right' });
+                doc.text(totalExVatLabel, tableLeft + tableWidth - 200, tableY, {
+                    width: 150,
+                    align: 'right',
+                });
+                doc.text(totalExVatValue, tableLeft + tableWidth - 50, tableY, {
+                    width: 50,
+                    align: 'right',
+                });
                 tableY += 15;
 
-                const totalVatLabel = 'Totalt moms:';
+                const totalVatLabel = 'Summa moms:';
                 const totalVatValue = formatCurrency(totals.total_vat);
-                doc.text(totalVatLabel, tableLeft + tableWidth - 200, tableY, { width: 150, align: 'right' });
-                doc.text(totalVatValue, tableLeft + tableWidth - 50, tableY, { width: 50, align: 'right' });
-                tableY += 15;
+                doc.text(totalVatLabel, tableLeft + tableWidth - 200, tableY, {
+                    width: 150,
+                    align: 'right',
+                });
+                doc.text(totalVatValue, tableLeft + tableWidth - 50, tableY, {
+                    width: 50,
+                    align: 'right',
+                });
+                tableY += 18;
 
                 doc.fontSize(12).font('Helvetica-Bold').fillColor(primaryColor);
-                // For the final total, ensure no wrapping by using a wider column
-                const totalIncVatLabel = 'Totalt inkl. moms:';
+                const totalIncVatLabel = 'Att betala (inkl. moms):';
                 const totalIncVatValue = formatCurrency(totals.total_inc_vat);
-                const totalIncVatValueWidth = doc.widthOfString(totalIncVatValue);
-                // Use wider column (60 instead of 50) to prevent wrapping
-                doc.text(totalIncVatLabel, tableLeft + tableWidth - 200, tableY, { width: 150, align: 'right' });
-                doc.text(totalIncVatValue, tableLeft + tableWidth - 60, tableY, { width: 60, align: 'right' });
+                doc.text(totalIncVatLabel, tableLeft + tableWidth - 200, tableY, {
+                    width: 150,
+                    align: 'right',
+                });
+                doc.text(totalIncVatValue, tableLeft + tableWidth - 60, tableY, {
+                    width: 60,
+                    align: 'right',
+                });
             }
 
             // Reverse charge building text
@@ -373,11 +602,11 @@ export async function generateInvoicePDF(
             }
 
             // Payment info
-            const paymentY = doc.page.height - 100;
+            const paymentY = doc.page.height - 110;
             doc.fontSize(9).font('Helvetica-Bold').fillColor(primaryColor);
-            doc.text('Betalningsinformation:', 50, paymentY);
+            doc.text('Betalningsinformation', 50, paymentY);
 
-            let paymentInfoY = paymentY + 15;
+            let paymentInfoY = paymentY + 14;
             doc.fontSize(9).font('Helvetica').fillColor(secondaryColor);
 
             // Display bank information from organization
@@ -404,14 +633,26 @@ export async function generateInvoicePDF(
                 paymentLines.push(`OCR-nummer: ${invoiceBasis.ocr_ref}`);
             }
             
+            // Standard instruction
+            paymentLines.push('Ange fakturanummer som referens vid betalning.');
+
             // Display payment information
-            if (paymentLines.length > 0) {
-                paymentLines.forEach((line, index) => {
-                    doc.text(line, 50, paymentInfoY + (index * 12));
-                });
-            } else {
-                doc.text('Kontakta oss för betalningsuppgifter.', 50, paymentInfoY);
-            }
+            paymentLines.forEach((line, index) => {
+                doc.text(line, 50, paymentInfoY + index * 12);
+            });
+
+            // Footer legal info
+            const footerY = doc.page.height - 40;
+            doc.moveTo(50, footerY).lineTo(doc.page.width - 50, footerY).stroke(borderColor);
+            doc.fontSize(8).font('Helvetica').fillColor(secondaryColor);
+
+            const seat = organization.city ? `Säte: ${organization.city}` : '';
+            const footerParts = [organization.name, organization.org_number ? `Org.nr ${organization.org_number}` : '', seat].filter(Boolean);
+            const footerText = footerParts.join(' – ');
+            doc.text(footerText, 50, footerY + 8, {
+                width: doc.page.width - 100,
+                align: 'center',
+            });
 
             // Finalize PDF
             doc.end();
@@ -426,14 +667,14 @@ export function generateInvoicePDFFilename(
     periodEnd: Date,
     invoiceNumber?: string
 ): string {
-    const start = periodStart.toISOString().split('T')[0];
-    const end = periodEnd.toISOString().split('T')[0];
-    
-    if (invoiceNumber) {
-        const safeInvoiceNo = invoiceNumber.replace(/[^a-zA-Z0-9-_]/g, '_');
-        return `faktura_${safeInvoiceNo}_${start}_${end}.pdf`;
-    }
-    
-    return `faktura_${start}_${end}.pdf`;
+    // Backwards-compatible helper kept for legacy callers.
+    const start = periodStart.toISOString().split('T')[0]?.replace(/-/g, '');
+    const end = periodEnd.toISOString().split('T')[0]?.replace(/-/g, '');
+
+    const safeInvoiceNo = invoiceNumber
+        ? invoiceNumber.replace(/[^a-zA-Z0-9-_]/g, '_')
+        : `${start}_${end}`;
+
+    return `Faktura_${safeInvoiceNo}_${end}.pdf`;
 }
 

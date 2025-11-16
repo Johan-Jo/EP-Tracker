@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
-import { generateInvoicePDF, generateInvoicePDFFilename } from '@/lib/exports/invoice-pdf';
+import { generateInvoicePDF, buildInvoicePdfFilename } from '@/lib/exports/invoice-pdf';
 import { InvoiceBasisLine } from '@/lib/jobs/invoice-basis-refresh';
 
 export async function GET(request: NextRequest) {
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
         // Fetch organization info (using actual database field names)
         const { data: organization, error: orgError } = await supabase
             .from('organizations')
-            .select('name, org_number, address, postal_code, city, bankgiro, plusgiro, iban, bic')
+            .select('name, org_number, address, postal_code, city, bankgiro, plusgiro, iban, bic, logo_url, vat_number')
             .eq('id', membership.org_id)
             .single();
 
@@ -103,11 +103,22 @@ export async function GET(request: NextRequest) {
             project.name
         );
 
-        const filename = generateInvoicePDFFilename(
-            new Date(periodStart),
-            new Date(periodEnd),
-            invoiceBasis.invoice_number || undefined
-        );
+        // Resolve customer name for filename (from snapshot or invoice address)
+        let customerName: string | null = null;
+        if (invoiceBasis.customer_snapshot && typeof invoiceBasis.customer_snapshot === 'object') {
+            const snap = invoiceBasis.customer_snapshot as any;
+            customerName =
+                snap.company_name ||
+                snap.name ||
+                [snap.first_name, snap.last_name].filter(Boolean).join(' ') ||
+                null;
+        }
+        if (!customerName && invoiceBasis.invoice_address_json && typeof invoiceBasis.invoice_address_json === 'object') {
+            const addr = invoiceBasis.invoice_address_json as any;
+            customerName = addr.name || null;
+        }
+
+        const filename = buildInvoicePdfFilename(invoiceBasis, customerName);
 
         // Track export batch
         await supabase.from('integration_batches').insert({

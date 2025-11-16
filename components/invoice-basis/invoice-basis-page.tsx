@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils';
 interface InvoiceBasisPageProps {
 	orgId: string;
 	projects: Array<{ id: string; name: string; projectNumber: string | null }>;
+	userRole?: 'admin' | 'foreman' | 'finance';
 }
 
 interface LineEditState {
@@ -71,7 +72,11 @@ function formatDefaultPeriodEnd(): string {
 	return format(sunday, 'yyyy-MM-dd');
 }
 
-export function InvoiceBasisPage({ projects }: InvoiceBasisPageProps) {
+// Legacy component - keeping for backwards compatibility
+// New step-based flow is in InvoiceBasisPageNew
+export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisPageProps) {
+	const canApprove = userRole === 'admin' || userRole === 'foreman';
+	const canEdit = userRole === 'admin';
 	const [selectedProject, setSelectedProject] = useState<string>(projects[0]?.id ?? '');
 	const [periodStart, setPeriodStart] = useState<string>(formatDefaultPeriodStart());
 	const [periodEnd, setPeriodEnd] = useState<string>(formatDefaultPeriodEnd());

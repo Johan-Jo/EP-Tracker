@@ -13,6 +13,7 @@ export type Organization = {
 	name: string;
 	created_at: string;
 	updated_at: string;
+	invoice_onboarding_completed_at?: string | null;
 };
 
 export type OrganizationFormData = z.infer<typeof organizationSchema>;
