@@ -12,7 +12,8 @@ export default async function SettingsPage() {
 
 	const isAdmin = membership?.role === 'admin';
 	const canManageUsers = membership?.role && ['admin', 'foreman'].includes(membership.role);
+	const canManageFortnox = membership?.role && ['admin', 'finance'].includes(membership.role);
 
-	return <SettingsPageNew isAdmin={isAdmin} canManageUsers={canManageUsers} />;
+	return <SettingsPageNew isAdmin={isAdmin} canManageUsers={canManageUsers} canManageFortnox={canManageFortnox} />;
 }
 
