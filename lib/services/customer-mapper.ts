@@ -31,15 +31,16 @@ export const prepareCustomerFields = (payload: CustomerPayload) => {
 		throw new Error('Ogiltigt organisationsnummer');
 	}
 
-	if (
-		(payload.type === 'PRIVATE' || payload.rot_enabled) &&
-		!normalizedPersonalId
-	) {
+	// PRIVATE customers require personal_identity_no only if ROT is enabled
+	// For regular PRIVATE customers (especially imported from Fortnox), personal_identity_no is optional
+	if (payload.rot_enabled && !normalizedPersonalId) {
 		if (!payload.personal_identity_no) {
-			throw new Error('Personnummer krävs för privatkund');
+			throw new Error('Personnummer krävs för ROT-verksamhet');
 		}
 		throw new Error('Ogiltigt personnummer');
 	}
+	// Note: PRIVATE customers without ROT can have null personal_identity_no
+	// This allows importing PRIVATE customers from Fortnox, which doesn't provide personal identity numbers
 
 	return {
 		type: payload.type,
@@ -100,6 +101,7 @@ export const buildCustomerInsert = ({
 	return {
 		org_id: orgId,
 		customer_no: payload.customer_no ?? generateCustomerNumber(),
+		fortnox_customer_number: toNullable(payload.fortnox_customer_number),
 		...base,
 		created_by: userId,
 		updated_by: userId,
@@ -119,6 +121,9 @@ export const buildCustomerUpdate = ({
 		...base,
 		...(payload.customer_no !== undefined
 			? { customer_no: payload.customer_no ?? null }
+			: {}),
+		...(payload.fortnox_customer_number !== undefined
+			? { fortnox_customer_number: toNullable(payload.fortnox_customer_number) }
 			: {}),
 		updated_by: userId,
 	};

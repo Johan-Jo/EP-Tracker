@@ -37,16 +37,54 @@ describe('customer-mapper', () => {
 		).toThrow('Organisationsnummer krävs för företagskund');
 	});
 
-	it('throws when personal identity number missing for private customer', () => {
-		expect(() =>
-			prepareCustomerFields(
-				parseCustomerPayload({
-					type: 'PRIVATE',
-					first_name: 'Anna',
-					last_name: 'Andersson',
-				})
-			)
-		).toThrow('Personnummer krävs för privatkund');
+	it('allows private customer without personal_identity_no (for Fortnox imports)', () => {
+		const payload = parseCustomerPayload({
+			type: 'PRIVATE',
+			first_name: 'Anna',
+			last_name: 'Andersson',
+			invoice_email: 'anna@example.com',
+			invoice_address_street: 'Testgatan 1',
+			invoice_address_zip: '12345',
+			invoice_address_city: 'Stockholm',
+		});
+
+		const prepared = prepareCustomerFields(payload);
+		expect(prepared.personal_identity_no).toBeNull();
+	});
+
+	it('throws when personal identity number missing for ROT-enabled private customer', () => {
+		// First parse the payload (this will throw ZodError if schema validation fails)
+		let payload;
+		try {
+			payload = parseCustomerPayload({
+				type: 'PRIVATE',
+				first_name: 'Anna',
+				last_name: 'Andersson',
+				rot_enabled: true,
+				property_designation: 'TEST 1:1',
+				ownership_share: 100,
+				rot_consent_at: new Date('2025-01-01'),
+				invoice_email: 'anna@example.com',
+				invoice_address_street: 'Testgatan 1',
+				invoice_address_zip: '12345',
+				invoice_address_city: 'Stockholm',
+			});
+		} catch (error) {
+			// If ZodError, check that it mentions personal_identity_no requirement
+			if (error && typeof error === 'object' && 'issues' in error) {
+				const issues = (error as { issues: Array<{ path: string[]; message: string }> }).issues;
+				const personalIdIssue = issues.find(i => 
+					i.path.includes('personal_identity_no') && 
+					i.message.includes('Personnummer krävs när ROT är aktiverat')
+				);
+				expect(personalIdIssue).toBeDefined();
+				return; // Test passed - Zod validation caught the issue
+			}
+			throw error;
+		}
+		
+		// If parsing succeeded, prepareCustomerFields should throw
+		expect(() => prepareCustomerFields(payload)).toThrow('Personnummer krävs för ROT-verksamhet');
 	});
 
 	it('builds insert payload including org and user id', () => {

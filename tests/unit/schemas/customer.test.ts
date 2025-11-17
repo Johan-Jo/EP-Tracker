@@ -69,11 +69,26 @@ describe('customerPayloadSchema', () => {
 			}
 		});
 
-		it('should reject private without personal_identity_no', () => {
+		it('should accept private without personal_identity_no (for Fortnox imports)', () => {
+			const valid = customerPayloadSchema.safeParse({
+				type: 'PRIVATE',
+				first_name: 'Anna',
+				last_name: 'Andersson',
+				invoice_email: 'anna@example.com',
+				invoice_address_street: 'Testgatan 1',
+				invoice_address_zip: '12345',
+				invoice_address_city: 'Stockholm',
+			});
+
+			expect(valid.success).toBe(true);
+		});
+
+		it('should reject private with ROT enabled but without personal_identity_no', () => {
 			const invalid = customerPayloadSchema.safeParse({
 				type: 'PRIVATE',
 				first_name: 'Anna',
 				last_name: 'Andersson',
+				rot_enabled: true,
 				invoice_email: 'anna@example.com',
 				invoice_address_street: 'Testgatan 1',
 				invoice_address_zip: '12345',

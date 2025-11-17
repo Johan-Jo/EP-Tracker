@@ -83,7 +83,7 @@ export default function CustomersClient({
     if (customer.type === 'COMPANY') {
       return customer.org_no ? `Org.nr: ${customer.org_no}` : null;
     } else {
-      return customer.personal_identity_no ? `Personnr: ${customer.personal_identity_no}` : null;
+      return customer.personal_identity_no ? `Personnummer: ${customer.personal_identity_no}` : null;
     }
   };
 

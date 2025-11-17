@@ -42,8 +42,34 @@ const fetchJson = async <T>(
 	});
 
 	if (!response.ok) {
-		const errorBody = await response.json().catch(() => ({}));
-		const message = (errorBody as { error?: string })?.error ?? 'Serverfel';
+		let errorBody: unknown = {};
+		let errorText = '';
+		
+		try {
+			errorText = await response.text();
+			if (errorText) {
+				errorBody = JSON.parse(errorText);
+			}
+		} catch (parseError) {
+			// If JSON parsing fails, use the raw text
+			errorBody = { error: errorText || `HTTP ${response.status} ${response.statusText}` };
+		}
+		
+		const errorData = errorBody as { error?: string; details?: unknown; issues?: Array<{ path: string; message: string }> };
+		let message = errorData.error ?? `Serverfel (${response.status})`;
+		
+		// Add validation details if available
+		if (errorData.issues && errorData.issues.length > 0) {
+			const issuesText = errorData.issues.map(i => `${i.path}: ${i.message}`).join(', ');
+			message = `${message} (${issuesText})`;
+		}
+		
+		console.error('[use-customers] API error:', { 
+			status: response.status, 
+			statusText: response.statusText,
+			errorBody,
+			errorText: errorText.substring(0, 500), // First 500 chars
+		});
 		throw new Error(message);
 	}
 
@@ -185,6 +211,20 @@ export const useMergeCustomer = (customerId: string) => {
 			queryClient.invalidateQueries({ queryKey: ['customer', customerId, 'relations'] });
 			queryClient.invalidateQueries({ queryKey: ['customer', variables.duplicateId] });
 			queryClient.invalidateQueries({ queryKey: ['customer', variables.duplicateId, 'relations'] });
+			queryClient.invalidateQueries({ queryKey: ['customers'] });
+		},
+	});
+};
+
+export const useDeleteCustomer = () => {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (customerId: string) =>
+			fetchJson<{ message: string }>(`/api/customers/${customerId}`, {
+				method: 'DELETE',
+			}),
+		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['customers'] });
 		},
 	});

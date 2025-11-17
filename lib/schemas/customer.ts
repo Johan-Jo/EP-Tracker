@@ -131,6 +131,7 @@ export const customerPayloadSchema = z
 		bankgiro: optionalTrimmedString(20),
 		plusgiro: optionalTrimmedString(20),
 		reference: optionalTrimmedString(200),
+		fortnox_customer_number: optionalTrimmedString(50),
 
 		invoice_address_street: optionalTrimmedString(200),
 		invoice_address_zip: optionalTrimmedString(20),
@@ -190,11 +191,13 @@ export const customerPayloadSchema = z
 				});
 			}
 
-			if (!data.personal_identity_no) {
+			// personal_identity_no is only required if ROT is enabled
+			// This allows importing PRIVATE customers from Fortnox without personal identity numbers
+			if (data.rot_enabled && !data.personal_identity_no) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					path: ['personal_identity_no'],
-					message: 'Personnummer krävs för privatkund',
+					message: 'Personnummer krävs när ROT är aktiverat',
 				});
 			}
 
@@ -305,6 +308,7 @@ export type Customer = {
 	bankgiro: string | null;
 	plusgiro: string | null;
 	reference: string | null;
+	fortnox_customer_number: string | null;
 	invoice_address_street: string | null;
 	invoice_address_zip: string | null;
 	invoice_address_city: string | null;

@@ -2,7 +2,20 @@
 
 import { useMemo, useState } from 'react';
 import { z } from 'zod';
-import { Loader2, Mail, Phone, MapPin } from 'lucide-react';
+import { Loader2, Mail, Phone, MapPin, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
 	Tabs,
@@ -16,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
 	type Customer,
+	type CustomerPayload,
 	customerContactSchema,
 	type CustomerContactPayload,
 } from '@/lib/schemas/customer';
@@ -24,6 +38,7 @@ import {
 	useCustomer,
 	useCustomerContacts,
 	useUpdateCustomer,
+	useDeleteCustomer,
 } from '@/lib/hooks/use-customers';
 import { CustomerForm } from './customer-form';
 import { CustomerMergeDialog } from './customer-merge-dialog';
@@ -53,7 +68,9 @@ const InfoRow = ({
 	) : null;
 
 export function CustomerCard({ customerId, canMerge = true }: CustomerCardProps) {
+	const router = useRouter();
 	const [editMode, setEditMode] = useState(false);
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const { data: customer, isLoading } = useCustomer(customerId);
 	const {
 		data: contacts,
@@ -61,6 +78,7 @@ export function CustomerCard({ customerId, canMerge = true }: CustomerCardProps)
 	} = useCustomerContacts(customerId);
 	const updateCustomer = useUpdateCustomer(customerId);
 	const createContact = useCreateCustomerContact(customerId);
+	const deleteCustomer = useDeleteCustomer();
 
 	const defaultTab = customer?.type === 'COMPANY' ? 'overview' : 'overview';
 
@@ -183,16 +201,95 @@ export function CustomerCard({ customerId, canMerge = true }: CustomerCardProps)
 		<Card>
 			<CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<CardTitle className="text-xl">
-						{customer.type === 'COMPANY'
-							? customer.company_name
-							: `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim()}
-					</CardTitle>
+					<div className="flex items-center gap-2">
+						<CardTitle className="text-xl">
+							{customer.type === 'COMPANY'
+								? customer.company_name
+								: `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim()}
+						</CardTitle>
+						{customer.is_archived && (
+							<span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+								Arkiverad
+							</span>
+						)}
+					</div>
 					<p className="text-sm text-muted-foreground">
 						{customer.type === 'COMPANY' ? 'Företagskund' : 'Privatkund'}
 					</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
+					{customer.is_archived && (
+						<Button
+							type="button"
+							variant="outline"
+							onClick={async () => {
+								// Helper to convert null to undefined (Zod doesn't accept null for optional fields)
+								const nullToUndefined = <T,>(value: T | null | undefined): T | undefined => 
+									value === null ? undefined : value;
+
+								// Create a payload with all necessary fields from the customer
+								// We need to include all fields that might be required by validation
+								const payload: CustomerPayload = {
+									type: customer.type,
+									customer_no: customer.customer_no,
+									is_archived: false,
+									// Required fields for COMPANY
+									...(customer.type === 'COMPANY'
+										? {
+												company_name: customer.company_name || '',
+												org_no: customer.org_no || '',
+												vat_no: nullToUndefined(customer.vat_no),
+												f_tax: customer.f_tax ?? false,
+												contact_person_name: nullToUndefined(customer.contact_person_name),
+												contact_person_phone: nullToUndefined(customer.contact_person_phone),
+											}
+										: {
+												first_name: customer.first_name || '',
+												last_name: customer.last_name || '',
+												personal_identity_no: nullToUndefined(customer.personal_identity_no),
+												rot_enabled: customer.rot_enabled ?? false,
+												property_designation: nullToUndefined(customer.property_designation),
+												housing_assoc_org_no: nullToUndefined(customer.housing_assoc_org_no),
+												apartment_no: nullToUndefined(customer.apartment_no),
+												ownership_share: nullToUndefined(customer.ownership_share),
+												rot_consent_at: nullToUndefined(customer.rot_consent_at),
+											}),
+									// Invoice and address fields
+									invoice_method: customer.invoice_method || 'EMAIL',
+									invoice_email: nullToUndefined(customer.invoice_email),
+									peppol_id: nullToUndefined(customer.peppol_id),
+									gln: nullToUndefined(customer.gln),
+									terms: nullToUndefined(customer.terms),
+									default_vat_rate: customer.default_vat_rate ?? 25,
+									bankgiro: nullToUndefined(customer.bankgiro),
+									plusgiro: nullToUndefined(customer.plusgiro),
+									reference: nullToUndefined(customer.reference),
+									fortnox_customer_number: nullToUndefined(customer.fortnox_customer_number),
+									invoice_address_street: customer.invoice_address_street || (customer.type === 'PRIVATE' ? 'Saknas' : undefined),
+									invoice_address_zip: nullToUndefined(customer.invoice_address_zip),
+									invoice_address_city: nullToUndefined(customer.invoice_address_city),
+									invoice_address_country: customer.invoice_address_country || 'Sverige',
+									delivery_address_street: nullToUndefined(customer.delivery_address_street),
+									delivery_address_zip: nullToUndefined(customer.delivery_address_zip),
+									delivery_address_city: nullToUndefined(customer.delivery_address_city),
+									delivery_address_country: nullToUndefined(customer.delivery_address_country),
+									phone_mobile: nullToUndefined(customer.phone_mobile),
+									notes: nullToUndefined(customer.notes),
+								};
+								await updateCustomer.mutateAsync(payload);
+							}}
+							disabled={updateCustomer.isPending}
+						>
+							{updateCustomer.isPending ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Avarkiverar...
+								</>
+							) : (
+								'Avarkivera kund'
+							)}
+						</Button>
+					)}
 					<CustomerMergeDialog customer={customer} canMerge={canMerge} />
 					<Button
 						type="button"
@@ -201,6 +298,62 @@ export function CustomerCard({ customerId, canMerge = true }: CustomerCardProps)
 					>
 						{editMode ? 'Avbryt redigering' : 'Redigera kund'}
 					</Button>
+					<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+						<AlertDialogTrigger asChild>
+							<Button
+								type="button"
+								variant="destructive"
+								disabled={deleteCustomer.isPending}
+							>
+								<Trash2 className="mr-2 h-4 w-4" />
+								Radera kund
+							</Button>
+						</AlertDialogTrigger>
+						<AlertDialogContent>
+							<AlertDialogHeader>
+								<AlertDialogTitle>Är du säker?</AlertDialogTitle>
+								<AlertDialogDescription>
+									Detta kommer permanent radera kunden "
+									{customer.type === 'COMPANY'
+										? customer.company_name
+										: `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim()}
+									". Denna åtgärd kan inte ångras.
+									<br />
+									<br />
+									Om kunden är kopplad till projekt eller fakturaunderlag kommer raderingen att misslyckas.
+								</AlertDialogDescription>
+							</AlertDialogHeader>
+							<AlertDialogFooter>
+								<AlertDialogCancel>Avbryt</AlertDialogCancel>
+								<AlertDialogAction
+									onClick={async () => {
+										try {
+											await deleteCustomer.mutateAsync(customerId);
+											toast.success('Kund raderad');
+											router.push('/dashboard/customers');
+										} catch (error) {
+											toast.error(
+												error instanceof Error
+													? error.message
+													: 'Kunde inte radera kund'
+											);
+										}
+									}}
+									disabled={deleteCustomer.isPending}
+									className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+								>
+									{deleteCustomer.isPending ? (
+										<>
+											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+											Raderar...
+										</>
+									) : (
+										'Radera'
+									)}
+								</AlertDialogAction>
+							</AlertDialogFooter>
+						</AlertDialogContent>
+					</AlertDialog>
 				</div>
 			</CardHeader>
 			<CardContent>

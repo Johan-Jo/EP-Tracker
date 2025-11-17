@@ -105,6 +105,7 @@ const toPayloadDefaults = (customer?: Partial<Customer>): CustomerPayload => {
 		bankgiro: emptyToUndefined(merged.bankgiro),
 		plusgiro: emptyToUndefined(merged.plusgiro),
 		reference: emptyToUndefined(merged.reference),
+		fortnox_customer_number: emptyToUndefined(merged.fortnox_customer_number),
 		invoice_address_street: merged.invoice_address_street ?? '',
 		invoice_address_zip: merged.invoice_address_zip ?? '',
 		invoice_address_city: merged.invoice_address_city ?? '',
@@ -198,6 +199,7 @@ export function CustomerForm({
 					bankgiro: emptyToUndefined(values.bankgiro),
 					plusgiro: emptyToUndefined(values.plusgiro),
 					reference: emptyToUndefined(values.reference),
+					fortnox_customer_number: emptyToUndefined(values.fortnox_customer_number),
 					phone_mobile: emptyToUndefined(values.phone_mobile),
 					notes: emptyToUndefined(values.notes),
 					property_designation: emptyToUndefined(values.property_designation),
@@ -490,6 +492,22 @@ export function CustomerForm({
 										}
 									/>
 								</div>
+							</div>
+							<div>
+								<Label htmlFor="fortnox_customer_number">Fortnox kundnummer</Label>
+								<Input
+									id="fortnox_customer_number"
+									placeholder="Ex. 1, 2, 3..."
+									value={(watch('fortnox_customer_number') as string | undefined) ?? ''}
+									onChange={(event) =>
+										setValue('fortnox_customer_number', event.target.value || undefined, {
+											shouldDirty: true,
+										})
+									}
+								/>
+								<p className="text-xs text-muted-foreground mt-1">
+									Kundnummer i Fortnox för export av fakturor. Hittas i Fortnox under Kundregister.
+								</p>
 							</div>
 						</>
 					) : (
