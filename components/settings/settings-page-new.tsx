@@ -1,14 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { Building2, Users, User, Bell, ChevronRight } from 'lucide-react';
+import { Building2, Users, User, Bell, ChevronRight, Link2 } from 'lucide-react';
 
 interface SettingsPageNewProps {
 	isAdmin: boolean;
 	canManageUsers: boolean;
+	canManageFortnox: boolean;
 }
 
-export function SettingsPageNew({ isAdmin, canManageUsers }: SettingsPageNewProps) {
+export function SettingsPageNew({ isAdmin, canManageUsers, canManageFortnox }: SettingsPageNewProps) {
 	const settingsOptions = [
 		{
 			id: 'organization',
@@ -41,6 +42,14 @@ export function SettingsPageNew({ isAdmin, canManageUsers }: SettingsPageNewProp
 			description: 'Aktivera pushnotiser och hantera notifieringsinställningar',
 			href: '/dashboard/settings/notifications',
 			visible: true,
+		},
+		{
+			id: 'fortnox',
+			icon: Link2,
+			title: 'Fortnox',
+			description: 'Anslut och hantera Fortnox-integration för fakturaexport',
+			href: '/dashboard/settings/fortnox',
+			visible: canManageFortnox,
 		},
 	];
 
@@ -80,30 +89,6 @@ export function SettingsPageNew({ isAdmin, canManageUsers }: SettingsPageNewProp
 								</Link>
 							);
 						})}
-					</div>
-
-					{/* System Information */}
-					<div className='bg-card border-2 border-border rounded-xl p-6'>
-						<h3 className='text-lg font-semibold mb-4'>Systeminformation</h3>
-						<div className='space-y-3'>
-							<div className='flex justify-between items-center py-2 border-b border-border last:border-0'>
-								<span className='text-sm text-muted-foreground'>Version:</span>
-								<span className='text-sm font-medium'>0.1.0 (Phase 1 MVP)</span>
-							</div>
-							<div className='flex justify-between items-center py-2 border-b border-border last:border-0'>
-								<span className='text-sm text-muted-foreground'>EPIC:</span>
-								<span className='text-sm font-medium'>EPIC 3 - Core UI & Projects Management</span>
-							</div>
-							<div className='flex justify-between items-center py-2'>
-								<span className='text-sm text-muted-foreground'>Miljö:</span>
-								<span className='text-sm font-medium'>
-									<span className='inline-flex items-center gap-2 px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold'>
-										<span className='w-1.5 h-1.5 bg-green-600 rounded-full'></span>
-										Development
-									</span>
-								</span>
-							</div>
-						</div>
 					</div>
 				</div>
 			</main>
