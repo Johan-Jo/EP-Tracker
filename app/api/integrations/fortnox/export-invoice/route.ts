@@ -100,14 +100,7 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		// Get Fortnox connection
-		const connection = await getFortnoxConnectionForOrg(membership.org_id);
-		if (!connection) {
-			return NextResponse.json(
-				{ error: 'Ingen Fortnox-anslutning konfigurerad för denna organisation' },
-				{ status: 400 }
-			);
-		}
+		// Connection already fetched above, reuse it
 
 		// Build Fortnox invoice payload
 		const payload = await buildFortnoxInvoicePayloadFromInvoiceBasis(
