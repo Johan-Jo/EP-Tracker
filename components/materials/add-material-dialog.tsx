@@ -2,18 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Package, Receipt, Loader2, X } from 'lucide-react';
+import { Package, Receipt, Loader2, X, Mic } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
 import { PhotoUploadButtons } from '@/components/shared/photo-upload-buttons';
 import { normalizeUnitValue } from '@/lib/utils/units';
 import { toast } from 'react-hot-toast';
+import { VoiceRecorder } from '@/components/voice/voice-recorder';
+import { useVoiceStore } from '@/lib/stores/voice-store';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 interface AddMaterialDialogProps {
 	open: boolean;
@@ -50,6 +53,8 @@ export function AddMaterialDialog({
 	const [photos, setPhotos] = useState<File[]>([]);
 	const [photosPreviews, setPhotosPreviews] = useState<string[]>([]);
 	const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+	const [showVoiceDialog, setShowVoiceDialog] = useState(false);
+	const voiceStore = useVoiceStore();
 
 	const supabase = createClient();
 	const queryClient = useQueryClient();
@@ -326,6 +331,32 @@ export function AddMaterialDialog({
 		onClose();
 	};
 
+	const handleVoiceComplete = (voiceLogId: string, translatedText: string) => {
+		setNotes((prev) => {
+			if (prev) {
+				return `${prev}\n\n${translatedText}`;
+			}
+			return translatedText;
+		});
+		setShowVoiceDialog(false);
+		voiceStore.reset();
+		toast.success('Röstanteckning tillagd!');
+	};
+
+	const handleVoiceError = (error: string) => {
+		toast.error(error);
+		setShowVoiceDialog(false);
+		voiceStore.reset();
+	};
+
+	const handleDialogClose = (open: boolean) => {
+		if (!open) {
+			// Cancel recording and reset when dialog is closed
+			voiceStore.reset();
+		}
+		setShowVoiceDialog(open);
+	};
+
 	const totalPrice = quantity && unitPrice ? parseFloat(quantity) * parseFloat(unitPrice) : 0;
 	const isProjectSelectDisabled = Boolean(projectLocked || editingMaterial);
 
@@ -500,7 +531,19 @@ export function AddMaterialDialog({
 
 				{/* Notes */}
 				<div className='space-y-2'>
-					<Label htmlFor='notes'>Anteckningar</Label>
+					<div className="flex items-center justify-between">
+						<Label htmlFor='notes'>Anteckningar</Label>
+						<Button
+							type='button'
+							size='sm'
+							onClick={() => setShowVoiceDialog(true)}
+							aria-label='Starta röstanteckning'
+							className='gap-2 bg-orange-500 hover:bg-orange-600 text-white shadow-sm'
+						>
+							<Mic className='h-4 w-4' />
+							Röstanteckning
+						</Button>
+					</div>
 					<Textarea
 						id='notes'
 						value={notes}
@@ -576,6 +619,28 @@ export function AddMaterialDialog({
 				</div>
 				</form>
 			</DialogContent>
+			
+			{/* Voice Recording Dialog */}
+			<Dialog open={showVoiceDialog} onOpenChange={handleDialogClose}>
+				<DialogContent className='sm:max-w-[500px]'>
+					<DialogHeader>
+						<VisuallyHidden>
+							<DialogTitle>Röstanteckning</DialogTitle>
+						</VisuallyHidden>
+						{voiceStore.recordingState === 'idle' && (
+							<DialogDescription className="text-base text-center">
+								Spela in en röstanteckning på vilket språk som helst, som vi automatiskt översätter till svensk text
+							</DialogDescription>
+						)}
+					</DialogHeader>
+					<div className='py-4'>
+						<VoiceRecorder
+							onComplete={handleVoiceComplete}
+							onError={handleVoiceError}
+						/>
+					</div>
+				</DialogContent>
+			</Dialog>
 		</Dialog>
 	);
 }
