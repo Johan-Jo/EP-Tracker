@@ -243,21 +243,6 @@ export function FixedTimeBlocksCard({
 				</div>
 			</CardHeader>
 			<CardContent className='pt-6 space-y-4'>
-				<div className='grid gap-4 md:grid-cols-3'>
-					<div className='rounded-lg border border-border/60 p-3'>
-						<p className='text-xs text-muted-foreground'>Standardläge</p>
-						<p className='text-sm font-medium'>{billingModeLabel}</p>
-					</div>
-					<div className='rounded-lg border border-border/60 p-3'>
-						<p className='text-xs text-muted-foreground'>Offertbelopp</p>
-						<p className='text-sm font-medium'>{formatAmount(quotedAmountSek)}</p>
-					</div>
-					<div className='rounded-lg border border-border/60 p-3'>
-						<p className='text-xs text-muted-foreground'>Timpris (löpande)</p>
-						<p className='text-sm font-medium'>{formatAmount(projectHourlyRateSek)}</p>
-					</div>
-				</div>
-
 				{isLoading && <p className='text-sm text-muted-foreground'>Laddar fasta poster...</p>}
 				{error && (
 					<p className='text-sm text-destructive'>Kunde inte hämta fasta poster. Försök igen senare.</p>

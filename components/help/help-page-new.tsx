@@ -329,6 +329,75 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			],
 		},
 		{
+			title: 'Projektdetaljsida',
+			description: 'Översikt och sammanfattning av projekt',
+			icon: LayoutDashboard,
+			roles: ['admin', 'foreman', 'worker', 'finance'],
+			sections: [
+				{
+					title: 'Översikt',
+					items: [
+						'Projektdetaljsidan ger en komplett översikt över projektets status',
+						'Se belopp intjänat (timmar × timpris) och totala material & utgifter',
+						'Filtrera data efter datum: Projektstart, Denna månad, Denna vecka, eller Anpassat intervall',
+						'Alla sektioner uppdateras automatiskt baserat på valt datumfilter',
+					],
+				},
+				{
+					title: 'Tidrapportering & Dagböcker',
+					items: [
+						'Tidrapporter visas tillsammans med dagboksanteckningar per dag',
+						'Grupperat per person, fas och datum',
+						'Klicka på en rad för att se fullständig dagboksinformation',
+						'Se sammanfattning per person och per fas längst ner',
+					],
+				},
+				{
+					title: 'Material & Kostnader',
+					items: [
+						'Översikt över alla material, utgifter och körsträcka',
+						'Klicka på en kategori för att se detaljerad lista',
+						'Se totalt belopp och jämför med budget',
+						'Progress bar visar hur mycket av budgeten som används',
+					],
+				},
+				{
+					title: 'Faser',
+					items: [
+						'Se alla projektfaser med loggad tid vs budget',
+						'Progress bar per fas visar framsteg',
+						'Redigera eller ta bort faser (admin/arbetsledare)',
+					],
+				},
+				{
+					title: 'Fasta poster',
+					items: [
+						'Hantera fasta fakturaposter för projektet',
+						'Skapa poster med belopp, moms, period och artikelnummer',
+						'Används för fakturering av fasta belopp',
+					],
+				},
+				{
+					title: 'Team',
+					items: [
+						'Se alla teammedlemmar med deras roller',
+						'Visa loggade timmar per person',
+						'Hantera teammedlemmar (admin/arbetsledare)',
+					],
+				},
+				{
+					title: 'Alert-inställningar',
+					items: [
+						'Konfigurera notifieringar och påminnelser för projektet',
+						'Sätt arbetsdag start/slut-tid',
+						'Aktivera real-time notifieringar för check-in/out',
+						'Konfigurera påminnelser och varningar',
+						'Välj vem som ska få notiser',
+					],
+				},
+			],
+		},
+		{
 			title: 'Projektmedlemmar',
 			description: 'Hantera teammedlemmar och projektåtkomst',
 			icon: Users,

@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ProjectAlertSettings } from './project-alert-settings';
-import { Bell, Clock, AlertTriangle, Check, X, Edit2, Loader2 } from 'lucide-react';
+import { Bell, Clock, AlertTriangle, Check, X, Edit2, Loader2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import type { AlertSettings as SchemaAlertSettings } from '@/lib/schemas/project';
 
@@ -65,6 +66,7 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
   const settings = alertSettings || defaultAlertSettings;
   const router = useRouter();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   
   // Normalize settings to ensure all required fields are present
   const normalizeSettings = (settings: AlertSettings): SchemaAlertSettings => {
@@ -136,33 +138,40 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="w-5 h-5" />
-                Alert-inställningar
-              </CardTitle>
-              <CardDescription>
-                Notifieringar och påminnelser för detta projekt
-              </CardDescription>
+      <Card className="bg-white dark:bg-gray-950 border-gray-200 dark:border-gray-800">
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Bell className="w-5 h-5" />
+                      Alert-inställningar
+                    </CardTitle>
+                    <CardDescription>
+                      Notifieringar och påminnelser för detta projekt
+                    </CardDescription>
+                  </div>
+                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </CollapsibleTrigger>
+              {canEdit && projectId && (
+                <Button variant="outline" size="sm" onClick={handleOpenEdit}>
+                  <Edit2 className="w-4 h-4 mr-2" />
+                  Redigera
+                </Button>
+              )}
             </div>
-            {canEdit && projectId && (
-              <Button variant="outline" size="sm" onClick={handleOpenEdit}>
-                <Edit2 className="w-4 h-4 mr-2" />
-                Redigera
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-      <CardContent className="space-y-6">
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-6">
         {/* Work Day Times */}
-        <div className="flex items-center gap-6 p-4 bg-gray-50 rounded-lg">
-          <Clock className="w-5 h-5 text-gray-600" />
+        <div className="flex items-center gap-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+          <Clock className="w-5 h-5 text-muted-foreground" />
           <div className="flex-1">
-            <p className="font-medium text-sm text-gray-900">Arbetsdag</p>
-            <p className="text-sm text-gray-600">
+            <p className="font-medium text-sm">Arbetsdag</p>
+            <p className="text-sm text-muted-foreground">
               Starttid: <span className="font-semibold">{settings.work_day_start}</span>
               {' • '}
               Sluttid: <span className="font-semibold">{settings.work_day_end}</span>
@@ -172,11 +181,11 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
 
         {/* Real-time Notifications */}
         <div>
-          <h4 className="font-medium mb-3 text-sm text-gray-700">
+          <h4 className="font-medium mb-3 text-sm">
             Real-time notifieringar (till Admin/Arbetsledare)
           </h4>
           <div className="space-y-2">
-            <div className="flex items-center justify-between p-3 bg-white border rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg">
               <div className="flex items-center gap-3">
                 <StatusIcon enabled={settings.notify_on_checkin} />
                 <div>
@@ -189,7 +198,7 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
               </Badge>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-white border rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg">
               <div className="flex items-center gap-3">
                 <StatusIcon enabled={settings.notify_on_checkout} />
                 <div>
@@ -206,12 +215,12 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
 
         {/* Reminders */}
         <div>
-          <h4 className="font-medium mb-3 text-sm text-gray-700 flex items-center gap-2">
+          <h4 className="font-medium mb-3 text-sm flex items-center gap-2">
             <Bell className="w-4 h-4" />
             Påminnelser
           </h4>
           <div className="space-y-2">
-            <div className="flex items-center justify-between p-3 bg-white border rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg">
               <div className="flex items-center gap-3">
                 <StatusIcon enabled={settings.checkin_reminder_enabled} />
                 <div>
@@ -238,7 +247,7 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
               </Badge>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-white border rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg">
               <div className="flex items-center gap-3">
                 <StatusIcon enabled={settings.checkout_reminder_enabled} />
                 <div>
@@ -269,12 +278,12 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
 
         {/* Alerts to Admin/Foreman */}
         <div>
-          <h4 className="font-medium mb-3 text-sm text-gray-700 flex items-center gap-2">
+          <h4 className="font-medium mb-3 text-sm flex items-center gap-2">
             <AlertTriangle className="w-4 h-4" />
             Varningar (till Admin/Arbetsledare)
           </h4>
           <div className="space-y-2">
-            <div className="flex items-center justify-between p-3 bg-white border rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg">
               <div className="flex items-center gap-3">
                 <StatusIcon enabled={settings.late_checkin_enabled} />
                 <div>
@@ -292,7 +301,7 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
               </Badge>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-white border rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg">
               <div className="flex items-center gap-3">
                 <StatusIcon enabled={settings.forgotten_checkout_enabled} />
                 <div>
@@ -313,15 +322,17 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
         </div>
 
         {/* Alert Recipients */}
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm font-medium text-blue-900 mb-1">Vem får notiser?</p>
-          <p className="text-sm text-blue-700">
+        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <p className="text-sm font-medium mb-1">Vem får notiser?</p>
+          <p className="text-sm text-muted-foreground">
             {settings.alert_recipients.includes('admin') && 'Administratörer'}
             {settings.alert_recipients.includes('admin') && settings.alert_recipients.includes('foreman') && ' och '}
             {settings.alert_recipients.includes('foreman') && 'Arbetsledare'}
           </p>
         </div>
       </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
     </Card>
 
     {/* Edit Alert Settings Dialog */}

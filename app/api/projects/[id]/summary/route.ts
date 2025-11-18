@@ -28,6 +28,11 @@ export async function GET(
 
 	const { id: projectId } = await resolveRouteParams(context);
 
+	// Parse date filter query params
+	const searchParams = request.nextUrl.searchParams;
+	const startDate = searchParams.get('startDate');
+	const endDate = searchParams.get('endDate');
+
 	const supabase = await createClient();
 
 	// OPTIMIZED: Parallelize all database queries
@@ -56,38 +61,101 @@ export async function GET(
 			.eq('org_id', membership.org_id)
 			.single(),
 		
-		// 2. Fetch time entries
-		supabase
-			.from('time_entries')
-			.select(`
-				id,
-				user_id,
-				phase_id,
-				duration_min,
-				profiles:user_id (
+		// 2. Fetch time entries with date filtering
+		(() => {
+			let query = supabase
+				.from('time_entries')
+				.select(`
 					id,
-					full_name
-				)
-			`)
-			.eq('project_id', projectId),
+					user_id,
+					phase_id,
+					start_at,
+					duration_min,
+					task_label,
+					profiles:user_id (
+						id,
+						full_name
+					),
+					phase:phases (
+						id,
+						name
+					)
+				`)
+				.eq('project_id', projectId)
+				.eq('status', 'approved'); // Only approved entries
+			
+			if (startDate) {
+				query = query.gte('start_at', startDate);
+			}
+			if (endDate) {
+				// Add one day to include the entire end date
+				const endDatePlusOne = new Date(endDate);
+				endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
+				query = query.lt('start_at', endDatePlusOne.toISOString().split('T')[0]);
+			}
+			
+			return query;
+		})(),
 		
-		// 3. Fetch materials
-		supabase
-			.from('materials')
-			.select('qty, unit_price_sek, total_sek')
-			.eq('project_id', projectId),
+		// 3. Fetch materials with date filtering
+		(() => {
+			let query = supabase
+				.from('materials')
+				.select('id, qty, unit_price_sek, total_sek, description, created_at')
+				.eq('project_id', projectId)
+				.eq('status', 'approved');
+			
+			if (startDate) {
+				query = query.gte('created_at', startDate);
+			}
+			if (endDate) {
+				const endDatePlusOne = new Date(endDate);
+				endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
+				query = query.lt('created_at', endDatePlusOne.toISOString().split('T')[0]);
+			}
+			
+			return query;
+		})(),
 		
-		// 4. Fetch expenses
-		supabase
-			.from('expenses')
-			.select('amount')
-			.eq('project_id', projectId),
+		// 4. Fetch expenses with date filtering
+		(() => {
+			let query = supabase
+				.from('expenses')
+				.select('id, amount, description, expense_date, created_at')
+				.eq('project_id', projectId)
+				.eq('status', 'approved');
+			
+			if (startDate) {
+				query = query.gte('expense_date', startDate);
+			}
+			if (endDate) {
+				const endDatePlusOne = new Date(endDate);
+				endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
+				query = query.lt('expense_date', endDatePlusOne.toISOString().split('T')[0]);
+			}
+			
+			return query;
+		})(),
 		
-		// 5. Fetch mileage
-		supabase
-			.from('mileage')
-			.select('distance_km, rate_per_km')
-			.eq('project_id', projectId),
+		// 5. Fetch mileage with date filtering
+		(() => {
+			let query = supabase
+				.from('mileage')
+				.select('id, distance_km, rate_per_km, trip_date, created_at')
+				.eq('project_id', projectId)
+				.eq('status', 'approved');
+			
+			if (startDate) {
+				query = query.gte('trip_date', startDate);
+			}
+			if (endDate) {
+				const endDatePlusOne = new Date(endDate);
+				endDatePlusOne.setDate(endDatePlusOne.getDate() + 1);
+				query = query.lt('trip_date', endDatePlusOne.toISOString().split('T')[0]);
+			}
+			
+			return query;
+		})(),
 		
 		// 6. Fetch project members
 		supabase
@@ -113,7 +181,60 @@ export async function GET(
 	const { data: mileage } = mileageResult;
 	const { data: projectMembers } = projectMembersResult;
 
-	// 3. Calculate time statistics
+	// Fetch diary entries for the same date range
+	let diaryQuery = supabase
+		.from('diary_entries')
+		.select('id, date, work_performed, created_by, weather, temperature_c, crew_count')
+		.eq('project_id', projectId);
+	
+	if (startDate) {
+		diaryQuery = diaryQuery.gte('date', startDate);
+	}
+	if (endDate) {
+		diaryQuery = diaryQuery.lte('date', endDate);
+	}
+	
+	const { data: diaryEntries } = await diaryQuery;
+
+	// Create a map of diary entries by date and user for quick lookup
+	const diaryMap = new Map<string, any>();
+	diaryEntries?.forEach((diary: any) => {
+		const dateKey = diary.date; // YYYY-MM-DD format
+		// Store diary by date (we'll match with time entries on same date)
+		if (!diaryMap.has(dateKey)) {
+			diaryMap.set(dateKey, diary);
+		}
+	});
+
+	// 3. Process time entries and match with diary entries
+	const processedTimeEntries = timeEntries?.map((entry: any) => {
+		const entryDate = new Date(entry.start_at).toISOString().split('T')[0]; // YYYY-MM-DD
+		const matchedDiary = diaryMap.get(entryDate);
+		
+		return {
+			id: entry.id,
+			date: entryDate,
+			user: {
+				id: entry.user_id,
+				name: (entry.profiles as any)?.full_name || 'Okänd',
+			},
+			phase: entry.phase ? {
+				id: entry.phase.id,
+				name: entry.phase.name,
+			} : null,
+			hours: Math.round((entry.duration_min || 0) / 6) / 10, // Round to 1 decimal
+			taskLabel: entry.task_label,
+			diary: matchedDiary ? {
+				id: matchedDiary.id,
+				work_performed: matchedDiary.work_performed,
+				weather: matchedDiary.weather,
+				temperature_c: matchedDiary.temperature_c,
+				crew_count: matchedDiary.crew_count,
+			} : null,
+		};
+	}) || [];
+
+	// Calculate time statistics
 	const totalMinutes = timeEntries?.reduce((sum, entry) => {
 		return sum + (entry.duration_min || 0);
 	}, 0) || 0;
@@ -238,6 +359,46 @@ export async function GET(
 		};
 	}
 
+	// Group costs by category with items
+	const costsByCategory = {
+		materials: {
+			total: materialsStats.totalCost,
+			count: materialsStats.count,
+			items: materials?.map((m: any) => ({
+				id: m.id,
+				description: m.description,
+				qty: m.qty,
+				unitPrice: m.unit_price_sek,
+				total: m.total_sek,
+				createdAt: m.created_at,
+			})) || [],
+		},
+		expenses: {
+			total: expensesTotal,
+			count: expenses?.length || 0,
+			items: expenses?.map((e: any) => ({
+				id: e.id,
+				description: e.description,
+				amount: e.amount,
+				expenseDate: e.expense_date,
+				createdAt: e.created_at,
+			})) || [],
+		},
+		mileage: {
+			total: mileageTotal,
+			count: mileage?.length || 0,
+			items: mileage?.map((m: any) => ({
+				id: m.id,
+				distanceKm: m.distance_km,
+				ratePerKm: m.rate_per_km,
+				total: m.distance_km * m.rate_per_km,
+				tripDate: m.trip_date,
+				createdAt: m.created_at,
+			})) || [],
+		},
+		total: totalCosts,
+	};
+
 	// 13. Build summary response
 	const summary = {
 		project: {
@@ -251,6 +412,8 @@ export async function GET(
 			budgetHours,
 			budgetAmount,
 			estimatedEndDate: project.estimated_end_date,
+			createdAt: project.created_at,
+			projectHourlyRateSek: project.project_hourly_rate_sek,
 		},
 		time: {
 			totalHours,
@@ -259,6 +422,7 @@ export async function GET(
 			percentage: hoursPercentage,
 			byUser: teamHours,
 		},
+		timeEntries: processedTimeEntries, // New: time entries with matched diary entries
 		costs: {
 			materials: materialsStats.totalCost,
 			expenses: expensesTotal,
@@ -268,6 +432,7 @@ export async function GET(
 			remaining: budgetAmount - totalCosts,
 			percentage: costsPercentage,
 		},
+		costsByCategory, // New: detailed costs by category
 		materials: {
 			count: materialsStats.count,
 			totalCost: materialsStats.totalCost,
