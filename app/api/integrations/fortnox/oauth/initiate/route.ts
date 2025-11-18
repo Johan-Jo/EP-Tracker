@@ -28,15 +28,28 @@ export async function GET(request: NextRequest) {
 		}
 
 		// Build OAuth authorization URL
-		// Get base URL from environment or request
-		const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL;
-		const requestUrl = new URL(request.url);
-		const fallbackBaseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
+		// Priority: FORTNOX_REDIRECT_URI > NEXT_PUBLIC_SITE_URL > NEXT_PUBLIC_APP_URL > request host
+		let redirectUri: string;
 		
-		const redirectUri = `${baseUrl || fallbackBaseUrl}/api/integrations/fortnox/oauth/callback`;
+		if (process.env.FORTNOX_REDIRECT_URI) {
+			// Use explicit Fortnox redirect URI if set
+			redirectUri = process.env.FORTNOX_REDIRECT_URI;
+		} else {
+			const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL;
+			const requestUrl = new URL(request.url);
+			const fallbackBaseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
+			
+			redirectUri = `${baseUrl || fallbackBaseUrl}/api/integrations/fortnox/oauth/callback`;
+		}
 		
-		// Log redirect URI for debugging (remove in production)
+		// Log redirect URI for debugging
 		console.log('[Fortnox OAuth] Redirect URI:', redirectUri);
+		console.log('[Fortnox OAuth] Environment check:', {
+			FORTNOX_REDIRECT_URI: process.env.FORTNOX_REDIRECT_URI ? 'set' : 'not set',
+			NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'not set',
+			NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'not set',
+			requestHost: new URL(request.url).host,
+		});
 		
 		const state = Buffer.from(JSON.stringify({ orgId: membership.org_id, userId: user.id })).toString('base64url');
 		
@@ -47,7 +60,16 @@ export async function GET(request: NextRequest) {
 		// IMPORTANT: Only request scopes that are enabled AND licensed in your Fortnox account
 		// Common valid scopes: invoice, customer, companyinformation, article, etc.
 		// If you get "error_missing_license", your Fortnox account doesn't have the required license for those scopes
+		// OAuth scopes - must match exactly what's configured in Fortnox Developer Portal
+		// IMPORTANT: Check your Fortnox Developer Portal for valid scope names
+		// Default: 'invoice customer' (works for most use cases)
+		// If you want to fetch company information automatically, you can try adding 'companyinformation'
+		// Note: Having "Företagsinformation" permission in Developer Portal might not require explicit scope
+		// Test with just 'invoice customer' first - /companyinformation endpoint might work without it
+		// If you get 'invalid_scope', remove 'companyinformation' from scopes
 		const requestedScopes = process.env.FORTNOX_OAUTH_SCOPES || 'invoice customer';
+		
+		console.log('[Fortnox OAuth] Requested scopes:', requestedScopes);
 		authUrl.searchParams.set('scope', requestedScopes);
 		authUrl.searchParams.set('state', state);
 		authUrl.searchParams.set('access_type', 'offline');

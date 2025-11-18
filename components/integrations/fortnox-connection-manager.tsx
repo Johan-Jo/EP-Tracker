@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Link2, Unlink, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
@@ -20,12 +20,14 @@ interface FortnoxConnection {
 	refresh_token: string;
 	access_token_expires_at: string;
 	scopes: string | null;
+	fortnox_customer_number: string | null;
 	created_at: string;
 	updated_at: string;
 }
 
 export function FortnoxConnectionManager({ orgId }: FortnoxConnectionManagerProps) {
 	const queryClient = useQueryClient();
+
 
 	// Fetch current connection status
 	const { data: connection, isLoading, error } = useQuery<FortnoxConnection | null>({
@@ -64,6 +66,7 @@ export function FortnoxConnectionManager({ orgId }: FortnoxConnectionManagerProp
 		refetchOnMount: false, // Don't refetch on mount if data exists
 	});
 
+
 	// Initiate OAuth flow
 	const initiateOAuth = useMutation({
 		mutationFn: async () => {
@@ -83,6 +86,8 @@ export function FortnoxConnectionManager({ orgId }: FortnoxConnectionManagerProp
 			toast.error(error.message || 'Kunde inte starta Fortnox-anslutning');
 		},
 	});
+
+
 
 	// Disconnect Fortnox
 	const disconnectMutation = useMutation({
@@ -226,11 +231,12 @@ export function FortnoxConnectionManager({ orgId }: FortnoxConnectionManagerProp
 							</div>
 						)}
 
+
 						<Button
 							variant="destructive"
 							onClick={() => disconnectMutation.mutate()}
 							disabled={disconnectMutation.isPending}
-							className="w-full"
+							className="w-full mt-4"
 						>
 							{disconnectMutation.isPending ? (
 								<>

@@ -72,11 +72,19 @@ export async function GET(request: NextRequest) {
 		const clientSecret = process.env.FORTNOX_CLIENT_SECRET;
 		
 		// Get base URL from environment or request (must match initiate route)
-		const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL;
-		const requestUrl = new URL(request.url);
-		const fallbackBaseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
+		// Priority: FORTNOX_REDIRECT_URI > NEXT_PUBLIC_SITE_URL > NEXT_PUBLIC_APP_URL > request host
+		let redirectUri: string;
 		
-		const redirectUri = `${baseUrl || fallbackBaseUrl}/api/integrations/fortnox/oauth/callback`;
+		if (process.env.FORTNOX_REDIRECT_URI) {
+			// Use explicit Fortnox redirect URI if set
+			redirectUri = process.env.FORTNOX_REDIRECT_URI;
+		} else {
+			const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL;
+			const requestUrl = new URL(request.url);
+			const fallbackBaseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
+			
+			redirectUri = `${baseUrl || fallbackBaseUrl}/api/integrations/fortnox/oauth/callback`;
+		}
 		
 		// Log redirect URI for debugging
 		console.log('[Fortnox OAuth Callback] Redirect URI:', redirectUri);
@@ -168,19 +176,10 @@ export async function GET(request: NextRequest) {
 			updated_at: new Date().toISOString(),
 		};
 
-		// Fetch company information to get Fortnox customer number
-		let fortnoxCustomerNumber: string | null = null;
-		try {
-			const { getFortnoxCompanyInformation } = await import('@/lib/integrations/fortnox/client');
-			const companyInfo = await getFortnoxCompanyInformation(tempConnection as any);
-			fortnoxCustomerNumber = companyInfo?.CustomerNumber || null;
-			if (fortnoxCustomerNumber) {
-				console.log('[Fortnox OAuth] Fetched customer number:', fortnoxCustomerNumber);
-			}
-		} catch (error) {
-			// Log but don't fail - customer number is optional
-			console.warn('[Fortnox OAuth] Could not fetch company information:', error);
-		}
+		// Customer number is set manually by user - not fetched from company information
+		// Company information contains the organization's own customer number in Fortnox,
+		// not the customer number of the customers they invoice to
+		const fortnoxCustomerNumber: string | null = null;
 
 		// Store connection in database
 		const supabase = await createClient();

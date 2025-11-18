@@ -13,3 +13,5 @@ COMMENT ON COLUMN organizations.plusgiro IS 'Plusgiro number for invoice payment
 COMMENT ON COLUMN organizations.iban IS 'IBAN (International Bank Account Number) for international payments';
 COMMENT ON COLUMN organizations.bic IS 'BIC/SWIFT code for international bank transfers';
 
+
+

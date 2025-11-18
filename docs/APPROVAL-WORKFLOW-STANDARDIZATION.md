@@ -303,3 +303,5 @@ Användare får notifikation med anledning till avslag och kan redigera posten.
 **Migrations:**
 - `supabase/migrations/20250115000001_standardize_ata_status.sql`
 
+
+

@@ -65,11 +65,13 @@ export const DEFAULT_LINE_CONFIG: Record<
 		unit: string | null;
 	}
 > = {
-	time: { article: 'TID-ARB', account: '3041', defaultVatRate: 25, defaultVatCode: '25', unit: 'h' },
-	material: { article: 'MAT', account: '3051', defaultVatRate: 25, defaultVatCode: '25', unit: null },
-	expense: { article: 'UTL', account: '5800', defaultVatRate: 25, defaultVatCode: '25', unit: 'st' },
-	mileage: { article: 'MIL', account: '7331', defaultVatRate: 0, defaultVatCode: '0', unit: 'km' },
-	ata: { article: 'ATA', account: '3048', defaultVatRate: 25, defaultVatCode: '25', unit: null },
+	// NOTE: account is set to null - we only use account if it exists in the database fields
+	// Do not hardcode account numbers as they may not exist in Fortnox
+	time: { article: 'TID-ARB', account: null, defaultVatRate: 25, defaultVatCode: '25', unit: 'h' },
+	material: { article: 'MAT', account: null, defaultVatRate: 25, defaultVatCode: '25', unit: null },
+	expense: { article: 'UTL', account: null, defaultVatRate: 25, defaultVatCode: '25', unit: 'st' },
+	mileage: { article: 'MIL', account: null, defaultVatRate: 0, defaultVatCode: '0', unit: 'km' },
+	ata: { article: 'ATA', account: null, defaultVatRate: 25, defaultVatCode: '25', unit: null },
 };
 
 export function roundCurrency(value: number): number {

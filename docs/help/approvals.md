@@ -275,3 +275,5 @@ Om du har frågor eller stöter på problem:
 2. Kontakta din systemadministratör
 3. Kontakta support via help-funktionen i appen
 
+
+

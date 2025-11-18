@@ -212,21 +212,42 @@ export default async function InvoicePrintPage({
 	const diarySummaries = (invoiceBasis.lines_json?.diary || []) as DiarySummary[];
 	const nonDiaryLines = lines.filter((line) => line.type !== 'diary');
 
+	// Separate lines by type
+	const timeLines = nonDiaryLines.filter((line) => line.type === 'time');
+	const materialLines = nonDiaryLines.filter((line) => line.type === 'material');
+	const expenseLines = nonDiaryLines.filter((line) => line.type === 'expense');
+	const otherLines = nonDiaryLines.filter(
+		(line) => line.type !== 'time' && line.type !== 'material' && line.type !== 'expense'
+	);
+
 	// Calculate totals: hours and material
-	const totalHours = lines
-		.filter((line) => line.type === 'time')
-		.reduce((sum, line) => sum + (line.quantity || 0), 0);
+	const totalHours = timeLines.reduce((sum, line) => sum + (line.quantity || 0), 0);
 
-	const totalMaterialQuantity = lines
-		.filter((line) => line.type === 'material')
-		.reduce((sum, line) => sum + (line.quantity || 0), 0);
+	const totalTimeAmount = timeLines.reduce((sum, line) => {
+		const { amountExclVAT } = calculateLineAmounts(line);
+		return sum + amountExclVAT;
+	}, 0);
 
-	const totalMaterialAmount = lines
-		.filter((line) => line.type === 'material')
-		.reduce((sum, line) => {
-			const { amountExclVAT } = calculateLineAmounts(line);
-			return sum + amountExclVAT;
-		}, 0);
+	const totalMaterialQuantity = materialLines.reduce((sum, line) => sum + (line.quantity || 0), 0);
+
+	const totalMaterialAmount = materialLines.reduce((sum, line) => {
+		const { amountExclVAT } = calculateLineAmounts(line);
+		return sum + amountExclVAT;
+	}, 0);
+
+	const totalExpenseQuantity = expenseLines.reduce((sum, line) => sum + (line.quantity || 0), 0);
+
+	const totalExpenseAmount = expenseLines.reduce((sum, line) => {
+		const { amountExclVAT } = calculateLineAmounts(line);
+		return sum + amountExclVAT;
+	}, 0);
+
+	const totalOtherQuantity = otherLines.reduce((sum, line) => sum + (line.quantity || 0), 0);
+
+	const totalOtherAmount = otherLines.reduce((sum, line) => {
+		const { amountExclVAT } = calculateLineAmounts(line);
+		return sum + amountExclVAT;
+	}, 0);
 
 	const invoiceAddr =
 		invoiceBasis.invoice_address_json &&
@@ -252,14 +273,6 @@ export default async function InvoicePrintPage({
 		(invoiceBasis.invoice_number ?? '');
 
 	const totals = invoiceBasis.totals;
-
-	const typeMap: Record<string, string> = {
-		time: 'Tid',
-		material: 'Material',
-		expense: 'Utlägg',
-		mileage: 'Mil',
-		ata: 'ÄTA',
-	};
 
 	return (
 		<div className="min-h-screen bg-white print:bg-white">
@@ -424,223 +437,312 @@ export default async function InvoicePrintPage({
 					</div>
 				</section>
 
-				{/* VAT summary and totals */}
-				<section className="mt-6 flex justify-end text-sm">
-					<div className="w-full max-w-xs space-y-2 rounded-md border border-gray-200 bg-gray-50/70 px-3 py-3">
-						{/* VAT per rate */}
-						{totals &&
-							totals.per_vat_rate &&
-							Object.entries(totals.per_vat_rate).some(
-								([, vatData]) => vatData.base > 0
-							) && (
-								<div className="rounded border border-gray-300 px-3 py-2">
-									{Object.entries(totals.per_vat_rate).map(
-										([vatRateStr, vatData]) => {
-											const data = vatData as any;
-											if (data.base <= 0) return null;
-											const vatRate = parseFloat(vatRateStr);
-											return (
-												<div key={vatRateStr}>
-													<div className="flex justify-between">
-														<span>
-															Exkl. moms ({vatRate}%):
-														</span>
-														<span>
-															{formatCurrency(data.base)}
-														</span>
-													</div>
-												</div>
-											);
-										}
-									)}
-									{Object.entries(totals.per_vat_rate).map(
-										([vatRateStr, vatData]) => {
-											const data = vatData as any;
-											if (data.base <= 0) return null;
-											const vatRate = parseFloat(vatRateStr);
-											return (
-												<div key={`${vatRateStr}-amount`}>
-													<div className="flex justify-between">
-														<span>Moms {vatRate}%:</span>
-														<span>
-															{formatCurrency(data.vat)}
-														</span>
-													</div>
-												</div>
-											);
-										}
-									)}
-								</div>
-							)}
-
-						{/* Totals */}
-						{totals && (
-							<div className="space-y-1">
-								<div className="flex justify-between">
-									<span>Summa exkl. moms:</span>
-									<span className="font-medium">
-										{formatCurrency(totals.total_ex_vat)}
-									</span>
-								</div>
-								<div className="flex justify-between">
-									<span>Summa moms:</span>
-									<span className="font-medium">
-										{formatCurrency(totals.total_vat)}
-									</span>
-								</div>
-								<div className="flex justify-between border-t border-gray-400 pt-2">
-									<span className="font-semibold">
-										Att betala (inkl. moms):
-									</span>
-									<span className="text-[12pt] font-semibold">
-										{formatCurrency(totals.total_inc_vat)}
-									</span>
-								</div>
-							</div>
-						)}
-					</div>
-				</section>
-
-				{/* Line items table */}
-				<table className="mt-8 w-full border-collapse text-sm">
-					<thead>
-						<tr className="border-b border-gray-300 bg-gray-50">
-							<th className="py-2 pr-2 text-left font-semibold">
-								Beskrivning
-							</th>
-							<th className="w-[12%] py-2 pr-2 text-right font-semibold whitespace-nowrap">
-								Antal
-							</th>
-							<th className="w-[10%] py-2 pr-2 text-left font-semibold whitespace-nowrap">
-								Enhet
-							</th>
-							<th className="w-[18%] py-2 pr-2 text-right font-semibold whitespace-nowrap">
-								Á-pris
-							</th>
-							<th className="w-[10%] py-2 pr-2 text-right font-semibold whitespace-nowrap">
-								Moms&nbsp;%
-							</th>
-							<th className="w-[20%] py-2 pl-2 text-right font-semibold whitespace-nowrap">
-								Belopp exkl.&nbsp;moms
-							</th>
-						</tr>
-					</thead>
-					<tbody>
-						{nonDiaryLines.map((line) => {
-							const { amountExclVAT } = calculateLineAmounts(line);
-							const typeDisplay = typeMap[line.type] || line.type;
-							const description = `${typeDisplay}: ${
-								line.description || ''
-							}`;
-							return (
-								<tr
-									key={line.id}
-									className="border-b border-gray-200 align-top"
-								>
-									<td className="py-1.5 pr-2">{description}</td>
-									<td className="py-1.5 pr-2 text-right whitespace-nowrap">
-										{formatQuantity(line.quantity || 0)}
-									</td>
-									<td className="py-1.5 pr-2 whitespace-nowrap">
-										{line.unit || '–'}
-									</td>
-									<td className="py-1.5 pr-2 text-right whitespace-nowrap">
-										{formatCurrency(line.unit_price || 0)}
-									</td>
-									<td className="py-1.5 pr-2 text-right whitespace-nowrap">
-										{formatNumber(line.vat_rate || 0, 0)} %
-									</td>
-									<td className="py-1.5 pl-2 text-right whitespace-nowrap">
-										{formatCurrency(amountExclVAT)}
-									</td>
+				{/* Tidblock Section */}
+				{timeLines.length > 0 && (
+					<section className="mt-8">
+						<h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">
+							Tidblock
+						</h3>
+						<table className="w-full border-collapse text-sm">
+							<thead>
+								<tr className="border-b border-gray-300 bg-gray-50">
+									<th className="py-2 pr-2 text-left font-semibold">Datum</th>
+									<th className="py-2 pr-2 text-left font-semibold">Person</th>
+									<th className="py-2 pr-2 text-left font-semibold">Dagbok</th>
+									<th className="py-2 pr-2 text-right font-semibold whitespace-nowrap">
+										Timmar
+									</th>
+									<th className="py-2 pl-2 text-right font-semibold whitespace-nowrap">
+										Summa ex moms
+									</th>
 								</tr>
-							);
-						})}
-					</tbody>
-				</table>
-
-				{/* Separator before diary */}
-				{diarySummaries.length > 0 && (
-					<hr className="mt-8 border-t border-gray-300" />
-				)}
-
-				{/* Diary section */}
-				<section className="mt-10 text-sm">
-					<h2 className="mb-2 text-base font-semibold tracking-tight">
-						Fakturatext – Dagbok
-					</h2>
-					{diarySummaries.length === 0 ? (
-						<p className="text-[10pt] text-gray-700">
-							Inga dagboksanteckningar för perioden.
-						</p>
-					) : (
-						<div className="rounded-md border border-gray-200 bg-gray-50/70 px-3 py-3">
-							<div className="space-y-3">
-								{diarySummaries.map((diary) => {
-									const rawDate = diary.date ? String(diary.date) : '';
-									const date = rawDate ? rawDate.slice(0, 10) : '';
-
-									// Clean summary: remove linebreaks
-									const cleanedSummary = diary.summary
-										? diary.summary.replace(/[\r\n]+/g, ' ').trim()
-										: '';
-
-									// Try to split on first ":" into title + body
-									let title = '';
-									let body = cleanedSummary;
-									const idx = cleanedSummary.indexOf(':');
-									if (idx !== -1) {
-										title = cleanedSummary.slice(0, idx).trim();
-										body = cleanedSummary.slice(idx + 1).trim();
-									}
-
-									// Meta: everything after "|" in raw
-									let metaSummary: string | null = null;
-									if (diary.raw) {
-										const metaParts = diary.raw
-											.split('|')
-											.map((part) => part.trim())
-											.filter(Boolean);
-
-										if (metaParts.length > 1) {
-											// Skip the first part if it's just repeating the text
-											const [, ...rest] = metaParts;
-											metaSummary = rest.join(' | ');
-										} else if (metaParts.length === 1) {
-											metaSummary = metaParts[0];
-										}
-									}
-
+							</thead>
+							<tbody>
+								{timeLines.map((line) => {
+									const { amountExclVAT } = calculateLineAmounts(line);
 									return (
-										<div
-											key={diary.line_ref}
-											className="border-b border-gray-200 pb-2 last:border-0 last:pb-0"
-										>
-											<div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
-												<div className="font-medium">
-													{date && `${date} – `}
-													{title || 'Arbete'}
-												</div>
-											</div>
-
-											{body && (
-												<p className="mt-0.5 text-[10pt] leading-snug text-gray-900">
-													{body}
-												</p>
-											)}
-
-											{metaSummary && (
-												<p className="mt-0.5 text-[9pt] leading-snug text-gray-600">
-													{metaSummary}
-												</p>
-											)}
-										</div>
+										<tr key={line.id} className="border-b border-gray-200 align-top">
+											<td className="py-1.5 pr-2">
+												{line.date ? formatDate(line.date) : '–'}
+											</td>
+											<td className="py-1.5 pr-2 whitespace-nowrap">
+												{line.person || '–'}
+											</td>
+											<td className="py-1.5 pr-2 text-xs text-gray-600">
+												{line.diary || '–'}
+											</td>
+											<td className="py-1.5 pr-2 text-right whitespace-nowrap">
+												{formatQuantity(line.quantity || 0)}
+											</td>
+											<td className="py-1.5 pl-2 text-right whitespace-nowrap">
+												{formatCurrency(amountExclVAT)}
+											</td>
+										</tr>
 									);
 								})}
+							</tbody>
+							<tfoot className="bg-gray-50 border-t-2 border-gray-300">
+								<tr className="text-sm font-semibold">
+									<td className="py-2 pr-2" colSpan={3}>
+										Summa
+									</td>
+									<td className="py-2 pr-2 text-right whitespace-nowrap">
+										{formatQuantity(totalHours)}
+									</td>
+									<td className="py-2 pl-2 text-right whitespace-nowrap">
+										{formatCurrency(totalTimeAmount)}
+									</td>
+								</tr>
+							</tfoot>
+						</table>
+					</section>
+				)}
+
+				{/* Material Section */}
+				{materialLines.length > 0 && (
+					<section className="mt-8">
+						<h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">
+							Material
+						</h3>
+						<table className="w-full border-collapse text-sm">
+							<thead>
+								<tr className="border-b border-gray-300 bg-gray-50">
+									<th className="py-2 pr-2 text-left font-semibold">Datum</th>
+									<th className="py-2 pr-2 text-left font-semibold">Beskrivning</th>
+									<th className="py-2 pr-2 text-right font-semibold whitespace-nowrap">
+										Antal
+									</th>
+									<th className="py-2 pr-2 text-left font-semibold whitespace-nowrap">
+										Enhet
+									</th>
+									<th className="py-2 pl-2 text-right font-semibold whitespace-nowrap">
+										Summa ex moms
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								{materialLines.map((line) => {
+									const { amountExclVAT } = calculateLineAmounts(line);
+									return (
+										<tr key={line.id} className="border-b border-gray-200 align-top">
+											<td className="py-1.5 pr-2">
+												{line.date ? formatDate(line.date) : '–'}
+											</td>
+											<td className="py-1.5 pr-2">{line.description || '–'}</td>
+											<td className="py-1.5 pr-2 text-right whitespace-nowrap">
+												{formatQuantity(line.quantity || 0)}
+											</td>
+											<td className="py-1.5 pr-2 whitespace-nowrap">
+												{line.unit || '–'}
+											</td>
+											<td className="py-1.5 pl-2 text-right whitespace-nowrap">
+												{formatCurrency(amountExclVAT)}
+											</td>
+										</tr>
+									);
+								})}
+							</tbody>
+							<tfoot className="bg-gray-50 border-t-2 border-gray-300">
+								<tr className="text-sm font-semibold">
+									<td className="py-2 pr-2"></td>
+									<td className="py-2 pr-2">Summa</td>
+									<td className="py-2 pr-2 text-right whitespace-nowrap">
+										{formatQuantity(totalMaterialQuantity)}
+									</td>
+									<td className="py-2 pr-2"></td>
+									<td className="py-2 pl-2 text-right whitespace-nowrap">
+										{formatCurrency(totalMaterialAmount)}
+									</td>
+								</tr>
+							</tfoot>
+						</table>
+					</section>
+				)}
+
+				{/* Utlägg Section */}
+				{expenseLines.length > 0 && (
+					<section className="mt-8">
+						<h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">
+							Utlägg
+						</h3>
+						<table className="w-full border-collapse text-sm">
+							<thead>
+								<tr className="border-b border-gray-300 bg-gray-50">
+									<th className="py-2 pr-2 text-left font-semibold">Datum</th>
+									<th className="py-2 pr-2 text-left font-semibold">Beskrivning</th>
+									<th className="py-2 pr-2 text-right font-semibold whitespace-nowrap">
+										Antal
+									</th>
+									<th className="py-2 pr-2 text-left font-semibold whitespace-nowrap">
+										Enhet
+									</th>
+									<th className="py-2 pl-2 text-right font-semibold whitespace-nowrap">
+										Summa ex moms
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								{expenseLines.map((line) => {
+									const { amountExclVAT } = calculateLineAmounts(line);
+									return (
+										<tr key={line.id} className="border-b border-gray-200 align-top">
+											<td className="py-1.5 pr-2">
+												{line.date ? formatDate(line.date) : '–'}
+											</td>
+											<td className="py-1.5 pr-2">{line.description || '–'}</td>
+											<td className="py-1.5 pr-2 text-right whitespace-nowrap">
+												{formatQuantity(line.quantity || 0)}
+											</td>
+											<td className="py-1.5 pr-2 whitespace-nowrap">
+												{line.unit || '–'}
+											</td>
+											<td className="py-1.5 pl-2 text-right whitespace-nowrap">
+												{formatCurrency(amountExclVAT)}
+											</td>
+										</tr>
+									);
+								})}
+							</tbody>
+							<tfoot className="bg-gray-50 border-t-2 border-gray-300">
+								<tr className="text-sm font-semibold">
+									<td className="py-2 pr-2"></td>
+									<td className="py-2 pr-2">Summa</td>
+									<td className="py-2 pr-2 text-right whitespace-nowrap">
+										{formatQuantity(totalExpenseQuantity)}
+									</td>
+									<td className="py-2 pr-2"></td>
+									<td className="py-2 pl-2 text-right whitespace-nowrap">
+										{formatCurrency(totalExpenseAmount)}
+									</td>
+								</tr>
+							</tfoot>
+						</table>
+					</section>
+				)}
+
+				{/* Övrigt Section */}
+				{otherLines.length > 0 && (
+					<section className="mt-8">
+						<h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">
+							Övrigt
+						</h3>
+						<table className="w-full border-collapse text-sm">
+							<thead>
+								<tr className="border-b border-gray-300 bg-gray-50">
+									<th className="py-2 pr-2 text-left font-semibold">Datum</th>
+									<th className="py-2 pr-2 text-left font-semibold">Beskrivning</th>
+									<th className="py-2 pr-2 text-right font-semibold whitespace-nowrap">
+										Antal
+									</th>
+									<th className="py-2 pr-2 text-left font-semibold whitespace-nowrap">
+										Enhet
+									</th>
+									<th className="py-2 pl-2 text-right font-semibold whitespace-nowrap">
+										Summa ex moms
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								{otherLines.map((line) => {
+									const { amountExclVAT } = calculateLineAmounts(line);
+									return (
+										<tr key={line.id} className="border-b border-gray-200 align-top">
+											<td className="py-1.5 pr-2">
+												{line.date ? formatDate(line.date) : '–'}
+											</td>
+											<td className="py-1.5 pr-2">{line.description || '–'}</td>
+											<td className="py-1.5 pr-2 text-right whitespace-nowrap">
+												{formatQuantity(line.quantity || 0)}
+											</td>
+											<td className="py-1.5 pr-2 whitespace-nowrap">
+												{line.unit || '–'}
+											</td>
+											<td className="py-1.5 pl-2 text-right whitespace-nowrap">
+												{formatCurrency(amountExclVAT)}
+											</td>
+										</tr>
+									);
+								})}
+							</tbody>
+							<tfoot className="bg-gray-50 border-t-2 border-gray-300">
+								<tr className="text-sm font-semibold">
+									<td className="py-2 pr-2"></td>
+									<td className="py-2 pr-2">Summa</td>
+									<td className="py-2 pr-2 text-right whitespace-nowrap">
+										{formatQuantity(totalOtherQuantity)}
+									</td>
+									<td className="py-2 pr-2"></td>
+									<td className="py-2 pl-2 text-right whitespace-nowrap">
+										{formatCurrency(totalOtherAmount)}
+									</td>
+								</tr>
+							</tfoot>
+						</table>
+					</section>
+				)}
+
+				{/* Summeringar Section */}
+				{totals && (
+					<section className="mt-8">
+						<h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">
+							Summeringar
+						</h3>
+						<div className="space-y-4">
+							{/* Main totals grid */}
+							<div className="grid grid-cols-3 gap-4">
+								<div className="rounded-md border border-emerald-300 bg-emerald-50/70 px-3 py-2">
+									<div className="text-xs uppercase text-emerald-600">
+										Netto exkl. moms
+									</div>
+									<div className="text-lg font-semibold text-gray-900">
+										{formatCurrency(totals.total_ex_vat)}
+									</div>
+								</div>
+								<div className="rounded-md border border-amber-300 bg-amber-50/70 px-3 py-2">
+									<div className="text-xs uppercase text-amber-600">Moms</div>
+									<div className="text-lg font-semibold text-gray-900">
+										{formatCurrency(totals.total_vat)}
+									</div>
+								</div>
+								<div className="rounded-md border border-blue-300 bg-blue-50/70 px-3 py-2">
+									<div className="text-xs uppercase text-blue-600">Totalt</div>
+									<div className="text-lg font-semibold text-gray-900">
+										{formatCurrency(totals.total_inc_vat)}
+									</div>
+								</div>
 							</div>
+
+							{/* VAT per rate */}
+							{totals.per_vat_rate &&
+								Object.entries(totals.per_vat_rate).some(
+									([, vatData]) => vatData.base > 0
+								) && (
+									<div className="rounded-md border border-gray-200 bg-gray-50/70 px-3 py-2">
+										{Object.entries(totals.per_vat_rate).map(([rate, values]) => {
+											if (values.base <= 0) return null;
+											const vatRate = parseFloat(rate);
+											return (
+												<div key={rate} className="mb-2 last:mb-0">
+													<div className="text-xs font-semibold uppercase text-gray-600">
+														Moms {vatRate}%
+													</div>
+													<div className="text-xs text-gray-700">
+														Exkl: {formatCurrency(values.base)}
+													</div>
+													<div className="text-xs text-gray-700">
+														Moms: {formatCurrency(values.vat)}
+													</div>
+													<div className="text-xs text-gray-700">
+														Inkl: {formatCurrency(values.total)}
+													</div>
+												</div>
+											);
+										})}
+									</div>
+								)}
 						</div>
-					)}
-				</section>
+					</section>
+				)}
 
 				{/* Reverse charge building */}
 				{invoiceBasis.reverse_charge_building && (

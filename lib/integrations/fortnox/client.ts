@@ -17,13 +17,17 @@ export interface FortnoxConnection {
 
 /**
  * Fortnox API error response structure
+ * Based on Fortnox API v3 error responses
  */
 interface FortnoxErrorResponse {
 	ErrorInformation?: {
 		error?: number;
 		message?: string;
+		code?: string;
 	};
 	message?: string;
+	error?: string;
+	error_description?: string;
 }
 
 /**
@@ -148,13 +152,31 @@ export async function createFortnoxInvoice(
 		Invoice: payload,
 	};
 
+	// Log payload to verify no TotalExcludingVAT
+	console.log('[Fortnox Client] Sending invoice to Fortnox API');
+	console.log('[Fortnox Client] Payload keys:', Object.keys(payload as any));
+	
+	// Log InvoiceRows to see what fields we're sending
+	if ((payload as any).InvoiceRows) {
+		console.log('[Fortnox Client] InvoiceRows count:', (payload as any).InvoiceRows.length);
+		if ((payload as any).InvoiceRows.length > 0) {
+			console.log('[Fortnox Client] First InvoiceRow fields:', Object.keys((payload as any).InvoiceRows[0]!));
+			console.log('[Fortnox Client] First InvoiceRow:', JSON.stringify((payload as any).InvoiceRows[0], null, 2));
+		}
+	}
+	
+	const payloadStr = JSON.stringify(wrappedPayload);
+	if (payloadStr.includes('TotalExcludingVAT') || payloadStr.includes('TotalVAT') || payloadStr.includes('"Total":')) {
+		console.error('[Fortnox Client] ERROR: Payload contains total fields!', payloadStr);
+	}
+
 	const response = await fetch(apiUrl, {
 		method: 'POST',
 		headers: {
 			'Authorization': `Bearer ${freshConnection.access_token}`,
 			'Content-Type': 'application/json',
 		},
-		body: JSON.stringify(wrappedPayload),
+		body: payloadStr,
 	});
 
 	const responseText = await response.text();
@@ -163,16 +185,44 @@ export async function createFortnoxInvoice(
 	try {
 		responseData = JSON.parse(responseText);
 	} catch {
-		// If response is not JSON, throw with the raw text
-		throw new Error(`Fortnox API returned non-JSON response: ${responseText}`);
+		// If response is not JSON, log the raw text and throw
+		console.error('[Fortnox Client] Non-JSON response received:', {
+			status: response.status,
+			statusText: response.statusText,
+			responseText: responseText.substring(0, 500), // Limit length for logging
+		});
+		throw new Error(`Fortnox API returned non-JSON response: ${response.status} ${response.statusText}`);
 	}
 
 	if (!response.ok) {
 		const error = responseData as FortnoxErrorResponse;
+		
+		// Extract error message from various possible locations in Fortnox error response
 		const errorMessage =
 			error.ErrorInformation?.message ||
+			error.ErrorInformation?.code ||
 			error.message ||
+			error.error ||
+			error.error_description ||
 			`Fortnox API error: ${response.status} ${response.statusText}`;
+		
+		// Log detailed error information for debugging
+		console.error('[Fortnox Client] Fortnox API error:', {
+			status: response.status,
+			statusText: response.statusText,
+			errorMessage,
+			errorResponse: error,
+			responseText: responseText.substring(0, 1000), // Limit length for logging
+		});
+		
+		// Create a more detailed error message if ErrorInformation is present
+		if (error.ErrorInformation) {
+			const detailedMessage = error.ErrorInformation.code
+				? `${errorMessage} (Code: ${error.ErrorInformation.code})`
+				: errorMessage;
+			throw new Error(detailedMessage);
+		}
+		
 		throw new Error(errorMessage);
 	}
 

@@ -5,3 +5,5 @@ ALTER TABLE public.expenses
 
 CREATE INDEX IF NOT EXISTS idx_expenses_ata_id ON public.expenses(ata_id);
 
+
+

@@ -110,60 +110,170 @@ export async function POST(request: NextRequest) {
 					org_no: customerPayload.org_no,
 				});
 
-				// Check if customer already exists (by Fortnox customer number)
-				// Include archived customers in check, but log if they're archived
-				const { data: existingCustomer, error: checkError1 } = await supabase
-					.from('customers')
-					.select('id, customer_no, company_name, first_name, last_name, is_archived')
-					.eq('org_id', membership.org_id)
-					.eq('fortnox_customer_number', fortnoxCustomer.CustomerNumber)
-					.maybeSingle();
+				// IMPORTANT: Match existing customers in priority order:
+				// 1. By org_no/personal_identity_no (most reliable identifier) - update fortnox_customer_number if missing or different
+				// 2. By fortnox_customer_number (if already set correctly)
+				// 3. By customer_no (may match Fortnox CustomerNumber)
+				// This ensures all customers get their fortnox_customer_number set correctly
 
-				if (checkError1 && checkError1.code !== 'PGRST116') {
-					console.error(`[Fortnox Import] Error checking existing customer by fortnox_customer_number:`, checkError1);
+				let existingCustomer = null;
+				let matchReason = '';
+
+				// Priority 1: Match by org_no (COMPANY) or personal_identity_no (PRIVATE)
+				// This is the most reliable way to match customers
+				// Note: org_no might be stored with or without dash, so we need to check both formats
+				if (customerPayload.type === 'COMPANY' && customerPayload.org_no) {
+					// Normalize org_no for comparison (remove dash if present)
+					const normalizedOrgNo = customerPayload.org_no.replace(/-/g, '');
+					const orgNoWithDash = normalizedOrgNo.length === 10 
+						? `${normalizedOrgNo.slice(0, 6)}-${normalizedOrgNo.slice(6)}`
+						: customerPayload.org_no;
+					
+					// Try matching with dash first, then without
+					let matchData = null;
+					const { data: dataWithDash, error: errorWithDash } = await supabase
+						.from('customers')
+						.select('id, customer_no, company_name, org_no, fortnox_customer_number, is_archived')
+						.eq('org_id', membership.org_id)
+						.eq('type', 'COMPANY')
+						.eq('org_no', orgNoWithDash)
+						.maybeSingle();
+					
+					if (!errorWithDash && dataWithDash) {
+						matchData = dataWithDash;
+					} else {
+						// Try without dash
+						const { data: dataWithoutDash, error: errorWithoutDash } = await supabase
+							.from('customers')
+							.select('id, customer_no, company_name, org_no, fortnox_customer_number, is_archived')
+							.eq('org_id', membership.org_id)
+							.eq('type', 'COMPANY')
+							.eq('org_no', normalizedOrgNo)
+							.maybeSingle();
+						
+						if (!errorWithoutDash && dataWithoutDash) {
+							matchData = dataWithoutDash;
+						} else if (errorWithoutDash && errorWithoutDash.code !== 'PGRST116') {
+							console.error(`[Fortnox Import] Error checking existing customer by org_no:`, errorWithoutDash);
+						}
+					}
+					
+					// Also try matching where org_no in DB has different format (with/without dash)
+					if (!matchData) {
+						const { data: allCompanyCustomers, error: fetchError } = await supabase
+							.from('customers')
+							.select('id, customer_no, company_name, org_no, fortnox_customer_number, is_archived')
+							.eq('org_id', membership.org_id)
+							.eq('type', 'COMPANY')
+							.not('org_no', 'is', null);
+						
+						if (!fetchError && allCompanyCustomers) {
+							// Find match by comparing normalized org_no
+							for (const customer of allCompanyCustomers) {
+								if (customer.org_no) {
+									const customerOrgNoNormalized = customer.org_no.replace(/-/g, '');
+									if (customerOrgNoNormalized === normalizedOrgNo) {
+										matchData = customer;
+										break;
+									}
+								}
+							}
+						}
+					}
+
+					if (matchData) {
+						existingCustomer = matchData;
+						matchReason = 'org_no';
+					}
+				} else if (customerPayload.type === 'PRIVATE' && customerPayload.personal_identity_no) {
+					const { data, error: checkError4 } = await supabase
+						.from('customers')
+						.select('id, customer_no, first_name, last_name, personal_identity_no, fortnox_customer_number, is_archived')
+						.eq('org_id', membership.org_id)
+						.eq('type', 'PRIVATE')
+						.eq('personal_identity_no', customerPayload.personal_identity_no)
+						.maybeSingle();
+
+					if (checkError4 && checkError4.code !== 'PGRST116') {
+						console.error(`[Fortnox Import] Error checking existing customer by personal_identity_no:`, checkError4);
+					} else if (data) {
+						existingCustomer = data;
+						matchReason = 'personal_identity_no';
+					}
 				}
 
+				// Priority 2: If not matched by identifier, check by fortnox_customer_number
+				if (!existingCustomer) {
+					const { data, error: checkError1 } = await supabase
+						.from('customers')
+						.select('id, customer_no, company_name, first_name, last_name, fortnox_customer_number, org_no, personal_identity_no, is_archived')
+						.eq('org_id', membership.org_id)
+						.eq('fortnox_customer_number', fortnoxCustomer.CustomerNumber)
+						.maybeSingle();
+
+					if (checkError1 && checkError1.code !== 'PGRST116') {
+						console.error(`[Fortnox Import] Error checking existing customer by fortnox_customer_number:`, checkError1);
+					} else if (data) {
+						existingCustomer = data;
+						matchReason = 'fortnox_customer_number';
+					}
+				}
+
+				// Priority 3: If still not matched, check by customer_no
+				if (!existingCustomer) {
+					const { data: existingByCustomerNo, error: checkError2 } = await supabase
+						.from('customers')
+						.select('id, customer_no, company_name, first_name, last_name, fortnox_customer_number, org_no, personal_identity_no, is_archived')
+						.eq('org_id', membership.org_id)
+						.eq('customer_no', customerPayload.customer_no)
+						.maybeSingle();
+
+					if (checkError2 && checkError2.code !== 'PGRST116') {
+						console.error(`[Fortnox Import] Error checking existing customer by customer_no:`, checkError2);
+					} else if (existingByCustomerNo) {
+						existingCustomer = existingByCustomerNo;
+						matchReason = 'customer_no';
+					}
+				}
+
+				// If we found an existing customer, update fortnox_customer_number if needed
 				if (existingCustomer) {
 					const customerName = existingCustomer.company_name || `${existingCustomer.first_name || ''} ${existingCustomer.last_name || ''}`.trim();
-					console.log(`[Fortnox Import] Customer ${fortnoxCustomer.CustomerNumber} already exists:`, {
+					console.log(`[Fortnox Import] Found existing customer (matched by ${matchReason}):`, {
 						id: existingCustomer.id,
 						customer_no: existingCustomer.customer_no,
+						fortnox_customer_number: existingCustomer.fortnox_customer_number,
 						name: customerName,
 						is_archived: existingCustomer.is_archived,
-						note: existingCustomer.is_archived ? 'Kunden är arkiverad - syns inte i standardlistan' : 'Kunden finns aktiv',
 					});
-					
-					results.skipped++;
-					if (existingCustomer.is_archived) {
-						results.skippedArchived++;
+
+					// Always update fortnox_customer_number if it's missing or different
+					// This ensures all customers get their Fortnox number set correctly
+					if (!existingCustomer.fortnox_customer_number || existingCustomer.fortnox_customer_number !== fortnoxCustomer.CustomerNumber) {
+						const oldNumber = existingCustomer.fortnox_customer_number || 'null';
+						console.log(`[Fortnox Import] Updating existing customer ${existingCustomer.id} with Fortnox customer number ${fortnoxCustomer.CustomerNumber} (was: ${oldNumber})`);
+						
+						const { error: updateError } = await supabase
+							.from('customers')
+							.update({ fortnox_customer_number: fortnoxCustomer.CustomerNumber })
+							.eq('id', existingCustomer.id);
+						
+						if (updateError) {
+							console.error(`[Fortnox Import] Error updating fortnox_customer_number:`, updateError);
+							results.errors.push({
+								customerNumber: fortnoxCustomer.CustomerNumber,
+								error: `Kunde inte uppdatera Fortnox-kundnummer: ${updateError.message}`,
+							});
+						} else {
+							console.log(`[Fortnox Import] Successfully updated fortnox_customer_number for customer ${existingCustomer.id}`);
+							results.imported++; // Count as imported since we updated it
+						}
+					} else {
+						console.log(`[Fortnox Import] Customer ${existingCustomer.id} already has correct fortnox_customer_number (${existingCustomer.fortnox_customer_number}), skipping`);
+						results.skipped++;
 					}
-					continue;
-				}
-
-				// Also check by customer_no to avoid duplicates
-				const { data: existingByCustomerNo, error: checkError2 } = await supabase
-					.from('customers')
-					.select('id, customer_no, company_name, first_name, last_name, fortnox_customer_number, is_archived')
-					.eq('org_id', membership.org_id)
-					.eq('customer_no', customerPayload.customer_no)
-					.maybeSingle();
-
-				if (checkError2 && checkError2.code !== 'PGRST116') {
-					console.error(`[Fortnox Import] Error checking existing customer by customer_no:`, checkError2);
-				}
-
-				if (existingByCustomerNo) {
-					const customerName = existingByCustomerNo.company_name || `${existingByCustomerNo.first_name || ''} ${existingByCustomerNo.last_name || ''}`.trim();
-					console.log(`[Fortnox Import] Customer ${customerPayload.customer_no} already exists (by customer_no):`, {
-						id: existingByCustomerNo.id,
-						customer_no: existingByCustomerNo.customer_no,
-						fortnox_customer_number: existingByCustomerNo.fortnox_customer_number,
-						name: customerName,
-						is_archived: existingByCustomerNo.is_archived,
-						note: existingByCustomerNo.is_archived ? 'Kunden är arkiverad - syns inte i standardlistan' : 'Kunden finns aktiv',
-					});
-					results.skipped++;
-					if (existingByCustomerNo.is_archived) {
+					
+					if (existingCustomer.is_archived) {
 						results.skippedArchived++;
 					}
 					continue;

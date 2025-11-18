@@ -17,6 +17,12 @@ import type { InvoiceBasisRow } from '@/lib/integrations/fortnox/export-invoice'
  * - projectName: Optional project name
  */
 export async function POST(request: NextRequest) {
+	console.log('[Fortnox Export API] ==========================================');
+	console.log('[Fortnox Export API] POST /api/integrations/fortnox/export-invoice called');
+	console.log('[Fortnox Export API] Request URL:', request.url);
+	console.log('[Fortnox Export API] Stack trace:', new Error().stack);
+	console.log('[Fortnox Export API] ==========================================');
+	
 	try {
 		const { user, membership } = await getSession();
 
@@ -33,7 +39,6 @@ export async function POST(request: NextRequest) {
 		const projectId = searchParams.get('projectId');
 		const periodStart = searchParams.get('start');
 		const periodEnd = searchParams.get('end');
-		const customerFortnoxNumberParam = searchParams.get('customerFortnoxNumber');
 		const projectName = searchParams.get('projectName');
 
 		if (!projectId || !periodStart || !periodEnd) {
@@ -43,22 +48,12 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		// Get Fortnox connection (to check for saved customer number)
+		// Get Fortnox connection
 		const connection = await getFortnoxConnectionForOrg(membership.org_id);
 		if (!connection) {
 			return NextResponse.json(
 				{ error: 'Fortnox-anslutning saknas. Anslut ditt Fortnox-konto först.' },
 				{ status: 404 }
-			);
-		}
-
-		// Use provided customer number, or fall back to saved one from connection
-		const customerFortnoxNumber = customerFortnoxNumberParam || connection.fortnox_customer_number;
-
-		if (!customerFortnoxNumber) {
-			return NextResponse.json(
-				{ error: 'Fortnox kundnummer krävs. Ange kundnummer eller anslut ditt Fortnox-konto för att hämta det automatiskt.' },
-				{ status: 400 }
 			);
 		}
 
@@ -78,6 +73,32 @@ export async function POST(request: NextRequest) {
 		if (invoiceBasisError || !invoiceBasis) {
 			return NextResponse.json(
 				{ error: 'Fakturaunderlaget måste vara låst för export. Lås underlaget först.' },
+				{ status: 400 }
+			);
+		}
+
+		// Fetch Fortnox customer number from customer record
+		// Customer numbers are saved when importing customers from Fortnox
+		let customerFortnoxNumber: string | null = null;
+		
+		if (invoiceBasis.customer_id) {
+			const { data: customer, error: customerError } = await supabase
+				.from('customers')
+				.select('fortnox_customer_number')
+				.eq('id', invoiceBasis.customer_id)
+				.single();
+
+			if (!customerError && customer?.fortnox_customer_number) {
+				customerFortnoxNumber = customer.fortnox_customer_number;
+				console.log('[Fortnox Export] Using customer number from customers table:', customerFortnoxNumber);
+			}
+		}
+
+		if (!customerFortnoxNumber || customerFortnoxNumber.trim() === '') {
+			return NextResponse.json(
+				{ 
+					error: 'Kunden saknar Fortnox kundnummer. Importera kunder från Fortnox i Inställningar > Fortnox Integration för att automatiskt koppla kundnummer.'
+				},
 				{ status: 400 }
 			);
 		}
@@ -103,6 +124,7 @@ export async function POST(request: NextRequest) {
 		// Connection already fetched above, reuse it
 
 		// Build Fortnox invoice payload
+		console.log('[Fortnox Export API] Building payload with customer number:', customerFortnoxNumber);
 		const payload = await buildFortnoxInvoicePayloadFromInvoiceBasis(
 			invoiceBasis as InvoiceBasisRow,
 			{
@@ -111,7 +133,18 @@ export async function POST(request: NextRequest) {
 			}
 		);
 
+		// Log payload to verify no TotalExcludingVAT
+		console.log('[Fortnox Export API] Payload keys:', Object.keys(payload));
+		if ('TotalExcludingVAT' in payload || 'TotalVAT' in payload || 'Total' in payload) {
+			console.error('[Fortnox Export API] ERROR: Payload contains total fields!', {
+				hasTotal: 'Total' in payload,
+				hasTotalVAT: 'TotalVAT' in payload,
+				hasTotalExcludingVAT: 'TotalExcludingVAT' in payload,
+			});
+		}
+
 		// Create invoice in Fortnox
+		console.log('[Fortnox Export API] Sending request to Fortnox API...');
 		const fortnoxResponse = await createFortnoxInvoice(connection, payload);
 
 		// Extract invoice number from response
@@ -168,7 +201,23 @@ export async function POST(request: NextRequest) {
 			message: `Faktura ${fortnoxInvoiceNumber} skapad i Fortnox`,
 		});
 	} catch (error) {
-		console.error('Fortnox export error:', error);
+		console.error('[Fortnox Export API] Fortnox export error:', error);
+		
+		// Extract error message with more detail
+		let errorMessage = 'Ett oväntat fel uppstod';
+		if (error instanceof Error) {
+			errorMessage = error.message;
+		} else if (typeof error === 'string') {
+			errorMessage = error;
+		} else if (error && typeof error === 'object' && 'message' in error) {
+			errorMessage = String((error as any).message);
+		}
+		
+		console.error('[Fortnox Export API] Error details:', {
+			errorType: error instanceof Error ? error.constructor.name : typeof error,
+			errorMessage,
+			error,
+		});
 		
 		// Try to save error status if we have the invoice_basis_id
 		try {
@@ -192,7 +241,6 @@ export async function POST(request: NextRequest) {
 						.single();
 
 					if (invoiceBasis) {
-						const errorMessage = error instanceof Error ? error.message : 'Okänt fel';
 						await supabase
 							.from('fortnox_invoice_links')
 							.upsert({
@@ -208,11 +256,11 @@ export async function POST(request: NextRequest) {
 				}
 			}
 		} catch (saveError) {
-			console.error('Failed to save error status:', saveError);
+			console.error('[Fortnox Export API] Failed to save error status:', saveError);
 		}
 
 		return NextResponse.json(
-			{ error: error instanceof Error ? error.message : 'Ett oväntat fel uppstod' },
+			{ error: errorMessage },
 			{ status: 500 }
 		);
 	}

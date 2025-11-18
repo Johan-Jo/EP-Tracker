@@ -42,6 +42,16 @@ export async function GET(request: NextRequest, context: RouteContext<RouteParam
 			return NextResponse.json({ error: error.message }, { status: 500 });
 		}
 
+		// Log customer data for debugging Fortnox customer number
+		if (data) {
+			console.log('[Customers API] Fetched customer:', {
+				id: data.id,
+				org_no: (data as any).org_no,
+				fortnox_customer_number: (data as any).fortnox_customer_number,
+				company_name: (data as any).company_name,
+			});
+		}
+
 		if (includeRelations) {
 			const { relation_stats, ...rest } = data as any;
 			const statsRecord = Array.isArray(relation_stats) ? relation_stats[0] : relation_stats;

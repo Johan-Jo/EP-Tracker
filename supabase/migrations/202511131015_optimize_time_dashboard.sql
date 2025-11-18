@@ -18,3 +18,5 @@ create index if not exists idx_diary_entries_org_project_user_date
 comment on index idx_diary_entries_org_project_user_date is
   'Supports diary enrichment lookups for the time entry list (/api/time/entries).';
 
+
+

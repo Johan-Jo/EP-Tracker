@@ -16,10 +16,13 @@ import {
 	BookOpen,
 	Lock,
 	Download,
+	AlertCircle,
+	Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -146,49 +149,71 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 		enabled: currentStep === 'preview' && !!selectedProject && !!periodStart && !!periodEnd,
 	});
 
-	// Fetch customer Fortnox number when invoice basis is loaded
-	useEffect(() => {
-		const fetchCustomerFortnoxNumber = async () => {
-			// First, try to get from customer record
-			if (invoiceBasis?.customer_id) {
-				try {
-					const response = await fetch(`/api/customers/${invoiceBasis.customer_id}`);
-					if (response.ok) {
-						const data = await response.json();
-						if (data.fortnox_customer_number) {
-							setCustomerFortnoxNumber(data.fortnox_customer_number);
-							return; // Found in customer, use it
-						}
-					}
-				} catch (error) {
-					console.error('Failed to fetch customer Fortnox number:', error);
-				}
-			}
+	// Track if we've attempted to fetch customer Fortnox number
+	const [hasFetchedCustomerNumber, setHasFetchedCustomerNumber] = useState(false);
+	const [isFetchingCustomerNumber, setIsFetchingCustomerNumber] = useState(false);
 
-			// Fallback: Get from Fortnox connection (organization's own customer number)
+	// Fetch customer Fortnox number from customer record (saved when importing from Fortnox)
+	// CRITICAL: This should ONLY fetch the number, NEVER trigger export
+	// This useEffect should NEVER call handleExportToFortnox
+	useEffect(() => {
+		// Reset state when invoice basis changes
+		if (!invoiceBasis?.customer_id) {
+			setCustomerFortnoxNumber('');
+			setHasFetchedCustomerNumber(false);
+			setIsFetchingCustomerNumber(false);
+			return;
+		}
+
+		// Only fetch if we haven't fetched yet and invoice basis is locked
+		if (hasFetchedCustomerNumber || isFetchingCustomerNumber || !invoiceBasis.locked) {
+			return;
+		}
+
+		const fetchCustomerFortnoxNumber = async () => {
+			setIsFetchingCustomerNumber(true);
 			try {
-				const connectionResponse = await fetch(`/api/integrations/fortnox/connection?orgId=${orgId}`);
-				if (connectionResponse.ok) {
-					const connectionData = await connectionResponse.json();
-					if (connectionData.connection?.fortnox_customer_number) {
-						setCustomerFortnoxNumber(connectionData.connection.fortnox_customer_number);
-						return; // Found in connection, use it
-					}
+				console.log('[InvoiceBasis] Fetching customer Fortnox number for customer_id:', invoiceBasis.customer_id);
+				const response = await fetch(`/api/customers/${invoiceBasis.customer_id}`);
+				if (response.ok) {
+					const data = await response.json();
+					console.log('[InvoiceBasis] Raw API response:', data);
+					const customer = data.customer || data; // Handle both formats
+					// Handle null, undefined, or empty string - trim and validate
+					const fortnoxNumber = customer?.fortnox_customer_number 
+						? String(customer.fortnox_customer_number).trim() 
+						: '';
+					console.log('[InvoiceBasis] Customer data:', {
+						customer_id: invoiceBasis.customer_id,
+						org_no: customer?.org_no,
+						fortnox_customer_number: fortnoxNumber,
+						raw_fortnox_customer_number: customer?.fortnox_customer_number,
+						company_name: customer?.company_name,
+					});
+					
+					// CRITICAL: Only set state, NEVER call handleExportToFortnox here
+					setCustomerFortnoxNumber(fortnoxNumber);
+					setHasFetchedCustomerNumber(true);
+					
+					// IMPORTANT: Do NOT trigger export here - export should ONLY happen on button click
+					console.log('[InvoiceBasis] Customer number fetched, NOT triggering export');
+				} else {
+					console.error('[InvoiceBasis] Failed to fetch customer:', response.status, response.statusText);
+					setCustomerFortnoxNumber('');
+					setHasFetchedCustomerNumber(true);
 				}
 			} catch (error) {
-				console.error('Failed to fetch Fortnox connection:', error);
+				console.error('Failed to fetch customer Fortnox number:', error);
+				setCustomerFortnoxNumber('');
+				setHasFetchedCustomerNumber(true);
+			} finally {
+				setIsFetchingCustomerNumber(false);
 			}
-
-			// No Fortnox customer number found
-			setCustomerFortnoxNumber('');
 		};
 
-		if (invoiceBasis?.customer_id || invoiceBasis?.locked) {
-			fetchCustomerFortnoxNumber();
-		} else {
-			setCustomerFortnoxNumber('');
-		}
-	}, [invoiceBasis?.customer_id, invoiceBasis?.locked, orgId]);
+		fetchCustomerFortnoxNumber();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [invoiceBasis?.customer_id, invoiceBasis?.locked]);
 
 	const updateHeader = useUpdateInvoiceHeader();
 	const updateLine = useUpdateInvoiceLine();
@@ -506,9 +531,13 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 	const canFetch = selectedProjectIds.length > 0 && !!periodStart && !!periodEnd;
 
 	// Fetch Fortnox export status when invoice_basis is locked
+	// Also track if there's an old failed export that needs to be cleared
+	const [hasOldFailedExport, setHasOldFailedExport] = useState(false);
+	
 	useEffect(() => {
 		if (!invoiceBasis?.id || !invoiceBasis.locked) {
 			setFortnoxStatus(null);
+			setHasOldFailedExport(false);
 			return;
 		}
 
@@ -520,17 +549,56 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 				if (response.ok) {
 					const data = await response.json();
 					if (data.data) {
-						setFortnoxStatus({
-							fortnox_invoice_number: data.data.fortnox_invoice_number || null,
-							status: data.data.status || null,
-							error_message: data.data.error_message || null,
-						});
+						// Successful export - always show
+						if (data.data.status === 'created' && data.data.fortnox_invoice_number) {
+							setFortnoxStatus({
+								fortnox_invoice_number: data.data.fortnox_invoice_number || null,
+								status: data.data.status || null,
+								error_message: null,
+							});
+							setHasOldFailedExport(false);
+						} else if (data.data.status === 'failed') {
+							// Check if error is recent (within last hour)
+							const errorTime = data.data.updated_at || data.data.created_at;
+							if (errorTime) {
+								const errorDate = new Date(errorTime);
+								const now = new Date();
+								const hoursAgo = (now.getTime() - errorDate.getTime()) / (1000 * 60 * 60);
+								
+								// Show recent failures (less than 1 hour old)
+								if (hoursAgo < 1) {
+									setFortnoxStatus({
+										fortnox_invoice_number: null,
+										status: 'failed',
+										error_message: data.data.error_message || null,
+									});
+									setHasOldFailedExport(false);
+								} else {
+									// Old failure - don't show error message, but allow clearing
+									console.log('[InvoiceBasis] Old failed export detected (older than 1 hour)');
+									setFortnoxStatus(null);
+									setHasOldFailedExport(true);
+								}
+							} else {
+								setFortnoxStatus(null);
+								setHasOldFailedExport(false);
+							}
+						} else {
+							setFortnoxStatus(null);
+							setHasOldFailedExport(false);
+						}
 					} else {
 						setFortnoxStatus(null);
+						setHasOldFailedExport(false);
 					}
+				} else {
+					setFortnoxStatus(null);
+					setHasOldFailedExport(false);
 				}
 			} catch (error) {
 				console.error('Failed to fetch Fortnox status:', error);
+				setFortnoxStatus(null);
+				setHasOldFailedExport(false);
 			}
 		};
 
@@ -538,16 +606,40 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 	}, [invoiceBasis?.id, invoiceBasis?.locked]);
 
 	// Handle Fortnox export
-	const handleExportToFortnox = async () => {
+	// CRITICAL: This function MUST ONLY be called when user explicitly clicks the export button
+	// It MUST NEVER be called automatically, in useEffect, or when state changes
+	const handleExportToFortnox = async (event: React.MouseEvent<HTMLButtonElement>) => {
+		// CRITICAL: Prevent any accidental form submission or auto-triggering
+		event.preventDefault();
+		event.stopPropagation();
+		
+		// Log who called this function - should ALWAYS be from button click
+		console.log('[Fortnox Export] ==========================================');
+		console.log('[Fortnox Export] handleExportToFortnox called');
+		console.log('[Fortnox Export] Event type:', event?.type);
+		console.log('[Fortnox Export] Event target:', event?.target);
+		console.log('[Fortnox Export] Stack trace:', new Error().stack);
+		console.log('[Fortnox Export] ==========================================');
+		
 		if (!invoiceBasis?.locked) {
 			toast.error('Lås underlaget innan export');
 			return;
 		}
 
-		if (!customerFortnoxNumber.trim()) {
-			toast.error('Ange Fortnox kundnummer');
+		// CRITICAL: Wait for customer number to be fetched
+		if (!hasFetchedCustomerNumber) {
+			console.error('[Fortnox Export] ERROR: Tried to export before customer number was fetched!');
+			toast.error('Väntar på kundnummer... Försök igen om ett ögonblick.');
 			return;
 		}
+
+		if (!customerFortnoxNumber || customerFortnoxNumber.trim().length === 0) {
+			console.error('[Fortnox Export] ERROR: Customer number is empty after fetch');
+			toast.error('Kunden saknar Fortnox kundnummer. Importera kunder från Fortnox först.');
+			return;
+		}
+
+		console.log('[Fortnox Export] All checks passed, proceeding with export');
 
 		setIsExportingToFortnox(true);
 		try {
@@ -556,8 +648,10 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 				projectId: selectedProject,
 				start: periodStart,
 				end: periodEnd,
-				customerFortnoxNumber: customerFortnoxNumber.trim(),
 			});
+			
+			// Customer number is automatically fetched from customers table in API
+			
 			if (selectedProjectName) {
 				params.append('projectName', selectedProjectName);
 			}
@@ -566,13 +660,130 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 				method: 'POST',
 			});
 
-			const data = await response.json();
-
+			// Read response text first (can only be read once)
+			const responseText = await response.text();
+			
 			if (!response.ok) {
-				throw new Error(data.error || 'Kunde inte exportera till Fortnox');
+				// For error responses, try to extract error message
+				let errorMessage = `Kunde inte exportera till Fortnox (${response.status})`;
+				let errorDetails: string | null = null;
+				let data: any = null;
+				
+				// Try to parse as JSON if response text exists
+				if (responseText && responseText.trim()) {
+					try {
+						data = JSON.parse(responseText);
+					} catch (jsonError) {
+						// If not JSON, use text response as error message
+						const rawError = responseText.length > 200 
+							? `${responseText.substring(0, 200)}...`
+							: responseText;
+						errorMessage = rawError || `Kunde inte exportera till Fortnox: ${response.status} ${response.statusText}`;
+						console.error('[Fortnox Export] Non-JSON error response:', {
+							status: response.status,
+							statusText: response.statusText,
+							text: rawError,
+						});
+						throw new Error(errorMessage);
+					}
+					
+					// Extract error message from various possible locations in Fortnox error response
+					// Priority: data.error (from our API) > ErrorInformation.message (from Fortnox) > other fields
+					const extractedMessage = 
+						(typeof data === 'string' ? data : null) ||
+						(data?.error && typeof data.error === 'string' ? data.error : null) ||
+						(data?.ErrorInformation?.message && typeof data.ErrorInformation.message === 'string' ? data.ErrorInformation.message : null) ||
+						(data?.message && typeof data.message === 'string' ? data.message : null) ||
+						(data?.ErrorInformation?.code && typeof data.ErrorInformation.code === 'string' ? data.ErrorInformation.code : null);
+					
+					if (extractedMessage && extractedMessage.trim()) {
+						errorMessage = extractedMessage.trim();
+					}
+					
+					// Add error code if available
+					if (data?.ErrorInformation?.code) {
+						const code = typeof data.ErrorInformation.code === 'number' 
+							? String(data.ErrorInformation.code) 
+							: data.ErrorInformation.code;
+						errorDetails = `Felkod: ${code}`;
+					}
+				} else {
+					// Empty response text
+					errorMessage = `Kunde inte exportera till Fortnox: ${response.status} ${response.statusText}`;
+					console.error('[Fortnox Export] Empty error response:', {
+						status: response.status,
+						statusText: response.statusText,
+					});
+				}
+				
+				// Ensure errorMessage is never empty
+				if (!errorMessage || !errorMessage.trim()) {
+					errorMessage = `Kunde inte exportera till Fortnox: ${response.status} ${response.statusText}`;
+				}
+				
+				// Provide actionable guidance based on common errors
+				let guidance: string | null = null;
+				if (errorMessage.includes('Felaktigt fältnamn')) {
+					guidance = 'Ett eller flera fältnamn är felaktiga. Kontakta support om detta kvarstår.';
+				} else if (errorMessage.includes('Kunde inte hitta konto') || errorMessage.includes('konto') || errorMessage.includes('Account')) {
+					guidance = 'Kontot som används finns inte i Fortnox. Konto-fältet måste tas bort eller så måste kontot skapas i Fortnox.';
+				} else if (errorMessage.includes('Customer') || errorMessage.includes('Kund')) {
+					guidance = 'Kontrollera att Fortnox kundnummer är korrekt och att kunden finns i Fortnox.';
+				} else if (errorMessage.includes('Artikel') || errorMessage.includes('Article')) {
+					guidance = 'Artikelnumret refererar till en artikel som inte finns i Fortnox.';
+				} else if (errorMessage.includes('Projekt') || errorMessage.includes('Project')) {
+					guidance = 'Projektfältet måste referera till ett befintligt projekt i Fortnox.';
+				} else if (errorMessage.includes('Värdet måste vara alfanumeriskt')) {
+					guidance = 'Ett fältvärde innehåller ogiltiga tecken. Kontrollera projektnamnet.';
+				}
+				
+				// Log detailed error information for debugging
+				console.error('[Fortnox Export] Export failed:', {
+					status: response.status,
+					statusText: response.statusText,
+					errorMessage,
+					errorDetails,
+					guidance,
+					parsedData: data,
+					responseTextPreview: responseText ? responseText.substring(0, 500) : '(empty)',
+					hasData: !!data,
+					dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
+				});
+				
+				// Create detailed error with guidance
+				const detailedError = guidance 
+					? `${errorMessage}${errorDetails ? ` (${errorDetails})` : ''}\n\n${guidance}`
+					: errorMessage + (errorDetails ? ` (${errorDetails})` : '');
+				
+				throw new Error(detailedError);
+			}
+			
+			// Success - parse JSON response from text
+			let data: any = null;
+			
+			if (!responseText || !responseText.trim()) {
+				console.error('[Fortnox Export] Empty success response');
+				throw new Error('Kunde inte tolka svaret från Fortnox: tomt svar');
+			}
+			
+			try {
+				data = JSON.parse(responseText);
+			} catch (jsonError) {
+				console.error('[Fortnox Export] Failed to parse success response:', {
+					jsonError,
+					responseText: responseText.substring(0, 500),
+				});
+				throw new Error(`Kunde inte tolka svaret från Fortnox: ${jsonError instanceof Error ? jsonError.message : 'okänt fel'}`);
 			}
 
-			toast.success(data.message || `Faktura ${data.fortnoxInvoiceNumber} skapad i Fortnox`);
+			// Success - show detailed success message
+			const successMessage = data.fortnoxInvoiceNumber 
+				? `✅ Faktura ${data.fortnoxInvoiceNumber} skapad i Fortnox`
+				: data.message || 'Faktura exporterad till Fortnox';
+			
+			toast.success(successMessage, {
+				duration: 5000,
+			});
 			
 			// Refresh Fortnox status
 			if (invoiceBasis.id) {
@@ -591,7 +802,40 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 				}
 			}
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : 'Kunde inte exportera till Fortnox');
+			const errorMessage = error instanceof Error ? error.message : 'Kunde inte exportera till Fortnox';
+			console.error('[Fortnox Export] Error:', error);
+			
+			// Split error message into title and description if it contains guidance
+			const parts = errorMessage.split('\n\n');
+			const title = parts[0] || errorMessage;
+			const description = parts[1] || 'Kontrollera felmeddelandet ovan för mer information.';
+			
+			// Show detailed error message with guidance
+			toast.error(`❌ Export misslyckades: ${title}`, {
+				duration: 10000,
+				description: description,
+			});
+			
+			// Update Fortnox status with error for UI display
+			if (invoiceBasis?.id) {
+				try {
+					const statusResponse = await fetch(
+						`/api/integrations/fortnox/invoice-links?invoiceBasisId=${invoiceBasis.id}`
+					);
+					if (statusResponse.ok) {
+						const statusData = await statusResponse.json();
+						if (statusData.data) {
+							setFortnoxStatus({
+								fortnox_invoice_number: statusData.data.fortnox_invoice_number || null,
+								status: 'failed',
+								error_message: title,
+							});
+						}
+					}
+				} catch (statusError) {
+					console.error('[Fortnox Export] Failed to update status:', statusError);
+				}
+			}
 		} finally {
 			setIsExportingToFortnox(false);
 		}
@@ -1607,8 +1851,8 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 												<div className='text-xs uppercase text-amber-600 dark:text-amber-300'>Moms</div>
 												<div className='text-2xl font-semibold text-foreground'>
 													{totals?.total_vat?.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) ?? '0,00'} kr
-												</div>
-											</div>
+																</div>
+															</div>
 											<div className='rounded-lg border border-blue-500/30 bg-blue-500/5 p-4'>
 												<div className='text-xs uppercase text-blue-600 dark:text-blue-300'>Totalt</div>
 												<div className='text-2xl font-semibold text-foreground'>
@@ -1733,12 +1977,12 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 													<div className='flex items-center justify-between mb-3'>
 														<span className='text-sm font-medium'>Fortnox Export</span>
 														{fortnoxStatus?.fortnox_invoice_number ? (
-															<span className='text-sm text-muted-foreground'>
-																Exporterad till Fortnox – fakturanummer {fortnoxStatus.fortnox_invoice_number}
+															<span className='text-sm font-medium text-green-600 dark:text-green-400'>
+																✅ Exporterad – Fakturanummer: {fortnoxStatus.fortnox_invoice_number}
 															</span>
 														) : fortnoxStatus?.status === 'failed' ? (
-															<span className='text-sm text-destructive'>
-																Export misslyckades: {fortnoxStatus.error_message || 'Okänt fel'}
+															<span className='text-sm font-medium text-destructive'>
+																❌ Export misslyckades
 															</span>
 														) : (
 															<span className='text-sm text-muted-foreground'>
@@ -1747,20 +1991,248 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 														)}
 													</div>
 													{canExportToFortnox ? (
-														<div className='flex items-center gap-2'>
-															<Input
-																placeholder='Fortnox kundnummer'
-																value={customerFortnoxNumber}
-																onChange={(e) => setCustomerFortnoxNumber(e.target.value)}
-																className='w-48'
-																disabled={isExportingToFortnox || !!fortnoxStatus?.fortnox_invoice_number}
-															/>
-															<Button
-																onClick={handleExportToFortnox}
-																disabled={isExportingToFortnox || !customerFortnoxNumber.trim() || !!fortnoxStatus?.fortnox_invoice_number}
-															>
-																{isExportingToFortnox ? 'Exporterar...' : 'Skapa kundfaktura i Fortnox'}
-															</Button>
+														<div className='space-y-2'>
+															{/* Only show warning if we've actually fetched the customer number and it's missing */}
+															{hasFetchedCustomerNumber && !customerFortnoxNumber ? (
+																<>
+																	<Alert variant="destructive" className="mb-2">
+																		<AlertCircle className="h-4 w-4" />
+																		<AlertDescription className="text-xs">
+																			⚠️ Kunden saknar Fortnox kundnummer. Importera kunder från Fortnox i Inställningar {'>'} Fortnox Integration för att automatiskt koppla kundnummer.
+																		</AlertDescription>
+																	</Alert>
+																	<Button
+																		type="button"
+																		onClick={(e) => {
+																			e.preventDefault();
+																			e.stopPropagation();
+																		}}
+																		disabled={true}
+																		variant="outline"
+																	>
+																		Kan inte exportera - saknar kundnummer
+																	</Button>
+																</>
+															) : customerFortnoxNumber ? (
+																<>
+																	{/* Show recent failed exports with error message */}
+																	{fortnoxStatus?.status === 'failed' && fortnoxStatus.error_message && (
+																		<Alert variant="destructive" className="mb-2">
+																			<AlertCircle className="h-4 w-4" />
+																			<AlertDescription className="text-xs">
+																				<strong>Fel vid export:</strong> {fortnoxStatus.error_message}
+																				<br />
+																				<Button
+																					type="button"
+																					variant="link"
+																					className="h-auto p-0 text-xs mt-1"
+																					onClick={async (e) => {
+																						e.preventDefault();
+																						e.stopPropagation();
+																						if (!invoiceBasis?.id) return;
+																						
+																						try {
+																							const response = await fetch(
+																								`/api/integrations/fortnox/invoice-links?invoiceBasisId=${invoiceBasis.id}`,
+																								{ method: 'DELETE' }
+																							);
+																							if (response.ok) {
+																								// Refresh status after deletion
+																								setFortnoxStatus(null);
+																								setHasOldFailedExport(false);
+																								toast.success('Exportstatus raderad. Du kan nu försöka exportera igen.');
+																								// Refetch status to see if there are any other failed exports
+																								const statusResponse = await fetch(
+																									`/api/integrations/fortnox/invoice-links?invoiceBasisId=${invoiceBasis.id}`
+																								);
+																								if (statusResponse.ok) {
+																									const statusData = await statusResponse.json();
+																									if (statusData.data) {
+																										if (statusData.data.status === 'failed') {
+																											const errorTime = statusData.data.updated_at || statusData.data.created_at;
+																											if (errorTime) {
+																												const errorDate = new Date(errorTime);
+																												const now = new Date();
+																												const hoursAgo = (now.getTime() - errorDate.getTime()) / (1000 * 60 * 60);
+																												if (hoursAgo < 1) {
+																													setFortnoxStatus({
+																														fortnox_invoice_number: null,
+																														status: 'failed',
+																														error_message: statusData.data.error_message || null,
+																													});
+																												} else {
+																													setHasOldFailedExport(true);
+																												}
+																											}
+																										} else if (statusData.data.status === 'created') {
+																											setFortnoxStatus({
+																												fortnox_invoice_number: statusData.data.fortnox_invoice_number || null,
+																												status: statusData.data.status || null,
+																												error_message: null,
+																											});
+																										}
+																									}
+																								}
+																							} else {
+																								toast.error('Kunde inte radera exportstatus');
+																							}
+																						} catch (error) {
+																							console.error('Failed to delete export status:', error);
+																							toast.error('Kunde inte radera exportstatus');
+																						}
+																					}}
+																				>
+																					Rensa felmeddelande och försök igen
+																				</Button>
+																			</AlertDescription>
+																		</Alert>
+																	)}
+																	{/* Show option to clear old failed exports (older than 1 hour or when no recent error shown) */}
+																	{hasOldFailedExport && (
+																		<Alert variant="outline" className="mb-2">
+																			<AlertCircle className="h-4 w-4" />
+																			<AlertDescription className="text-xs">
+																				Det finns en gammal misslyckad export i databasen som kan hindra ny export.
+																				<br />
+																				<Button
+																					type="button"
+																					variant="link"
+																					className="h-auto p-0 text-xs mt-1"
+																					onClick={async (e) => {
+																						e.preventDefault();
+																						e.stopPropagation();
+																						if (!invoiceBasis?.id) return;
+																						
+																						try {
+																							const response = await fetch(
+																								`/api/integrations/fortnox/invoice-links?invoiceBasisId=${invoiceBasis.id}`,
+																								{ method: 'DELETE' }
+																							);
+																							if (response.ok) {
+																								// Refresh status after deletion
+																								setHasOldFailedExport(false);
+																								setFortnoxStatus(null);
+																								toast.success('Gammal exportstatus raderad. Du kan nu försöka exportera igen.');
+																								// Refetch status to see if there are any other failed exports
+																								const statusResponse = await fetch(
+																									`/api/integrations/fortnox/invoice-links?invoiceBasisId=${invoiceBasis.id}`
+																								);
+																								if (statusResponse.ok) {
+																									const statusData = await statusResponse.json();
+																									if (statusData.data) {
+																										if (statusData.data.status === 'failed') {
+																											const errorTime = statusData.data.updated_at || statusData.data.created_at;
+																											if (errorTime) {
+																												const errorDate = new Date(errorTime);
+																												const now = new Date();
+																												const hoursAgo = (now.getTime() - errorDate.getTime()) / (1000 * 60 * 60);
+																												if (hoursAgo < 1) {
+																													setFortnoxStatus({
+																														fortnox_invoice_number: null,
+																														status: 'failed',
+																														error_message: statusData.data.error_message || null,
+																													});
+																												} else {
+																													setHasOldFailedExport(true);
+																												}
+																											}
+																										} else if (statusData.data.status === 'created') {
+																											setFortnoxStatus({
+																												fortnox_invoice_number: statusData.data.fortnox_invoice_number || null,
+																												status: statusData.data.status || null,
+																												error_message: null,
+																											});
+																										}
+																									}
+																								}
+																							} else {
+																								toast.error('Kunde inte radera exportstatus');
+																							}
+																						} catch (error) {
+																							console.error('Failed to delete export status:', error);
+																							toast.error('Kunde inte radera exportstatus');
+																						}
+																					}}
+																				>
+																					Rensa gammal exportstatus
+																				</Button>
+																			</AlertDescription>
+																		</Alert>
+																	)}
+																	{fortnoxStatus?.fortnox_invoice_number && (
+																		<Alert className="mb-2 border-green-500 bg-green-50 dark:bg-green-950/20">
+																			<CheckCircle2 className="h-4 w-4 text-green-600" />
+																			<AlertDescription className="text-xs text-green-800 dark:text-green-200">
+																				<strong>Export lyckades!</strong> Faktura {fortnoxStatus.fortnox_invoice_number} har skapats i Fortnox.
+																			</AlertDescription>
+																		</Alert>
+																	)}
+																	<Button
+																		type="button"
+																		onClick={(e) => {
+																			console.log('[Fortnox Export] Button clicked!');
+																			e.preventDefault();
+																			e.stopPropagation();
+																			// Extra safety - check that we have customer number before allowing export
+																			if (!hasFetchedCustomerNumber || !customerFortnoxNumber) {
+																				console.error('[Fortnox Export] Button clicked but customer number not ready!');
+																				toast.error('Vänta tills kundnummer har hämtats.');
+																				return;
+																			}
+																			handleExportToFortnox(e);
+																		}}
+																		disabled={isExportingToFortnox || !!fortnoxStatus?.fortnox_invoice_number || !hasFetchedCustomerNumber || !customerFortnoxNumber}
+																	>
+																		{isExportingToFortnox ? (
+																			<>
+																				<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+																				Exporterar...
+																			</>
+																		) : (
+																			'Skapar kundfaktura i Fortnox'
+																		)}
+																	</Button>
+																	<p className='text-xs text-muted-foreground'>
+																		Kundnummer: {customerFortnoxNumber} (hämtas automatiskt från kundregistret)
+																	</p>
+																</>
+															) : isFetchingCustomerNumber ? (
+																<>
+																	{/* Loading state - actively fetching */}
+																	<div className='text-xs text-muted-foreground mb-2'>
+																		Hämtar kundnummer...
+																	</div>
+																	<Button
+																		type="button"
+																		onClick={(e) => {
+																			e.preventDefault();
+																			e.stopPropagation();
+																		}}
+																		disabled={true}
+																		variant="outline"
+																	>
+																		Väntar på kundnummer...
+																	</Button>
+																</>
+															) : (
+																<>
+																	{/* Not fetched yet - show loading */}
+																	<div className='text-xs text-muted-foreground mb-2'>
+																		Förbereder export...
+																	</div>
+																	<Button
+																		type="button"
+																		onClick={(e) => {
+																			e.preventDefault();
+																			e.stopPropagation();
+																		}}
+																		disabled={true}
+																		variant="outline"
+																	>
+																		Väntar...
+																	</Button>
+																</>
+															)}
 														</div>
 													) : (
 														<p className='text-sm text-muted-foreground'>

@@ -42,6 +42,14 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 2. Skapa ett nytt OAuth-applikation
 3. Kopiera **Client ID** och **Client Secret**
 4. Sätt **Redirect URI** till: `http://localhost:3000/api/integrations/fortnox/oauth/callback` (för lokal utveckling)
+5. **Viktigt - Behörigheter/Scopes**: 
+   - I Fortnox Developer Portal kan du välja vilka behörigheter (permissions) som appen har
+   - För fakturaexport behöver du: **Faktura** (Invoice) och **Kund** (Customer)
+   - För att hämta företagsinformation automatiskt: **Företagsinformation** (Company Information) - aktivera detta i Developer Portal
+   - OAuth-scopes i koden måste matcha permissions i Developer Portal
+   - Standard: `invoice customer` (motsvarar "Faktura" och "Kund" i Developer Portal)
+   - Om du aktiverat "Företagsinformation" i Developer Portal, kan du prova lägga till `companyinformation` i `FORTNOX_OAUTH_SCOPES` om det behövs
+   - OBS: `/companyinformation` endpoint kan fungera med bara `invoice customer` scopes - testa först innan du lägger till extra scope
 
 ### Steg 4: Starta om dev-servern
 
@@ -79,6 +87,16 @@ Klicka på **Add New** och lägg till:
   - ✅ Production
   - ✅ Preview
   - ✅ Development (valfritt)
+
+**Variabel 3 (Rekommenderas om du får redirect_uri_mismatch):**
+- **Name**: `FORTNOX_REDIRECT_URI`
+- **Value**: `https://ditt-domän.vercel.app/api/integrations/fortnox/oauth/callback`
+- **Environment**: 
+  - ✅ Production
+  - ✅ Preview
+  - ✅ Development (valfritt)
+  
+  **Viktigt:** Denna URI måste matcha **exakt** den som är registrerad i Fortnox Developer Portal
 
 ### Steg 3: Uppdatera Fortnox Redirect URI
 
@@ -152,6 +170,13 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 # Fortnox OAuth
 FORTNOX_CLIENT_ID=din_client_id
 FORTNOX_CLIENT_SECRET=din_client_secret
+# Optional: Explicit redirect URI (använd om du får redirect_uri_mismatch fel)
+# FORTNOX_REDIRECT_URI=http://localhost:3000/api/integrations/fortnox/oauth/callback
+# Optional: Custom OAuth scopes (standard: 'invoice customer')
+# Kontrollera i Fortnox Developer Portal vilka permissions som är aktiverade för din app
+# Om du har aktiverat "Företagsinformation" i Developer Portal och /companyinformation inte fungerar med bara 'invoice customer', prova:
+# FORTNOX_OAUTH_SCOPES=invoice customer companyinformation
+# OBS: Testa först med bara 'invoice customer' - det borde fungera för de flesta endpoints
 ```
 
 ---
@@ -165,13 +190,57 @@ FORTNOX_CLIENT_SECRET=din_client_secret
 2. Kontrollera att variablerna är korrekt namngivna (ingen `NEXT_PUBLIC_` prefix)
 3. Starta om dev-servern (`npm run dev`)
 
-### Problem: OAuth redirect fungerar inte
+### Problem: "invalid_scope" eller "An unsupported scope was requested"
 
 **Lösning:**
-1. Kontrollera att redirect URI i Fortnox Developer Portal matchar exakt:
-   - Lokalt: `http://localhost:3000/api/integrations/fortnox/oauth/callback`
-   - Production: `https://ditt-domän.vercel.app/api/integrations/fortnox/oauth/callback`
-2. Kontrollera att `NEXT_PUBLIC_SITE_URL` är korrekt satt
+1. **Kontrollera terminal-loggning**: När du försöker ansluta, kolla loggen för:
+   ```
+   [Fortnox OAuth] Requested scopes: invoice customer companyinformation
+   ```
+   Detta visar vilka scopes som begärs.
+
+2. **Kontrollera Fortnox Developer Portal**: Gå till din app i [Fortnox Developer Portal](https://developer.fortnox.se/) och se vilka scopes som är aktiverade/tillgängliga för din app.
+
+3. **Använd endast giltiga scopes**: Standard är `invoice customer`. Om `companyinformation` inte fungerar, ta bort det:
+   ```env
+   # I .env.local - använd bara scopes som är bekräftade som giltiga i Fortnox Developer Portal
+   FORTNOX_OAUTH_SCOPES=invoice customer
+   ```
+
+4. **Testa utan companyinformation**: Kundnummer kan fortfarande användas - du kan bara inte hämta det automatiskt från Fortnox API utan `companyinformation` scope. Manuell inmatning fungerar fortfarande.
+
+### Problem: "redirect_uri_mismatch" eller OAuth redirect fungerar inte
+
+**Lösning:**
+1. **Kontrollera terminal-loggning**: När du försöker ansluta, kolla terminalen för loggmeddelanden som:
+   ```
+   [Fortnox OAuth] Redirect URI: http://...
+   [Fortnox OAuth] Environment check: { ... }
+   ```
+   Detta visar exakt vilken redirect URI som används.
+
+2. **Matcha i Fortnox Developer Portal**: Redirect URI:n i Fortnox Developer Portal måste matcha **exakt** den som visas i loggen. Kontrollera:
+   - Samma protokoll (http vs https)
+   - Samma domän (localhost vs produktion)
+   - Samma port (om relevant)
+   - Ingen trailing slash
+   - Exakt samma sökväg: `/api/integrations/fortnox/oauth/callback`
+
+3. **Använd explicit miljövariabel**: Om du får problem med automatisk detektering, sätt en explicit redirect URI:
+   ```env
+   # I .env.local för lokal utveckling
+   FORTNOX_REDIRECT_URI=http://localhost:3000/api/integrations/fortnox/oauth/callback
+   
+   # I Vercel för produktion
+   FORTNOX_REDIRECT_URI=https://ditt-domän.vercel.app/api/integrations/fortnox/oauth/callback
+   ```
+
+4. **Standard-inställningar** (om `FORTNOX_REDIRECT_URI` inte är satt):
+   - Systemet använder `NEXT_PUBLIC_SITE_URL` eller `NEXT_PUBLIC_APP_URL` först
+   - Om ingen är satt, används request-host som fallback
+   - Detta kan vara problematiskt om du kör bakom en proxy eller CDN
+
+5. **För produktion**: Se till att både `NEXT_PUBLIC_SITE_URL` och `FORTNOX_REDIRECT_URI` är satta i Vercel miljövariabler
 
 ### Problem: Variabler fungerar inte i production
 

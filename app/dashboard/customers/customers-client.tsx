@@ -256,6 +256,11 @@ export default function CustomersClient({
                           {customer.customer_no && (
                             <p className="text-sm text-muted-foreground">Kundnr: {customer.customer_no}</p>
                           )}
+                          {customer.fortnox_customer_number && (
+                            <p className="text-sm font-medium text-orange-600 dark:text-orange-400">
+                              Fortnox kundnr: {customer.fortnox_customer_number}
+                            </p>
+                          )}
                         </div>
                       </div>
 
