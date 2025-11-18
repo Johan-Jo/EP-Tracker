@@ -1,10 +1,8 @@
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ProjectForm } from '@/components/projects/project-form';
-import { ProjectFormData } from '@/lib/schemas/project';
-import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
+import { createProject } from '@/app/actions/create-project';
 
 export default async function NewProjectPage() {
 	// EPIC 26: Use cached session to avoid duplicate queries
@@ -33,36 +31,6 @@ export default async function NewProjectPage() {
 	// Only admin and foreman can create projects - redirect others
 	if (userRole !== 'admin' && userRole !== 'foreman') {
 		redirect('/dashboard/projects');
-	}
-
-	async function createProject(data: ProjectFormData) {
-		'use server';
-		
-		// EPIC 26: Use cached session in server action
-		const { user, membership } = await getSession();
-
-		if (!user || !membership) {
-			throw new Error('Inte autentiserad');
-		}
-
-		const supabase = await createClient();
-		const { data: project, error } = await supabase
-			.from('projects')
-			.insert({
-				org_id: membership.org_id,
-				created_by: user.id,
-				...data,
-			})
-			.select()
-			.single();
-
-		if (error) {
-			console.error('Error creating project:', error);
-			throw new Error(error.message);
-		}
-
-		revalidatePath('/dashboard/projects');
-		redirect(`/dashboard/projects/${project.id}`);
 	}
 
 	return (

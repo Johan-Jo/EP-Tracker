@@ -232,13 +232,15 @@ Before sending to Fortnox API, validate that:
 
 ### Description Format
 
-For time entries, include date, person, and diary in the description:
+For time entries, include person, description (which already contains "Arbete [datum]"), and diary:
 
 ```
-"{date} - {person} - {description} - Dagbok: {diary}"
+"{person} - Arbete {date} - Dagbok: {diary}"
 ```
 
-Example: `"2025-01-15 - Johan Andersson - Arbete - Dagbok: Installed system"`
+**Note**: Do NOT add `line.date` separately - it's already included in the description as "Arbete [datum]" format.
+
+Example: `"Johan Andersson - Arbete 2025-01-15 - Dagbok: Installed system"`
 
 For other entries, include date and type:
 
@@ -247,6 +249,27 @@ For other entries, include date and type:
 ```
 
 Example: `"2025-01-15 - Material: Electrical components"`
+
+### Unit Field
+
+All line items should include the `Unit` field when available:
+
+- Time entries: `"h"` (hours)
+- Material entries: `"st"` (pieces) or null
+- Expense entries: `"st"` (pieces)
+- Mileage entries: `"km"` (kilometers)
+- ÄTA entries: null or custom unit
+
+Example for time entry:
+```json
+{
+  "Description": "Johan Andersson - Arbete 2025-01-15 - Dagbok: Installed system",
+  "DeliveredQuantity": 8,
+  "Price": 500,
+  "Unit": "h",
+  "VAT": 25
+}
+```
 
 ---
 
@@ -277,5 +300,5 @@ Example: `"2025-01-15 - Material: Electrical components"`
 
 ## Last Updated
 
-2025-01-18 - Based on API errors and official documentation
+2025-11-19 - Added unit field for time entries, fixed duplicate date in descriptions
 

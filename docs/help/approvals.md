@@ -173,6 +173,28 @@ När du godkänner poster:
 2. Du kan exportera fakturaunderlag för fakturering
 3. Material och utlägg som är kopplade till ÄTA ingår i ÄTA-beloppet, inte separat
 
+### Stegvis faktureringsprocess
+
+Fakturaunderlaget följer ett stegvis flöde:
+
+1. **Välj projekt & period** - Välj vilka projekt och tidsperiod som ska faktureras
+2. **Kontrollera godkännanden** - Kontrollera att alla poster är godkända
+3. **Fakturaunderlag** - Granska och redigera fakturainformation
+4. **Lås & exportera** - Lås fakturaunderlaget och exportera till Fortnox
+
+### Exportera till Fortnox
+
+När fakturaunderlaget är låst kan du exportera det till Fortnox:
+
+- ✅ **Status "Fakturerat"** visas när export lyckats
+- ✅ Stegindikatorn visar "Klart" när export är genomförd
+- ✅ Fakturanummer från Fortnox visas i exportstatus
+
+**Viktigt:** 
+- Fakturaunderlaget måste vara låst innan export
+- Kunden måste ha ett Fortnox kundnummer (importera kunder från Fortnox först)
+- Efter lyckad export kan fakturaunderlaget inte längre redigeras
+
 ---
 
 ## Behörigheter

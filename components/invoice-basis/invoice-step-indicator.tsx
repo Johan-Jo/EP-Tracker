@@ -3,7 +3,7 @@
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type InvoiceStep = 'select' | 'approvals' | 'preview' | 'lock';
+export type InvoiceStep = 'select' | 'approvals' | 'preview' | 'lock' | 'completed';
 
 interface InvoiceStepIndicatorProps {
 	currentStep: InvoiceStep;

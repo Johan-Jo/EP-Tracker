@@ -172,13 +172,23 @@ Admin bör kunna spara ett utkast av detta underlag och senare låsa det (EPIC 3
 ### Step 4 – Lock & export (hook to existing EPIC 34 / M4)
 Du behöver inte implementera den fullständiga låsnings/exportlogiken här om den redan finns i en annan epic, men:
 
-- Behåll en synlig status på fakturaunderlaget: t.ex. "Utkast" vs "Låst".
+- Behåll en synlig status på fakturaunderlaget: t.ex. "Utkast" vs "Låst" vs "Fakturerat".
 - Admin:
   - Kan "Spara utkast".
   - Kan "Lås fakturaunderlag" → anropar befintlig EPIC 34-logik för serie, fakturanummer, hash, etc.
+  - Kan exportera till Fortnox när fakturaunderlaget är låst.
 - Finance:
-  - Ser statusen och, om affärsregler tillåter, kan exportera låsta fakturor (SIE/CSV/PDF).
+  - Ser statusen och, om affärsregler tillåter, kan exportera låsta fakturor (Fortnox/SIE/CSV/PDF).
   - Kan inte låsa upp eller modifiera.
+
+**Statusindikatorer:**
+- **Utkast (kan redigeras)** - Fakturaunderlaget är inte låst, kan redigeras
+- **Låst [datum]** - Fakturaunderlaget är låst och redo för export
+- **Fakturerat [datum]** - Fakturan har exporterats till Fortnox
+
+**Stegindikator:**
+- Visar fyra steg: Välj projekt & period, Kontrollera godkännanden, Fakturaunderlag, Lås & exportera
+- När export lyckas, markeras steg 4 som "Klart" (completed)
 
 ## Permissions Matrix
 

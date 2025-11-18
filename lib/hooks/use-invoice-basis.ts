@@ -43,6 +43,7 @@ export interface InvoiceBasisRecord {
 	locked: boolean;
 	locked_by: string | null;
 	locked_at: string | null;
+	billed_at: string | null;
 	hash_signature: string | null;
 	created_at: string;
 	updated_at: string;

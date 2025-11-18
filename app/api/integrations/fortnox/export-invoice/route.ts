@@ -194,6 +194,19 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
+		// Mark invoice_basis as billed (fakturerat)
+		const { error: billedError } = await supabase
+			.from('invoice_basis')
+			.update({ billed_at: new Date().toISOString() })
+			.eq('id', invoiceBasis.id);
+
+		if (billedError) {
+			console.error('[Fortnox Export API] Failed to mark invoice_basis as billed:', billedError);
+			// Don't fail the request if this update fails - the export succeeded
+		} else {
+			console.log('[Fortnox Export API] Marked invoice_basis as billed (fakturerat)');
+		}
+
 		return NextResponse.json({
 			success: true,
 			fortnoxInvoiceNumber,

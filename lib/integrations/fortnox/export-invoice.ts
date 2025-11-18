@@ -118,21 +118,18 @@ export async function buildFortnoxInvoicePayloadFromInvoiceBasis(
 		// Build description based on line type
 		let description = line.description || '';
 		
-		// For time entries: include date, person, and diary in description
+		// For time entries: include person, description (already contains "Arbete [datum]"), and diary
 		if (line.type === 'time') {
 			const parts: string[] = [];
 			
-			// Add date if present
-			if (line.date) {
-				parts.push(line.date);
-			}
+			// Don't add line.date separately - it's already in description as "Arbete [datum]"
 			
 			// Add person if present
 			if (line.person) {
 				parts.push(line.person);
 			}
 			
-			// Add main description
+			// Add main description (already contains "Arbete [datum]")
 			if (description) {
 				parts.push(description);
 			}
@@ -198,8 +195,8 @@ export async function buildFortnoxInvoicePayloadFromInvoiceBasis(
 		// If ArticleNumber doesn't exist in Fortnox, the export will fail
 		// Article information is already included in the Description field
 
-		// For time entries, don't include unit (removed from UI)
-		if (line.unit && line.type !== 'time') {
+		// Include unit for all line types (including time entries with 'h')
+		if (line.unit) {
 			row.Unit = line.unit;
 		}
 

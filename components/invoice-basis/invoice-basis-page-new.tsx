@@ -76,7 +76,7 @@ function formatDefaultPeriodEnd(): string {
 	return format(sunday, 'yyyy-MM-dd');
 }
 
-type Step = 'select' | 'approvals' | 'preview' | 'lock';
+type Step = 'select' | 'approvals' | 'preview' | 'lock' | 'completed';
 
 export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: InvoiceBasisPageProps) {
 	const canApprove = userRole === 'admin' || userRole === 'foreman';
@@ -551,9 +551,9 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 					if (data.data) {
 						// Successful export - always show
 						if (data.data.status === 'created' && data.data.fortnox_invoice_number) {
-							setFortnoxStatus({
-								fortnox_invoice_number: data.data.fortnox_invoice_number || null,
-								status: data.data.status || null,
+						setFortnoxStatus({
+							fortnox_invoice_number: data.data.fortnox_invoice_number || null,
+							status: data.data.status || null,
 								error_message: null,
 							});
 							setHasOldFailedExport(false);
@@ -570,13 +570,13 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 									setFortnoxStatus({
 										fortnox_invoice_number: null,
 										status: 'failed',
-										error_message: data.data.error_message || null,
-									});
+							error_message: data.data.error_message || null,
+						});
 									setHasOldFailedExport(false);
-								} else {
+					} else {
 									// Old failure - don't show error message, but allow clearing
 									console.log('[InvoiceBasis] Old failed export detected (older than 1 hour)');
-									setFortnoxStatus(null);
+						setFortnoxStatus(null);
 									setHasOldFailedExport(true);
 								}
 							} else {
@@ -662,7 +662,7 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 
 			// Read response text first (can only be read once)
 			const responseText = await response.text();
-			
+
 			if (!response.ok) {
 				// For error responses, try to extract error message
 				let errorMessage = `Kunde inte exportera till Fortnox (${response.status})`;
@@ -785,6 +785,14 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 				duration: 5000,
 			});
 			
+			// Mark step as completed
+			setCurrentStep('completed');
+			
+			// Refresh invoice basis to get billed_at timestamp
+			if (invoiceBasis.id) {
+				refetchBasis();
+			}
+			
 			// Refresh Fortnox status
 			if (invoiceBasis.id) {
 				const statusResponse = await fetch(
@@ -898,7 +906,7 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 	return (
 		<div className='flex h-full flex-col bg-background dark:bg-black'>
 			{/* Step Indicator */}
-			<InvoiceStepIndicator currentStep={currentStep === 'select' ? 'select' : currentStep === 'approvals' ? 'approvals' : currentStep === 'preview' ? 'preview' : 'lock'} />
+			<InvoiceStepIndicator currentStep={currentStep === 'select' ? 'select' : currentStep === 'approvals' ? 'approvals' : currentStep === 'preview' ? 'preview' : currentStep === 'completed' ? 'completed' : 'lock'} />
 
 			{/* Landing / welcome section */}
 			<InvoiceLanding role={roleForLanding} />
@@ -1099,7 +1107,11 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 									<CardHeader className='flex flex-col gap-2 md:flex-row md:items-center md:justify-between'>
 										<CardTitle>Fakturainfo</CardTitle>
 										<div className='flex flex-wrap gap-3'>
-											{invoiceBasis.locked ? (
+											{invoiceBasis.billed_at ? (
+												<span className='rounded-full bg-blue-500/10 px-3 py-1 text-sm font-medium text-blue-600 dark:bg-blue-500/20 dark:text-blue-200'>
+													Fakturerat {format(new Date(invoiceBasis.billed_at), 'PPPp', { locale: sv })}
+												</span>
+											) : invoiceBasis.locked ? (
 												<span className='rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-200'>
 													Låst {invoiceBasis.locked_at ? format(new Date(invoiceBasis.locked_at), 'PPPp', { locale: sv }) : ''}
 												</span>
@@ -2001,7 +2013,7 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 																			⚠️ Kunden saknar Fortnox kundnummer. Importera kunder från Fortnox i Inställningar {'>'} Fortnox Integration för att automatiskt koppla kundnummer.
 																		</AlertDescription>
 																	</Alert>
-																	<Button
+															<Button
 																		type="button"
 																		onClick={(e) => {
 																			e.preventDefault();
@@ -2011,7 +2023,7 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 																		variant="outline"
 																	>
 																		Kan inte exportera - saknar kundnummer
-																	</Button>
+															</Button>
 																</>
 															) : customerFortnoxNumber ? (
 																<>
