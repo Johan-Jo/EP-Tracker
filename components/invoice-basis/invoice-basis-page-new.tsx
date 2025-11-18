@@ -75,10 +75,11 @@ function formatDefaultPeriodEnd(): string {
 
 type Step = 'select' | 'approvals' | 'preview' | 'lock';
 
-export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisPageProps) {
+export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: InvoiceBasisPageProps) {
 	const canApprove = userRole === 'admin' || userRole === 'foreman';
 	const canEdit = userRole === 'admin';
 	const canLock = userRole === 'admin';
+	const canExportToFortnox = userRole === 'admin' || userRole === 'finance';
 	const roleForLanding: 'admin' | 'finance' = canApprove ? 'admin' : 'finance';
 
 	// Step 1: Project & Period Selection
@@ -112,6 +113,13 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 	const [unlockReason, setUnlockReason] = useState('');
 	const [editingLineId, setEditingLineId] = useState<string | null>(null);
 	const [lineState, setLineState] = useState<LineEditState | null>(null);
+	const [fortnoxStatus, setFortnoxStatus] = useState<{
+		fortnox_invoice_number: string | null;
+		status: string | null;
+		error_message: string | null;
+	} | null>(null);
+	const [isExportingToFortnox, setIsExportingToFortnox] = useState(false);
+	const [customerFortnoxNumber, setCustomerFortnoxNumber] = useState('');
 
 	// Fetch grouped basis data for Step 2
 	const {
@@ -137,6 +145,50 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 		periodEnd,
 		enabled: currentStep === 'preview' && !!selectedProject && !!periodStart && !!periodEnd,
 	});
+
+	// Fetch customer Fortnox number when invoice basis is loaded
+	useEffect(() => {
+		const fetchCustomerFortnoxNumber = async () => {
+			// First, try to get from customer record
+			if (invoiceBasis?.customer_id) {
+				try {
+					const response = await fetch(`/api/customers/${invoiceBasis.customer_id}`);
+					if (response.ok) {
+						const data = await response.json();
+						if (data.fortnox_customer_number) {
+							setCustomerFortnoxNumber(data.fortnox_customer_number);
+							return; // Found in customer, use it
+						}
+					}
+				} catch (error) {
+					console.error('Failed to fetch customer Fortnox number:', error);
+				}
+			}
+
+			// Fallback: Get from Fortnox connection (organization's own customer number)
+			try {
+				const connectionResponse = await fetch(`/api/integrations/fortnox/connection?orgId=${orgId}`);
+				if (connectionResponse.ok) {
+					const connectionData = await connectionResponse.json();
+					if (connectionData.connection?.fortnox_customer_number) {
+						setCustomerFortnoxNumber(connectionData.connection.fortnox_customer_number);
+						return; // Found in connection, use it
+					}
+				}
+			} catch (error) {
+				console.error('Failed to fetch Fortnox connection:', error);
+			}
+
+			// No Fortnox customer number found
+			setCustomerFortnoxNumber('');
+		};
+
+		if (invoiceBasis?.customer_id || invoiceBasis?.locked) {
+			fetchCustomerFortnoxNumber();
+		} else {
+			setCustomerFortnoxNumber('');
+		}
+	}, [invoiceBasis?.customer_id, invoiceBasis?.locked, orgId]);
 
 	const updateHeader = useUpdateInvoiceHeader();
 	const updateLine = useUpdateInvoiceLine();
@@ -230,11 +282,27 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 		setLineState(null);
 	}, [invoiceBasis?.id]);
 
-	const diaryEntries = invoiceBasis?.lines_json?.diary ?? [];
 	const allLines = invoiceBasis?.lines_json?.lines ?? [];
 	const nonDiaryLines = useMemo(
 		() => allLines.filter((line) => line.type !== 'diary'),
 		[allLines]
+	);
+	// Separate lines by type
+	const timeLines = useMemo(
+		() => nonDiaryLines.filter((line) => line.type === 'time'),
+		[nonDiaryLines]
+	);
+	const materialLines = useMemo(
+		() => nonDiaryLines.filter((line) => line.type === 'material'),
+		[nonDiaryLines]
+	);
+	const expenseLines = useMemo(
+		() => nonDiaryLines.filter((line) => line.type === 'expense'),
+		[nonDiaryLines]
+	);
+	const otherLines = useMemo(
+		() => nonDiaryLines.filter((line) => line.type !== 'time' && line.type !== 'material' && line.type !== 'expense'),
+		[nonDiaryLines]
 	);
 	const hasInvoiceLines = (invoiceBasis?.lines_json?.lines?.length ?? 0) > 0;
 
@@ -293,6 +361,25 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 				const amountExVat = Math.round(quantity * unitPrice * discountFactor * 100) / 100;
 				return sum + amountExVat;
 			}, 0);
+	}, [allLines]);
+
+	const totalOtherAmount = useMemo(() => {
+		return allLines
+			.filter((line) => line.type !== 'time' && line.type !== 'material' && line.type !== 'expense')
+			.reduce((sum, line) => {
+				const quantity = Number(line.quantity) || 0;
+				const unitPrice = Number(line.unit_price) || 0;
+				const discount = Number(line.discount) || 0;
+				const discountFactor = discount > 0 ? 1 - discount / 100 : 1;
+				const amountExVat = Math.round(quantity * unitPrice * discountFactor * 100) / 100;
+				return sum + amountExVat;
+			}, 0);
+	}, [allLines]);
+
+	const totalOtherQuantity = useMemo(() => {
+		return allLines
+			.filter((line) => line.type !== 'time' && line.type !== 'material' && line.type !== 'expense')
+			.reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
 	}, [allLines]);
 
 	const handleHeaderSubmit = async () => {
@@ -417,6 +504,98 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 	const totals = invoiceBasis?.totals;
 
 	const canFetch = selectedProjectIds.length > 0 && !!periodStart && !!periodEnd;
+
+	// Fetch Fortnox export status when invoice_basis is locked
+	useEffect(() => {
+		if (!invoiceBasis?.id || !invoiceBasis.locked) {
+			setFortnoxStatus(null);
+			return;
+		}
+
+		const fetchFortnoxStatus = async () => {
+			try {
+				const response = await fetch(
+					`/api/integrations/fortnox/invoice-links?invoiceBasisId=${invoiceBasis.id}`
+				);
+				if (response.ok) {
+					const data = await response.json();
+					if (data.data) {
+						setFortnoxStatus({
+							fortnox_invoice_number: data.data.fortnox_invoice_number || null,
+							status: data.data.status || null,
+							error_message: data.data.error_message || null,
+						});
+					} else {
+						setFortnoxStatus(null);
+					}
+				}
+			} catch (error) {
+				console.error('Failed to fetch Fortnox status:', error);
+			}
+		};
+
+		fetchFortnoxStatus();
+	}, [invoiceBasis?.id, invoiceBasis?.locked]);
+
+	// Handle Fortnox export
+	const handleExportToFortnox = async () => {
+		if (!invoiceBasis?.locked) {
+			toast.error('Lås underlaget innan export');
+			return;
+		}
+
+		if (!customerFortnoxNumber.trim()) {
+			toast.error('Ange Fortnox kundnummer');
+			return;
+		}
+
+		setIsExportingToFortnox(true);
+		try {
+			const selectedProjectName = projects.find((p) => p.id === selectedProject)?.name;
+			const params = new URLSearchParams({
+				projectId: selectedProject,
+				start: periodStart,
+				end: periodEnd,
+				customerFortnoxNumber: customerFortnoxNumber.trim(),
+			});
+			if (selectedProjectName) {
+				params.append('projectName', selectedProjectName);
+			}
+
+			const response = await fetch(`/api/integrations/fortnox/export-invoice?${params.toString()}`, {
+				method: 'POST',
+			});
+
+			const data = await response.json();
+
+			if (!response.ok) {
+				throw new Error(data.error || 'Kunde inte exportera till Fortnox');
+			}
+
+			toast.success(data.message || `Faktura ${data.fortnoxInvoiceNumber} skapad i Fortnox`);
+			
+			// Refresh Fortnox status
+			if (invoiceBasis.id) {
+				const statusResponse = await fetch(
+					`/api/integrations/fortnox/invoice-links?invoiceBasisId=${invoiceBasis.id}`
+				);
+				if (statusResponse.ok) {
+					const statusData = await statusResponse.json();
+					if (statusData.data) {
+						setFortnoxStatus({
+							fortnox_invoice_number: statusData.data.fortnox_invoice_number || null,
+							status: statusData.data.status || null,
+							error_message: statusData.data.error_message || null,
+						});
+					}
+				}
+			}
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : 'Kunde inte exportera till Fortnox');
+		} finally {
+			setIsExportingToFortnox(false);
+		}
+	};
 
 	// När ett projekt väljs (single-select) – sätt perioden till alla relevanta rader
 	useEffect(() => {
@@ -848,119 +1027,262 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 									</CardContent>
 								</Card>
 
-								{/* Totals Card */}
-								<Card>
-									<CardHeader>
-										<CardTitle>Summeringar</CardTitle>
-									</CardHeader>
-									<CardContent className='space-y-6'>
-										{/* Totals grid */}
-										<div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
-											<div className='rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4'>
-												<div className='text-xs uppercase text-emerald-600 dark:text-emerald-300'>Netto exkl. moms</div>
-												<div className='text-2xl font-semibold text-foreground'>
-													{totals?.total_ex_vat?.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) ?? '0,00'} kr
-												</div>
-											</div>
-											<div className='rounded-lg border border-amber-500/30 bg-amber-500/5 p-4'>
-												<div className='text-xs uppercase text-amber-600 dark:text-amber-300'>Moms</div>
-												<div className='text-2xl font-semibold text-foreground'>
-													{totals?.total_vat?.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) ?? '0,00'} kr
-												</div>
-											</div>
-											<div className='rounded-lg border border-blue-500/30 bg-blue-500/5 p-4'>
-												<div className='text-xs uppercase text-blue-600 dark:text-blue-300'>Totalt</div>
-												<div className='text-2xl font-semibold text-foreground'>
-													{totals?.total_inc_vat?.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) ?? '0,00'} kr
-												</div>
-											</div>
-											{totals?.per_vat_rate &&
-												Object.entries(totals.per_vat_rate).map(([rate, values]) => (
-													<div key={rate} className='rounded-lg border border-border/60 bg-muted/40 p-4'>
-														<div className='text-xs uppercase text-muted-foreground'>Moms {rate}%</div>
-														<div className='text-sm text-muted-foreground'>
-															Exkl: {values.base.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
-														</div>
-														<div className='text-sm text-muted-foreground'>
-															Moms: {values.vat.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
-														</div>
-														<div className='text-sm text-muted-foreground'>
-															Inkl: {values.total.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
-														</div>
-													</div>
-												))}
-											{/* Summary of hours, material, expenses - in line with VAT breakdown */}
-											{(totalHours > 0 || totalMaterialAmount > 0 || totalExpenseAmount > 0) && (
-												<div className='rounded-lg border border-border/60 bg-muted/30 p-4'>
-													<div className='mb-3 text-xs uppercase text-muted-foreground'>Summering</div>
-													<div className='space-y-2.5'>
-														{totalHours > 0 && (
-															<div className='flex items-baseline gap-2 text-sm'>
-																<span className='text-muted-foreground'>Tid:</span>
-																<span className='text-muted-foreground'>
-																	{new Intl.NumberFormat('sv-SE', {
-																		minimumFractionDigits: 2,
-																		maximumFractionDigits: 2,
-																	}).format(totalHours)} timmar ×
-																</span>
-																<span className='font-semibold'>
-																	{new Intl.NumberFormat('sv-SE', {
-																		style: 'currency',
-																		currency: 'SEK',
-																		minimumFractionDigits: 2,
-																		maximumFractionDigits: 2,
-																	}).format(averageHourlyRate)}
-																</span>
-																<span className='text-muted-foreground'>=</span>
-																<span className='font-semibold'>
-																	{new Intl.NumberFormat('sv-SE', {
-																		style: 'currency',
-																		currency: 'SEK',
-																		minimumFractionDigits: 2,
-																		maximumFractionDigits: 2,
-																	}).format(totalTimeAmount)}
-																</span>
-															</div>
-														)}
-														{totalMaterialAmount > 0 && (
-															<div className='flex items-baseline gap-2 text-sm'>
-																<span className='text-muted-foreground'>Material:</span>
-																<span className='font-semibold'>
-																	{new Intl.NumberFormat('sv-SE', {
-																		style: 'currency',
-																		currency: 'SEK',
-																		minimumFractionDigits: 2,
-																		maximumFractionDigits: 2,
-																	}).format(totalMaterialAmount)}
-																</span>
-															</div>
-														)}
-														{totalExpenseAmount > 0 && (
-															<div className='flex items-baseline gap-2 text-sm'>
-																<span className='text-muted-foreground'>Utlägg:</span>
-																<span className='font-semibold'>
-																	{new Intl.NumberFormat('sv-SE', {
-																		style: 'currency',
-																		currency: 'SEK',
-																		minimumFractionDigits: 2,
-																		maximumFractionDigits: 2,
-																	}).format(totalExpenseAmount)}
-																</span>
-															</div>
-														)}
-													</div>
-												</div>
-											)}
-										</div>
-									</CardContent>
-								</Card>
-
 								{/* Line Items Card */}
 								<Card>
 									<CardHeader>
 										<CardTitle>Radlista</CardTitle>
 									</CardHeader>
-									<CardContent className='space-y-4'>
+									<CardContent className='space-y-6'>
+										{/* Tidblock Section */}
+										{timeLines.length > 0 && (
+											<div className='space-y-3'>
+												<h3 className='text-sm font-semibold uppercase tracking-wide text-muted-foreground'>Tidblock</h3>
+												<div className='overflow-hidden rounded-lg border border-border/60'>
+													<table className='w-full table-fixed divide-y divide-border/60'>
+														<thead className='bg-muted/60'>
+															<tr className='text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
+																<th className='w-28 px-3 py-3'>Datum</th>
+																<th className='w-36 px-3 py-3'>Person</th>
+																<th className='px-3 py-3'>Dagbok</th>
+																<th className='w-24 px-3 py-3 text-right'>Timmar</th>
+																<th className='w-36 px-3 py-3 text-right'>Summa ex moms</th>
+																{canEdit && <th className='w-24 px-3 py-3'></th>}
+															</tr>
+														</thead>
+														<tbody className='divide-y divide-border/60 bg-background'>
+															{timeLines.map((line) => {
+																const isEditing = line.id === editingLineId;
+																const { amountExVat, amountIncVat } = (() => {
+																	const quantity = Number(line.quantity) || 0;
+																	const unitPrice = Number(line.unit_price) || 0;
+																	const discount = Number(line.discount) || 0;
+																	const discountFactor = discount > 0 ? 1 - discount / 100 : 1;
+																	const ex = quantity * unitPrice * discountFactor;
+																	const vatRate = Number(line.vat_rate) || 0;
+																	const vat = ex * (vatRate / 100);
+																	return {
+																		amountExVat: Math.round(ex * 100) / 100,
+																		amountIncVat: Math.round((ex + vat) * 100) / 100,
+																	};
+																})();
+																return (
+																	<tr key={line.id} className='align-top text-sm'>
+																		<td className='px-3 py-3'>
+																			{line.date ? new Date(line.date + 'T00:00:00').toLocaleDateString('sv-SE') : '–'}
+																		</td>
+																		<td className='px-3 py-3 whitespace-nowrap'>{line.person || '–'}</td>
+																		<td className='px-3 py-3'>
+																			<div className='line-clamp-3 text-xs text-muted-foreground'>{line.diary || '–'}</div>
+																		</td>
+																		<td className='px-3 py-3 text-right'>
+																			{isEditing && lineState ? (
+																				<Input
+																					type='number'
+																					value={lineState.quantity}
+																					onChange={(event) =>
+																						setLineState((state) =>
+																							state ? { ...state, quantity: event.target.value } : state
+																						)
+																					}
+																					className='h-9'
+																					disabled={!canEdit}
+																				/>
+																			) : (
+																				Number(line.quantity ?? 0).toLocaleString('sv-SE', {
+																					minimumFractionDigits: 0,
+																					maximumFractionDigits: 2,
+																				})
+																			)}
+																		</td>
+																		<td className='px-3 py-3 text-right whitespace-nowrap'>{amountExVat.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</td>
+																		{canEdit && (
+																			<td className='px-3 py-3 text-right'>
+																				{isEditing ? (
+																					<div className='flex justify-end gap-2'>
+																						<Button size='sm' onClick={handleSubmitLine} disabled={updateLine.isPending || invoiceBasis.locked}>
+																							Spara
+																						</Button>
+																						<Button size='sm' variant='ghost' onClick={handleCancelLineEdit}>
+																							Avbryt
+																						</Button>
+												</div>
+																				) : (
+																					<Button
+																						size='sm'
+																						variant='outline'
+																						onClick={() => handleEditLine(line)}
+																						disabled={invoiceBasis.locked}
+																					>
+																						Redigera
+																					</Button>
+																				)}
+																			</td>
+																		)}
+																	</tr>
+																);
+															})}
+														</tbody>
+														<tfoot className='bg-muted/60 border-t-2 border-border'>
+															<tr className='text-left text-sm font-semibold'>
+																<td className='px-3 py-3' colSpan={3}>
+																	Summa
+																</td>
+																<td className='px-3 py-3 text-right'>
+																	{totalHours.toLocaleString('sv-SE', {
+																		minimumFractionDigits: 0,
+																		maximumFractionDigits: 2,
+																	})}
+																</td>
+																<td className='px-3 py-3 text-right font-semibold whitespace-nowrap'>
+																	{totalTimeAmount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+																</td>
+																{canEdit && <td className='px-3 py-3'></td>}
+															</tr>
+														</tfoot>
+													</table>
+											</div>
+												</div>
+										)}
+
+										{/* Material Section */}
+										{materialLines.length > 0 && (
+											<div className='space-y-3'>
+												<h3 className='text-sm font-semibold uppercase tracking-wide text-muted-foreground'>Material</h3>
+										<div className='overflow-hidden rounded-lg border border-border/60'>
+											<table className='w-full table-fixed divide-y divide-border/60'>
+												<thead className='bg-muted/60'>
+													<tr className='text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
+														<th className='w-28 px-3 py-3'>Datum</th>
+														<th className='px-3 py-3'>Beskrivning</th>
+														<th className='w-24 px-3 py-3 text-right'>Antal</th>
+														<th className='w-20 px-3 py-3'>Enhet</th>
+														<th className='w-36 px-3 py-3 text-right'>Summa ex moms</th>
+														{canEdit && <th className='w-24 px-3 py-3'></th>}
+													</tr>
+												</thead>
+												<tbody className='divide-y divide-border/60 bg-background'>
+															{materialLines.map((line) => {
+																const isEditing = line.id === editingLineId;
+																const { amountExVat, amountIncVat } = (() => {
+																	const quantity = Number(line.quantity) || 0;
+																	const unitPrice = Number(line.unit_price) || 0;
+																	const discount = Number(line.discount) || 0;
+																	const discountFactor = discount > 0 ? 1 - discount / 100 : 1;
+																	const ex = quantity * unitPrice * discountFactor;
+																	const vatRate = Number(line.vat_rate) || 0;
+																	const vat = ex * (vatRate / 100);
+																	return {
+																		amountExVat: Math.round(ex * 100) / 100,
+																		amountIncVat: Math.round((ex + vat) * 100) / 100,
+																	};
+																})();
+																return (
+																	<tr key={line.id} className='align-top text-sm'>
+																		<td className='px-3 py-3'>
+																			{line.date ? new Date(line.date + 'T00:00:00').toLocaleDateString('sv-SE') : '–'}
+																		</td>
+																		<td className='px-3 py-3'>
+																			{isEditing && lineState ? (
+																				<Input
+																					value={lineState.description}
+																					onChange={(event) =>
+																						setLineState((state) =>
+																							state ? { ...state, description: event.target.value } : state
+																						)
+																					}
+																					className='h-9'
+																					disabled={!canEdit}
+																				/>
+																			) : (
+																				<div className='space-y-1'>
+																					{line.source?.table === 'ata' && line.ata_info && (
+																						<div className='flex items-center gap-2'>
+																							<span className='inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-500/20 dark:text-blue-300'>
+																								ÄTA: {line.ata_info.ata_number ? `ÄTA ${line.ata_info.ata_number}` : line.ata_info.title}
+																</span>
+															</div>
+														)}
+																					<div>{line.description || '–'}</div>
+															</div>
+														)}
+																		</td>
+																		<td className='px-3 py-3 text-right'>
+																			{isEditing && lineState ? (
+																				<Input
+																					type='number'
+																					value={lineState.quantity}
+																					onChange={(event) =>
+																						setLineState((state) =>
+																							state ? { ...state, quantity: event.target.value } : state
+																						)
+																					}
+																					className='h-9'
+																					disabled={!canEdit}
+																				/>
+																			) : (
+																				Number(line.quantity ?? 0).toLocaleString('sv-SE', {
+																					minimumFractionDigits: 0,
+																		maximumFractionDigits: 2,
+																				})
+																			)}
+																		</td>
+																		<td className='px-3 py-3 whitespace-nowrap'>{line.unit || '–'}</td>
+																		<td className='px-3 py-3 text-right whitespace-nowrap'>{amountExVat.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</td>
+																		{canEdit && (
+																			<td className='px-3 py-3 text-right'>
+																				{isEditing ? (
+																					<div className='flex justify-end gap-2'>
+																						<Button size='sm' onClick={handleSubmitLine} disabled={updateLine.isPending || invoiceBasis.locked}>
+																							Spara
+																						</Button>
+																						<Button size='sm' variant='ghost' onClick={handleCancelLineEdit}>
+																							Avbryt
+																						</Button>
+															</div>
+																				) : (
+																					<Button
+																						size='sm'
+																						variant='outline'
+																						onClick={() => handleEditLine(line)}
+																						disabled={invoiceBasis.locked}
+																					>
+																						Redigera
+																					</Button>
+																				)}
+																			</td>
+																		)}
+																	</tr>
+																);
+															})}
+												</tbody>
+												<tfoot className='bg-muted/60 border-t-2 border-border'>
+													<tr className='text-left text-sm font-semibold'>
+														<td className='px-3 py-3'></td>
+														<td className='px-3 py-3'>
+															Summa
+														</td>
+														<td className='px-3 py-3 text-right'>
+															{totalMaterialQuantity.toLocaleString('sv-SE', {
+																minimumFractionDigits: 0,
+																maximumFractionDigits: 2,
+															})}
+														</td>
+														<td className='px-3 py-3'></td>
+														<td className='px-3 py-3 text-right font-semibold whitespace-nowrap'>
+															{totalMaterialAmount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+														</td>
+														{canEdit && <td className='px-3 py-3'></td>}
+													</tr>
+												</tfoot>
+											</table>
+													</div>
+												</div>
+											)}
+
+										{/* Utlägg Section */}
+										{expenseLines.length > 0 && (
+											<div className='space-y-3'>
+												<h3 className='text-sm font-semibold uppercase tracking-wide text-muted-foreground'>Utlägg</h3>
 										<div className='overflow-hidden rounded-lg border border-border/60'>
 											<table className='min-w-full divide-y divide-border/60'>
 												<thead className='bg-muted/60'>
@@ -980,7 +1302,7 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 													</tr>
 												</thead>
 												<tbody className='divide-y divide-border/60 bg-background'>
-													{nonDiaryLines.map((line) => {
+															{expenseLines.map((line) => {
 														const isEditing = line.id === editingLineId;
 														const { amountExVat, amountIncVat } = (() => {
 															const quantity = Number(line.quantity) || 0;
@@ -1097,64 +1419,123 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 																		})} kr`
 																	)}
 																</td>
+																		<td className='px-3 py-3 text-right'>{amountExVat.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</td>
+																		{canEdit && (
+																			<td className='px-3 py-3 text-right'>
+																				{isEditing ? (
+																					<div className='flex justify-end gap-2'>
+																						<Button size='sm' onClick={handleSubmitLine} disabled={updateLine.isPending || invoiceBasis.locked}>
+																							Spara
+																						</Button>
+																						<Button size='sm' variant='ghost' onClick={handleCancelLineEdit}>
+																							Avbryt
+																						</Button>
+																					</div>
+																				) : (
+																					<Button
+																						size='sm'
+																						variant='outline'
+																						onClick={() => handleEditLine(line)}
+																						disabled={invoiceBasis.locked}
+																					>
+																						Redigera
+																					</Button>
+																				)}
+																			</td>
+																		)}
+																	</tr>
+																);
+															})}
+														</tbody>
+													</table>
+												</div>
+											</div>
+										)}
+
+										{/* Other Lines (ATA, Mileage, etc.) */}
+										{otherLines.length > 0 && (
+											<div className='space-y-3'>
+												<h3 className='text-sm font-semibold uppercase tracking-wide text-muted-foreground'>Övrigt</h3>
+												<div className='overflow-hidden rounded-lg border border-border/60'>
+													<table className='w-full table-fixed divide-y divide-border/60'>
+														<thead className='bg-muted/60'>
+															<tr className='text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
+																<th className='w-28 px-3 py-3'>Datum</th>
+																<th className='px-3 py-3'>Beskrivning</th>
+																<th className='w-24 px-3 py-3 text-right'>Antal</th>
+																<th className='w-20 px-3 py-3'>Enhet</th>
+																<th className='w-36 px-3 py-3 text-right'>Summa ex moms</th>
+																{canEdit && <th className='w-24 px-3 py-3'></th>}
+															</tr>
+														</thead>
+														<tbody className='divide-y divide-border/60 bg-background'>
+															{otherLines.map((line) => {
+														const isEditing = line.id === editingLineId;
+														const { amountExVat, amountIncVat } = (() => {
+															const quantity = Number(line.quantity) || 0;
+															const unitPrice = Number(line.unit_price) || 0;
+															const discount = Number(line.discount) || 0;
+															const discountFactor = discount > 0 ? 1 - discount / 100 : 1;
+															const ex = quantity * unitPrice * discountFactor;
+															const vatRate = Number(line.vat_rate) || 0;
+															const vat = ex * (vatRate / 100);
+															return {
+																amountExVat: Math.round(ex * 100) / 100,
+																amountIncVat: Math.round((ex + vat) * 100) / 100,
+															};
+														})();
+														return (
+															<tr key={line.id} className='align-top text-sm'>
+																<td className='px-3 py-3'>
+																	{line.date ? new Date(line.date + 'T00:00:00').toLocaleDateString('sv-SE') : '–'}
+																</td>
 																<td className='px-3 py-3'>
 																	{isEditing && lineState ? (
 																		<Input
-																			type='number'
-																			value={lineState.discount}
+																			value={lineState.description}
 																			onChange={(event) =>
 																				setLineState((state) =>
-																					state ? { ...state, discount: event.target.value } : state
+																					state ? { ...state, description: event.target.value } : state
 																				)
 																			}
 																			className='h-9'
 																			disabled={!canEdit}
 																		/>
 																	) : (
-																		`${Number(line.discount ?? 0).toLocaleString('sv-SE', {
+																		<div className='space-y-1'>
+																			{line.source?.table === 'ata' && line.ata_info && (
+																				<div className='flex items-center gap-2'>
+																					<span className='inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-500/20 dark:text-blue-300'>
+																						ÄTA: {line.ata_info.ata_number ? `ÄTA ${line.ata_info.ata_number}` : line.ata_info.title}
+																					</span>
+																				</div>
+																			)}
+																			<div>{line.description || '–'}</div>
+																		</div>
+																	)}
+																</td>
+																<td className='px-3 py-3 text-right'>
+																	{isEditing && lineState ? (
+																		<Input
+																			type='number'
+																			value={lineState.quantity}
+																			onChange={(event) =>
+																				setLineState((state) =>
+																					state ? { ...state, quantity: event.target.value } : state
+																				)
+																			}
+																			className='h-9'
+																			disabled={!canEdit}
+																		/>
+																	) : (
+																		Number(line.quantity ?? 0).toLocaleString('sv-SE', {
 																			minimumFractionDigits: 0,
 																			maximumFractionDigits: 2,
-																		})}%`
+																		})
 																	)}
 																</td>
-																<td className='px-3 py-3'>
-																	{isEditing && lineState ? (
-																		<Input
-																			type='number'
-																			value={lineState.vat_rate}
-																			onChange={(event) =>
-																				setLineState((state) =>
-																					state ? { ...state, vat_rate: event.target.value } : state
-																				)
-																			}
-																			className='h-9'
-																			disabled={!canEdit}
-																		/>
-																	) : (
-																		`${Number(line.vat_rate ?? 0).toLocaleString('sv-SE', {
-																			minimumFractionDigits: 0,
-																			maximumFractionDigits: 1,
-																		})}%`
-																	)}
-																</td>
-																<td className='px-3 py-3'>
-																	{isEditing && lineState ? (
-																		<Input
-																			value={lineState.account}
-																			onChange={(event) =>
-																				setLineState((state) =>
-																					state ? { ...state, account: event.target.value } : state
-																				)
-																			}
-																			className='h-9'
-																			disabled={!canEdit}
-																		/>
-																	) : (
-																		line.account || '–'
-																	)}
-																</td>
-																<td className='px-3 py-3 text-right'>{amountExVat.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</td>
-																<td className='px-3 py-3 text-right'>{amountIncVat.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</td>
+																<td className='px-3 py-3 whitespace-nowrap'>{line.unit || '–'}</td>
+																<td className='px-3 py-3 text-right whitespace-nowrap'>{amountExVat.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr</td>
 																{canEdit && (
 																	<td className='px-3 py-3 text-right'>
 																		{isEditing ? (
@@ -1182,37 +1563,74 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 														);
 													})}
 												</tbody>
+												<tfoot className='bg-muted/60 border-t-2 border-border'>
+													<tr className='text-left text-sm font-semibold'>
+														<td className='px-3 py-3'></td>
+														<td className='px-3 py-3'>
+															Summa
+														</td>
+														<td className='px-3 py-3 text-right'>
+															{totalOtherQuantity.toLocaleString('sv-SE', {
+																minimumFractionDigits: 0,
+																maximumFractionDigits: 2,
+															})}
+														</td>
+														<td className='px-3 py-3'></td>
+														<td className='px-3 py-3 text-right font-semibold whitespace-nowrap'>
+															{totalOtherAmount.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+														</td>
+														{canEdit && <td className='px-3 py-3'></td>}
+													</tr>
+												</tfoot>
 											</table>
 										</div>
+									</div>
+								)}
+							</CardContent>
+								</Card>
 
-										{/* Diary and ÄTA Descriptions */}
-										{diaryEntries.length > 0 && (
-											<div className='rounded-lg border border-border/60 bg-background'>
-												<div className='border-b border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground'>
-													Dagboksrader och ÄTA-beskrivningar (ingår i fakturatext)
+								{/* Totals Card */}
+								<Card>
+									<CardHeader>
+										<CardTitle>Summeringar</CardTitle>
+									</CardHeader>
+									<CardContent className='space-y-6'>
+										{/* Totals grid */}
+										<div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
+											<div className='rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4'>
+												<div className='text-xs uppercase text-emerald-600 dark:text-emerald-300'>Netto exkl. moms</div>
+												<div className='text-2xl font-semibold text-foreground'>
+													{totals?.total_ex_vat?.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) ?? '0,00'} kr
 												</div>
-												<div className='space-y-3 p-4'>
-													{diaryEntries.map((entry) => {
-														const isAta = entry.line_ref?.startsWith('ata-');
-														return (
-															<div key={entry.line_ref} className='rounded-md border border-border/40 bg-muted/40 p-3 text-sm'>
-																<div className='flex items-center gap-2 mb-2'>
-																	<div className='font-semibold text-foreground'>
-																		{format(new Date(entry.date), 'PPP', { locale: sv })}
 																	</div>
-																	{isAta && (
-																		<span className='inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-500/20 dark:text-blue-300'>
-																			ÄTA
-																		</span>
-																	)}
-																</div>
-																<div className='text-muted-foreground'>{entry.summary}</div>
-															</div>
-														);
-													})}
+											<div className='rounded-lg border border-amber-500/30 bg-amber-500/5 p-4'>
+												<div className='text-xs uppercase text-amber-600 dark:text-amber-300'>Moms</div>
+												<div className='text-2xl font-semibold text-foreground'>
+													{totals?.total_vat?.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) ?? '0,00'} kr
 												</div>
 											</div>
-										)}
+											<div className='rounded-lg border border-blue-500/30 bg-blue-500/5 p-4'>
+												<div className='text-xs uppercase text-blue-600 dark:text-blue-300'>Totalt</div>
+												<div className='text-2xl font-semibold text-foreground'>
+													{totals?.total_inc_vat?.toLocaleString('sv-SE', { minimumFractionDigits: 2 }) ?? '0,00'} kr
+												</div>
+											</div>
+											{totals?.per_vat_rate &&
+												Object.entries(totals.per_vat_rate).map(([rate, values]) => (
+													<div key={rate} className='rounded-lg border border-border/60 bg-muted/40 p-4'>
+														<div className='text-xs uppercase text-muted-foreground'>Moms {rate}%</div>
+														<div className='text-sm text-muted-foreground'>
+															Exkl: {values.base.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+														</div>
+														<div className='text-sm text-muted-foreground'>
+															Moms: {values.vat.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+														</div>
+														<div className='text-sm text-muted-foreground'>
+															Inkl: {values.total.toLocaleString('sv-SE', { minimumFractionDigits: 2 })} kr
+														</div>
+													</div>
+												))}
+										</div>
 									</CardContent>
 								</Card>
 
@@ -1308,6 +1726,50 @@ export function InvoiceBasisPage({ projects, userRole = 'admin' }: InvoiceBasisP
 														Ladda ner PDF
 													</Button>
 												</>
+											)}
+											{/* Fortnox Export Section */}
+											{invoiceBasis.locked && (
+												<div className='w-full border-t pt-4 mt-4'>
+													<div className='flex items-center justify-between mb-3'>
+														<span className='text-sm font-medium'>Fortnox Export</span>
+														{fortnoxStatus?.fortnox_invoice_number ? (
+															<span className='text-sm text-muted-foreground'>
+																Exporterad till Fortnox – fakturanummer {fortnoxStatus.fortnox_invoice_number}
+															</span>
+														) : fortnoxStatus?.status === 'failed' ? (
+															<span className='text-sm text-destructive'>
+																Export misslyckades: {fortnoxStatus.error_message || 'Okänt fel'}
+															</span>
+														) : (
+															<span className='text-sm text-muted-foreground'>
+																Ej exporterad till Fortnox
+															</span>
+														)}
+													</div>
+													{canExportToFortnox ? (
+														<div className='flex items-center gap-2'>
+															<Input
+																placeholder='Fortnox kundnummer'
+																value={customerFortnoxNumber}
+																onChange={(e) => setCustomerFortnoxNumber(e.target.value)}
+																className='w-48'
+																disabled={isExportingToFortnox || !!fortnoxStatus?.fortnox_invoice_number}
+															/>
+															<Button
+																onClick={handleExportToFortnox}
+																disabled={isExportingToFortnox || !customerFortnoxNumber.trim() || !!fortnoxStatus?.fortnox_invoice_number}
+															>
+																{isExportingToFortnox ? 'Exporterar...' : 'Skapa kundfaktura i Fortnox'}
+															</Button>
+														</div>
+													) : (
+														<p className='text-sm text-muted-foreground'>
+															{fortnoxStatus?.fortnox_invoice_number
+																? `Exporterad till Fortnox – fakturanummer ${fortnoxStatus.fortnox_invoice_number}`
+																: 'Ej exporterad till Fortnox'}
+														</p>
+													)}
+												</div>
 											)}
 										</div>
 									</CardContent>

@@ -25,6 +25,11 @@ export interface InvoiceBasisLine {
 	dimensions: Record<string, string | null>;
 	attachments: string[];
 	ata_info?: { title: string; ata_number: string | null } | null;
+	// Additional fields for time entries
+	date?: string; // YYYY-MM-DD format
+	time?: string; // Time range like "08:00-17:00"
+	person?: string; // Person name who worked
+	diary?: string; // Diary entry text
 }
 
 export interface DiarySummary {
@@ -233,7 +238,7 @@ export async function refreshInvoiceBasis({
 		supabase
 			.from('time_entries')
 			.select(
-				'id, project_id, user_id, task_label, start_at, duration_min, status, employee_id, subcontractor_id, phase:phases(name)'
+				'id, project_id, user_id, task_label, start_at, stop_at, duration_min, status, employee_id, subcontractor_id, phase:phases(name), user:profiles!time_entries_user_id_fkey(full_name)'
 			)
 			.eq('org_id', orgId)
 			.eq('project_id', projectId)
@@ -559,6 +564,19 @@ export async function refreshInvoiceBasis({
 		});
 	}
 
+	// Create a map of diary entries by project_id and date for quick lookup
+	const diaryMap = new Map<string, string>();
+	const diaryEntries = diaryResult.data ?? [];
+	diaryEntries.forEach((diary: any) => {
+		if (diary?.project_id && diary?.date) {
+			const key = `${diary.project_id}_${diary.date}`;
+			const workPerformed = sanitizeText(diary.work_performed) || '';
+			if (workPerformed) {
+				diaryMap.set(key, workPerformed);
+			}
+		}
+	});
+
 	timeEntries.forEach((entry: any) => {
 		if (!entry || !entry.id) return;
 		const hours = entry.duration_min ? Number(entry.duration_min) / 60 : 0;
@@ -578,11 +596,34 @@ export async function refreshInvoiceBasis({
 		
 		// Include time entries even if hourly rate is 0 (user can set rate manually in UI)
 		const config = DEFAULT_LINE_CONFIG.time;
-		const description =
-			sanitizeText(entry.task_label) ||
-			`Arbete ${new Date(entry.start_at).toLocaleDateString('sv-SE')}${
-				entry.phase?.name ? ` (${entry.phase.name})` : ''
-			}`;
+		
+		// Extract date, time, person, and diary for time entries
+		const entryDate = new Date(entry.start_at);
+		// Format as YYYY-MM-DD using local date (not UTC)
+		const year = entryDate.getFullYear();
+		const month = String(entryDate.getMonth() + 1).padStart(2, '0');
+		const day = String(entryDate.getDate()).padStart(2, '0');
+		const dateStr = `${year}-${month}-${day}`;
+		
+		// Format description as "Arbete [datum]" first, then optional task_label/phase
+		const formattedDate = entryDate.toLocaleDateString('sv-SE');
+		const taskLabel = sanitizeText(entry.task_label);
+		const phaseName = entry.phase?.name ? sanitizeText(entry.phase.name) : '';
+		const description = `Arbete ${formattedDate}${taskLabel ? ` - ${taskLabel}` : ''}${phaseName ? ` (${phaseName})` : ''}`;
+		
+		// Format time range
+		const startTime = entryDate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+		const stopTime = entry.stop_at 
+			? new Date(entry.stop_at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
+			: '';
+		const timeStr = stopTime ? `${startTime}-${stopTime}` : startTime;
+		
+		// Get person name
+		const personName = entry.user?.full_name || '';
+		
+		// Get diary entry for this project and date
+		const diaryKey = `${entry.project_id}_${dateStr}`;
+		const diaryText = diaryMap.get(diaryKey) || '';
 
 		const amountExVat = roundCurrency(hours * hourlyRate);
 
@@ -602,6 +643,10 @@ export async function refreshInvoiceBasis({
 				account: config.account,
 				dimensions: { project: projectDimension, cost_center: null },
 				attachments: [],
+				date: dateStr,
+				time: timeStr,
+				person: personName,
+				diary: diaryText,
 			},
 			amountExVat
 		);
@@ -621,13 +666,23 @@ export async function refreshInvoiceBasis({
 		const amountExVat = roundCurrency(qty * unitPrice);
 
 		console.log(`[refreshInvoiceBasis] Adding material ${material.id}: qty=${qty}, unitPrice=${unitPrice}, amount=${amountExVat}`);
+		// Format description as "Arbete [datum]" first, then material description
+		const materialDate = new Date(material.created_at);
+		const materialDateStr = materialDate.toLocaleDateString('sv-SE');
+		// Format as YYYY-MM-DD using local date (not UTC)
+		const year = materialDate.getFullYear();
+		const month = String(materialDate.getMonth() + 1).padStart(2, '0');
+		const day = String(materialDate.getDate()).padStart(2, '0');
+		const dateStr = `${year}-${month}-${day}`;
+		const materialDesc = sanitizeText(material.description);
+		const materialDescription = `Arbete ${materialDateStr}${materialDesc ? ` - ${materialDesc}` : ''}`;
 		pushLine(
 			{
 				id: material.id,
 				type: 'material',
 				source: { table: 'materials', id: material.id },
 				article_code: config.article,
-				description: truncate(sanitizeText(material.description), 512),
+				description: truncate(materialDescription, 512),
 				unit: material.unit ?? config.unit,
 				quantity: roundCurrency(qty),
 				unit_price: roundCurrency(unitPrice),
@@ -637,6 +692,7 @@ export async function refreshInvoiceBasis({
 				account: config.account,
 				dimensions: { project: projectDimension, cost_center: null },
 				attachments: material.photo_urls && Array.isArray(material.photo_urls) ? material.photo_urls : (material.photo_urls ? [material.photo_urls] : []),
+				date: dateStr, // Add date for materials
 			},
 			amountExVat
 		);
@@ -659,13 +715,17 @@ export async function refreshInvoiceBasis({
 		const vatCode = hasVat ? config.defaultVatCode : '0';
 		const amountExVat = roundCurrency(amount);
 
+		// Format description as "Arbete [datum]" first, then expense description
+		const expenseDateStr = new Date(expense.expense_date).toLocaleDateString('sv-SE');
+		const expenseDesc = sanitizeText(expense.description);
+		const expenseDescription = `Arbete ${expenseDateStr}${expenseDesc ? ` - ${expenseDesc}` : ''}`;
 		pushLine(
 			{
 				id: expense.id,
 				type: 'expense',
 				source: { table: 'expenses', id: expense.id },
 				article_code: config.article,
-				description: truncate(sanitizeText(expense.description), 512),
+				description: truncate(expenseDescription, 512),
 				unit: config.unit,
 				quantity: 1,
 				unit_price: roundCurrency(amount),
@@ -776,6 +836,29 @@ export async function refreshInvoiceBasis({
 					? laborAmount
 					: roundCurrency(unitPrice);
 
+			// Format date for ÄTA
+			const ataDate = entry.approved_at || entry.created_at;
+			let dateStr: string | undefined;
+			if (ataDate) {
+				try {
+					const ataDateObj = new Date(ataDate);
+					// Check if date is valid
+					if (!isNaN(ataDateObj.getTime())) {
+						// Format as YYYY-MM-DD using local date (not UTC)
+						const year = ataDateObj.getFullYear();
+						const month = String(ataDateObj.getMonth() + 1).padStart(2, '0');
+						const day = String(ataDateObj.getDate()).padStart(2, '0');
+						dateStr = `${year}-${month}-${day}`;
+					} else {
+						console.warn(`[refreshInvoiceBasis] Invalid date for ÄTA ${entry.id}: ${ataDate}`);
+					}
+				} catch (error) {
+					console.error(`[refreshInvoiceBasis] Error parsing date for ÄTA ${entry.id}:`, error);
+				}
+			} else {
+				console.warn(`[refreshInvoiceBasis] No date found for ÄTA ${entry.id} (approved_at: ${entry.approved_at}, created_at: ${entry.created_at})`);
+			}
+
 			console.log(`[refreshInvoiceBasis] Adding ÄTA labor line for ${entry.id}: type=ata, amount=${laborAmount}`);
 			pushLine(
 				{
@@ -794,6 +877,7 @@ export async function refreshInvoiceBasis({
 					dimensions: { project: projectDimension, cost_center: null },
 					attachments: [],
 					ata_info: ataInfo,
+					date: dateStr, // Add date for ÄTA
 				},
 				laborAmount
 			);
@@ -808,6 +892,29 @@ export async function refreshInvoiceBasis({
 			const materialDescription = lineDescriptionParts.length
 				? `Material – ${truncate(lineDescriptionParts.join(' – '), 400)}`
 				: 'Materialkostnad';
+
+			// Format date for ÄTA material
+			const ataMaterialDate = entry.approved_at || entry.created_at;
+			let dateStr: string | undefined;
+			if (ataMaterialDate) {
+				try {
+					const ataDate = new Date(ataMaterialDate);
+					// Check if date is valid
+					if (!isNaN(ataDate.getTime())) {
+						// Format as YYYY-MM-DD using local date (not UTC)
+						const year = ataDate.getFullYear();
+						const month = String(ataDate.getMonth() + 1).padStart(2, '0');
+						const day = String(ataDate.getDate()).padStart(2, '0');
+						dateStr = `${year}-${month}-${day}`;
+					} else {
+						console.warn(`[refreshInvoiceBasis] Invalid date for ÄTA material ${entry.id}: ${ataMaterialDate}`);
+					}
+				} catch (error) {
+					console.error(`[refreshInvoiceBasis] Error parsing date for ÄTA material ${entry.id}:`, error);
+				}
+			} else {
+				console.warn(`[refreshInvoiceBasis] No date found for ÄTA material ${entry.id} (approved_at: ${entry.approved_at}, created_at: ${entry.created_at})`);
+			}
 
 			console.log(`[refreshInvoiceBasis] Adding ÄTA material line for ${entry.id}: type=material, amount=${materialsAmount}`);
 			pushLine(
@@ -827,6 +934,7 @@ export async function refreshInvoiceBasis({
 					dimensions: { project: projectDimension, cost_center: null },
 					attachments: [],
 					ata_info: ataInfo,
+					date: dateStr, // Add date for ÄTA materials
 				},
 				materialsAmount
 			);
