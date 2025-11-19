@@ -70,10 +70,10 @@ export default async function ProjectsPage(props: PageProps) {
 	// Fetch time entries and phase budgets for each project
 	const projectsWithHours = await Promise.all(
 		(projects || []).map(async (project) => {
-			// Fetch time entries
+			// Fetch time entries (including ÄTA entries to subtract them)
 			const { data: timeEntries, error: timeError } = await supabase
 				.from('time_entries')
-				.select('start_at, stop_at')
+				.select('start_at, stop_at, ata_id')
 				.eq('project_id', project.id);
 
 			if (timeError) {
@@ -81,11 +81,19 @@ export default async function ProjectsPage(props: PageProps) {
 			}
 
 			// Calculate total hours (including active entries)
+			// Subtract ÄTA time from the total
 			const totalHours = timeEntries?.reduce((sum, entry) => {
 				const start = new Date(entry.start_at);
 				// Use stop_at if it exists, otherwise use current time for active entries
 				const end = entry.stop_at ? new Date(entry.stop_at) : new Date();
 				const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+				
+				// If this entry is for an ÄTA, subtract it from the total
+				// (ÄTA entries are logged on the project but should reduce the project total)
+				if (entry.ata_id) {
+					return sum - hours; // Subtract ÄTA time
+				}
+				
 				return sum + hours;
 			}, 0) || 0;
 

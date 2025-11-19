@@ -118,6 +118,9 @@ export async function POST(request: NextRequest) {
 				start_at: data.start_at,
 				stop_at: data.stop_at,
 				notes: data.notes,
+				billing_type: data.billing_type,
+				fixed_block_id: data.fixed_block_id ?? null,
+				ata_id: data.ata_id ?? null,
 				status: 'draft',
 			})
 			.select('*')

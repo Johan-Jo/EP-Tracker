@@ -14,27 +14,53 @@ export const timeEntrySchema = z.object({
 		// Accept both ISO datetime and datetime-local format (yyyy-MM-ddTHH:mm)
 		const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{3})?)?([+-]\d{2}:\d{2}|Z)?$/;
 		return isoRegex.test(val) && !isNaN(new Date(val).getTime());
-	}, { message: 'Starttid måste vara ett giltigt datum' }),
+	}, { message: 'Starttid måste vara ett giltigt datum' }).optional(),
 	stop_at: z.string().refine((val) => {
 		// Accept both ISO datetime and datetime-local format (yyyy-MM-ddTHH:mm)
 		const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{3})?)?([+-]\d{2}:\d{2}|Z)?$/;
 		return isoRegex.test(val) && !isNaN(new Date(val).getTime());
 	}, { message: 'Sluttid måste vara ett giltigt datum' }).optional().nullable(),
+	hours: z.number().min(0).max(24).optional(), // For ÄTA entries: hours instead of start/stop
 	notes: z.string().optional().nullable(),
 	status: z.enum(['draft', 'submitted', 'approved', 'rejected']).default('draft'),
-}).refine(
-	(data) => {
+}).superRefine((data, ctx) => {
+	// If ÄTA is selected, require hours instead of start_at/stop_at
+	if (data.ata_id) {
+		if (!data.hours || data.hours <= 0) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Antal timmar måste anges när ÄTA är vald',
+				path: ['hours'],
+			});
+		}
+		if (data.start_at || data.stop_at) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Start- och sluttid ska inte anges när ÄTA är vald',
+				path: ['start_at'],
+			});
+		}
+	} else {
+		// If no ÄTA, require start_at
+		if (!data.start_at) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Starttid måste anges',
+				path: ['start_at'],
+			});
+		}
 		// If stop_at exists, it must be after start_at
 		if (data.stop_at && data.start_at) {
-			return new Date(data.stop_at) > new Date(data.start_at);
+			if (new Date(data.stop_at) <= new Date(data.start_at)) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Sluttid måste vara efter starttid',
+					path: ['stop_at'],
+				});
+			}
 		}
-		return true;
-	},
-	{
-		message: 'Sluttid måste vara efter starttid',
-		path: ['stop_at'],
 	}
-);
+});
 
 // Schema for creating a new time entry
 export const createTimeEntrySchema = timeEntrySchema.omit({ status: true });

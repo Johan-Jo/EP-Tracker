@@ -21,7 +21,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, QrCode, Navigation } from 'lucide-react';
+import { Loader2, QrCode, Navigation, Building2, User2 } from 'lucide-react';
 import { AddressAutocomplete } from '@/components/address/address-autocomplete';
 import { AddressMap } from '@/components/address/address-map';
 import { ProjectAlertSettings } from './project-alert-settings';
@@ -321,6 +321,9 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 					<div className='space-y-2'>
 						<input type='hidden' {...register('customer_id')} />
 						<input type='hidden' {...register('client_name')} />
+						<Label>
+							Kund <span className='text-destructive'>*</span>
+						</Label>
 						<CustomerSelect
 							value={selectedCustomer ?? null}
 							onChange={(customer) => {
@@ -331,12 +334,46 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 										: `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim() || null;
 								setValue('client_name', fallbackName, { shouldDirty: true });
 							}}
-							label='Kund'
 							placeholder='Välj kund'
 						/>
 						{errors.customer_id && (
 							<p className='text-sm text-destructive'>{errors.customer_id.message}</p>
 						)}
+						{selectedCustomer && customerId ? (
+							<Card className='mt-2'>
+								<CardContent className='pt-4'>
+									<div className='flex items-center justify-between'>
+										<div className='flex items-center gap-3'>
+											{selectedCustomer.type === 'COMPANY' ? (
+												<Building2 className='h-5 w-5 text-muted-foreground' />
+											) : (
+												<User2 className='h-5 w-5 text-muted-foreground' />
+											)}
+											<div>
+												<p className='font-medium'>
+													{selectedCustomer.type === 'COMPANY'
+														? selectedCustomer.company_name
+														: `${selectedCustomer.first_name ?? ''} ${selectedCustomer.last_name ?? ''}`.trim()}
+												</p>
+												<p className='text-sm text-muted-foreground'>
+													{selectedCustomer.customer_no}
+												</p>
+											</div>
+										</div>
+										<Button
+											type='button'
+											variant='outline'
+											size='sm'
+											onClick={() => {
+												setValue('customer_id', '', { shouldDirty: true, shouldValidate: true });
+											}}
+										>
+											Ändra
+										</Button>
+									</div>
+								</CardContent>
+							</Card>
+						) : null}
 					</div>
 
 					<div className='space-y-2'>
@@ -790,7 +827,7 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 				</Button>
 				<Button 
 					type='submit' 
-					disabled={isSubmitting}
+					disabled={isSubmitting || !customerId}
 					className='min-w-[160px] bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-200'
 				>
 					{isSubmitting && <Loader2 className='w-4 h-4 mr-2 animate-spin' />}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Controller, useForm, type Resolver } from 'react-hook-form';
+import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createTimeEntrySchema, type CreateTimeEntryInput } from '@/lib/schemas/time-entry';
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,7 @@ type AtaOption = {
 type TimeEntryFormValues = Omit<CreateTimeEntryInput, 'billing_type' | 'fixed_block_id'> & {
 	billing_type: '' | BillingType;
 	fixed_block_id: string | null;
+	hours?: number; // For ÄTA entries
 };
 
 interface TimeEntryFormProps {
@@ -96,6 +97,7 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 					billing_type: '',
 					fixed_block_id: null,
 					ata_id: null,
+					hours: undefined,
 			  },
 	});
 
@@ -242,9 +244,16 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 	const atasErrorMessage = atasError instanceof Error ? atasError.message : undefined;
 
 	const billingType = watch('billing_type') as TimeEntryFormValues['billing_type'];
-const fixedBlockId = watch('fixed_block_id') as string | null | undefined;
-const ataId = watch('ata_id') as string | null | undefined;
-const hasFixedBlocks = fixedBlocks.length > 0;
+	const fixedBlockId = watch('fixed_block_id') as string | null | undefined;
+	const ataId = useWatch({ control, name: 'ata_id' }) as string | null | undefined;
+	const hasFixedBlocks = fixedBlocks.length > 0;
+	
+	// Debug: Log when ÄTA changes
+	useEffect(() => {
+		if (process.env.NODE_ENV !== 'production') {
+			console.log('ÄTA selected:', ataId, 'Type:', typeof ataId, 'Show hours field:', ataId && typeof ataId === 'string' && ataId !== NO_ATA_SELECT_VALUE);
+		}
+	}, [ataId]);
 
 useEffect(() => {
 	if (process.env.NODE_ENV !== 'production') {
@@ -319,7 +328,18 @@ useEffect(() => {
 	}, [selectedProjectId, selectedProjectDetails, billingType, fixedBlockId, ataId, atas, setValue, effectiveBillingMode, hasFixedBlocks, projects?.length]);
 
 useEffect(() => {
-	if (!selectedProjectId || !ataId) return;
+	if (!selectedProjectId || !ataId || ataId === NO_ATA_SELECT_VALUE) {
+		// When ÄTA is deselected, clear hours field and restore start_at if needed
+		if (watch('hours') !== undefined) {
+			setValue('hours', undefined, { shouldDirty: false });
+		}
+		// Restore start_at to today if it was cleared
+		const currentStartAt = watch('start_at');
+		if (!currentStartAt) {
+			setValue('start_at', new Date().toISOString().slice(0, 16), { shouldDirty: false });
+		}
+		return;
+	}
 	const selectedAta = atas.find((ata) => ata.id === ataId);
 	if (!selectedAta) {
 		setValue('ata_id', null, { shouldDirty: true });
@@ -332,18 +352,45 @@ useEffect(() => {
 	if (selectedAta.billing_type === 'LOPANDE' && billingType !== 'LOPANDE') {
 		setValue('billing_type', 'LOPANDE', { shouldDirty: true });
 	}
-}, [selectedProjectId, ataId, atas, billingType, setValue]);
+	
+	// When ÄTA is selected, clear start_at and stop_at
+	if (ataId && ataId !== NO_ATA_SELECT_VALUE) {
+		setValue('start_at', '', { shouldDirty: false });
+		setValue('stop_at', null, { shouldDirty: false });
+	}
+}, [selectedProjectId, ataId, atas, billingType, setValue, watch]);
 
 	const fixedBlocksErrorMessage =
 		fixedBlocksError instanceof Error ? fixedBlocksError.message : undefined;
 
 	const onSubmit = async (data: TimeEntryFormValues) => {
-		const payload: CreateTimeEntryInput = {
-			...data,
-			billing_type: (data.billing_type === '' ? 'LOPANDE' : data.billing_type) as BillingType,
-			fixed_block_id: data.fixed_block_id ?? null,
-			ata_id: data.ata_id ?? null,
-		};
+		let payload: CreateTimeEntryInput;
+		
+		// If ÄTA is selected, use hours instead of start_at/stop_at
+		if (data.ata_id && data.hours) {
+			// For ÄTA entries, set start_at to today at 00:00 and calculate stop_at based on hours
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+			const stopAt = new Date(today);
+			stopAt.setHours(today.getHours() + data.hours);
+			
+			payload = {
+				...data,
+				billing_type: (data.billing_type === '' ? 'LOPANDE' : data.billing_type) as BillingType,
+				fixed_block_id: data.fixed_block_id ?? null,
+				ata_id: data.ata_id,
+				start_at: today.toISOString(),
+				stop_at: stopAt.toISOString(),
+				hours: data.hours,
+			};
+		} else {
+			payload = {
+				...data,
+				billing_type: (data.billing_type === '' ? 'LOPANDE' : data.billing_type) as BillingType,
+				fixed_block_id: data.fixed_block_id ?? null,
+				ata_id: data.ata_id ?? null,
+			};
+		}
 
 		setIsSubmitting(true);
 		setShowSuccess(false);
@@ -378,6 +425,7 @@ useEffect(() => {
 					billing_type: 'LOPANDE',
 					fixed_block_id: null,
 					ata_id: null,
+					hours: undefined,
 				});
 
 				// Show success message
@@ -737,31 +785,56 @@ useEffect(() => {
 						/>
 					</div>
 
-					{/* Time Range */}
-					<div className="grid grid-cols-2 gap-4">
+					{/* Time Range - Show hours for ÄTA, start/stop for regular entries */}
+					{ataId && typeof ataId === 'string' && ataId !== NO_ATA_SELECT_VALUE ? (
 						<div className="space-y-2">
-							<Label htmlFor="start_at">Starttid *</Label>
+							<Label htmlFor="hours">Antal timmar *</Label>
 							<Input
-								id="start_at"
-								type="datetime-local"
-								{...register('start_at')}
+								id="hours"
+								type="number"
+								inputMode="decimal"
+								step="0.25"
+								min="0"
+								max="24"
+								placeholder="t.ex. 2.5"
+								{...register('hours', { 
+									valueAsNumber: true,
+									required: 'Antal timmar måste anges när ÄTA är vald'
+								})}
 							/>
-							{errors.start_at && (
-								<p className="text-sm text-destructive">{errors.start_at.message}</p>
+							{errors.hours && (
+								<p className="text-sm text-destructive">{errors.hours.message}</p>
 							)}
+							<p className="text-xs text-muted-foreground">
+								Denna tid kommer att reduceras från huvudprojektet.
+							</p>
 						</div>
-						<div className="space-y-2">
-							<Label htmlFor="stop_at">Sluttid (valfritt)</Label>
-							<Input
-								id="stop_at"
-								type="datetime-local"
-								{...register('stop_at')}
-							/>
-							{errors.stop_at && (
-								<p className="text-sm text-destructive">{errors.stop_at.message}</p>
-							)}
+					) : (
+						<div className="grid grid-cols-2 gap-4">
+							<div className="space-y-2">
+								<Label htmlFor="start_at">Starttid *</Label>
+								<Input
+									id="start_at"
+									type="datetime-local"
+									{...register('start_at')}
+								/>
+								{errors.start_at && (
+									<p className="text-sm text-destructive">{errors.start_at.message}</p>
+								)}
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="stop_at">Sluttid (valfritt)</Label>
+								<Input
+									id="stop_at"
+									type="datetime-local"
+									{...register('stop_at')}
+								/>
+								{errors.stop_at && (
+									<p className="text-sm text-destructive">{errors.stop_at.message}</p>
+								)}
+							</div>
 						</div>
-					</div>
+					)}
 
 					{/* Description field removed: we now prompt for diary update after save */}
 

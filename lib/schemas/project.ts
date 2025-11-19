@@ -48,7 +48,7 @@ export const projectSchema = z.object({
 		.string()
 		.min(1, 'Projektnamn krävs')
 		.max(200, 'Projektnamn är för långt'),
-	customer_id: z.string().uuid('Välj eller skapa kund'),
+	customer_id: z.string().uuid('Välj eller skapa kund').min(1, 'Kund krävs'),
 	project_number: z.string().max(50).optional().nullable(),
 	client_name: z.string().max(200).optional().nullable(),
 	site_address: z.string().max(500).optional().nullable(),

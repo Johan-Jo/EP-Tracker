@@ -188,6 +188,12 @@ export function ProjectTimeEntriesTable({ timeEntries }: ProjectTimeEntriesTable
 										Person
 									</SortButton>
 								</TableHead>
+								<TableHead className="w-[100px] text-right">
+									<SortButton field="hours">
+										<Clock className="h-4 w-4 mr-1 inline" />
+										Timmar
+									</SortButton>
+								</TableHead>
 								<TableHead>
 									<SortButton field="phase">
 										<FolderKanban className="h-4 w-4 mr-1 inline" />
@@ -195,12 +201,6 @@ export function ProjectTimeEntriesTable({ timeEntries }: ProjectTimeEntriesTable
 									</SortButton>
 								</TableHead>
 								<TableHead className="min-w-[300px]">Dagbok</TableHead>
-								<TableHead className="w-[100px] text-right">
-									<SortButton field="hours">
-										<Clock className="h-4 w-4 mr-1 inline" />
-										Timmar
-									</SortButton>
-								</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -220,13 +220,18 @@ export function ProjectTimeEntriesTable({ timeEntries }: ProjectTimeEntriesTable
 												{format(new Date(entry.date), 'yyyy-MM-dd', { locale: sv })}
 											</TableCell>
 											<TableCell className="font-medium">{entry.user.name}</TableCell>
+											<TableCell className="text-right font-medium">
+												{entry.hours.toFixed(1)}h
+											</TableCell>
 											<TableCell>{entry.phase?.name || '-'}</TableCell>
 											<TableCell>
 												{hasDiary ? (
 													<div className="space-y-1">
-														<p className={shouldTruncate && !isExpanded ? 'line-clamp-2' : ''}>
-															{diaryText}
-														</p>
+														{!isExpanded && (
+															<p className={shouldTruncate ? 'line-clamp-2' : ''}>
+																{diaryText}
+															</p>
+														)}
 														{shouldTruncate && (
 															<Button
 																variant="ghost"
@@ -244,9 +249,6 @@ export function ProjectTimeEntriesTable({ timeEntries }: ProjectTimeEntriesTable
 												) : (
 													<span className="text-muted-foreground italic">Ingen dagbok</span>
 												)}
-											</TableCell>
-											<TableCell className="text-right font-medium">
-												{entry.hours.toFixed(2)}h
 											</TableCell>
 										</TableRow>
 										{isExpanded && entry.diary && (
@@ -309,7 +311,7 @@ export function ProjectTimeEntriesTable({ timeEntries }: ProjectTimeEntriesTable
 									className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
 								>
 									<span className="font-medium">{summary.userName}</span>
-									<span className="text-lg font-bold">{summary.hours}h</span>
+									<span className="text-lg font-bold">{summary.hours.toFixed(1)}h</span>
 								</div>
 							))}
 						</div>
@@ -331,7 +333,7 @@ export function ProjectTimeEntriesTable({ timeEntries }: ProjectTimeEntriesTable
 									className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
 								>
 									<span className="font-medium">{summary.phaseName}</span>
-									<span className="text-lg font-bold">{summary.hours}h</span>
+									<span className="text-lg font-bold">{summary.hours.toFixed(1)}h</span>
 								</div>
 							))}
 						</div>

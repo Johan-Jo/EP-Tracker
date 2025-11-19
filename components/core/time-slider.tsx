@@ -25,13 +25,6 @@ type FixedBlockOption = {
   status: 'open' | 'closed';
 };
 
-type AtaOption = {
-  id: string;
-  title: string;
-  ata_number: string | null;
-  billing_type: BillingType;
-  status: string;
-};
 
 interface TimeSliderProps {
   isActive: boolean;
@@ -39,15 +32,12 @@ interface TimeSliderProps {
   projectId?: string;
   startTime?: string;
   activeBillingType?: BillingType | null;
-  activeAtaId?: string | null;
   availableProjects?: ProjectOption[];
-  onCheckIn: (payload: { projectId: string; billingType: BillingType; fixedBlockId?: string | null; ataId?: string | null }) => Promise<void>;
+  onCheckIn: (payload: { projectId: string; billingType: BillingType; fixedBlockId?: string | null }) => Promise<void>;
   onCheckOut: (customStopAt?: string, customStartAt?: string) => Promise<void>;
   onCheckOutComplete?: (projectId: string) => void;
   onProjectChange?: (projectId: string) => void;
 }
-
-const NO_ATA_SELECT_VALUE = '__no_ata__';
 
 export function TimeSlider({
   isActive, 
@@ -55,7 +45,6 @@ export function TimeSlider({
   projectId,
   startTime,
   activeBillingType = null,
-  activeAtaId = null,
   availableProjects = [],
   onCheckIn, 
   onCheckOut,
@@ -68,13 +57,9 @@ export function TimeSlider({
   const [selectedProjectId, setSelectedProjectId] = useState(projectId);
   const [selectedBillingType, setSelectedBillingType] = useState<BillingType | null>(null);
   const [selectedFixedBlockId, setSelectedFixedBlockId] = useState<string>('');
-  const [selectedAtaId, setSelectedAtaId] = useState<string | null>(activeAtaId);
   const [fixedBlocks, setFixedBlocks] = useState<FixedBlockOption[]>([]);
   const [fixedBlocksLoading, setFixedBlocksLoading] = useState(false);
   const [fixedBlocksError, setFixedBlocksError] = useState<string | null>(null);
-  const [atas, setAtas] = useState<AtaOption[]>([]);
-  const [atasLoading, setAtasLoading] = useState(false);
-  const [atasError, setAtasError] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [showDropdown, setShowDropdown] = useState(false);
   const [billingSelectionError, setBillingSelectionError] = useState<string | null>(null);
@@ -104,18 +89,14 @@ export function TimeSlider({
     if (!selectedProjectDetails) {
       setSelectedBillingType(null);
       setSelectedFixedBlockId('');
-      setSelectedAtaId(null);
       setFixedBlocks([]);
-      setAtas([]);
       setFixedBlocksError(null);
-      setAtasError(null);
       setBillingSelectionError(null);
       return;
     }
 
     if (isActive && activeBillingType) {
       setSelectedBillingType(activeBillingType);
-      setSelectedAtaId(activeAtaId ?? null);
       setBillingSelectionError(null);
       return;
     }
@@ -248,72 +229,6 @@ useEffect(() => {
     setSelectedProjectId(projectId);
   }, [projectId]);
 
-  useEffect(() => {
-    if (!selectedProjectDetails) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const loadAtas = async () => {
-      setAtasLoading(true);
-      setAtasError(null);
-      try {
-        const response = await fetch(`/api/ata?project_id=${selectedProjectDetails.id}`);
-        if (!response.ok) {
-          throw new Error('Kunde inte hämta ÄTA');
-        }
-        const json = await response.json();
-        const mapped: AtaOption[] = (json.ata || [])
-          .filter((ata: any) => ata.status !== 'rejected')
-          .map((ata: any) => ({
-            id: ata.id,
-            title: ata.title,
-            ata_number: ata.ata_number ?? null,
-            billing_type: ata.billing_type as BillingType,
-            status: ata.status,
-          }));
-
-        if (cancelled) return;
-        setAtas(mapped);
-
-        if (mapped.length === 0) {
-          setSelectedAtaId(null);
-        } else if (isActive && activeAtaId && mapped.some((ata) => ata.id === activeAtaId)) {
-          setSelectedAtaId(activeAtaId);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Failed to load ÄTA', error);
-          setAtas([]);
-          setAtasError(error instanceof Error ? error.message : 'Kunde inte hämta ÄTA');
-        }
-      } finally {
-        if (!cancelled) {
-          setAtasLoading(false);
-        }
-      }
-    };
-
-    loadAtas();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedProjectDetails?.id, isActive, activeAtaId]);
-
-  useEffect(() => {
-    if (!selectedAtaId) return;
-    if (!atas.some((ata) => ata.id === selectedAtaId)) {
-      setSelectedAtaId(null);
-    }
-  }, [atas, selectedAtaId]);
-
-  useEffect(() => {
-    if (!isActive) {
-      setSelectedAtaId(null);
-    }
-  }, [isActive, selectedProjectId]);
 
   const requiresBillingSelection =
     !isActive &&
@@ -434,7 +349,6 @@ useEffect(() => {
               billingToUse === 'FAST' && fixedBlocks.length > 0
                 ? selectedFixedBlockId
                 : null,
-            ataId: selectedAtaId,
           });
         } catch (error) {
           console.error('Error checking in:', error);
@@ -598,9 +512,6 @@ useEffect(() => {
     setSelectedFixedBlockId('');
     setFixedBlocks([]);
     setFixedBlocksError(null);
-    setSelectedAtaId(null);
-    setAtas([]);
-    setAtasError(null);
     onProjectChange?.(id);
   };
 
@@ -851,13 +762,62 @@ const showFixedBlockPicker =
           </div>
         )}
 
+        {/* Slider - moved before dropdowns to prevent blocking clicks */}
+        <div
+          ref={sliderRef}
+          className={`relative h-14 overflow-hidden rounded-full ${bgColor} border-2 ${borderColor} ${
+            sliderDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+          } select-none transition-all duration-300 ${!isActive ? 'z-0' : 'z-20'}`}
+        >
+          <div className="pointer-events-none absolute inset-0 z-0 opacity-30 dark:opacity-40 bg-[radial-gradient(circle_at_20%_40%,rgba(255,255,255,0.22),transparent_55%),radial-gradient(circle_at_80%_50%,rgba(255,255,255,0.18),transparent_50%)]" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-1 bg-white/20 dark:bg-white/10" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-1 bg-black/10 dark:bg-black/40" />
+
+          {/* Background text */}
+          <div className={`absolute inset-0 z-10 flex items-center justify-center ${textColor} pointer-events-none text-sm font-medium uppercase tracking-[0.18em]`}>
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <span style={{ opacity: Math.max(0, 1 - position * 2) }}>
+                {label}
+              </span>
+            )}
+          </div>
+
+          {/* Sliding thumb */}
+          <div
+            className="absolute top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-white shadow-md cursor-grab active:cursor-grabbing dark:border-transparent dark:bg-[radial-gradient(circle_at_30%_30%,#ffe3c3_0%,#ff8c38_45%,#cc3d00_100%)] dark:shadow-[0_12px_28px_rgba(255,100,30,0.45)]"
+            style={{
+              left: `calc(${position * 100}% - ${position * 48}px)`,
+              transition: isDragging ? 'none' : 'left 0.3s ease-out'
+            }}
+            onMouseDown={(e) => handleStart(e.clientX)}
+            onTouchStart={(e) => handleStart(e.touches[0].clientX)}
+          >
+            <svg 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+              className="h-6 w-6 text-gray-600 dark:text-[#2d1507]"
+              style={{
+                transform: `scale(${1 + position * 0.2})`
+              }}
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </div>
+        </div>
+
       {/* Project selector dropdown */}
       {!isActive && availableProjects.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-3 relative z-10">
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setShowDropdown(!showDropdown)}
-              className="w-full flex items-center justify-between px-3 py-2 bg-white border-2 border-gray-200 rounded-lg hover:border-orange-300 transition-colors dark:bg-[#1f140d] dark:border-[#ff8a3d]/35 dark:hover:border-[#ff8a3d]/55"
+              className="w-full flex items-center justify-between px-3 py-2 bg-white border-2 border-gray-200 rounded-lg hover:border-orange-300 transition-colors dark:bg-[#1f140d] dark:border-[#ff8a3d]/35 dark:hover:border-[#ff8a3d]/55 relative z-10"
             >
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-gray-700 dark:text-[#ffe5c7] dark:[text-shadow:0_1px_1px_rgba(0,0,0,0.55)]">
@@ -890,7 +850,7 @@ const showFixedBlockPicker =
           </div>
 
           {selectedProjectDetails && (
-            <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-3 text-sm shadow-sm dark:border-[#ff8a3d]/30 dark:bg-[#1f140d]">
+            <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-3 text-sm shadow-sm dark:border-[#ff8a3d]/30 dark:bg-[#1f140d] relative z-10">
               <div className="flex items-center justify-between text-xs uppercase tracking-[0.16em] text-gray-500 dark:text-[#f5cca8]/70">
                 <span>Projekt</span>
                 <span>
@@ -935,41 +895,6 @@ const showFixedBlockPicker =
                 </div>
               )}
 
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700 dark:text-[#ffe5c7]">
-                  ÄTA (valfritt)
-                </label>
-                {atasLoading ? (
-                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Hämtar ÄTA...
-                  </div>
-                ) : atas.length > 0 ? (
-                  <Select
-                    value={selectedAtaId ?? NO_ATA_SELECT_VALUE}
-                    onValueChange={(value) => {
-                      const normalized = value === NO_ATA_SELECT_VALUE ? null : value;
-                      setSelectedAtaId(normalized);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Välj ÄTA" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NO_ATA_SELECT_VALUE}>Ingen ÄTA</SelectItem>
-                      {atas.map((ata) => (
-                        <SelectItem key={ata.id} value={ata.id}>
-                          {ata.ata_number ? `${ata.ata_number} – ` : ''}
-                          {ata.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground">Inga ÄTA i detta projekt ännu.</p>
-                )}
-                {atasError && <p className="text-[11px] text-red-600">{atasError}</p>}
-              </div>
-
               {showFixedBlockPicker && (
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700 dark:text-[#ffe5c7]">
@@ -1001,7 +926,7 @@ const showFixedBlockPicker =
                     <p className="text-xs text-red-600">{fixedBlocksError}</p>
                   )}
                   <p className="text-[11px] text-muted-foreground">
-                    Fast tid måste kopplas till en fast post eller ÄTA.
+                    Fast tid måste kopplas till en fast post.
                   </p>
                 </div>
               )}
@@ -1009,55 +934,6 @@ const showFixedBlockPicker =
           )}
         </div>
       )}
-
-      {/* Slider */}
-      <div
-        ref={sliderRef}
-        className={`relative h-14 overflow-hidden rounded-full ${bgColor} border-2 ${borderColor} ${
-          sliderDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
-        } select-none transition-all duration-300`}
-      >
-        <div className="pointer-events-none absolute inset-0 z-0 opacity-30 dark:opacity-40 bg-[radial-gradient(circle_at_20%_40%,rgba(255,255,255,0.22),transparent_55%),radial-gradient(circle_at_80%_50%,rgba(255,255,255,0.18),transparent_50%)]" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-1 bg-white/20 dark:bg-white/10" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-1 bg-black/10 dark:bg-black/40" />
-
-        {/* Background text */}
-        <div className={`absolute inset-0 z-10 flex items-center justify-center ${textColor} pointer-events-none text-sm font-medium uppercase tracking-[0.18em]`}>
-          {isLoading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <span style={{ opacity: Math.max(0, 1 - position * 2) }}>
-              {label}
-            </span>
-          )}
-        </div>
-
-        {/* Sliding thumb */}
-        <div
-          className="absolute top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-white shadow-md cursor-grab active:cursor-grabbing dark:border-transparent dark:bg-[radial-gradient(circle_at_30%_30%,#ffe3c3_0%,#ff8c38_45%,#cc3d00_100%)] dark:shadow-[0_12px_28px_rgba(255,100,30,0.45)]"
-          style={{
-            left: `calc(${position * 100}% - ${position * 48}px)`,
-            transition: isDragging ? 'none' : 'left 0.3s ease-out'
-          }}
-          onMouseDown={(e) => handleStart(e.clientX)}
-          onTouchStart={(e) => handleStart(e.touches[0].clientX)}
-        >
-          <svg 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-            className="h-6 w-6 text-gray-600 dark:text-[#2d1507]"
-            style={{
-              transform: `scale(${1 + position * 0.2})`
-            }}
-          >
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </div>
-      </div>
       {requiresBillingSelection && (
         <p className="text-xs font-medium text-orange-600 text-center">
           Välj debiteringsform innan du startar tid.
