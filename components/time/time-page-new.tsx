@@ -19,6 +19,9 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Link from 'next/link';
 import { billingTypeOptions, type BillingType } from '@/lib/schemas/billing-types';
+import { TimePickerInput } from '@/components/ui/time-picker-input';
+import { AtaHoursPicker } from '@/components/ui/ata-hours-picker';
+import { DatePickerInput } from '@/components/ui/date-picker-input';
 
 interface OrgMember {
 	id: string;
@@ -65,6 +68,20 @@ type TimeEntryFormValues = Omit<CreateTimeEntryInput, 'billing_type' | 'fixed_bl
 	fixed_block_id: string | null;
 };
 
+// Helper function to get default work times from organization settings
+function getDefaultWorkTimes(orgBreakSettings?: {
+	default_work_day_start?: string;
+	default_work_day_end?: string;
+}) {
+	if (orgBreakSettings) {
+		return {
+			start: orgBreakSettings.default_work_day_start || '07:00',
+			end: orgBreakSettings.default_work_day_end || '16:00',
+		};
+	}
+	return { start: '07:00', end: '16:00' };
+}
+
 export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [editingEntry, setEditingEntry] = useState<any | null>(null);
@@ -81,11 +98,39 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 	const [diaryLoadingMap, setDiaryLoadingMap] = useState<Record<string, boolean>>({});
 	const [billingInteractionRequired, setBillingInteractionRequired] = useState(false);
 	const [entriesLimit, setEntriesLimit] = useState(200);
+	const [ataMinutes, setAtaMinutes] = useState(0); // Minutes to discount from main project time (0-1440 for 0-24 hours)
 	const supabase = createClient();
 	const queryClient = useQueryClient();
 	
 	// Check if user can see all entries (admin/foreman/finance)
 	const canSeeAllEntries = userRole === 'admin' || userRole === 'foreman' || userRole === 'finance';
+
+	// Fetch organization break settings and work hours (must be before useEffect that uses it)
+	const { data: orgBreakSettings } = useQuery<{
+		standard_break_minutes_per_day: number;
+		standard_breaks: Array<{ label: string; start: string; end: string; duration_minutes: number }>;
+		default_work_day_start: string;
+		default_work_day_end: string;
+	}>({
+		queryKey: ['org-break-settings', orgId],
+		queryFn: async () => {
+			const { data, error } = await supabase
+				.from('organizations')
+				.select('standard_break_minutes_per_day, standard_breaks, default_work_day_start, default_work_day_end')
+				.eq('id', orgId)
+				.single();
+
+			if (error) throw error;
+			return {
+				standard_break_minutes_per_day: data?.standard_break_minutes_per_day ?? 0,
+				standard_breaks: (data?.standard_breaks as any) ?? [],
+				default_work_day_start: data?.default_work_day_start ?? '07:00',
+				default_work_day_end: data?.default_work_day_end ?? '16:00',
+			};
+		},
+		staleTime: 10 * 60 * 1000,  // 10 minutes (rarely changes)
+		gcTime: 30 * 60 * 1000,     // 30 minutes
+	});
 	
 	// Function to handle diary button click - checks if diary exists, then navigates
 	const handleDiaryClick = async (entry: any) => {
@@ -145,7 +190,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 	};
 	
 	const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
-	const [startTime, setStartTime] = useState('08:00');
+	const [startTime, setStartTime] = useState('');
 	const [endTime, setEndTime] = useState('');
 
 	const {
@@ -158,7 +203,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 	} = useForm<TimeEntryFormValues>({
 		resolver: zodResolver(createTimeEntrySchema) as Resolver<TimeEntryFormValues>,
 		defaultValues: {
-			start_at: new Date().toISOString().split('T')[0] + 'T08:00',
+			start_at: new Date().toISOString().split('T')[0] + 'T07:00',
 			project_id: '',
 			phase_id: null,
 			work_order_id: null,
@@ -177,17 +222,44 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 		}
 	}, [projectId, setValue]);
 
+	// Set default start and end times from organization settings when loaded
+	useEffect(() => {
+		if (orgBreakSettings && !editingEntry) {
+			const defaults = getDefaultWorkTimes(orgBreakSettings);
+			
+			// Only set if not already set by user
+			if (!startTime) {
+				setStartTime(defaults.start);
+			}
+			if (!endTime) {
+				setEndTime(defaults.end);
+			}
+		}
+	}, [orgBreakSettings, editingEntry, startTime, endTime]);
+
 	// Initialize start_at on mount and when date/time changes
 	useEffect(() => {
-		setValue('start_at', `${currentDate}T${startTime}`);
-	}, [currentDate, startTime, setValue]);
+		if (startTime) {
+			setValue('start_at', `${currentDate}T${startTime}`);
+		} else if (orgBreakSettings) {
+			// If no start time set, use default from organization
+			const defaults = getDefaultWorkTimes(orgBreakSettings);
+			setStartTime(defaults.start);
+			setValue('start_at', `${currentDate}T${defaults.start}`);
+		}
+	}, [currentDate, startTime, setValue, orgBreakSettings]);
 
 	// Update stop_at when date changes (FIX: Prevents wrong duration calculation)
 	useEffect(() => {
 		if (endTime) {
 			setValue('stop_at', `${currentDate}T${endTime}`);
+		} else if (orgBreakSettings) {
+			// If no end time set, use default from organization
+			const defaults = getDefaultWorkTimes(orgBreakSettings);
+			setEndTime(defaults.end);
+			setValue('stop_at', `${currentDate}T${defaults.end}`);
 		}
-	}, [currentDate, endTime, setValue]);
+	}, [currentDate, endTime, setValue, orgBreakSettings]);
 
 	const watchedProjectId = watch('project_id');
 	const selectedProjectId = watchedProjectId ? String(watchedProjectId) : '';
@@ -215,6 +287,8 @@ const previousProjectIdRef = useRef<string | null>(null);
 			setValue('billing_type', editingEntry.billing_type ?? 'LOPANDE', { shouldDirty: true });
 			setValue('fixed_block_id', editingEntry.fixed_block_id ?? null, { shouldDirty: true });
 			setValue('ata_id', editingEntry.ata_id ?? null, { shouldDirty: true });
+			// TODO: Load ÄTA hours from entry if stored (for now, reset to 0)
+			setAtaMinutes(0);
 		}
 	}, [editingEntry, setValue]);
 
@@ -295,11 +369,20 @@ useEffect(() => {
 		if (selectedAtaId) {
 			setValue('ata_id', null, { shouldDirty: true });
 		}
+		setAtaMinutes(0); // Reset ÄTA minutes when project changes
 	} else if (previousProjectId && previousProjectId !== selectedProjectId) {
 		setValue('ata_id', null, { shouldDirty: true });
+		setAtaMinutes(0); // Reset ÄTA minutes when project changes
 	}
 	previousProjectIdRef.current = selectedProjectId || null;
 }, [selectedProjectId, selectedAtaId, setValue]);
+
+// Reset ÄTA minutes when ÄTA selection changes
+useEffect(() => {
+	if (!selectedAtaId || selectedAtaId === 'none') {
+		setAtaMinutes(0);
+	}
+}, [selectedAtaId]);
 
 	useEffect(() => {
 		if (process.env.NODE_ENV !== 'production') {
@@ -473,6 +556,55 @@ useEffect(() => {
 		return `${hours}h ${mins}min`;
 	};
 
+	// Calculate break minutes to deduct based on time range
+	const calculateBreakMinutes = (start: Date, end: Date): number => {
+		if (!orgBreakSettings) return 0;
+
+		// If we have specific breaks defined, calculate based on those
+		if (orgBreakSettings.standard_breaks && orgBreakSettings.standard_breaks.length > 0) {
+			let totalBreakMinutes = 0;
+			const startTimeStr = start.toTimeString().slice(0, 5); // HH:mm format
+			const endTimeStr = end.toTimeString().slice(0, 5);
+
+			for (const breakItem of orgBreakSettings.standard_breaks) {
+				const breakStart = breakItem.start; // Expected format: "HH:mm"
+				const breakEnd = breakItem.end;
+
+				// Check if the work period overlaps with this break
+				// Break should be deducted if work period covers any part of the break
+				if (startTimeStr <= breakEnd && endTimeStr >= breakStart) {
+					// Calculate how much of the break overlaps with work period
+					const workStartMinutes = start.getHours() * 60 + start.getMinutes();
+					const workEndMinutes = end.getHours() * 60 + end.getMinutes();
+					const [breakStartH, breakStartM] = breakStart.split(':').map(Number);
+					const [breakEndH, breakEndM] = breakEnd.split(':').map(Number);
+					const breakStartMinutes = breakStartH * 60 + breakStartM;
+					const breakEndMinutes = breakEndH * 60 + breakEndM;
+
+					// Calculate overlap
+					const overlapStart = Math.max(workStartMinutes, breakStartMinutes);
+					const overlapEnd = Math.min(workEndMinutes, breakEndMinutes);
+
+					if (overlapStart < overlapEnd) {
+						// Use the break's duration_minutes if available, otherwise calculate from times
+						totalBreakMinutes += breakItem.duration_minutes || (overlapEnd - overlapStart);
+					}
+				}
+			}
+
+			return totalBreakMinutes;
+		}
+
+		// Fallback to standard_break_minutes_per_day if no specific breaks defined
+		// Only deduct if work period is long enough (e.g., more than 4 hours)
+		const workMinutes = Math.floor((end.getTime() - start.getTime()) / (1000 * 60));
+		if (workMinutes >= 240) { // 4 hours or more
+			return orgBreakSettings.standard_break_minutes_per_day || 0;
+		}
+
+		return 0;
+	};
+
 	const calculateDuration = () => {
 		if (!startTime || !endTime) return '';
 		
@@ -482,8 +614,19 @@ useEffect(() => {
 		
 		if (totalMinutes <= 0) return '';
 		
-		const hours = Math.floor(totalMinutes / 60);
-		const minutes = totalMinutes % 60;
+		// Deduct break minutes
+		const breakMinutes = calculateBreakMinutes(start, end);
+		let workMinutes = Math.max(0, totalMinutes - breakMinutes);
+		
+		// Deduct ÄTA minutes if ÄTA is selected
+		if (selectedAtaId && selectedAtaId !== 'none' && ataMinutes > 0) {
+			workMinutes = Math.max(0, workMinutes - ataMinutes);
+		}
+		
+		if (workMinutes <= 0) return '';
+		
+		const hours = Math.floor(workMinutes / 60);
+		const minutes = workMinutes % 60;
 		return `${hours}h ${minutes}min`;
 	};
 
@@ -509,16 +652,18 @@ useEffect(() => {
 			if (editingEntry?.id === entryToDelete) {
 				setEditingEntry(null);
 				const today = new Date().toISOString().split('T')[0];
+				const defaults = getDefaultWorkTimes(orgBreakSettings);
 				setCurrentDate(today);
-				setStartTime('08:00');
-				setEndTime('');
+				setStartTime(defaults.start);
+				setEndTime(defaults.end);
+				setAtaMinutes(0); // Reset ÄTA minutes
 				reset({
 					project_id: '',
 					phase_id: null,
 					work_order_id: null,
 					task_label: '',
-					start_at: today + 'T08:00',
-					stop_at: null,
+					start_at: `${today}T${defaults.start}`,
+					stop_at: `${today}T${defaults.end}`,
 					billing_type: '',
 					fixed_block_id: null,
 				});
@@ -578,17 +723,19 @@ useEffect(() => {
 
 			// Reset form and editing state
 			const today = new Date().toISOString().split('T')[0];
+			const defaults = getDefaultWorkTimes(orgBreakSettings);
 			setCurrentDate(today);
-			setStartTime('08:00');
-			setEndTime('');
+			setStartTime(defaults.start);
+			setEndTime(defaults.end);
+			setAtaMinutes(0); // Reset ÄTA minutes
 			reset({
 				project_id: '',
 				phase_id: null,
 				work_order_id: null,
 				task_label: '',
 				notes: '',
-				start_at: today + 'T08:00',
-				stop_at: null,
+				start_at: `${today}T${defaults.start}`,
+				stop_at: `${today}T${defaults.end}`,
 				billing_type: '',
 				fixed_block_id: null,
 				ata_id: null,
@@ -799,16 +946,18 @@ useEffect(() => {
 								onClick={() => {
 									setEditingEntry(null);
 									const today = new Date().toISOString().split('T')[0];
+									const defaults = getDefaultWorkTimes(orgBreakSettings);
 									setCurrentDate(today);
-									setStartTime('08:00');
-									setEndTime('');
+									setStartTime(defaults.start);
+									setEndTime(defaults.end);
+									setAtaMinutes(0); // Reset ÄTA minutes
 									reset({
 										project_id: '',
 										phase_id: null,
 										work_order_id: null,
 										task_label: '',
-										start_at: today + 'T08:00',
-										stop_at: null,
+										start_at: `${today}T${defaults.start}`,
+										stop_at: `${today}T${defaults.end}`,
 										notes: '',
 										billing_type: '',
 										fixed_block_id: null,
@@ -1017,103 +1166,81 @@ useEffect(() => {
 										</div>
 									</div>
 								)}
+								
 							</div>
 						)}
 
 						{/* Date */}
-						<div>
-							<label className='block text-sm font-medium mb-2'>
-								Datum <span className='text-destructive'>*</span>
-							</label>
-							<div className='relative'>
-								<Calendar className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none hidden md:block' />
-								<Input
-									type='date'
-									value={currentDate}
-									onChange={(e) => {
-										const date = e.target.value;
-										setCurrentDate(date);
-									}}
-									className='md:pl-9 h-11'
-								/>
-							</div>
-						</div>
+						<DatePickerInput
+							id="date"
+							label="Datum"
+							value={currentDate}
+							onChange={(date) => {
+								setCurrentDate(date);
+								// Update start_at and stop_at when date changes
+								if (startTime) {
+									setValue('start_at', `${date}T${startTime}`);
+								}
+								if (endTime) {
+									setValue('stop_at', `${date}T${endTime}`);
+								}
+							}}
+							required
+							error={errors.start_at?.message}
+						/>
 
 						{/* Time Range */}
 						<div className='grid grid-cols-2 gap-4'>
-							<div>
-								<label className='block text-sm font-medium mb-2'>
-									Starttid <span className='text-destructive'>*</span>
-								</label>
-								<Input
-									type='time'
-									value={startTime}
-									onChange={(e) => {
-										const time = e.target.value;
-										setStartTime(time);
-										setValue('start_at', `${currentDate}T${time}`);
-									}}
-									className='h-11'
-								/>
-								{errors.start_at && (
-									<p className='text-sm text-destructive mt-1'>
-										{errors.start_at.message}
-									</p>
-								)}
-							</div>
-							<div>
-								<label className='block text-sm font-medium mb-2'>
-									Sluttid <span className='text-destructive'>*</span>
-								</label>
-								<Input
-									type='time'
-									value={endTime}
-									onChange={(e) => {
-										const time = e.target.value;
-										setEndTime(time);
-										if (time) {
-											setValue('stop_at', `${currentDate}T${time}`);
-										} else {
-											setValue('stop_at', null);
-										}
-									}}
-									className='h-11'
-								/>
-								{errors.stop_at && (
-									<p className='text-sm text-destructive mt-1'>
-										{errors.stop_at.message}
-									</p>
-								)}
-							</div>
+							<TimePickerInput
+								id="startTime"
+								label="Starttid"
+								value={startTime}
+								onChange={(time) => {
+									setStartTime(time);
+									setValue('start_at', `${currentDate}T${time}`);
+								}}
+								required
+								error={errors.start_at?.message}
+							/>
+							<TimePickerInput
+								id="endTime"
+								label="Sluttid"
+								value={endTime}
+								onChange={(time) => {
+									setEndTime(time);
+									if (time) {
+										setValue('stop_at', `${currentDate}T${time}`);
+									} else {
+										setValue('stop_at', null);
+									}
+								}}
+								required
+								error={errors.stop_at?.message}
+							/>
 						</div>
 
 						{/* Duration Display */}
 						{calculateDuration() && (
 							<div className='bg-orange-50 border-2 border-orange-200 rounded-lg p-3'>
 								<p className='text-sm text-muted-foreground'>Total tid</p>
-								<p className='text-xl font-semibold text-orange-600'>
+								<p className='text-2xl font-semibold text-orange-600'>
 									{calculateDuration()}
 								</p>
 							</div>
 						)}
 
-						{process.env.NODE_ENV !== 'production' && (
-							<pre className='bg-muted/40 border border-dashed border-border/60 text-xs text-muted-foreground rounded-lg p-3 max-h-48 overflow-auto'>
-								{JSON.stringify(
-									{
-										rhf: {
-											project_id: selectedProjectId || null,
-											billing_type: billingType || null,
-											fixed_block_id: fixedBlockId || null,
-										},
-										effectiveBillingMode,
-										fixedBlocksCount: fixedBlocks.length,
-									},
-									null,
-									2,
-								)}
-							</pre>
+						{/* ÄTA Hours Picker - only show when ÄTA is selected */}
+						{selectedAtaId && selectedAtaId !== 'none' && (
+							<div className='mt-4'>
+								<AtaHoursPicker
+									id="ata-hours"
+									label="ÄTA-tid (diskontas från huvudprojektet)"
+									value={ataMinutes}
+									onChange={setAtaMinutes}
+								/>
+							</div>
 						)}
+
 
 					{/* Description removed: we prompt for diary update after save */}
 
