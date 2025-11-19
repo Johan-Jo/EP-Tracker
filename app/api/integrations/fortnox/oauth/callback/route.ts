@@ -17,6 +17,39 @@ export async function GET(request: NextRequest) {
 		// Check for OAuth errors
 		if (error) {
 			console.error('Fortnox OAuth error:', error, errorDescription);
+			
+			// Handle redirect_uri_mismatch specifically
+			if (error === 'redirect_uri_mismatch') {
+				// Get the redirect URI that was used (same logic as initiate)
+				let redirectUri: string;
+				if (process.env.FORTNOX_REDIRECT_URI) {
+					redirectUri = process.env.FORTNOX_REDIRECT_URI;
+				} else {
+					const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL;
+					const requestUrl = new URL(request.url);
+					const fallbackBaseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
+					redirectUri = `${baseUrl || fallbackBaseUrl}/api/integrations/fortnox/oauth/callback`;
+				}
+				
+				const errorMessage = 
+					`Redirect URI matchar inte: Använda URI: "${redirectUri}". ` +
+					`Du måste lägga till exakt denna URI i Fortnox Developer Portal → OAuth → Redirect URIs. ` +
+					`Se till att URI:n matchar exakt (inklusive http/https och portnummer).`;
+				
+				console.error('[Fortnox OAuth] Redirect URI mismatch:', {
+					usedUri: redirectUri,
+					error,
+					errorDescription,
+				});
+				
+				return NextResponse.redirect(
+					new URL(
+						`/dashboard/settings/fortnox?fortnox_error=${encodeURIComponent(errorMessage)}&used_redirect_uri=${encodeURIComponent(redirectUri)}`,
+						request.url
+					)
+				);
+			}
+			
 			return NextResponse.redirect(
 				new URL(
 					`/dashboard/settings/fortnox?fortnox_error=${encodeURIComponent(errorDescription || error)}`,
@@ -132,7 +165,19 @@ export async function GET(request: NextRequest) {
 			// Try to parse error response
 			try {
 				const errorJson = JSON.parse(errorText);
-				errorMessage = errorJson.error_description || errorJson.error || errorMessage;
+				const error = errorJson.error || '';
+				const errorDesc = errorJson.error_description || '';
+				
+				// Handle redirect_uri_mismatch in token exchange
+				if (error === 'redirect_uri_mismatch') {
+					errorMessage = 
+						`Redirect URI matchar inte: Använda URI: "${redirectUri}". ` +
+						`Du måste lägga till exakt denna URI i Fortnox Developer Portal → OAuth → Redirect URIs. ` +
+						`Se till att URI:n matchar exakt (inklusive http/https och portnummer).`;
+				} else {
+					errorMessage = errorDesc || error || errorMessage;
+				}
+				
 				console.error('[Fortnox OAuth] Token exchange error:', {
 					status: tokenResponse.status,
 					statusText: tokenResponse.statusText,
@@ -151,13 +196,24 @@ export async function GET(request: NextRequest) {
 			
 			return NextResponse.redirect(
 				new URL(
-					`/dashboard/settings/fortnox?fortnox_error=${encodeURIComponent(errorMessage)}`,
+					`/dashboard/settings/fortnox?fortnox_error=${encodeURIComponent(errorMessage)}&used_redirect_uri=${encodeURIComponent(redirectUri)}`,
 					request.url
 				)
 			);
 		}
 
 		const tokenData = await tokenResponse.json();
+
+		// Log received scopes from Fortnox (without logging sensitive tokens)
+		console.log('[Fortnox OAuth] Token received from Fortnox:', {
+			hasAccessToken: !!tokenData.access_token,
+			accessTokenLength: tokenData.access_token?.length || 0,
+			hasRefreshToken: !!tokenData.refresh_token,
+			refreshTokenLength: tokenData.refresh_token?.length || 0,
+			expiresIn: tokenData.expires_in,
+			scopes: tokenData.scope || 'null',
+			scopeArray: tokenData.scope ? tokenData.scope.split(' ') : [],
+		});
 
 		// Calculate expiration time (Fortnox tokens typically expire in 3600 seconds)
 		const expiresIn = tokenData.expires_in || 3600;
