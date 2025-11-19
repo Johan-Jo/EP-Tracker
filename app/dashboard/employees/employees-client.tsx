@@ -1,28 +1,46 @@
-"use client";
+'use client';
 
+import { useState } from 'react';
 import { Plus, Search, User, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { type Employee } from '@/lib/schemas/employee';
 import Link from 'next/link';
+import { FortnoxIntegrationSteps } from '@/components/employees/fortnox-integration-steps';
+import { toast } from 'sonner';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface EmployeesClientProps {
-  employees: Employee[];
-  canManageEmployees: boolean;
-  search: string;
-  includeArchived: boolean;
+	employees: Employee[];
+	canManageEmployees: boolean;
+	search: string;
+	includeArchived: boolean;
+	hasFortnoxConnection: boolean;
+	hasPayrollScope?: boolean;
+	orgId: string;
 }
 
 export default function EmployeesClient({ 
 	employees, 
 	canManageEmployees, 
 	search, 
-	includeArchived 
+	includeArchived,
+	hasFortnoxConnection,
+	hasPayrollScope,
+	orgId,
 }: EmployeesClientProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+	const router = useRouter();
+	const pathname = usePathname();
+	const searchParams = useSearchParams();
+	const [isImporting, setIsImporting] = useState(false);
+	const [lastImportAt, setLastImportAt] = useState<string | null>(null);
+	const [lastImportSummary, setLastImportSummary] = useState<{
+		created: number;
+		updated: number;
+		conflicts: number;
+	} | null>(null);
+	const [syncError, setSyncError] = useState<{ code?: string; message?: string } | null>(null);
 
   const handleSearch = (searchValue: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -79,8 +97,121 @@ export default function EmployeesClient({
     return parts.length > 0 ? parts.join(' • ') : null;
   };
 
-  const totalEmployees = employees.length;
-  const archivedEmployees = employees.filter((e) => e.is_archived).length;
+	const handleConnectClick = () => {
+		router.push('/dashboard/settings/fortnox');
+	};
+
+	type ApiError = {
+		error?: string;
+		code?: string;
+		message?: string;
+		httpStatus?: number;
+		fortnoxCode?: number | string;
+		details?: {
+			fortnoxMessage?: string;
+			fortnoxCode?: number | string;
+			httpStatus?: number;
+		};
+	};
+
+	const handleImportClick = async () => {
+		if (!hasFortnoxConnection) {
+			toast.error('Fortnox-anslutning saknas. Koppla Fortnox först.');
+			return;
+		}
+
+		setIsImporting(true);
+		setSyncError(null);
+		toast.loading('Importerar anställda från Fortnox...', { id: 'fortnox-import' });
+
+		try {
+			const response = await fetch('/api/integrations/fortnox/employees/import', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({}),
+			});
+
+			if (!response.ok) {
+				let body: ApiError | null = null;
+				try {
+					body = await response.json();
+				} catch {
+					// ignore
+				}
+
+				const errorCode = body?.code || body?.error;
+				
+				// For permission errors (403), show dedicated Alert component
+				if (response.status === 403 && errorCode === 'FORTNOX_PERMISSION_MISSING') {
+					setSyncError({ 
+						code: 'FORTNOX_PERMISSION_MISSING', 
+						message: body?.message || 'Behörighet saknas i Fortnox för att läsa anställda.',
+					});
+					toast.dismiss('fortnox-import');
+					return;
+				}
+
+				// For legacy NO_EMPLOYEE_ACCESS, show the Alert component (via syncError state)
+				if (errorCode === 'NO_EMPLOYEE_ACCESS') {
+					setSyncError({ code: errorCode, message: body?.message });
+					toast.dismiss('fortnox-import');
+					return;
+				}
+
+				// For integration errors (502) or other errors, show toast with retry option
+				const error: any = new Error(
+					body?.message || 'Kunde inte synka anställda från Fortnox.'
+				);
+				error.code = errorCode;
+				error.httpStatus = response.status;
+				error.fortnoxCode = body?.fortnoxCode || body?.details?.fortnoxCode;
+				throw error;
+			}
+
+			const result = await response.json();
+
+			setLastImportAt(new Date().toISOString());
+			if (result.summary) {
+				setLastImportSummary({
+					created: result.summary.created || 0,
+					updated: result.summary.updated || 0,
+					conflicts: result.summary.conflicts || 0,
+				});
+			}
+
+			toast.success(
+				result.message || `Importerade ${result.summary?.created || 0} nya anställda`,
+				{ id: 'fortnox-import' }
+			);
+
+			// Refresh the page to show new employees
+			router.refresh();
+		} catch (err) {
+			console.error('Fortnox import error:', err);
+			const error = err as any;
+			
+			// Show appropriate error message based on error type
+			if (error.httpStatus >= 500 || error.code === 'FORTNOX_INTEGRATION_ERROR') {
+				toast.error(
+					'Ett tekniskt fel uppstod vid kommunikation med Fortnox. Försök igen om en stund.',
+					{ 
+						id: 'fortnox-import',
+						duration: 10000,
+					}
+				);
+			} else {
+				toast.error(
+					error.message || 'Import misslyckades',
+					{ id: 'fortnox-import' }
+				);
+			}
+		} finally {
+			setIsImporting(false);
+		}
+	};
+
+	const totalEmployees = employees.length;
+	const archivedEmployees = employees.filter((e) => e.is_archived).length;
 
   return (
     <div className="flex-1 overflow-auto bg-gray-50 pb-20 transition-colors dark:bg-black md:pb-0">
@@ -156,9 +287,53 @@ export default function EmployeesClient({
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">
-        {/* Stats */}
+			{/* Main Content */}
+			<main className='mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8'>
+				{/* Fortnox Integration Steps */}
+				{canManageEmployees && (
+					<>
+						<FortnoxIntegrationSteps
+							hasFortnoxConnection={hasFortnoxConnection}
+							hasPayrollScope={hasPayrollScope}
+							lastImportAt={lastImportAt}
+							lastImportSummary={lastImportSummary}
+							isImporting={isImporting}
+							onConnectClick={handleConnectClick}
+							onImportClick={handleImportClick}
+							settingsHref='/dashboard/settings/fortnox'
+						/>
+						
+						{(syncError as any)?.code === 'FORTNOX_PERMISSION_MISSING' && (
+							<Alert variant="destructive" className="mt-4">
+								<AlertTitle>Behörighet saknas i Fortnox</AlertTitle>
+								<AlertDescription className="space-y-2">
+									<p className="font-medium">{syncError?.message}</p>
+									<p>Fortnox säger att du saknar behörighet att läsa anställda. Be din Fortnox-administratör att:</p>
+									<ol className="list-decimal list-inside mt-2 space-y-1 ml-2">
+										<li>Öppna Fortnox och gå till <b>Administrera användare / integrationer</b>.</li>
+										<li>Kontrollera att användaren/integrationen som används för EP-Tracker har rätt behörigheter för <b>Personal/Lön</b> och åtkomst till <b>Anställda</b>.</li>
+										<li>Spara och försök igen härifrån.</li>
+									</ol>
+								</AlertDescription>
+							</Alert>
+						)}
+						{(syncError as any)?.code === 'NO_EMPLOYEE_ACCESS' && (
+							<Alert variant="destructive" className="mt-4">
+								<AlertTitle>Ingen behörighet att läsa anställda i Fortnox</AlertTitle>
+								<AlertDescription>
+									För att kunna importera anställda från Fortnox behöver du:
+									<ol className="list-decimal list-inside mt-2 space-y-1">
+										<li>Kontrollera att <b>Lön-modulen</b> är aktiverad på ditt Fortnox-konto.</li>
+										<li>Säkerställ att den användare som kopplade integrationen har <b>behörighet att läsa anställda</b> i Fortnox.</li>
+										<li>Gör om kopplingen eller prova att synka igen härifrån.</li>
+									</ol>
+								</AlertDescription>
+							</Alert>
+						)}
+					</>
+				)}
+
+				{/* Stats */}
         <div className="mb-8 grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="relative flex flex-col gap-1 rounded-2xl border border-border/60 bg-[var(--color-card)]/90 px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-500/40 hover:bg-orange-500/10 dark:bg-[var(--color-card)]/70">
             <span className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
