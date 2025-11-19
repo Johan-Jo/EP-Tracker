@@ -292,8 +292,24 @@ const previousProjectIdRef = useRef<string | null>(null);
 			setValue('ata_id', editingEntry.ata_id ?? null, { shouldDirty: true });
 			// TODO: Load ÄTA hours from entry if stored (for now, reset to 0)
 			setAtaMinutes(0);
+		} else {
+			// When not editing, always ensure date is today
+			const today = new Date().toISOString().split('T')[0];
+			if (currentDate !== today) {
+				setCurrentDate(today);
+			}
 		}
-	}, [editingEntry, setValue]);
+	}, [editingEntry, setValue, currentDate]);
+
+	// Ensure date is always today when form is not in edit mode
+	useEffect(() => {
+		if (!editingEntry) {
+			const today = new Date().toISOString().split('T')[0];
+			if (currentDate !== today) {
+				setCurrentDate(today);
+			}
+		}
+	}, [editingEntry, currentDate]);
 
 	// Fetch active projects
 	const { data: projects, isLoading: projectsLoading } = useQuery<ProjectOption[]>({
@@ -756,7 +772,7 @@ useEffect(() => {
 			queryClient.invalidateQueries({ queryKey: ['time-entries-stats', orgId, userId] });
 			refetch();
 
-			// Reset form and editing state
+			// Reset form and editing state - always use today's date
 			const today = new Date().toISOString().split('T')[0];
 			const defaults = getDefaultWorkTimes(orgBreakSettings);
 			setCurrentDate(today);
@@ -1256,8 +1272,8 @@ useEffect(() => {
 							/>
 						</div>
 
-						{/* Duration Display */}
-						{calculateDuration() && (
+						{/* Duration Display - only show when project is selected */}
+						{selectedProjectId && calculateDuration() && (
 							<div className='bg-orange-50 border-2 border-orange-200 rounded-lg p-3'>
 								<p className='text-sm text-muted-foreground'>Total tid</p>
 								<p className='text-2xl font-semibold text-orange-600'>
