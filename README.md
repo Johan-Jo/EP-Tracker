@@ -90,6 +90,12 @@ ep-tracker/
 ### Core Time Tracking & Project Management
 - ✅ Projects & Work Orders management
 - ✅ Time tracking (start/stop/switch/crew clock-ins) med debitering per projekt, fas, arbetsorder eller ÄTA-delprojekt
+- ✅ Förbättrad tidsregistrering med:
+  - Anpassad datumväljare med korrekt datumhantering (timezone-safe)
+  - Tidsväljare med popover och snabbval
+  - Automatisk rastavdrag enligt organisationsinställningar
+  - ÄTA-tidsväljare för diskontering från huvudprojekt
+  - Visning av rastavdrag på samma rad som total tid
 - ✅ Materials, expenses, mileage tracking
 - ✅ ÄTA (change orders) with approval
 - ✅ Daily diary & checklists

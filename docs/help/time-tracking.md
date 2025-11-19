@@ -34,8 +34,23 @@ Den här guiden beskriver hur du registrerar tid med de nya debiteringsreglerna 
 3. Markera debitering:
    - **Fast**: välj antingen en fast post eller en ÄTA.
    - **Löpande**: ingen fast post krävs, ÄTA är frivillig.
-4. Ange tider, beskrivning och eventuellt fas/arbetsorder som tidigare.
-5. Spara posten. Valda ID:n normaliseras till strängar och skickas som `billing_type`, `fixed_block_id`, `ata_id`.
+4. Välj datum:
+   - Datumfältet visar automatiskt dagens datum som standard
+   - Använd kalendern för att välja ett annat datum
+   - Snabbval: "Igår" och "I förrgår" finns tillgängliga
+5. Ange tider:
+   - Starttid och sluttid väljs med tidsväljare (popover med +/- knappar)
+   - Standardtider hämtas från organisationens inställningar
+   - Tiden visas i formatet timmar:minuter (utan sekunder)
+6. Total tid beräknas automatiskt:
+   - Systemet drar automatiskt av rast enligt organisationens inställningar
+   - Rastavdraget visas på samma rad som "Total tid"
+   - Om ÄTA är valt kan du ange ÄTA-tid som dras av från huvudprojektet
+7. (Valfritt) Välj ÄTA och ange ÄTA-tid:
+   - Om ett ÄTA är valt visas en ÄTA-tidsväljare
+   - Ange hur mycket tid som ska diskonteras från huvudprojektet
+   - ÄTA-tiden dras automatiskt av från den totala tiden
+8. Spara posten. Valda ID:n normaliseras till strängar och skickas som `billing_type`, `fixed_block_id`, `ata_id`.
 
 ## Validering & backend
 

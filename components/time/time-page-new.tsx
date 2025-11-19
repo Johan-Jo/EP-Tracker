@@ -190,7 +190,23 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 		}
 	};
 	
-	const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
+	// Helper function to always get today's date
+	const getTodayDate = () => {
+		const today = new Date();
+		return today.toISOString().split('T')[0];
+	};
+	
+	// Initialize with today's date - force it to be today
+	const [currentDate, setCurrentDate] = useState(() => getTodayDate());
+	
+	// Force today's date on mount and whenever not editing
+	useEffect(() => {
+		if (!editingEntry) {
+			const today = getTodayDate();
+			// Always set to today, don't check if it's different
+			setCurrentDate(today);
+		}
+	}, []); // Run on mount
 	const [startTime, setStartTime] = useState('');
 	const [endTime, setEndTime] = useState('');
 	const [hours, setHours] = useState<number | undefined>(undefined);
@@ -292,24 +308,17 @@ const previousProjectIdRef = useRef<string | null>(null);
 			setValue('ata_id', editingEntry.ata_id ?? null, { shouldDirty: true });
 			// TODO: Load ÄTA hours from entry if stored (for now, reset to 0)
 			setAtaMinutes(0);
-		} else {
-			// When not editing, always ensure date is today
-			const today = new Date().toISOString().split('T')[0];
-			if (currentDate !== today) {
-				setCurrentDate(today);
-			}
 		}
-	}, [editingEntry, setValue, currentDate]);
+	}, [editingEntry, setValue]);
 
-	// Ensure date is always today when form is not in edit mode
+	// Always ensure date is today when form is not in edit mode
 	useEffect(() => {
 		if (!editingEntry) {
-			const today = new Date().toISOString().split('T')[0];
-			if (currentDate !== today) {
-				setCurrentDate(today);
-			}
+			const today = getTodayDate();
+			// Force set to today, don't check current value
+			setCurrentDate(today);
 		}
-	}, [editingEntry, currentDate]);
+	}, [editingEntry]);
 
 	// Fetch active projects
 	const { data: projects, isLoading: projectsLoading } = useQuery<ProjectOption[]>({
@@ -653,9 +662,9 @@ useEffect(() => {
 		
 		if (workMinutes <= 0) return '';
 		
-		const hours = Math.floor(workMinutes / 60);
+		const calculatedHours = Math.floor(workMinutes / 60);
 		const minutes = workMinutes % 60;
-		return `${hours}h ${minutes}min`;
+		return `${calculatedHours}h ${minutes}min`;
 	};
 
 	const handleDelete = (entryId: string) => {
@@ -1227,7 +1236,7 @@ useEffect(() => {
 						<DatePickerInput
 							id="date"
 							label="Datum"
-							value={currentDate}
+							value={currentDate || getTodayDate()}
 							onChange={(date) => {
 								setCurrentDate(date);
 								// Update start_at and stop_at when date changes
@@ -1275,7 +1284,29 @@ useEffect(() => {
 						{/* Duration Display - only show when project is selected */}
 						{selectedProjectId && calculateDuration() && (
 							<div className='bg-orange-50 border-2 border-orange-200 rounded-lg p-3'>
-								<p className='text-sm text-muted-foreground'>Total tid</p>
+								<div className='flex items-baseline gap-2'>
+									<p className='text-sm text-muted-foreground'>Total tid</p>
+									{(() => {
+										// Calculate break minutes for display
+										if (!startTime || !endTime) return null;
+										const start = new Date(`${currentDate}T${startTime}`);
+										const end = new Date(`${currentDate}T${endTime}`);
+										const breakMinutes = calculateBreakMinutes(start, end);
+										if (breakMinutes > 0) {
+											const breakHours = Math.floor(breakMinutes / 60);
+											const breakMins = breakMinutes % 60;
+											const breakText = breakHours > 0 
+												? `${breakHours}h ${breakMins}min`
+												: `${breakMins}min`;
+											return (
+												<span className='text-xs text-muted-foreground'>
+													(med avdrag för rast enligt settings: -{breakText})
+												</span>
+											);
+										}
+										return null;
+									})()}
+								</div>
 								<p className='text-2xl font-semibold text-orange-600'>
 									{calculateDuration()}
 								</p>

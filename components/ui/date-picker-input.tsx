@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from './button';
 import { Label } from './label';
@@ -27,10 +27,26 @@ export function DatePickerInput({
 }: DatePickerInputProps) {
 	const [isOpen, setIsOpen] = useState(false);
 
-	// Parse current value
-	const selectedDate = value ? new Date(value) : new Date();
+	// Parse current value - handle timezone issues by parsing manually
+	const parseValue = (dateStr: string) => {
+		if (!dateStr) {
+			const today = new Date();
+			return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+		}
+		const [year, month, day] = dateStr.split('-').map(Number);
+		return new Date(year, month - 1, day);
+	};
+
+	const selectedDate = parseValue(value);
 	const [viewMonth, setViewMonth] = useState(selectedDate.getMonth());
 	const [viewYear, setViewYear] = useState(selectedDate.getFullYear());
+
+	// Update view month/year when value changes
+	useEffect(() => {
+		const date = parseValue(value);
+		setViewMonth(date.getMonth());
+		setViewYear(date.getFullYear());
+	}, [value]);
 
 	const months = [
 		'Januari',
@@ -50,11 +66,11 @@ export function DatePickerInput({
 	const weekDays = ['Mån', 'Tis', 'Ons', 'Tor', 'Fre', 'Lör', 'Sön'];
 
 	// Quick select dates
-	const today = new Date();
-	const yesterday = new Date(today);
-	yesterday.setDate(today.getDate() - 1);
-	const dayBeforeYesterday = new Date(today);
-	dayBeforeYesterday.setDate(today.getDate() - 2);
+	const todayForQuickSelect = new Date();
+	const yesterday = new Date(todayForQuickSelect);
+	yesterday.setDate(todayForQuickSelect.getDate() - 1);
+	const dayBeforeYesterday = new Date(todayForQuickSelect);
+	dayBeforeYesterday.setDate(todayForQuickSelect.getDate() - 2);
 
 	const quickDates = [
 		{ label: 'Igår', date: yesterday },
@@ -69,12 +85,16 @@ export function DatePickerInput({
 	};
 
 	const formatDisplayDate = (dateStr: string) => {
-		if (!dateStr) return 'Välj datum';
-		const date = new Date(dateStr);
+		if (!dateStr) {
+			const today = new Date();
+			return `${today.getDate()} ${months[today.getMonth()]} ${today.getFullYear()}`;
+		}
+		const [year, month, dayNum] = dateStr.split('-').map(Number);
+		const date = new Date(year, month - 1, dayNum);
 		const day = date.getDate();
-		const month = months[date.getMonth()];
-		const year = date.getFullYear();
-		return `${day} ${month} ${year}`;
+		const monthName = months[date.getMonth()];
+		const yearNum = date.getFullYear();
+		return `${day} ${monthName} ${yearNum}`;
 	};
 
 	const getDaysInMonth = (month: number, year: number) => {
@@ -88,7 +108,9 @@ export function DatePickerInput({
 	};
 
 	const selectDate = (date: Date) => {
-		onChange(formatDate(date));
+		const dateString = formatDate(date);
+		// Always call onChange, even if it's the same date, to ensure it's set
+		onChange(dateString);
 		setIsOpen(false);
 	};
 
@@ -118,13 +140,14 @@ export function DatePickerInput({
 	};
 
 	const isToday = (day: number) => {
-		const date = new Date();
-		return day === date.getDate() && viewMonth === date.getMonth() && viewYear === date.getFullYear();
+		const today = new Date();
+		return day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
 	};
 
 	const isSelected = (day: number) => {
 		if (!value) return false;
-		const selected = new Date(value);
+		const [year, month, dayNum] = value.split('-').map(Number);
+		const selected = new Date(year, month - 1, dayNum);
 		return day === selected.getDate() && viewMonth === selected.getMonth() && viewYear === selected.getFullYear();
 	};
 
@@ -172,16 +195,18 @@ export function DatePickerInput({
 			</Label>
 
 			<Popover open={isOpen} onOpenChange={setIsOpen}>
-				<PopoverTrigger asChild>
-					<button
-						id={id}
-						type="button"
-						className="flex h-14 w-full items-center justify-between rounded-xl border border-gray-300 bg-white px-4 text-left transition-all hover:border-orange-400 dark:border-gray-600 dark:bg-gray-900 dark:hover:border-orange-500"
-					>
-						<span className="text-lg text-gray-900 dark:text-white">{formatDisplayDate(value)}</span>
-						<Calendar className="h-5 w-5 text-gray-400" />
-					</button>
-				</PopoverTrigger>
+			<PopoverTrigger asChild>
+				<button
+					id={id}
+					type="button"
+					className="flex h-14 w-full items-center justify-between rounded-xl border border-gray-300 bg-white px-4 text-left transition-all hover:border-orange-400 dark:border-gray-600 dark:bg-gray-900 dark:hover:border-orange-500"
+				>
+					<span className="text-lg text-gray-900 dark:text-white">
+						{formatDisplayDate(value)}
+					</span>
+					<Calendar className="h-5 w-5 text-gray-400" />
+				</button>
+			</PopoverTrigger>
 
 				<PopoverContent
 					className="w-80 border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
