@@ -26,3 +26,4 @@ COMMENT ON COLUMN organizations.default_vat_rate IS 'Standard momssats i procent
 
 
 
+

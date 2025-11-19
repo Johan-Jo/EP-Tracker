@@ -19,6 +19,8 @@ export type PayrollBasisEntry = {
 	locked_by: string | null;
 	locked_at: string | null;
 	person: { id: string; full_name: string; email: string };
+	fortnox_export_status?: string | null;
+	fortnox_exported_at?: string | null;
 };
 
 export function usePayrollBasis(orgId: string, start: string, end: string) {

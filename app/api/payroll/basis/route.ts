@@ -93,7 +93,39 @@ export async function GET(request: NextRequest) {
 			}, 500);
 		}
 
-		return respond({ payroll_basis: payrollBasis || [] });
+		// Fetch Fortnox export status for payroll basis entries
+		const payrollBasisIds = (payrollBasis || []).map((pb: { id: string }) => pb.id);
+		let exportStatusMap: Record<string, { status: string; exported_at?: string }> = {};
+
+		if (payrollBasisIds.length > 0) {
+			const { data: exportLinks } = await supabase
+				.from('fortnox_payroll_links')
+				.select('payroll_basis_id, status, exported_at')
+				.in('payroll_basis_id', payrollBasisIds)
+				.eq('org_id', membership.org_id);
+
+			if (exportLinks) {
+				exportStatusMap = exportLinks.reduce(
+					(acc, link) => ({
+						...acc,
+						[link.payroll_basis_id]: {
+							status: link.status,
+							exported_at: link.exported_at,
+						},
+					}),
+					{}
+				);
+			}
+		}
+
+		// Add export status to each payroll basis entry
+		const payrollBasisWithExportStatus = (payrollBasis || []).map((pb: { id: string }) => ({
+			...pb,
+			fortnox_export_status: exportStatusMap[pb.id]?.status || null,
+			fortnox_exported_at: exportStatusMap[pb.id]?.exported_at || null,
+		}));
+
+		return respond({ payroll_basis: payrollBasisWithExportStatus });
 	} catch (error) {
 		console.error('Error in GET /api/payroll/basis:', error);
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error';

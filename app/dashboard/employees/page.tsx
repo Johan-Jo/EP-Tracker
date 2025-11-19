@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
+import { getFortnoxConnectionForOrg } from '@/lib/integrations/fortnox/client';
 import EmployeesClient from './employees-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -71,12 +72,21 @@ export default async function EmployeesPage(props: PageProps) {
 
 	const canManageEmployees = membership.role === 'admin' || membership.role === 'foreman';
 
+	// Check Fortnox connection
+	const fortnoxConnection = await getFortnoxConnectionForOrg(membership.org_id);
+	const hasFortnoxConnection = !!fortnoxConnection;
+	// TODO: Check if scope includes payroll/salary (if there's a way to check)
+	const hasPayrollScope = undefined; // Could be checked from fortnoxConnection.scopes if available
+
 	return (
 		<EmployeesClient 
 			employees={employees || []} 
 			canManageEmployees={canManageEmployees}
 			search={search}
 			includeArchived={includeArchived}
+			hasFortnoxConnection={hasFortnoxConnection}
+			hasPayrollScope={hasPayrollScope}
+			orgId={membership.org_id}
 		/>
 	);
 }

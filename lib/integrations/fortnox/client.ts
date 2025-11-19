@@ -1,4 +1,73 @@
 import { createClient } from '@/lib/supabase/server';
+import { jwtDecode } from 'jwt-decode';
+
+/**
+ * Fortnox JWT token structure
+ */
+type FortnoxJwt = {
+	scope?: string;
+	sub?: string;
+	companyId?: string;
+	[key: string]: unknown;
+};
+
+/**
+ * Debug function to decode and log Fortnox JWT token contents
+ * @param token The access token to decode
+ */
+export function debugFortnoxToken(token: string): void {
+	try {
+		const decoded = jwtDecode<FortnoxJwt>(token);
+		console.log('[Fortnox][token] scope:', decoded.scope);
+		console.log('[Fortnox][token] sub:', decoded.sub);
+		console.log('[Fortnox][token] companyId:', decoded.companyId);
+		// Also log full payload for complete debugging
+		console.log('[Fortnox][token] full payload:', decoded);
+	} catch (e) {
+		console.error('[Fortnox][token] failed to decode', e);
+	}
+}
+
+/**
+ * Typed Fortnox API error with structured error information
+ */
+export class FortnoxError extends Error {
+	status?: number;
+	fortnoxCode?: number | string;
+	fortnoxError?: number;
+	fortnoxMessage?: string;
+	code?: string;
+
+	constructor(params: {
+		message: string;
+		status?: number;
+		fortnoxCode?: number | string;
+		fortnoxError?: number;
+		fortnoxMessage?: string;
+		code?: string;
+	}) {
+		super(params.message);
+		this.name = 'FortnoxError';
+		this.status = params.status;
+		this.fortnoxCode = params.fortnoxCode;
+		this.fortnoxError = params.fortnoxError;
+		this.fortnoxMessage = params.fortnoxMessage;
+		this.code = params.code;
+	}
+}
+
+/**
+ * Custom error for when Fortnox API denies access to employees endpoint (401/403)
+ * @deprecated Use FortnoxError instead
+ */
+export class FortnoxEmployeesNoAccessError extends Error {
+	code = 'FORTNOX_EMPLOYEES_NO_ACCESS' as const;
+
+	constructor(message = 'No access to Fortnox employees') {
+		super(message);
+		this.name = 'FortnoxEmployeesNoAccessError';
+	}
+}
 
 /**
  * Type definition for a Fortnox connection row from the database
@@ -53,6 +122,40 @@ export async function getFortnoxConnectionForOrg(orgId: string): Promise<Fortnox
 	}
 
 	return data as FortnoxConnection;
+}
+
+/**
+ * Debug helper: Log Fortnox connection metadata (without exposing secrets)
+ * Use this to diagnose OAuth scope/permission issues
+ * @param orgId Organization ID
+ */
+export async function logFortnoxConnectionMetadata(orgId: string): Promise<void> {
+	const connection = await getFortnoxConnectionForOrg(orgId);
+	
+	if (!connection) {
+		console.log('[Fortnox Debug] No connection found for org:', orgId);
+		return;
+	}
+
+	const expiresAt = new Date(connection.access_token_expires_at);
+	const now = new Date();
+	const isExpired = expiresAt.getTime() <= now.getTime();
+	const expiresInMinutes = Math.round((expiresAt.getTime() - now.getTime()) / 1000 / 60);
+
+	console.log('[Fortnox Debug] Connection metadata:', {
+		orgId: connection.org_id,
+		hasAccessToken: !!connection.access_token,
+		accessTokenLength: connection.access_token?.length || 0,
+		hasRefreshToken: !!connection.refresh_token,
+		refreshTokenLength: connection.refresh_token?.length || 0,
+		tokenExpiresAt: connection.access_token_expires_at,
+		tokenIsExpired: isExpired,
+		tokenExpiresInMinutes: isExpired ? 0 : expiresInMinutes,
+		scopes: connection.scopes,
+		fortnoxCustomerNumber: connection.fortnox_customer_number,
+		createdAt: connection.created_at,
+		updatedAt: connection.updated_at,
+	});
 }
 
 /**
@@ -174,6 +277,7 @@ export async function createFortnoxInvoice(
 		method: 'POST',
 		headers: {
 			'Authorization': `Bearer ${freshConnection.access_token}`,
+			'Accept': 'application/json',
 			'Content-Type': 'application/json',
 		},
 		body: payloadStr,
@@ -308,6 +412,7 @@ export async function getFortnoxCustomers(
 		method: 'GET',
 		headers: {
 			'Authorization': `Bearer ${freshConnection.access_token}`,
+			'Accept': 'application/json',
 			'Content-Type': 'application/json',
 		},
 	});
@@ -353,6 +458,143 @@ export async function getFortnoxCustomers(
 }
 
 /**
+ * Fortnox Employee type (from API response)
+ * Based on official Fortnox API v3 documentation
+ */
+export interface FortnoxEmployee {
+	EmployeeId?: string;
+	PersonalIdentityNumber?: string;
+	FirstName?: string;
+	LastName?: string;
+	FullName?: string;
+	Email?: string;
+	Address1?: string;
+	Address2?: string;
+	City?: string;
+	PostCode?: string;
+	Country?: string;
+	Phone1?: string;
+	Phone2?: string;
+	EmploymentDate?: string; // YYYY-MM-DD format
+	EmployedTo?: string; // YYYY-MM-DD format
+	MonthlySalary?: string;
+	HourlyPay?: string;
+	Inactive?: boolean;
+	EmploymentForm?: string; // TV, TJM, etc.
+	JobTitle?: string;
+	CostCenter?: string;
+	Project?: string;
+	// Vacation and other fields can be added if needed
+	[key: string]: unknown;
+}
+
+/**
+ * Get employees from Fortnox
+ * @param connection Fortnox connection (will be refreshed if needed)
+ * @param limit Maximum number of employees to fetch (default: 500)
+ * @returns Array of Fortnox employees
+ */
+export async function getFortnoxEmployees(
+	connection: FortnoxConnection,
+	limit: number = 500
+): Promise<FortnoxEmployee[]> {
+	// Ensure token is fresh
+	const freshConnection = await refreshAccessTokenIfNeeded(connection);
+
+	// Fortnox API endpoint for employees
+	const apiUrl = `https://api.fortnox.se/3/employees?limit=${limit}`;
+
+	// Use same authentication headers as other working Fortnox endpoints (e.g. getFortnoxCustomers)
+	const requestHeaders = {
+		'Authorization': `Bearer ${freshConnection.access_token}`,
+		'Accept': 'application/json',
+		'Content-Type': 'application/json',
+	};
+
+	// Debug log: Print the exact request being sent to Fortnox
+	console.log('[Fortnox][employees] Request to Fortnox API:', {
+		method: 'GET',
+		url: apiUrl,
+		headers: {
+			'Authorization': `Bearer ${freshConnection.access_token.substring(0, 20)}...${freshConnection.access_token.substring(freshConnection.access_token.length - 10)} (length: ${freshConnection.access_token.length})`,
+			'Accept': requestHeaders['Accept'],
+			'Content-Type': requestHeaders['Content-Type'],
+		},
+	});
+
+	// Debug: Decode and log JWT token contents to verify scopes and company
+	debugFortnoxToken(freshConnection.access_token);
+
+	const response = await fetch(apiUrl, {
+		method: 'GET',
+		headers: requestHeaders,
+	});
+
+	const responseText = await response.text().catch(() => '<no-body>');
+
+	if (!response.ok) {
+		let parsedBody: any;
+		try {
+			parsedBody = JSON.parse(responseText);
+		} catch {
+			parsedBody = null;
+		}
+
+		// Parse ErrorInformation structure from Fortnox response
+		// Fortnox returns: { ErrorInformation: { error: 1, message: "...", code: 0 } }
+		const errorInfo = parsedBody?.ErrorInformation;
+		const fortnoxError = errorInfo?.error;
+		const fortnoxCode = errorInfo?.code;
+		const fortnoxMessage = errorInfo?.message;
+
+		const err = new FortnoxError({
+			message: fortnoxMessage || `[FORTNOX_EMPLOYEES_ERROR] status=${response.status}`,
+			status: response.status,
+			fortnoxError,
+			fortnoxCode,
+			fortnoxMessage,
+			code: response.status === 403 && fortnoxMessage === 'Behörighet saknas.' 
+				? 'FORTNOX_PERMISSION_MISSING' 
+				: undefined,
+		});
+
+		// Ensure error name is set correctly
+		err.name = 'FortnoxError';
+
+		console.error('[Fortnox][employees] API error', {
+			status: response.status,
+			fortnoxError,
+			fortnoxCode,
+			fortnoxMessage,
+		});
+
+		throw err;
+	}
+
+	let responseData: unknown;
+	try {
+		responseData = JSON.parse(responseText);
+	} catch {
+		console.error('[Fortnox] Failed to parse response:', responseText);
+		throw new Error(`Fortnox API returned non-JSON response: ${responseText.substring(0, 200)}`);
+	}
+
+	// Fortnox returns { Employees: [...] }
+	const data = responseData as { Employees?: FortnoxEmployee[] };
+	const employees = data.Employees || [];
+	
+	console.log('[Fortnox] Fetched employees:', {
+		count: employees.length,
+		active: employees.filter(e => !e.Inactive).length,
+		inactive: employees.filter(e => e.Inactive).length,
+	});
+	
+	// Return all employees (both active and inactive)
+	// The UI can filter if needed
+	return employees;
+}
+
+/**
  * Fortnox company information response structure
  */
 export interface FortnoxCompanyInformation {
@@ -393,6 +635,7 @@ export async function getFortnoxCompanyInformation(
 		method: 'GET',
 		headers: {
 			'Authorization': `Bearer ${freshConnection.access_token}`,
+			'Accept': 'application/json',
 			'Content-Type': 'application/json',
 		},
 	});
@@ -418,6 +661,170 @@ export async function getFortnoxCompanyInformation(
 	// Fortnox returns { CompanyInformation: {...} }
 	const data = responseData as FortnoxCompanyInformation;
 	return data.CompanyInformation || null;
+}
+
+/**
+ * Create a salary transaction in Fortnox Payroll
+ * @param connection Fortnox connection (will be refreshed if needed)
+ * @param payload Salary transaction payload (will be wrapped in { SalaryTransaction: ... } format)
+ * @returns Parsed JSON response from Fortnox
+ */
+export async function createFortnoxSalaryTransaction(
+	connection: FortnoxConnection,
+	payload: unknown
+): Promise<unknown> {
+	// Ensure token is fresh
+	const freshConnection = await refreshAccessTokenIfNeeded(connection);
+
+	// Fortnox API endpoint for salary transactions
+	const apiUrl = 'https://api.fortnox.se/3/salarytransactions';
+
+	// Wrap payload according to Fortnox convention
+	const wrappedPayload = {
+		SalaryTransaction: payload,
+	};
+
+	console.log('[Fortnox Client] Sending salary transaction to Fortnox API');
+	console.log('[Fortnox Client] Payload keys:', Object.keys(payload as any));
+
+	const payloadStr = JSON.stringify(wrappedPayload);
+
+	const response = await fetch(apiUrl, {
+		method: 'POST',
+		headers: {
+			'Authorization': `Bearer ${freshConnection.access_token}`,
+			'Accept': 'application/json',
+			'Content-Type': 'application/json',
+		},
+		body: payloadStr,
+	});
+
+	const responseText = await response.text();
+	let responseData: unknown;
+
+	try {
+		responseData = JSON.parse(responseText);
+	} catch {
+		console.error('[Fortnox Client] Non-JSON response received:', {
+			status: response.status,
+			statusText: response.statusText,
+			responseText: responseText.substring(0, 500),
+		});
+		throw new Error(`Fortnox API returned non-JSON response: ${response.status} ${response.statusText}`);
+	}
+
+	if (!response.ok) {
+		const error = responseData as FortnoxErrorResponse;
+		
+		const errorMessage =
+			error.ErrorInformation?.message ||
+			error.ErrorInformation?.code ||
+			error.message ||
+			error.error ||
+			error.error_description ||
+			`Fortnox API error: ${response.status} ${response.statusText}`;
+		
+		console.error('[Fortnox Client] Fortnox API error:', {
+			status: response.status,
+			statusText: response.statusText,
+			errorMessage,
+			errorResponse: error,
+			responseText: responseText.substring(0, 1000),
+		});
+		
+		if (error.ErrorInformation) {
+			const detailedMessage = error.ErrorInformation.code
+				? `${errorMessage} (Code: ${error.ErrorInformation.code})`
+				: errorMessage;
+			throw new Error(detailedMessage);
+		}
+		
+		throw new Error(errorMessage);
+	}
+
+	return responseData;
+}
+
+/**
+ * Create an attendance transaction in Fortnox Payroll
+ * @param connection Fortnox connection (will be refreshed if needed)
+ * @param payload Attendance transaction payload (will be wrapped in { AttendanceTransaction: ... } format)
+ * @returns Parsed JSON response from Fortnox
+ */
+export async function createFortnoxAttendanceTransaction(
+	connection: FortnoxConnection,
+	payload: unknown
+): Promise<unknown> {
+	// Ensure token is fresh
+	const freshConnection = await refreshAccessTokenIfNeeded(connection);
+
+	// Fortnox API endpoint for attendance transactions
+	const apiUrl = 'https://api.fortnox.se/3/attendancetransactions';
+
+	// Wrap payload according to Fortnox convention
+	const wrappedPayload = {
+		AttendanceTransaction: payload,
+	};
+
+	console.log('[Fortnox Client] Sending attendance transaction to Fortnox API');
+	console.log('[Fortnox Client] Payload keys:', Object.keys(payload as any));
+
+	const payloadStr = JSON.stringify(wrappedPayload);
+
+	const response = await fetch(apiUrl, {
+		method: 'POST',
+		headers: {
+			'Authorization': `Bearer ${freshConnection.access_token}`,
+			'Accept': 'application/json',
+			'Content-Type': 'application/json',
+		},
+		body: payloadStr,
+	});
+
+	const responseText = await response.text();
+	let responseData: unknown;
+
+	try {
+		responseData = JSON.parse(responseText);
+	} catch {
+		console.error('[Fortnox Client] Non-JSON response received:', {
+			status: response.status,
+			statusText: response.statusText,
+			responseText: responseText.substring(0, 500),
+		});
+		throw new Error(`Fortnox API returned non-JSON response: ${response.status} ${response.statusText}`);
+	}
+
+	if (!response.ok) {
+		const error = responseData as FortnoxErrorResponse;
+		
+		const errorMessage =
+			error.ErrorInformation?.message ||
+			error.ErrorInformation?.code ||
+			error.message ||
+			error.error ||
+			error.error_description ||
+			`Fortnox API error: ${response.status} ${response.statusText}`;
+		
+		console.error('[Fortnox Client] Fortnox API error:', {
+			status: response.status,
+			statusText: response.statusText,
+			errorMessage,
+			errorResponse: error,
+			responseText: responseText.substring(0, 1000),
+		});
+		
+		if (error.ErrorInformation) {
+			const detailedMessage = error.ErrorInformation.code
+				? `${errorMessage} (Code: ${error.ErrorInformation.code})`
+				: errorMessage;
+			throw new Error(detailedMessage);
+		}
+		
+		throw new Error(errorMessage);
+	}
+
+	return responseData;
 }
 
 

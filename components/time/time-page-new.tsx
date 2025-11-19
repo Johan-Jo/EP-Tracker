@@ -63,6 +63,7 @@ interface AtaOption {
 type TimeEntryFormValues = Omit<CreateTimeEntryInput, 'billing_type' | 'fixed_block_id'> & {
 	billing_type: '' | BillingType;
 	fixed_block_id: string | null;
+	hours?: number; // For ÄTA entries
 };
 
 export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewProps) {
@@ -147,6 +148,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 	const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
 	const [startTime, setStartTime] = useState('08:00');
 	const [endTime, setEndTime] = useState('');
+	const [hours, setHours] = useState<number | undefined>(undefined);
 
 	const {
 		register,
@@ -166,7 +168,8 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 			billing_type: '',
 			fixed_block_id: null,
 			stop_at: null,
-		ata_id: null,
+			ata_id: null,
+			hours: undefined,
 		},
 	});
 
@@ -300,6 +303,25 @@ useEffect(() => {
 	}
 	previousProjectIdRef.current = selectedProjectId || null;
 }, [selectedProjectId, selectedAtaId, setValue]);
+
+// When ÄTA is selected/deselected, update form fields
+useEffect(() => {
+	if (selectedAtaId && selectedAtaId !== 'none') {
+		// When ÄTA is selected, clear start/sluttid
+		setStartTime('');
+		setEndTime('');
+		setValue('start_at', '', { shouldDirty: false });
+		setValue('stop_at', null, { shouldDirty: false });
+	} else {
+		// When ÄTA is deselected, restore start time and clear hours
+		if (!startTime) {
+			setStartTime('08:00');
+			setValue('start_at', `${currentDate}T08:00`, { shouldDirty: false });
+		}
+		setHours(undefined);
+		setValue('hours', undefined, { shouldDirty: false });
+	}
+}, [selectedAtaId, setValue, currentDate, startTime]);
 
 	useEffect(() => {
 		if (process.env.NODE_ENV !== 'production') {
@@ -474,6 +496,15 @@ useEffect(() => {
 	};
 
 	const calculateDuration = () => {
+		// If ÄTA is selected, use hours directly
+		if (selectedAtaId && selectedAtaId !== 'none' && hours) {
+			const totalMinutes = Math.round(hours * 60);
+			const hoursPart = Math.floor(totalMinutes / 60);
+			const minutesPart = totalMinutes % 60;
+			return `${hoursPart}h ${minutesPart}min`;
+		}
+		
+		// Otherwise calculate from start/stop times
 		if (!startTime || !endTime) return '';
 		
 		const start = new Date(`${currentDate}T${startTime}`);
@@ -482,9 +513,9 @@ useEffect(() => {
 		
 		if (totalMinutes <= 0) return '';
 		
-		const hours = Math.floor(totalMinutes / 60);
-		const minutes = totalMinutes % 60;
-		return `${hours}h ${minutes}min`;
+		const hoursPart = Math.floor(totalMinutes / 60);
+		const minutesPart = totalMinutes % 60;
+		return `${hoursPart}h ${minutesPart}min`;
 	};
 
 	const handleDelete = (entryId: string) => {
@@ -512,6 +543,7 @@ useEffect(() => {
 				setCurrentDate(today);
 				setStartTime('08:00');
 				setEndTime('');
+				setHours(undefined);
 				reset({
 					project_id: '',
 					phase_id: null,
@@ -539,20 +571,43 @@ useEffect(() => {
 	};
 
 	const onSubmit = async (data: TimeEntryFormValues) => {
-		if (!data.project_id || !data.start_at || !data.stop_at) {
-			return;
-		}
-
 		const normalizedBillingType =
 			data.billing_type === '' ? selectedProjectDetails?.default_time_billing_type ?? 'LOPANDE' : data.billing_type;
 
-		const payload: CreateTimeEntryInput = {
-			...data,
-			project_id: String(data.project_id),
-			billing_type: normalizedBillingType as BillingType,
-			fixed_block_id: data.fixed_block_id ?? null,
-		ata_id: data.ata_id ?? null,
-		};
+		let payload: CreateTimeEntryInput;
+		
+		// If ÄTA is selected, use hours instead of start_at/stop_at
+		if (data.ata_id && hours) {
+			// For ÄTA entries, set start_at to today at 00:00 and calculate stop_at based on hours
+			const today = new Date(currentDate);
+			today.setHours(0, 0, 0, 0);
+			const stopAt = new Date(today);
+			stopAt.setHours(today.getHours() + hours);
+			
+			payload = {
+				...data,
+				project_id: String(data.project_id),
+				billing_type: normalizedBillingType as BillingType,
+				fixed_block_id: data.fixed_block_id ?? null,
+				ata_id: data.ata_id,
+				start_at: today.toISOString(),
+				stop_at: stopAt.toISOString(),
+				hours: hours,
+			};
+		} else {
+			// Regular entry - require start_at and stop_at
+			if (!data.project_id || !data.start_at || !data.stop_at) {
+				return;
+			}
+			
+			payload = {
+				...data,
+				project_id: String(data.project_id),
+				billing_type: normalizedBillingType as BillingType,
+				fixed_block_id: data.fixed_block_id ?? null,
+				ata_id: data.ata_id ?? null,
+			};
+		}
 
 		setIsSubmitting(true);
 
@@ -581,6 +636,7 @@ useEffect(() => {
 			setCurrentDate(today);
 			setStartTime('08:00');
 			setEndTime('');
+			setHours(undefined);
 			reset({
 				project_id: '',
 				phase_id: null,
@@ -592,6 +648,7 @@ useEffect(() => {
 				billing_type: '',
 				fixed_block_id: null,
 				ata_id: null,
+				hours: undefined,
 			});
 			setEditingEntry(null);
 
@@ -802,6 +859,7 @@ useEffect(() => {
 									setCurrentDate(today);
 									setStartTime('08:00');
 									setEndTime('');
+									setHours(undefined);
 									reset({
 										project_id: '',
 										phase_id: null,
@@ -813,6 +871,7 @@ useEffect(() => {
 										billing_type: '',
 										fixed_block_id: null,
 										ata_id: null,
+										hours: undefined,
 									});
 								}}
 							>
@@ -1039,53 +1098,84 @@ useEffect(() => {
 							</div>
 						</div>
 
-						{/* Time Range */}
-						<div className='grid grid-cols-2 gap-4'>
+						{/* Time Range - Show hours for ÄTA, start/stop for regular entries */}
+						{selectedAtaId && selectedAtaId !== 'none' ? (
 							<div>
 								<label className='block text-sm font-medium mb-2'>
-									Starttid <span className='text-destructive'>*</span>
+									Antal timmar <span className='text-destructive'>*</span>
 								</label>
 								<Input
-									type='time'
-									value={startTime}
+									type='number'
+									inputMode='decimal'
+									step='0.25'
+									min='0'
+									max='24'
+									placeholder='t.ex. 2.5'
+									value={hours ?? ''}
 									onChange={(e) => {
-										const time = e.target.value;
-										setStartTime(time);
-										setValue('start_at', `${currentDate}T${time}`);
+										const value = e.target.value ? parseFloat(e.target.value) : undefined;
+										setHours(value);
+										setValue('hours', value, { shouldDirty: true });
 									}}
 									className='h-11'
 								/>
-								{errors.start_at && (
+								{errors.hours && (
 									<p className='text-sm text-destructive mt-1'>
-										{errors.start_at.message}
+										{errors.hours.message}
 									</p>
 								)}
+								<p className='text-xs text-muted-foreground mt-1'>
+									Denna tid kommer att reduceras från huvudprojektet.
+								</p>
 							</div>
-							<div>
-								<label className='block text-sm font-medium mb-2'>
-									Sluttid <span className='text-destructive'>*</span>
-								</label>
-								<Input
-									type='time'
-									value={endTime}
-									onChange={(e) => {
-										const time = e.target.value;
-										setEndTime(time);
-										if (time) {
-											setValue('stop_at', `${currentDate}T${time}`);
-										} else {
-											setValue('stop_at', null);
-										}
-									}}
-									className='h-11'
-								/>
-								{errors.stop_at && (
-									<p className='text-sm text-destructive mt-1'>
-										{errors.stop_at.message}
-									</p>
-								)}
+						) : (
+							<div className='grid grid-cols-2 gap-4'>
+								<div>
+									<label className='block text-sm font-medium mb-2'>
+										Starttid <span className='text-destructive'>*</span>
+									</label>
+									<Input
+										type='time'
+										value={startTime}
+										onChange={(e) => {
+											const time = e.target.value;
+											setStartTime(time);
+											setValue('start_at', `${currentDate}T${time}`);
+										}}
+										className='h-11'
+									/>
+									{errors.start_at && (
+										<p className='text-sm text-destructive mt-1'>
+											{errors.start_at.message}
+										</p>
+									)}
+								</div>
+								<div>
+									<label className='block text-sm font-medium mb-2'>
+										Sluttid <span className='text-destructive'>*</span>
+									</label>
+									<Input
+										type='time'
+										value={endTime}
+										onChange={(e) => {
+											const time = e.target.value;
+											setEndTime(time);
+											if (time) {
+												setValue('stop_at', `${currentDate}T${time}`);
+											} else {
+												setValue('stop_at', null);
+											}
+										}}
+										className='h-11'
+									/>
+									{errors.stop_at && (
+										<p className='text-sm text-destructive mt-1'>
+											{errors.stop_at.message}
+										</p>
+									)}
+								</div>
 							</div>
-						</div>
+						)}
 
 						{/* Duration Display */}
 						{calculateDuration() && (

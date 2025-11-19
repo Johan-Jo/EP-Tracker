@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { z } from 'zod';
-import { Loader2, Mail, Phone, MapPin, Trash2 } from 'lucide-react';
+import { Loader2, Mail, Phone, MapPin, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
@@ -71,6 +71,7 @@ export function CustomerCard({ customerId, canMerge = true }: CustomerCardProps)
 	const router = useRouter();
 	const [editMode, setEditMode] = useState(false);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+	const [isCollapsed, setIsCollapsed] = useState(true);
 	const { data: customer, isLoading } = useCustomer(customerId);
 	const {
 		data: contacts,
@@ -200,22 +201,36 @@ export function CustomerCard({ customerId, canMerge = true }: CustomerCardProps)
 	return (
 		<Card>
 			<CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<div className="flex items-center gap-2">
-						<CardTitle className="text-xl">
-							{customer.type === 'COMPANY'
-								? customer.company_name
-								: `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim()}
-						</CardTitle>
-						{customer.is_archived && (
-							<span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-								Arkiverad
-							</span>
+				<div className="flex items-center gap-2 flex-1">
+					<Button
+						variant="ghost"
+						size="sm"
+						className="h-8 w-8 p-0"
+						onClick={() => setIsCollapsed(!isCollapsed)}
+					>
+						{isCollapsed ? (
+							<ChevronDown className="h-4 w-4" />
+						) : (
+							<ChevronUp className="h-4 w-4" />
 						)}
+					</Button>
+					<div className="flex-1">
+						<div className="flex items-center gap-2">
+							<CardTitle className="text-xl">
+								{customer.type === 'COMPANY'
+									? customer.company_name
+									: `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim()}
+							</CardTitle>
+							{customer.is_archived && (
+								<span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+									Arkiverad
+								</span>
+							)}
+						</div>
+						<p className="text-sm text-muted-foreground">
+							{customer.type === 'COMPANY' ? 'Företagskund' : 'Privatkund'}
+						</p>
 					</div>
-					<p className="text-sm text-muted-foreground">
-						{customer.type === 'COMPANY' ? 'Företagskund' : 'Privatkund'}
-					</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
 					{customer.is_archived && (
@@ -356,7 +371,8 @@ export function CustomerCard({ customerId, canMerge = true }: CustomerCardProps)
 					</AlertDialog>
 				</div>
 			</CardHeader>
-			<CardContent>
+			{!isCollapsed && (
+				<CardContent>
 				<Tabs defaultValue={defaultTab} className="space-y-4">
 					<TabsList>
 						<TabsTrigger value="overview">Översikt</TabsTrigger>
@@ -642,7 +658,8 @@ export function CustomerCard({ customerId, canMerge = true }: CustomerCardProps)
 						</div>
 					</TabsContent>
 				</Tabs>
-			</CardContent>
+				</CardContent>
+			)}
 		</Card>
 	);
 }
