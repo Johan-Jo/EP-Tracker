@@ -1,13 +1,13 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Check, Sparkles, Gift } from 'lucide-react';
+import { Check, Sparkles } from 'lucide-react';
 
 const plans = [
     {
         name: 'Start',
-        price: '199',
-        period: 'kr/användare/månad',
+        price: '499',
+        period: 'kr/månad',
         features: [
             'Tid, projekt & arbetsorder',
             'Material/kvitton',
@@ -19,14 +19,18 @@ const plans = [
     },
     {
         name: 'Pro',
-        price: '299',
-        period: 'kr/användare/månad',
+        price: '999',
+        period: 'kr/månad',
         features: [
             'Allt i Start',
             'Fakturaunderlag',
             'Export till Fortnox/Visma',
             'Godkännandeflöden',
-            'Avancerade rapporter'
+            'Avancerade rapporter',
+            'Löneunderlag',
+            'Personalliggare',
+            'Äta hantering',
+            'Röststyrda dagböcker och rapporteringara som översätter till svenska från 15 språk'
         ],
         cta: 'Prova gratis',
         featured: true
@@ -66,32 +70,17 @@ export function PricingCards() {
                             key={index}
                             className={`relative rounded-3xl border-2 p-10 ${
                                 plan.featured 
-                                    ? 'border-orange-500 bg-gradient-to-br from-orange-600 to-orange-700 shadow-2xl pt-20' 
+                                    ? 'border-orange-500 bg-gradient-to-br from-orange-600 to-orange-700 shadow-2xl' 
                                     : 'border-gray-200 bg-white shadow-lg'
                             }`}
                         >
                             {plan.featured && (
-                                <>
-                                    {/* Free Year Banner */}
-                                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 z-10 w-[120%]">
-                                        <div className="bg-blue-600 rounded-full px-6 py-3 shadow-2xl">
-                                            <div className="flex items-center justify-center gap-3">
-                                                <Gift className="h-5 w-5 text-white" />
-                                                <span className="text-sm font-bold text-white">
-                                                    Gratis ett helt år för de 200 första användarna
-                                                </span>
-                                                <Gift className="h-5 w-5 text-white" />
-                                            </div>
-                                        </div>
-                                        {/* Recommended Badge */}
-                                        <div className="flex items-center justify-center mt-2">
-                                            <span className="inline-flex items-center gap-2 rounded-full bg-blue-700 px-5 py-2 text-sm font-bold text-white shadow-xl">
-                                                <Sparkles className="h-5 w-5" />
-                                                Rekommenderas
-                                            </span>
-                                        </div>
-                                    </div>
-                                </>
+                                <div className="absolute -top-5 left-1/2 -translate-x-1/2">
+                                    <span className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2 text-sm font-bold text-white shadow-xl">
+                                        <Sparkles className="h-5 w-5" />
+                                        Rekommenderas
+                                    </span>
+                                </div>
                             )}
                             
                             <div className="mb-10">
