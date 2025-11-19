@@ -105,6 +105,18 @@ export function LandingHero() {
                         {/* Gradient overlay for better text contrast if needed */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                     </div>
+                    
+                    {/* Testimonial */}
+                    <div className="mt-8 text-center">
+                        <blockquote className="mx-auto max-w-3xl text-lg italic text-gray-700 sm:text-xl">
+                            <p className="mb-4">
+                                "Jag har sett samma problem i byggprojekten år efter år: dålig koll på tid, ÄTA, dagbok, kostnader och papper som flyger hit och dit. EP Tracker är vårt svar. Som medgrundare är jag stenhård på att allt måste vara så enkelt att även jag orkar använda det efter en lång dag."
+                            </p>
+                            <footer className="text-base font-semibold text-gray-900 not-italic">
+                                – Mats 'Bygglovs-Matte' Karlsson
+                            </footer>
+                        </blockquote>
+                    </div>
                 </div>
                 
                 {/* App Screenshots Showcase */}
