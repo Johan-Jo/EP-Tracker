@@ -24,7 +24,6 @@ interface DashboardClientProps {
     start_at: string;
     billing_type?: BillingType | null;
     fixed_block_id?: string | null;
-    ata_id?: string | null;
     projects: { id: string; name: string } | null;
   } | null;
   recentProject?: {
@@ -84,7 +83,6 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
       billing_type: billingType,
       projects: project ? { id: project.id, name: project.name } : null,
       fixed_block_id: fixedBlockId ?? null,
-      ata_id: null,
     });
 
     // 🔄 Background sync - user doesn't wait for this!
@@ -111,7 +109,6 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
           start_at: data.entry.start_at,
           billing_type: data.entry.billing_type,
           fixed_block_id: data.entry.fixed_block_id,
-          ata_id: null,
           projects: project ? { id: project.id, name: project.name } : null,
         });
         // Invalidate time entries queries so time page shows new entry
@@ -496,8 +493,24 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                   const getActivityDetails = () => {
                     switch (activity.type) {
                       case 'time_entry': {
-                        // Use description from activity_log instead of trying to format dates
-                        // This avoids date validation issues
+                        // Calculate hours for this time entry
+                        const data = activity.data ?? {};
+                        let hours: number | null = null;
+                        
+                        const durationMin = typeof data.duration_min === 'number' ? data.duration_min : null;
+                        
+                        if (durationMin !== null) {
+                          hours = durationMin / 60;
+                        } else if (data.start_at && data.stop_at) {
+                          const start = new Date(data.start_at as string);
+                          const stop = new Date(data.stop_at as string);
+                          if (!isNaN(start.getTime()) && !isNaN(stop.getTime())) {
+                            const diffMs = stop.getTime() - start.getTime();
+                            const diffMinutes = Math.round(diffMs / (1000 * 60));
+                            hours = diffMinutes / 60;
+                          }
+                        }
+                        
                         return {
                           icon: (
                             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -507,9 +520,9 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                           ),
                           iconBg: 'bg-orange-100 text-orange-600 dark:bg-orange-400/20 dark:text-white',
                           title: 'Tidsrapport',
-                          description: activity.description || 'Tidrapport skapad',
-                          badge: null,
-                          badgeColor: '',
+                          description: (activity.description || 'Tidrapport skapad').replace(/updated/gi, 'Uppdaterad'),
+                          badge: hours !== null ? `${hours.toFixed(1)}h` : null,
+                          badgeColor: 'text-orange-600 dark:text-orange-400',
                           diaryExcerpt: activity.diary_entry?.work_performed || null,
                         };
                       }
@@ -676,7 +689,16 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                               })}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-700 dark:text-white/80">{details.description}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm text-gray-700 dark:text-white/80">{details.description}</p>
+                            {details.badge && (
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full border border-current px-2 py-0.5 text-xs font-semibold ${details.badgeColor}`}
+                              >
+                                {details.badge}
+                              </span>
+                            )}
+                          </div>
                           {details.diaryExcerpt && (
                             <div className="mt-3 rounded-lg border border-dashed border-orange-300/60 bg-orange-50/40 p-3 text-sm text-gray-700 dark:border-orange-400/40 dark:bg-white/5 dark:text-white/80">
                               <p className="text-xs font-semibold uppercase tracking-wide text-orange-600 dark:text-orange-200">
@@ -686,13 +708,6 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
                                 {details.diaryExcerpt}
                               </p>
                             </div>
-                          )}
-                          {details.badge && (
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-full border border-current px-2 py-0.5 text-xs font-semibold ${details.badgeColor}`}
-                            >
-                              {details.badge}
-                            </span>
                           )}
                         </div>
                       </div>

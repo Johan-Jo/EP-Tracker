@@ -86,7 +86,7 @@ export function TimeInput({ value, onChange, label, disabled, className }: TimeI
   return (
     <div className={cn('space-y-2', className)}>
       {label && (
-        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-foreground dark:text-white">
           {label}
         </label>
       )}
@@ -98,7 +98,7 @@ export function TimeInput({ value, onChange, label, disabled, className }: TimeI
               type="button"
               variant="outline"
               size="icon"
-              className="h-10 w-full rounded-b-none rounded-t-lg border-b-0"
+              className="h-10 w-full rounded-b-none rounded-t-lg border-b-0 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
               onClick={incrementHours}
               disabled={disabled || currentHours >= 23}
             >
@@ -112,24 +112,24 @@ export function TimeInput({ value, onChange, label, disabled, className }: TimeI
               value={currentHours}
               onChange={handleHoursChange}
               disabled={disabled}
-              className="h-14 text-center text-xl font-semibold rounded-none border-x-0 border-t-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="h-14 text-center text-xl font-semibold rounded-none border-x-0 border-t-0 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus-visible:ring-2 focus-visible:ring-orange-500 dark:focus-visible:ring-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="h-10 w-full rounded-t-none rounded-b-lg border-t-0"
+              className="h-10 w-full rounded-t-none rounded-b-lg border-t-0 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
               onClick={decrementHours}
               disabled={disabled || currentHours <= 0}
             >
               <ChevronDown className="h-5 w-5" />
             </Button>
-            <span className="text-xs text-muted-foreground mt-1">Tim</span>
+            <span className="text-xs text-gray-600 dark:text-gray-300 mt-1 font-medium">Tim</span>
           </div>
         </div>
 
         {/* Separator */}
-        <div className="text-2xl font-bold text-muted-foreground pb-8">:</div>
+        <div className="text-2xl font-bold text-gray-400 dark:text-gray-500 pb-8">:</div>
 
         {/* Minutes */}
         <div className="flex-1">
@@ -138,7 +138,7 @@ export function TimeInput({ value, onChange, label, disabled, className }: TimeI
               type="button"
               variant="outline"
               size="icon"
-              className="h-10 w-full rounded-b-none rounded-t-lg border-b-0"
+              className="h-10 w-full rounded-b-none rounded-t-lg border-b-0 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
               onClick={incrementMinutes}
               disabled={disabled}
             >
@@ -152,19 +152,19 @@ export function TimeInput({ value, onChange, label, disabled, className }: TimeI
               value={currentMinutes}
               onChange={handleMinutesChange}
               disabled={disabled}
-              className="h-14 text-center text-xl font-semibold rounded-none border-x-0 border-t-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="h-14 text-center text-xl font-semibold rounded-none border-x-0 border-t-0 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus-visible:ring-2 focus-visible:ring-orange-500 dark:focus-visible:ring-orange-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="h-10 w-full rounded-t-none rounded-b-lg border-t-0"
+              className="h-10 w-full rounded-t-none rounded-b-lg border-t-0 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
               onClick={decrementMinutes}
               disabled={disabled || (currentHours === 0 && currentMinutes === 0)}
             >
               <ChevronDown className="h-5 w-5" />
             </Button>
-            <span className="text-xs text-muted-foreground mt-1">Min</span>
+            <span className="text-xs text-gray-600 dark:text-gray-300 mt-1 font-medium">Min</span>
           </div>
         </div>
       </div>

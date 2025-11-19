@@ -616,27 +616,27 @@ const showFixedBlockPicker =
             // Confirmation view - show times and question
             <div className="flex flex-col gap-4 mt-4">
               <div className="space-y-3">
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-sm font-medium text-gray-700">Check in:</span>
-                  <span className="text-sm font-semibold">
+                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Check in:</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
                     {startTime ? formatTime(startTime) : 'N/A'}
                   </span>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-sm font-medium text-gray-700">Check out:</span>
-                  <span className="text-sm font-semibold">
+                <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Check out:</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
                     {formatTime(new Date().toISOString())}
                   </span>
                 </div>
-                <div className="flex justify-between items-center py-2 bg-orange-50 rounded-lg px-3">
-                  <span className="text-sm font-semibold text-gray-900">Totalt arbetad tid:</span>
-                  <span className="text-lg font-bold text-orange-600">
+                <div className="flex justify-between items-center py-3 bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/50 rounded-lg px-3">
+                  <span className="text-sm font-semibold text-gray-900 dark:text-orange-100">Totalt arbetad tid:</span>
+                  <span className="text-lg font-bold text-orange-600 dark:text-orange-400">
                     {calculateTotalTime()}
                   </span>
                 </div>
               </div>
               
-              <p className="text-base font-medium text-center py-2">
+              <p className="text-base font-medium text-center py-2 text-gray-900 dark:text-white">
                 Stämmer tiden för din arbetsdag?
               </p>
               
@@ -678,13 +678,13 @@ const showFixedBlockPicker =
             <div className="flex flex-col gap-4 mt-4">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="start_date">Datum</Label>
+                  <Label htmlFor="start_date" className="text-gray-900 dark:text-white">Datum</Label>
                   <Input
                     id="start_date"
                     type="date"
                     value={startDate}
                     disabled
-                    className="w-full bg-gray-50 cursor-not-allowed"
+                    className="w-full bg-gray-50 dark:bg-gray-900 dark:text-gray-300 cursor-not-allowed border-gray-300 dark:border-gray-700"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -707,14 +707,14 @@ const showFixedBlockPicker =
                     disabled={isLoading}
                   />
                 </div>
-                <div className="flex justify-between items-center py-2 bg-orange-50 rounded-lg px-3">
-                  <span className="text-sm font-semibold text-gray-900">Totalt arbetad tid:</span>
-                  <span className="text-lg font-bold text-orange-600">
+                <div className="flex justify-between items-center py-3 bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/50 rounded-lg px-3">
+                  <span className="text-sm font-semibold text-gray-900 dark:text-orange-100">Totalt arbetad tid:</span>
+                  <span className="text-lg font-bold text-orange-600 dark:text-orange-400">
                     {calculateTotalTime()}
                   </span>
                 </div>
                 {timeError && (
-                  <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 rounded-lg px-3 py-2">
                     {timeError}
                   </div>
                 )}
