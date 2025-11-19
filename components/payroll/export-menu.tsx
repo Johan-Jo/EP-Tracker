@@ -17,9 +17,11 @@ import { Download } from 'lucide-react';
 
 type ExportMenuProps = {
 	onExport: (format: 'csv' | 'paxml' | 'pdf', scope: 'all' | 'locked' | 'selected') => void;
+	onExportFortnox?: (scope: 'all' | 'locked' | 'selected') => void;
+	hasFortnoxConnection?: boolean;
 };
 
-export function ExportMenu({ onExport }: ExportMenuProps) {
+export function ExportMenu({ onExport, onExportFortnox, hasFortnoxConnection }: ExportMenuProps) {
 	return (
 		<DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -52,6 +54,15 @@ export function ExportMenu({ onExport }: ExportMenuProps) {
 				</DropdownMenuSub>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem onClick={() => onExport('pdf', 'locked')}>PDF (endast låsta)</DropdownMenuItem>
+				{hasFortnoxConnection && onExportFortnox && (
+					<>
+						<DropdownMenuSeparator />
+						<DropdownMenuLabel>Fortnox Integration</DropdownMenuLabel>
+						<DropdownMenuItem onClick={() => onExportFortnox('locked')}>
+							Exportera till Fortnox (API) - Endast låsta
+						</DropdownMenuItem>
+					</>
+				)}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

@@ -5,12 +5,14 @@ import { toast } from 'sonner';
 import {
 	ArrowRight,
 	CheckCircle2,
+	CheckCircle,
 	Eye,
 	HelpCircle,
 	Lock,
 	LockOpen,
 	RefreshCw,
 	Search,
+	XCircle,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +30,7 @@ import { PeriodPicker } from './period-picker';
 import { PayrollRulesForm } from './payroll-rules-form';
 import { PayrollSalaryRates } from './payroll-salary-rates';
 import { usePayrollBasis, PayrollBasisEntry } from './hooks/usePayrollBasis';
+import { FortnoxPayrollMappings } from '@/components/integrations/fortnox-payroll-mappings';
 
 type FilterStatus = 'all' | 'locked' | 'unlocked';
 
@@ -80,12 +83,25 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 	const [searchTerm, setSearchTerm] = useState('');
 	const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
 	const [selected, setSelected] = useState<Record<string, boolean>>({});
+	const [hasFortnoxConnection, setHasFortnoxConnection] = useState<boolean>(false);
 
 	const { data = [], isLoading, error, refetch, refresh, lock, exportFile } = usePayrollBasis(
 		orgId,
 		period.start,
 		period.end,
 	);
+
+	// Check Fortnox connection
+	useEffect(() => {
+		fetch('/api/integrations/fortnox/check-connection')
+			.then((res) => res.json())
+			.then((result) => {
+				setHasFortnoxConnection(result.hasConnection || false);
+			})
+			.catch(() => {
+				setHasFortnoxConnection(false);
+			});
+	}, []);
 
 	useEffect(() => {
 		setSelected((prev) => {
@@ -226,6 +242,54 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 		}
 	};
 
+	const handleExportFortnox = async (scope: 'all' | 'locked' | 'selected') => {
+		// Fortnox export only supports locked entries
+		if (scope !== 'locked') {
+			toast.warning('Fortnox export stöder endast låsta poster');
+			return;
+		}
+
+		// Get locked payroll basis IDs
+		const lockedIds = filteredData.filter((entry) => entry.locked).map((entry) => entry.id);
+
+		if (lockedIds.length === 0) {
+			toast.warning('Inga låsta poster att exportera');
+			return;
+		}
+
+		try {
+			// Mappings will be fetched automatically by the API from the database
+
+			toast.loading('Exporterar till Fortnox...', { id: 'fortnox-export' });
+
+			const response = await fetch('/api/integrations/fortnox/export-payroll', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					payrollBasisIds: lockedIds,
+				}),
+			});
+
+			const result = await response.json();
+
+			if (!response.ok) {
+				toast.error(result.message || result.error || 'Export misslyckades', { id: 'fortnox-export' });
+				return;
+			}
+
+			toast.success(
+				result.message || `Exporterade ${result.successCount} transaktioner till Fortnox`,
+				{ id: 'fortnox-export' }
+			);
+
+			// Refresh data to show export status
+			refetch();
+		} catch (err) {
+			console.error('Fortnox export error:', err);
+			toast.error(err instanceof Error ? err.message : 'Export misslyckades', { id: 'fortnox-export' });
+		}
+	};
+
 	const toggleAllFiltered = (checked: boolean) => {
 		setSelected((prev) => {
 			if (checked) {
@@ -310,7 +374,11 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 									<Button onClick={doRefresh} size='sm' className='min-h-[44px]'>
 										<RefreshCw className='mr-2 h-4 w-4' /> Beräkna
 									</Button>
-									<ExportMenu onExport={handleExport} />
+									<ExportMenu 
+										onExport={handleExport} 
+										onExportFortnox={handleExportFortnox}
+										hasFortnoxConnection={hasFortnoxConnection}
+									/>
 								</div>
 							</CardContent>
 						</Card>
@@ -512,6 +580,7 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 					<TabsContent value='rules' className='space-y-6'>
 						<PayrollSalaryRates />
 						<PayrollRulesForm />
+						<FortnoxPayrollMappings orgId={orgId} />
 					</TabsContent>
 				</Tabs>
 			</main>
@@ -672,6 +741,7 @@ function Table({ data, selected, selectedCount, allSelected, toggleAll, toggleSe
 						<th>Totalt</th>
 						<th className='text-right'>Brutto (SEK)</th>
 						<th className='text-right'>Status</th>
+						<th className='text-right'>Fortnox</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -713,6 +783,22 @@ function Table({ data, selected, selectedCount, allSelected, toggleAll, toggleSe
 									<span className='inline-flex items-center gap-1 text-amber-600'>
 										<LockOpen className='h-3.5 w-3.5' /> Öppen
 									</span>
+								)}
+							</td>
+							<td className='whitespace-nowrap py-2 text-right'>
+								{row.fortnox_export_status === 'exported' ? (
+									<span
+										className='inline-flex items-center gap-1 text-emerald-600'
+										title={row.fortnox_exported_at ? `Exporterad ${new Date(row.fortnox_exported_at).toLocaleDateString('sv-SE')}` : 'Exporterad'}
+									>
+										<CheckCircle className='h-3.5 w-3.5' /> Exporterad
+									</span>
+								) : row.fortnox_export_status === 'failed' ? (
+									<span className='inline-flex items-center gap-1 text-red-600' title='Export misslyckades'>
+										<XCircle className='h-3.5 w-3.5' /> Misslyckad
+									</span>
+								) : (
+									<span className='text-slate-400'>–</span>
 								)}
 							</td>
 						</tr>
