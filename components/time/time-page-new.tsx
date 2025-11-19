@@ -1300,7 +1300,7 @@ useEffect(() => {
 												: `${breakMins}min`;
 											return (
 												<span className='text-xs text-muted-foreground'>
-													(med avdrag för rast enligt settings: -{breakText})
+													(avdrag för rast: -{breakText})
 												</span>
 											);
 										}
