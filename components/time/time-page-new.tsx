@@ -1318,7 +1318,7 @@ useEffect(() => {
 							<div className='mt-4'>
 								<AtaHoursPicker
 									id="ata-hours"
-									label="ÄTA-tid (diskontas från huvudprojektet)"
+									label="ÄTA-tid (dras av från huvudprojektet)"
 									value={ataMinutes}
 									onChange={setAtaMinutes}
 								/>
