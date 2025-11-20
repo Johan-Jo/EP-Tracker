@@ -102,6 +102,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 	const [ataMinutes, setAtaMinutes] = useState(0); // Minutes to discount from main project time (0-1440 for 0-24 hours)
 	const supabase = createClient();
 	const queryClient = useQueryClient();
+	const isSubmittingRef = useRef(false); // Prevent double submission
 	
 	// Check if user can see all entries (admin/foreman/finance)
 	const canSeeAllEntries = userRole === 'admin' || userRole === 'foreman' || userRole === 'finance';
@@ -724,9 +725,12 @@ useEffect(() => {
 				});
 			}
 
-			// Invalidate cache and refetch
-			queryClient.invalidateQueries({ queryKey: ['time-entries-stats', orgId, userId] });
-			refetch();
+			// Invalidate cache and refetch - use more specific matching to ensure all related queries are invalidated
+			await queryClient.invalidateQueries({ 
+				queryKey: ['time-entries-stats'],
+				exact: false 
+			});
+			await refetch();
 			
 			toast.success('Tidrapport borttagen');
 		} catch (error) {
@@ -739,6 +743,15 @@ useEffect(() => {
 	};
 
 	const onSubmit = async (data: TimeEntryFormValues) => {
+		// Prevent double submission using ref (synchronous check)
+		if (isSubmittingRef.current || isSubmitting) {
+			return;
+		}
+
+		// Set ref immediately to prevent double submission
+		isSubmittingRef.current = true;
+		setIsSubmitting(true);
+
 		const normalizedBillingType =
 			data.billing_type === '' ? selectedProjectDetails?.default_time_billing_type ?? 'LOPANDE' : data.billing_type;
 
@@ -765,6 +778,8 @@ useEffect(() => {
 		} else {
 			// Regular entry - require start_at and stop_at
 			if (!data.project_id || !data.start_at || !data.stop_at) {
+				isSubmittingRef.current = false;
+				setIsSubmitting(false);
 				return;
 			}
 			
@@ -776,8 +791,6 @@ useEffect(() => {
 				ata_id: data.ata_id ?? null,
 			};
 		}
-
-		setIsSubmitting(true);
 
 		try {
 			const isEditing = editingEntry !== null;
@@ -795,9 +808,15 @@ useEffect(() => {
 				throw new Error(error.error || `Failed to ${isEditing ? 'update' : 'create'} time entry`);
 			}
 
-			// Invalidate cache and refetch
-			queryClient.invalidateQueries({ queryKey: ['time-entries-stats', orgId, userId] });
-			refetch();
+			// Invalidate cache and refetch - use more specific matching to ensure all related queries are invalidated
+			await queryClient.invalidateQueries({ 
+				queryKey: ['time-entries-stats'],
+				exact: false 
+			});
+			await refetch();
+
+			// Show success message
+			toast.success(isEditing ? 'Tidrapport uppdaterad' : 'Tidrapport sparad');
 
 			// Reset form and editing state - always use today's date
 			const today = new Date().toISOString().split('T')[0];
@@ -828,7 +847,9 @@ useEffect(() => {
 			}
 		} catch (error) {
 			console.error('Error saving time entry:', error);
+			toast.error('Misslyckades att spara tidrapport');
 		} finally {
+			isSubmittingRef.current = false;
 			setIsSubmitting(false);
 		}
 	};
