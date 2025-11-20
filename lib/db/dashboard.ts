@@ -4,55 +4,230 @@
 import { createClient } from '@/lib/supabase/server';
 
 /**
+ * Safely log error with all available information
+ */
+function logError(context: string, error: unknown) {
+	// Always log the raw error first for debugging - this will show us what we're actually dealing with
+	console.error(`[DASHBOARD] ${context} - RAW ERROR (direct):`, error);
+	console.error(`[DASHBOARD] ${context} - Error type:`, typeof error);
+	console.error(`[DASHBOARD] ${context} - Is Error instance:`, error instanceof Error);
+	
+	const errorInfo: Record<string, unknown> = {
+		context,
+	};
+
+	// Handle null/undefined
+	if (error == null) {
+		errorInfo.error = 'null or undefined';
+		errorInfo.errorType = 'null/undefined';
+		console.error(`[DASHBOARD] ${context}:`, errorInfo);
+		return;
+	}
+
+	// Handle empty object case - this is likely what we're hitting
+	if (error && typeof error === 'object') {
+		const keys = Object.keys(error);
+		const keysCount = keys.length;
+		
+		errorInfo.errorType = 'object';
+		errorInfo.keysCount = keysCount;
+		errorInfo.keys = keys;
+		
+		if (keysCount === 0) {
+			errorInfo.error = 'Empty error object {}';
+			errorInfo.raw = '{}';
+			// Try to get constructor name
+			try {
+				errorInfo.constructorName = (error as { constructor?: { name?: string } }).constructor?.name;
+			} catch {
+				// Ignore
+			}
+			console.error(`[DASHBOARD] ${context}:`, errorInfo);
+			return;
+		}
+		
+		// Get all properties from the object
+		const allProps: Record<string, unknown> = {};
+		for (const key of keys) {
+			try {
+				const value = (error as Record<string, unknown>)[key];
+				allProps[key] = value;
+			} catch {
+				allProps[key] = '[unable to access]';
+			}
+		}
+		errorInfo.allProperties = allProps;
+		
+		// Check for Supabase error properties
+		if ('code' in error) {
+			errorInfo.code = (error as { code?: unknown }).code;
+		}
+		if ('message' in error) {
+			errorInfo.message = (error as { message?: unknown }).message;
+		}
+		if ('details' in error) {
+			errorInfo.details = (error as { details?: unknown }).details;
+		}
+		if ('hint' in error) {
+			errorInfo.hint = (error as { hint?: unknown }).hint;
+		}
+	}
+
+	// Handle standard Error objects
+	if (error instanceof Error) {
+		errorInfo.name = error.name;
+		errorInfo.message = error.message || errorInfo.message;
+		if (error.stack) {
+			errorInfo.stack = error.stack;
+		}
+	}
+
+	// Always try to stringify the error
+	try {
+		const errorString = JSON.stringify(error, null, 2);
+		errorInfo.rawStringified = errorString;
+	} catch (stringifyError) {
+		errorInfo.stringifyError = String(stringifyError);
+		// Fallback: try String()
+		try {
+			errorInfo.rawString = String(error);
+		} catch {
+			errorInfo.rawString = '[Unable to convert to string]';
+		}
+	}
+
+	// Get constructor name if available
+	if (error && typeof error === 'object') {
+		try {
+			errorInfo.constructorName = (error as { constructor?: { name?: string } }).constructor?.name;
+		} catch {
+			// Ignore
+		}
+	}
+
+	// Filter out undefined values
+	const filteredInfo: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(errorInfo)) {
+		if (value !== undefined) {
+			filteredInfo[key] = value;
+		}
+	}
+
+	// Final safety check - ensure we always have useful info
+	if (Object.keys(filteredInfo).length <= 1) {
+		filteredInfo.error = 'Unable to extract any error information';
+		filteredInfo.rawError = String(error);
+		filteredInfo.errorType = typeof error;
+	}
+
+	console.error(`[DASHBOARD] ${context}:`, filteredInfo);
+}
+
+/**
  * Get dashboard statistics using cached materialized view
  * EPIC 26.9 Phase C: Uses pre-computed stats for 99% faster queries
  * Replaces 4 slow COUNT queries (500ms) with cached lookup (5ms)
+ * 
+ * OPTIMIZED: refresh_dashboard_stats_cache() has been optimized to use:
+ * - UPSERT instead of DELETE+INSERT (faster, atomic)
+ * - Separate subqueries instead of complex JOINs (better query planning)
+ * - Additional indexes for faster lookups
  */
 export async function getDashboardStats(userId: string, orgId: string, startDate?: Date) {
-	const supabase = await createClient();
+	try {
+		const supabase = await createClient();
 
-	// EPIC 26.9: Try cached stats first (Phase C)
-	const { data, error } = await supabase.rpc('get_dashboard_stats_cached', {
-		p_user_id: userId,
-		p_org_id: orgId,
-		p_start_date: startDate?.toISOString() || null,
-	});
+		// EPIC 26.9: Try cached stats first (Phase C)
+		const { data, error } = await supabase.rpc('get_dashboard_stats_cached', {
+			p_user_id: userId,
+			p_org_id: orgId,
+			p_start_date: startDate?.toISOString() || null,
+		});
 
-	if (error) {
-		console.error('[DASHBOARD] Error fetching cached stats:', error);
+		// Handle errors - check for timeout specifically
+		if (error) {
+			const errorCode = error && typeof error === 'object' && 'code' in error 
+				? (error as { code?: string }).code 
+				: null;
+			
+			// Check for statement timeout (57014) - cached function is too slow
+			if (errorCode === '57014') {
+				console.warn('[DASHBOARD] Cached stats function timed out - this indicates performance issue');
+				console.warn('[DASHBOARD] Possible causes:');
+				console.warn('  1. refresh_dashboard_stats_cache() is taking too long');
+				console.warn('  2. dashboard_stats_cache table needs optimization');
+				console.warn('  3. Database is under heavy load');
+				console.warn('[DASHBOARD] Falling back to non-cached version (may be slower but should work)');
+			}
+			
+			logError('Error fetching cached stats', error);
+			// Fallback to non-cached version
+			return await getDashboardStatsUncached(userId, orgId, startDate);
+		}
+
+		// Handle case where data might be null or have different structure
+		if (!data || typeof data !== 'object') {
+			console.warn('[DASHBOARD] Invalid cached stats data, using fallback');
+			return await getDashboardStatsUncached(userId, orgId, startDate);
+		}
+
+		// Ensure all required fields exist with defaults
+		return {
+			active_projects: (data as any).active_projects ?? (data as any).projectsCount ?? 0,
+			total_hours_week: (data as any).total_hours_week ?? 0,
+			total_materials_week: (data as any).total_materials_week ?? (data as any).materialsCount ?? 0,
+			total_time_entries_week: (data as any).total_time_entries_week ?? (data as any).timeEntriesCount ?? 0,
+		};
+	} catch (err) {
+		logError('Exception in getDashboardStats', err);
 		// Fallback to non-cached version
 		return await getDashboardStatsUncached(userId, orgId, startDate);
 	}
-
-	// Handle case where data might be null or have different structure
-	if (!data || typeof data !== 'object') {
-		console.warn('[DASHBOARD] Invalid cached stats data, using fallback');
-		return await getDashboardStatsUncached(userId, orgId, startDate);
-	}
-
-	// Ensure all required fields exist with defaults
-	return {
-		active_projects: (data as any).active_projects ?? (data as any).projectsCount ?? 0,
-		total_hours_week: (data as any).total_hours_week ?? 0,
-		total_materials_week: (data as any).total_materials_week ?? (data as any).materialsCount ?? 0,
-		total_time_entries_week: (data as any).total_time_entries_week ?? (data as any).timeEntriesCount ?? 0,
-	};
 }
 
 /**
  * Fallback: Non-cached stats (used if cache fails)
  */
 async function getDashboardStatsUncached(userId: string, orgId: string, startDate?: Date) {
-	const supabase = await createClient();
+	try {
+		const supabase = await createClient();
 
-	const { data, error } = await supabase.rpc('get_dashboard_stats', {
-		p_user_id: userId,
-		p_org_id: orgId,
-		p_start_date: startDate?.toISOString() || null,
-	});
+		const { data, error } = await supabase.rpc('get_dashboard_stats', {
+			p_user_id: userId,
+			p_org_id: orgId,
+			p_start_date: startDate?.toISOString() || null,
+		});
 
-	if (error) {
-		console.error('[DASHBOARD] Error fetching uncached stats:', error);
+		if (error) {
+			logError('Error fetching uncached stats', error);
+			return {
+				active_projects: 0,
+				total_hours_week: 0,
+				total_materials_week: 0,
+				total_time_entries_week: 0,
+			};
+		}
+
+		// Handle case where data might be null or have different structure
+		if (!data || typeof data !== 'object') {
+			console.warn('[DASHBOARD] Invalid uncached stats data, using defaults');
+			return {
+				active_projects: 0,
+				total_hours_week: 0,
+				total_materials_week: 0,
+				total_time_entries_week: 0,
+			};
+		}
+
+		// Ensure all required fields exist with defaults
+		return {
+			active_projects: (data as any).active_projects ?? (data as any).projectsCount ?? 0,
+			total_hours_week: (data as any).total_hours_week ?? 0,
+			total_materials_week: (data as any).total_materials_week ?? (data as any).materialsCount ?? 0,
+			total_time_entries_week: (data as any).total_time_entries_week ?? (data as any).timeEntriesCount ?? 0,
+		};
+	} catch (err) {
+		logError('Exception in getDashboardStatsUncached', err);
 		return {
 			active_projects: 0,
 			total_hours_week: 0,
@@ -60,25 +235,6 @@ async function getDashboardStatsUncached(userId: string, orgId: string, startDat
 			total_time_entries_week: 0,
 		};
 	}
-
-	// Handle case where data might be null or have different structure
-	if (!data || typeof data !== 'object') {
-		console.warn('[DASHBOARD] Invalid uncached stats data, using defaults');
-		return {
-			active_projects: 0,
-			total_hours_week: 0,
-			total_materials_week: 0,
-			total_time_entries_week: 0,
-		};
-	}
-
-	// Ensure all required fields exist with defaults
-	return {
-		active_projects: (data as any).active_projects ?? (data as any).projectsCount ?? 0,
-		total_hours_week: (data as any).total_hours_week ?? 0,
-		total_materials_week: (data as any).total_materials_week ?? (data as any).materialsCount ?? 0,
-		total_time_entries_week: (data as any).total_time_entries_week ?? (data as any).timeEntriesCount ?? 0,
-	};
 }
 
 /**
@@ -194,7 +350,7 @@ async function attachDiarySummaries(
 			.limit(100); // ✅ PERFORMANCE: Limit to prevent fetching too many diary entries
 
 		if (diaryError) {
-			console.error('[DASHBOARD] Error fetching diary summaries:', diaryError);
+			logError('Error fetching diary summaries', diaryError);
 		} else {
 			for (const diary of diaryEntries || []) {
 				if (!diary.project_id || !diary.created_by || !diary.date) continue;
@@ -244,7 +400,7 @@ export async function getRecentActivities(orgId: string, limit: number = 15): Pr
 	});
 
 	if (error) {
-		console.error('[DASHBOARD] Error fetching fast activities:', error);
+		logError('Error fetching fast activities', error);
 		// Fallback to old UNION query if activity log fails
 		return await getRecentActivitiesLegacy(orgId, limit);
 	}
@@ -279,7 +435,7 @@ async function getRecentActivitiesLegacy(orgId: string, limit: number = 15): Pro
 	});
 
 	if (error) {
-		console.error('[DASHBOARD] Error fetching legacy activities:', error);
+		logError('Error fetching legacy activities', error);
 		return [];
 	}
 
@@ -360,7 +516,7 @@ export async function getActiveProjects(orgId: string) {
 		.limit(200); // ✅ PERFORMANCE: Limit to prevent loading too many projects
 
 	if (error) {
-		console.error('[DASHBOARD] Error fetching active projects:', error);
+		logError('Error fetching active projects', error);
 		return [];
 	}
 
@@ -391,7 +547,7 @@ export async function getRecentProject(orgId: string) {
 		.maybeSingle();
 
 	if (error) {
-		console.error('[DASHBOARD] Error fetching recent project:', error);
+		logError('Error fetching recent project', error);
 		return null;
 	}
 
