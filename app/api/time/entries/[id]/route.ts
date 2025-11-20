@@ -5,6 +5,7 @@ import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached sess
 import { notifyOnCheckOut } from '@/lib/notifications/project-alerts'; // EPIC 25 Phase 2: Project alerts
 import { sendTimeApprovalInviteForEntry } from '@/lib/notifications/time-approval-invite';
 import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
+import { calculateWorkMinutes } from '@/lib/utils/break-deduction';
 
 const MAX_MINUTES_PER_DAY = 24 * 60;
 
@@ -85,10 +86,33 @@ export async function PATCH(
 		const nextStartAt = data.start_at ?? existingEntry.start_at;
 		const nextStopAt = data.stop_at ?? existingEntry.stop_at;
 
+		// Calculate work time (after break deduction) if stop_at is provided
+		let workDurationMin: number | null = null;
 		if (nextStopAt) {
-			const newEntryMinutes = calculateDurationMinutes(nextStartAt, nextStopAt);
+			// Fetch organization break settings
+			const { data: orgSettings } = await supabase
+				.from('organizations')
+				.select('standard_break_minutes_per_day, standard_breaks')
+				.eq('id', membership.org_id)
+				.single();
 
-			if (newEntryMinutes > MAX_MINUTES_PER_DAY) {
+			const orgBreakSettings = orgSettings ? {
+				standard_break_minutes_per_day: orgSettings.standard_break_minutes_per_day ?? 0,
+				standard_breaks: (orgSettings.standard_breaks as any) ?? [],
+			} : null;
+
+			// Calculate total minutes
+			const totalMinutes = calculateDurationMinutes(nextStartAt, nextStopAt);
+
+			// Calculate work time (after break deduction) - this is the ONE time value
+			workDurationMin = calculateWorkMinutes(
+				nextStartAt,
+				nextStopAt,
+				totalMinutes,
+				orgBreakSettings
+			);
+
+			if (workDurationMin > MAX_MINUTES_PER_DAY) {
 				return NextResponse.json(
 					{ error: 'En användare kan inte registrera mer än 24 timmar på ett dygn.' },
 					{ status: 400 },
@@ -113,13 +137,12 @@ export async function PATCH(
 				return NextResponse.json({ error: dayError.message }, { status: 500 });
 			}
 
+			// Use duration_min (work time) from existing entries, and calculated work time for new entry
 			const accumulatedMinutes =
 				(otherEntries || []).reduce((sum, entry) => {
-					return (
-						sum +
-						calculateDurationMinutes(entry.start_at, entry.stop_at, entry.duration_min ?? 0)
-					);
-				}, 0) + newEntryMinutes;
+					// duration_min is now work time (after break deduction)
+					return sum + (entry.duration_min ?? 0);
+				}, 0) + (workDurationMin ?? 0);
 
 			if (accumulatedMinutes > MAX_MINUTES_PER_DAY) {
 				return NextResponse.json(
@@ -143,6 +166,10 @@ export async function PATCH(
 		if (data.task_label !== undefined) updateFields.task_label = data.task_label;
 		if (data.start_at !== undefined) updateFields.start_at = data.start_at;
 		if (data.stop_at !== undefined) updateFields.stop_at = data.stop_at;
+		// Update duration_min (work time) if start_at or stop_at changed
+		if (workDurationMin !== null) {
+			updateFields.duration_min = workDurationMin;
+		}
 		if (data.notes !== undefined) updateFields.notes = data.notes;
 		if (data.status !== undefined) updateFields.status = data.status;
 		if (data.billing_type !== undefined) {

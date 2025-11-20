@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createTimeEntrySchema } from '@/lib/schemas/time-entry';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
 import { sendTeamCheckInNotification } from '@/lib/notifications'; // EPIC 25: Push notifications
+import { calculateWorkMinutes } from '@/lib/utils/break-deduction';
 
 // GET /api/time/entries - List time entries with filters
 export async function GET(request: NextRequest) {
@@ -101,6 +102,22 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: error.message }, { status: 500 });
 		}
 
+		// Sort entries: first by start_at (descending), then by created_at (descending) for consistent ordering
+		// This ensures entries with the same start_at are sorted by creation time (newest first)
+		if (entries && entries.length > 0) {
+			entries.sort((a, b) => {
+				const startAtA = new Date(a.start_at).getTime();
+				const startAtB = new Date(b.start_at).getTime();
+				if (startAtB !== startAtA) {
+					return startAtB - startAtA; // Descending by start_at
+				}
+				// If start_at is the same, sort by created_at (descending) - newest first
+				const createdAtA = new Date(a.created_at).getTime();
+				const createdAtB = new Date(b.created_at).getTime();
+				return createdAtB - createdAtA;
+			});
+		}
+
 		// ✅ PERFORMANCE: Calculate stats server-side if requested
 		// Only fetches start_at and duration_min (minimal data) for stats calculation
 		// This is much faster than calculating on client-side from all entries
@@ -196,6 +213,35 @@ export async function POST(request: NextRequest) {
 		// This saves 1 query and makes the API faster
 		const supabase = await createClient();
 
+		// Calculate work time (after break deduction) - this is the ONE time value used everywhere
+		let workDurationMin: number | null = null;
+		if (data.stop_at && data.start_at) {
+			// Fetch organization break settings
+			const { data: orgSettings } = await supabase
+				.from('organizations')
+				.select('standard_break_minutes_per_day, standard_breaks')
+				.eq('id', membership.org_id)
+				.single();
+
+			const orgBreakSettings = orgSettings ? {
+				standard_break_minutes_per_day: orgSettings.standard_break_minutes_per_day ?? 0,
+				standard_breaks: (orgSettings.standard_breaks as any) ?? [],
+			} : null;
+
+			// Calculate total minutes
+			const totalMinutes = Math.floor(
+				(new Date(data.stop_at).getTime() - new Date(data.start_at).getTime()) / (1000 * 60)
+			);
+
+			// Calculate work time (after break deduction)
+			workDurationMin = calculateWorkMinutes(
+				data.start_at,
+				data.stop_at,
+				totalMinutes,
+				orgBreakSettings
+			);
+		}
+
 		// EPIC 26: Insert time entry without JOINs for maximum speed
 		// Client already has project/phase data cached, no need to fetch it again
 		const { data: entry, error: insertError } = await supabase
@@ -209,6 +255,7 @@ export async function POST(request: NextRequest) {
 				task_label: data.task_label,
 				start_at: data.start_at,
 				stop_at: data.stop_at,
+				duration_min: workDurationMin, // Work time (after break deduction) - the ONE time value
 				notes: data.notes,
 				billing_type: data.billing_type,
 				fixed_block_id: data.fixed_block_id ?? null,
