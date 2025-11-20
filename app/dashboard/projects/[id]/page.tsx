@@ -19,21 +19,40 @@ export default async function ProjectDetailPage(props: PageProps) {
 		redirect('/sign-in');
 	}
 
-	// Fetch project with relations
+	// ✅ PERFORMANCE: Select only needed columns instead of *
+	// Reduces payload size significantly
 	const { data: project, error } = await supabase
 		.from('projects')
 		.select(
 			`
-			*,
-			customer:customers(*),
-			phases (*),
-			work_orders (*)
+			id,
+			org_id,
+			name,
+			project_number,
+			client_name,
+			customer_id,
+			site_address,
+			status,
+			budget_mode,
+			budget_hours,
+			budget_amount,
+			created_at,
+			updated_at,
+			customer:customers!projects_customer_id_fkey(id, type, company_name, first_name, last_name),
+			phases(id, name, sort_order, budget_hours, budget_amount),
+			work_orders(id, name, status)
 		`
 		)
 		.eq('id', params.id)
 		.single();
 
-	if (error || !project) {
+	if (error) {
+		console.error('[Project Detail] Error fetching project:', error);
+		notFound();
+	}
+
+	if (!project) {
+		console.error('[Project Detail] Project not found:', params.id);
 		notFound();
 	}
 
@@ -47,19 +66,34 @@ export default async function ProjectDetailPage(props: PageProps) {
 		.single();
 
 	if (!membership) {
+		console.error('[Project Detail] User has no access to project org:', {
+			userId: user.id,
+			projectId: params.id,
+			orgId: project.org_id
+		});
 		notFound();
 	}
 
 	const canEdit = ['admin', 'foreman'].includes(membership.role);
-	const customerDisplayName = project.customer
-		? project.customer.type === 'COMPANY'
-			? project.customer.company_name
-			: `${project.customer.first_name ?? ''} ${project.customer.last_name ?? ''}`.trim()
+	// Handle customer as array or object (Supabase can return either)
+	const customer = Array.isArray(project.customer) ? project.customer[0] : project.customer;
+	const customerDisplayName = customer
+		? customer.type === 'COMPANY'
+			? customer.company_name
+			: `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim()
 		: project.client_name;
 
-	// Fetch initial summary data directly (same logic as API endpoint but without date filters for initial load)
+	// ✅ PERFORMANCE FIX: Fetch initial summary with date filter (last 3 months) and limits
+	// This prevents loading thousands of rows for large projects
+	// User can expand date range via date filter if needed
 	let initialSummary = null;
 	try {
+		// Default to last 3 months for initial load (much faster!)
+		const threeMonthsAgo = new Date();
+		threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+		const defaultStartDate = threeMonthsAgo.toISOString().split('T')[0];
+		const defaultEndDate = new Date().toISOString().split('T')[0];
+
 		const [
 			timeEntriesResult,
 			materialsResult,
@@ -68,6 +102,7 @@ export default async function ProjectDetailPage(props: PageProps) {
 			projectMembersResult,
 			diaryEntriesResult,
 		] = await Promise.all([
+			// ✅ OPTIMIZED: Add date filter and limit for initial load
 			supabase
 				.from('time_entries')
 				.select(`
@@ -81,30 +116,54 @@ export default async function ProjectDetailPage(props: PageProps) {
 					phase:phases (id, name)
 				`)
 				.eq('project_id', params.id)
-				.eq('status', 'approved'),
+				.eq('status', 'approved')
+				.gte('start_at', defaultStartDate)
+				.lte('start_at', `${defaultEndDate}T23:59:59`)
+				.order('start_at', { ascending: false })
+				.limit(500), // Limit to 500 most recent entries
+			// ✅ OPTIMIZED: Add date filter and limit
 			supabase
 				.from('materials')
 				.select('id, qty, unit_price_sek, total_sek, description, created_at')
 				.eq('project_id', params.id)
-				.eq('status', 'approved'),
+				.eq('status', 'approved')
+				.gte('created_at', defaultStartDate)
+				.lte('created_at', `${defaultEndDate}T23:59:59`)
+				.order('created_at', { ascending: false })
+				.limit(200), // Limit to 200 most recent
+			// ✅ OPTIMIZED: Add date filter and limit
 			supabase
 				.from('expenses')
-				.select('id, amount, description, expense_date, created_at')
+				.select('id, amount_sek, description, created_at')
 				.eq('project_id', params.id)
-				.eq('status', 'approved'),
+				.eq('status', 'approved')
+				.gte('created_at', defaultStartDate)
+				.lte('created_at', `${defaultEndDate}T23:59:59`)
+				.order('created_at', { ascending: false })
+				.limit(200), // Limit to 200 most recent
+			// ✅ OPTIMIZED: Add date filter and limit
 			supabase
 				.from('mileage')
-				.select('id, distance_km, rate_per_km, trip_date, created_at')
+				.select('id, km, rate_per_km_sek, date, created_at')
 				.eq('project_id', params.id)
-				.eq('status', 'approved'),
+				.eq('status', 'approved')
+				.gte('date', defaultStartDate)
+				.lte('date', defaultEndDate)
+				.order('date', { ascending: false })
+				.limit(200), // Limit to 200 most recent
 			supabase
 				.from('project_members')
 				.select('user_id, profiles:user_id (id, full_name)')
 				.eq('project_id', params.id),
+			// ✅ OPTIMIZED: Add date filter and limit
 			supabase
 				.from('diary_entries')
 				.select('id, date, work_performed, created_by, weather, temperature_c, crew_count')
-				.eq('project_id', params.id),
+				.eq('project_id', params.id)
+				.gte('date', defaultStartDate)
+				.lte('date', defaultEndDate)
+				.order('date', { ascending: false })
+				.limit(100), // Limit to 100 most recent
 		]);
 
 		const timeEntries = timeEntriesResult.data || [];
@@ -153,8 +212,8 @@ export default async function ProjectDetailPage(props: PageProps) {
 		const totalMinutes = timeEntries.reduce((sum: number, entry: any) => sum + (entry.duration_min || 0), 0);
 		const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
 		const materialsTotal = materials.reduce((sum: number, m: any) => sum + (m.total_sek || 0), 0);
-		const expensesTotal = expenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
-		const mileageTotal = mileage.reduce((sum: number, m: any) => sum + (m.distance_km * m.rate_per_km), 0);
+		const expensesTotal = expenses.reduce((sum: number, e: any) => sum + (e.amount_sek || 0), 0);
+		const mileageTotal = mileage.reduce((sum: number, m: any) => sum + ((m.km || 0) * (m.rate_per_km_sek || 0)), 0);
 		const totalCosts = materialsTotal + expensesTotal + mileageTotal;
 		const budgetHours = project.budget_hours || 0;
 		const budgetAmount = project.budget_amount || 0;
@@ -206,8 +265,8 @@ export default async function ProjectDetailPage(props: PageProps) {
 					items: expenses.map((e: any) => ({
 						id: e.id,
 						description: e.description,
-						amount: e.amount,
-						expenseDate: e.expense_date,
+						amount: e.amount_sek,
+						expenseDate: e.created_at?.split('T')[0] || null,
 						createdAt: e.created_at,
 					})),
 				},
@@ -216,10 +275,10 @@ export default async function ProjectDetailPage(props: PageProps) {
 					count: mileage.length,
 					items: mileage.map((m: any) => ({
 						id: m.id,
-						distanceKm: m.distance_km,
-						ratePerKm: m.rate_per_km,
-						total: m.distance_km * m.rate_per_km,
-						tripDate: m.trip_date,
+						distanceKm: m.km,
+						ratePerKm: m.rate_per_km_sek,
+						total: (m.km || 0) * (m.rate_per_km_sek || 0),
+						tripDate: m.date,
 						createdAt: m.created_at,
 					})),
 				},

@@ -54,22 +54,33 @@ export function DiaryPageNew({ orgId, projectId }: DiaryPageNewProps) {
 			const j = await res.json();
 			const entries = j.diary || [];
 			
-			// Fetch photo counts for each entry (separate query for photos due to RLS)
-			const entriesWithPhotos = await Promise.all(
-				entries.map(async (entry: any) => {
-					const { data: photos } = await supabase
-						.from('diary_photos')
-						.select('id')
-						.eq('diary_entry_id', entry.id);
-					
-					return {
-						...entry,
-						photoCount: photos?.length || 0,
-					};
-				})
-			);
+			// ✅ PERFORMANCE FIX: Batch query instead of N+1 pattern
+			// Före: 1 query för entries + N queries för photos (20 entries = 21 queries)
+			// Efter: 1 query för entries + 1 batch query för alla photos (2 queries totalt)
+			if (entries.length > 0) {
+				const entryIds = entries.map((e: any) => e.id);
+				const { data: allPhotos } = await supabase
+					.from('diary_photos')
+					.select('diary_entry_id, id')
+					.in('diary_entry_id', entryIds);
+				
+				// Group photos by entry_id for O(1) lookup
+				const photosByEntry = (allPhotos || []).reduce((acc: any, photo: any) => {
+					if (!acc[photo.diary_entry_id]) {
+						acc[photo.diary_entry_id] = [];
+					}
+					acc[photo.diary_entry_id].push(photo);
+					return acc;
+				}, {});
+				
+				// Map entries with photo counts
+				return entries.map((entry: any) => ({
+					...entry,
+					photoCount: photosByEntry[entry.id]?.length || 0,
+				}));
+			}
 
-			return entriesWithPhotos;
+			return entries;
 		},
 		// Enable caching for better performance
 		staleTime: 2 * 60 * 1000,  // 2 minutes (diary entries don't change often)
