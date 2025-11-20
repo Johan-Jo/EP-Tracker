@@ -55,26 +55,20 @@ export function AtaPageNew({ orgId, userRole, projectId }: AtaPageNewProps) {
 		gcTime: 10 * 60 * 1000,     // 10 minutes
 	});
 
-	// Fetch ATA records
+	// ✅ PERFORMANCE: Select specific columns instead of * and use API route for consistency
 	const { data: ataRecords = [], isLoading } = useQuery({
 		queryKey: ['ata', orgId, selectedProject],
 		queryFn: async () => {
-			let query = supabase
-				.from('ata')
-				.select(`
-					*,
-					project:projects(id, name, project_number)
-				`)
-				.eq('org_id', orgId);
-
-			if (selectedProject !== 'all') {
-				query = query.eq('project_id', selectedProject);
+			const url = selectedProject !== 'all' 
+				? `/api/ata?project_id=${selectedProject}`
+				: '/api/ata';
+			
+			const response = await fetch(url);
+			if (!response.ok) {
+				throw new Error('Failed to fetch ATA records');
 			}
-
-			const { data, error } = await query.order('created_at', { ascending: false });
-
-			if (error) throw error;
-			return data || [];
+			const json = await response.json();
+			return json.ata || [];
 		},
 		staleTime: 2 * 60 * 1000,  // 2 minutes (ÄTA don't change often)
 		gcTime: 5 * 60 * 1000,      // 5 minutes

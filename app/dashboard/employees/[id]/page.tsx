@@ -26,9 +26,10 @@ export default async function EmployeePage(props: PageProps) {
 	}
 
 	const supabase = await createClient();
+	// ✅ PERFORMANCE: Select only id and org_id for validation (EmployeeCard fetches full data)
 	const { data: employee, error } = await supabase
 		.from('employees')
-		.select('*')
+		.select('id, org_id')
 		.eq('id', employeeId)
 		.eq('org_id', membership.org_id)
 		.single();

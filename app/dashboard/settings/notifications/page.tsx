@@ -31,8 +31,8 @@ export default async function NotificationsPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Notiser</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Notiser</h1>
+            <p className="text-gray-600 dark:text-white mt-2">
               Hantera push-notiser och påminnelser
             </p>
           </div>

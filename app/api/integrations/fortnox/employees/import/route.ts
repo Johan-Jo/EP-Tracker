@@ -201,11 +201,11 @@ export async function POST(request: NextRequest) {
 				let existingEmployee = null;
 				let matchReason = '';
 
-				// Priority 1: Match by personal_identity_no (most reliable)
+					// Priority 1: Match by personal_identity_no (most reliable)
 				if (employeePayload.personal_identity_no) {
 					const { data, error: checkError } = await supabase
 						.from('employees')
-						.select('id, employee_no, first_name, last_name, personal_identity_no, email, is_archived')
+						.select('id, employee_no, first_name, last_name, personal_identity_no, email, is_archived, user_id')
 						.eq('org_id', membership.org_id)
 						.eq('personal_identity_no', employeePayload.personal_identity_no)
 						.maybeSingle();
@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
 				if (!existingEmployee && employeePayload.email) {
 					const { data, error: checkError } = await supabase
 						.from('employees')
-						.select('id, employee_no, first_name, last_name, personal_identity_no, email, is_archived')
+						.select('id, employee_no, first_name, last_name, personal_identity_no, email, is_archived, user_id')
 						.eq('org_id', membership.org_id)
 						.eq('email', employeePayload.email)
 						.maybeSingle();
@@ -235,11 +235,11 @@ export async function POST(request: NextRequest) {
 					}
 				}
 
-				// Priority 3: If still not matched, check by employee_no (may match Fortnox EmployeeId)
+					// Priority 3: If still not matched, check by employee_no (may match Fortnox EmployeeId)
 				if (!existingEmployee && employeePayload.employee_no) {
 					const { data, error: checkError } = await supabase
 						.from('employees')
-						.select('id, employee_no, first_name, last_name, personal_identity_no, email, is_archived')
+						.select('id, employee_no, first_name, last_name, personal_identity_no, email, is_archived, user_id')
 						.eq('org_id', membership.org_id)
 						.eq('employee_no', employeePayload.employee_no)
 						.maybeSingle();
@@ -306,6 +306,25 @@ export async function POST(request: NextRequest) {
 						console.log(`[Fortnox Import] Successfully updated employee ${existingEmployee.id}`);
 						results.updated++;
 						
+						// Create or update mapping in fortnox_employee_mappings
+						if (existingEmployee.user_id) {
+							const { error: mappingError } = await supabase
+								.from('fortnox_employee_mappings')
+								.upsert({
+									org_id: membership.org_id,
+									person_id: existingEmployee.user_id,
+									fortnox_employee_id: fortnoxEmployee.EmployeeId || '',
+								}, {
+									onConflict: 'org_id,person_id',
+								});
+
+							if (mappingError) {
+								console.error(`[Fortnox Import] Error saving mapping for employee ${existingEmployee.id}:`, mappingError);
+							} else {
+								console.log(`[Fortnox Import] Saved mapping: profile ${existingEmployee.user_id} -> Fortnox ${fortnoxEmployee.EmployeeId}`);
+							}
+						}
+						
 						if (existingEmployee.is_archived) {
 							results.skippedArchived++;
 						}
@@ -332,7 +351,7 @@ export async function POST(request: NextRequest) {
 				const { data: insertedEmployee, error: insertError } = await supabase
 					.from('employees')
 					.insert(insertPayload)
-					.select('id, employee_no, first_name, last_name, personal_identity_no, email')
+					.select('id, employee_no, first_name, last_name, personal_identity_no, email, user_id')
 					.single();
 
 				if (insertError) {
@@ -355,6 +374,25 @@ export async function POST(request: NextRequest) {
 						email: insertedEmployee?.email,
 					});
 					results.created++;
+
+					// Create mapping in fortnox_employee_mappings if employee has user_id
+					if (insertedEmployee && insertPayload.user_id) {
+						const { error: mappingError } = await supabase
+							.from('fortnox_employee_mappings')
+							.upsert({
+								org_id: membership.org_id,
+								person_id: insertPayload.user_id,
+								fortnox_employee_id: fortnoxEmployee.EmployeeId || '',
+							}, {
+								onConflict: 'org_id,person_id',
+							});
+
+						if (mappingError) {
+							console.error(`[Fortnox Import] Error saving mapping for new employee ${insertedEmployee.id}:`, mappingError);
+						} else {
+							console.log(`[Fortnox Import] Saved mapping: profile ${insertPayload.user_id} -> Fortnox ${fortnoxEmployee.EmployeeId}`);
+						}
+					}
 				}
 			} catch (error) {
 				const employeeId = fortnoxEmployee.EmployeeId || 'unknown';

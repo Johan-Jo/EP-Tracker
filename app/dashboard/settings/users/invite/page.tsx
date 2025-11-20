@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth/get-session';
 import { InviteUserForm } from '@/components/users/invite-user-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Mail } from 'lucide-react';
@@ -7,21 +7,11 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export default async function InviteUserPage() {
-	const supabase = await createClient();
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
+	const { user, membership } = await getSession();
 
 	if (!user) {
 		redirect('/sign-in');
 	}
-
-	const { data: membership } = await supabase
-		.from('memberships')
-		.select('org_id, role')
-		.eq('user_id', user.id)
-		.eq('is_active', true)
-		.single();
 
 	if (!membership || membership.role !== 'admin') {
 		redirect('/dashboard/settings/users');

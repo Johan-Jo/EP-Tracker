@@ -118,267 +118,172 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 		return weekDates.start === currentWeekDates.start;
 	})();
 
+	// ✅ PERFORMANCE: Use API route instead of direct Supabase query for consistency
 	// Fetch ALL time entries for the period (for summary cards, regardless of statusFilter)
 	const { data: allTimeEntries = [] } = useQuery({
 		queryKey: ['time-approvals-all', orgId, selectedWeek, selectedYear],
 		queryFn: async () => {
 			const { start, end } = weekDates;
-
-			const { data, error } = await supabase
-				.from('time_entries')
-				.select(
-					`
-					*,
-					user:profiles!time_entries_user_id_fkey(full_name),
-					project:projects(name),
-					phase:phases(name)
-				`
-				)
-				.eq('org_id', orgId)
-				.gte('start_at', start)
-				.lte('start_at', end);
-
-			if (error) throw error;
-			return data || [];
+			const params = new URLSearchParams({
+				period_start: start,
+				period_end: end,
+				status: 'all',
+			});
+			const response = await fetch(`/api/approvals/time-entries?${params}`);
+			if (!response.ok) throw new Error('Failed to fetch time entries');
+			const json = await response.json();
+			return json.entries || [];
 		},
+		staleTime: 30 * 1000, // 30 seconds - approvals can change frequently
+		gcTime: 2 * 60 * 1000, // 2 minutes
 	});
 
+	// ✅ PERFORMANCE: Use API route instead of direct Supabase query
 	// Fetch filtered time entries for approval (based on statusFilter)
 	const { data: timeEntries = [] } = useQuery({
 		queryKey: ['time-approvals', orgId, selectedWeek, selectedYear, statusFilter],
 		queryFn: async () => {
 			const { start, end } = weekDates;
-
-			let query = supabase
-				.from('time_entries')
-				.select(
-					`
-					*,
-					user:profiles!time_entries_user_id_fkey(full_name),
-					project:projects(name),
-					phase:phases(name)
-				`
-				)
-				.eq('org_id', orgId)
-				.gte('start_at', start)
-				.lte('start_at', end);
-
-			if (statusFilter !== 'all') {
-				query = query.eq('status', statusFilter);
-			}
-
-			const { data, error } = await query;
-
-			if (error) throw error;
-			return data || [];
+			const params = new URLSearchParams({
+				period_start: start,
+				period_end: end,
+				status: statusFilter,
+			});
+			const response = await fetch(`/api/approvals/time-entries?${params}`);
+			if (!response.ok) throw new Error('Failed to fetch time entries');
+			const json = await response.json();
+			return json.entries || [];
 		},
+		staleTime: 30 * 1000, // 30 seconds - approvals can change frequently
+		gcTime: 2 * 60 * 1000, // 2 minutes
 	});
 
+	// ✅ PERFORMANCE: Use API routes instead of direct Supabase queries
 	// Fetch ALL cost entries for the period (for summary cards, regardless of statusFilter)
 	const { data: allCostEntries = [] } = useQuery({
 		queryKey: ['cost-approvals-all', orgId, selectedWeek, selectedYear],
 		queryFn: async () => {
 			const { start, end } = weekDates;
 
+			// Fetch all statuses for summary cards
 			const [materialsRes, expensesRes, ataRes] = await Promise.all([
-				supabase
-					.from('materials')
-					.select(
-						`
-						*,
-						user:profiles!materials_user_id_fkey(full_name),
-						project:projects(name)
-					`
-					)
-					.eq('org_id', orgId)
-					.gte('created_at', start)
-					.lte('created_at', end),
-				supabase
-					.from('expenses')
-					.select(
-						`
-						*,
-						user:profiles!expenses_user_id_fkey(full_name),
-						project:projects(name)
-					`
-					)
-					.eq('org_id', orgId)
-					.gte('created_at', start)
-					.lte('created_at', end),
-				supabase
-					.from('ata')
-					.select(
-						`
-						*,
-						user:profiles!ata_created_by_fkey(full_name),
-						project:projects(name)
-					`
-					)
-					.eq('org_id', orgId)
-					.gte('created_at', start)
-					.lte('created_at', end),
+				fetch(`/api/approvals/materials?period_start=${start}&period_end=${end}&status=all`).then(r => r.json()),
+				fetch(`/api/approvals/expenses?period_start=${start}&period_end=${end}&status=all`).then(r => r.json()),
+				fetch(`/api/ata?status=all`).then(r => r.json()),
 			]);
 
-			if (materialsRes.error) throw materialsRes.error;
-			if (expensesRes.error) throw expensesRes.error;
-			if (ataRes.error) throw ataRes.error;
+			// Filter by date range for materials and expenses (API already filters by status)
+			const materials = ((materialsRes.materials || []) as any[])
+				.filter((m: any) => {
+					const created = new Date(m.created_at);
+					return created >= new Date(start) && created <= new Date(end);
+				})
+				.map((m: any) => ({
+					...m,
+					type: 'Material',
+					description: m.description,
+					amount: m.total_sek,
+				}));
 
-			const materials = (materialsRes.data || []).map((m: any) => ({
-				...m,
-				type: 'Material',
-				description: m.description,
-				amount: m.total_sek,
-				user: m.user,
-			}));
+			const expenses = ((expensesRes.expenses || []) as any[])
+				.filter((e: any) => {
+					const expenseDate = new Date(e.date || e.created_at);
+					return expenseDate >= new Date(start) && expenseDate <= new Date(end);
+				})
+				.map((e: any) => ({
+					...e,
+					type: 'Utlägg',
+					description: e.description,
+					amount: e.amount_sek,
+				}));
 
-			const expenses = (expensesRes.data || []).map((e: any) => ({
-				...e,
-				type: 'Utlägg',
-				description: e.description,
-				amount: e.amount_sek,
-			}));
-
-			const ata = (ataRes.data || []).map((a: any) => ({
-				...a,
-				type: 'ÄTA',
-				description: a.title,
-				amount: resolveAtaAmount(a),
-				user: a.user,
-			}));
+			const ata = ((ataRes.ata || []) as any[])
+				.filter((a: any) => {
+					const created = new Date(a.created_at);
+					return created >= new Date(start) && created <= new Date(end);
+				})
+				.map((a: any) => ({
+					...a,
+					type: 'ÄTA',
+					description: a.title,
+					amount: resolveAtaAmount(a),
+				}));
 
 			return [...materials, ...expenses, ...ata];
 		},
+		staleTime: 30 * 1000, // 30 seconds
+		gcTime: 2 * 60 * 1000, // 2 minutes
 	});
 
+	// ✅ PERFORMANCE: Use API routes instead of direct Supabase queries
 	// Fetch filtered cost entries for approval (based on statusFilter)
 	const { data: costEntries = [] } = useQuery({
 		queryKey: ['cost-approvals', orgId, selectedWeek, selectedYear, statusFilter],
 		queryFn: async () => {
 			const { start, end } = weekDates;
 
-			// Build queries based on filter
-			let materialsQuery = supabase
-				.from('materials')
-				.select(
-					`
-					*,
-					user:profiles!materials_user_id_fkey(full_name),
-					project:projects(name)
-				`
-				)
-				.eq('org_id', orgId)
-				.gte('created_at', start)
-				.lte('created_at', end);
+			// Map statusFilter to API status parameter
+			let materialsStatus = statusFilter;
+			let expensesStatus = statusFilter;
+			let ataStatus = statusFilter;
 
-			let expensesQuery = supabase
-				.from('expenses')
-				.select(
-					`
-					*,
-					user:profiles!expenses_user_id_fkey(full_name),
-					project:projects(name)
-				`
-				)
-				.eq('org_id', orgId)
-				.gte('created_at', start)
-				.lte('created_at', end);
-
-			let ataQuery = supabase
-				.from('ata')
-				.select(
-					`
-					*,
-					user:profiles!ata_created_by_fkey(full_name),
-					project:projects(name)
-				`
-				)
-				.eq('org_id', orgId)
-				.gte('created_at', start)
-				.lte('created_at', end);
-
-			// Apply status filter
-			if (statusFilter !== 'all') {
-				if (statusFilter === 'pending') {
-					// For materials and expenses, pending is 'draft' or 'submitted'
-					materialsQuery = materialsQuery.in('status', ['draft', 'submitted']);
-					expensesQuery = expensesQuery.in('status', ['draft', 'submitted']);
-					// For ÄTA, pending is 'submitted'
-					ataQuery = ataQuery.eq('status', 'submitted');
-				} else if (statusFilter === 'draft') {
-					// For materials and expenses, draft is 'draft'
-					materialsQuery = materialsQuery.eq('status', 'draft');
-					expensesQuery = expensesQuery.eq('status', 'draft');
-					// For ÄTA, draft is 'draft'
-					ataQuery = ataQuery.eq('status', 'draft');
-				} else if (statusFilter === 'submitted') {
-					// For materials and expenses, submitted is 'submitted'
-					materialsQuery = materialsQuery.eq('status', 'submitted');
-					expensesQuery = expensesQuery.eq('status', 'submitted');
-					// For ÄTA, submitted maps to 'submitted' (when user submits ÄTA for approval)
-					ataQuery = ataQuery.eq('status', 'submitted');
-				} else {
-					// For other statuses (approved, rejected), apply directly
-					materialsQuery = materialsQuery.eq('status', statusFilter);
-					expensesQuery = expensesQuery.eq('status', statusFilter);
-					ataQuery = ataQuery.eq('status', statusFilter);
-				}
+			if (statusFilter === 'pending') {
+				// For materials and expenses, pending is 'submitted' (API will handle draft+submitted)
+				materialsStatus = 'submitted';
+				expensesStatus = 'submitted';
+				ataStatus = 'submitted';
 			}
 
 			const [materialsRes, expensesRes, ataRes] = await Promise.all([
-				materialsQuery,
-				expensesQuery,
-				ataQuery,
+				fetch(`/api/approvals/materials?period_start=${start}&period_end=${end}&status=${materialsStatus}`).then(r => r.json()),
+				fetch(`/api/approvals/expenses?period_start=${start}&period_end=${end}&status=${expensesStatus}`).then(r => r.json()),
+				fetch(`/api/ata?status=${ataStatus}`).then(r => r.json()),
 			]);
 
-			// Log errors for debugging
-			if (materialsRes.error) {
-				console.error('Error fetching materials:', materialsRes.error);
-			}
-			if (expensesRes.error) {
-				console.error('Error fetching expenses:', expensesRes.error);
-			}
-			if (ataRes.error) {
-				console.error('Error fetching ÄTA:', ataRes.error);
-			}
+			// Filter by date range (API already filters by status)
+			const materials = ((materialsRes.materials || []) as any[])
+				.filter((m: any) => {
+					const created = new Date(m.created_at);
+					return created >= new Date(start) && created <= new Date(end);
+				})
+				.map((m: any) => ({
+					...m,
+					type: 'Material',
+					description: m.description,
+					amount: m.total_sek,
+				}));
 
-			const materials = (materialsRes.data || []).map((m: any) => ({
-				...m,
-				type: 'Material',
-				description: m.description,
-				amount: m.total_sek,
-			}));
+			const expenses = ((expensesRes.expenses || []) as any[])
+				.filter((e: any) => {
+					const expenseDate = new Date(e.date || e.created_at);
+					return expenseDate >= new Date(start) && expenseDate <= new Date(end);
+				})
+				.map((e: any) => ({
+					...e,
+					type: e.category || 'Utgift',
+					description: e.description,
+					amount: e.amount_sek,
+				}));
 
-			const expenses = (expensesRes.data || []).map((e: any) => ({
-				...e,
-				type: e.category || 'Utgift',
-				description: e.description,
-				amount: e.amount_sek,
-			}));
-
-			const ata = (ataRes.data || []).map((a: any) => ({
-				...a,
-				type: 'ÄTA',
-				description: a.title,
-				amount: resolveAtaAmount(a),
-				user: a.user,
-			}));
-
-			// Debug logging
-			if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-				console.log('[Cost Entries Debug]', {
-					statusFilter,
-					materialsCount: materials.length,
-					expensesCount: expenses.length,
-					ataCount: ata.length,
-					ataData: ataRes.data,
-					ataError: ataRes.error,
-				});
-			}
+			const ata = ((ataRes.ata || []) as any[])
+				.filter((a: any) => {
+					const created = new Date(a.created_at);
+					return created >= new Date(start) && created <= new Date(end);
+				})
+				.map((a: any) => ({
+					...a,
+					type: 'ÄTA',
+					description: a.title,
+					amount: resolveAtaAmount(a),
+				}));
 
 			return [...materials, ...expenses, ...ata];
 		},
+		staleTime: 30 * 1000, // 30 seconds
+		gcTime: 2 * 60 * 1000, // 2 minutes
 	});
 
+	// ✅ PERFORMANCE: Add caching for locked periods
 	// Fetch locked periods
 	const { data: lockedPeriods = [], refetch: refetchLockedPeriods } = useQuery({
 		queryKey: ['locked-periods', orgId],
@@ -386,7 +291,14 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 			const { data, error } = await supabase
 				.from('period_locks')
 				.select(`
-					*,
+					id,
+					org_id,
+					period_start,
+					period_end,
+					locked_by,
+					locked_at,
+					created_at,
+					updated_at,
 					locked_by_profile:profiles!period_locks_locked_by_fkey(full_name)
 				`)
 				.eq('org_id', orgId)
@@ -395,6 +307,8 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 			if (error) throw error;
 			return data || [];
 		},
+		staleTime: 1 * 60 * 1000, // 1 minute - locks don't change often
+		gcTime: 5 * 60 * 1000, // 5 minutes
 	});
 
 	// Calculate pending items (draft + submitted = waiting for approval)

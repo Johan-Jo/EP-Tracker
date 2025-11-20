@@ -73,62 +73,113 @@ export async function POST(request: NextRequest) {
 		let finalEmployeeMappings = employeeMappings;
 		let finalWageCodeMappings = wageCodeMappings;
 
-		if (finalEmployeeMappings.length === 0 || finalWageCodeMappings.length === 0) {
-			// Fetch employee mappings
-			const supabaseClient = await createClient();
-			const { data: dbEmployeeMappings } = await supabaseClient
-				.from('fortnox_employee_mappings')
-				.select('person_id, fortnox_employee_id')
-				.eq('org_id', membership.org_id);
-
-			if (dbEmployeeMappings && dbEmployeeMappings.length > 0) {
-				finalEmployeeMappings = dbEmployeeMappings.map((m) => ({
-					person_id: m.person_id,
-					fortnox_employee_id: m.fortnox_employee_id,
-				}));
-			}
-
-			// Fetch wage code mappings
-			const { data: dbWageCodeMappings } = await supabaseClient
-				.from('fortnox_wage_code_mappings')
-				.select('ep_wage_type, fortnox_salary_code')
-				.eq('org_id', membership.org_id)
-				.eq('is_active', true);
-
-			if (dbWageCodeMappings && dbWageCodeMappings.length > 0) {
-				finalWageCodeMappings = dbWageCodeMappings.map((m) => ({
-					ep_wage_type: m.ep_wage_type,
-					fortnox_salary_code: m.fortnox_salary_code,
-				}));
-			}
-		}
-
-		// Validate mappings
-		if (finalEmployeeMappings.length === 0) {
-			return NextResponse.json(
-				{
-					error: 'Inga employee-mappningar hittades. Konfigurera mappning mellan EP-Tracker anställda och Fortnox EmployeeId i inställningar.',
-				},
-				{ status: 400 }
-			);
-		}
-
-		if (finalWageCodeMappings.length === 0) {
-			return NextResponse.json(
-				{
-					error: 'Inga wage code-mappningar hittades. Konfigurera mappning mellan EP-Tracker lönetyper och Fortnox lönearter i inställningar.',
-				},
-				{ status: 400 }
-			);
-		}
-
-		// Get Fortnox connection
+		// Get Fortnox connection (needed for fetching employees)
 		const connection = await getFortnoxConnectionForOrg(membership.org_id);
 		if (!connection) {
 			return NextResponse.json(
 				{ error: 'Fortnox-anslutning saknas. Anslut ditt Fortnox-konto först.' },
 				{ status: 404 }
 			);
+		}
+
+		// Always fetch mappings from database to ensure we have the latest
+		const supabaseClient = await createClient();
+		
+		// Fetch wage code mappings first
+		console.log('[Fortnox Payroll Export] Fetching wage code mappings for org:', membership.org_id);
+		const { data: dbWageCodeMappings, error: wageCodeError } = await supabaseClient
+			.from('fortnox_wage_code_mappings')
+			.select('ep_wage_type, fortnox_salary_code, is_active')
+			.eq('org_id', membership.org_id)
+			.eq('is_active', true);
+
+		if (wageCodeError) {
+			console.error('[Fortnox Payroll Export] Error fetching wage code mappings:', wageCodeError);
+		} else {
+			console.log('[Fortnox Payroll Export] Found wage code mappings:', dbWageCodeMappings?.length || 0);
+		}
+
+		if (dbWageCodeMappings && dbWageCodeMappings.length > 0) {
+			finalWageCodeMappings = dbWageCodeMappings.map((m) => ({
+				ep_wage_type: m.ep_wage_type,
+				fortnox_salary_code: m.fortnox_salary_code,
+			}));
+			console.log('[Fortnox Payroll Export] Wage code mappings:', finalWageCodeMappings);
+		}
+
+		// Declare variables in broader scope for use after payroll_basis fetch
+		const fortnoxByEmail = new Map<string, string>();
+		const fortnoxByPersonalId = new Map<string, string>();
+		const fortnoxEmployeeIds = new Set<string>();
+
+		// Always fetch employee mappings from database (manual mappings)
+		const { data: dbEmployeeMappings } = await supabaseClient
+			.from('fortnox_employee_mappings')
+			.select('person_id, fortnox_employee_id')
+			.eq('org_id', membership.org_id);
+
+		// Always fetch Fortnox employees - needed for validation and auto-matching
+		const { getFortnoxEmployees } = await import('@/lib/integrations/fortnox/client');
+
+		let fortnoxEmployees: any[] = [];
+		try {
+			fortnoxEmployees = await getFortnoxEmployees(connection, 1000);
+		} catch (error) {
+			console.error('[Fortnox Payroll Export] Error fetching Fortnox employees:', error);
+			return NextResponse.json(
+				{
+					error: 'Kunde inte hämta anställda från Fortnox. Kontrollera att Fortnox-anslutningen fungerar.',
+				},
+				{ status: 502 }
+			);
+		}
+
+		// Populate maps for matching (always needed for validation and auto-matching)
+		fortnoxEmployees.forEach(fe => {
+			const employeeId = fe.EmployeeId || '';
+			fortnoxEmployeeIds.add(employeeId);
+			if (fe.Email) {
+				fortnoxByEmail.set(fe.Email.toLowerCase(), employeeId);
+			}
+			if (fe.PersonalIdentityNumber) {
+				// Normalize personal identity number (remove dashes)
+				const normalized = fe.PersonalIdentityNumber.replace(/[-\s]/g, '');
+				fortnoxByPersonalId.set(normalized, employeeId);
+			}
+		});
+
+		// NOTE: Auto-matching will happen AFTER we fetch payroll_basis entries
+		// to only match profiles that are actually in the entries to be exported
+		// This is moved below to after payroll_basisList is fetched
+
+		// Validate mappings
+		console.log('[Fortnox Payroll Export] Validating mappings:', {
+			employeeMappingsCount: finalEmployeeMappings.length,
+			wageCodeMappingsCount: finalWageCodeMappings.length,
+			employeeMappings: finalEmployeeMappings.map(m => ({
+				person_id: m.person_id,
+				fortnox_employee_id: m.fortnox_employee_id,
+			})),
+		});
+
+		// NOTE: Employee mapping validation moved to AFTER payroll_basis entries are fetched
+		// so we can do auto-matching for profiles in the entries to export
+
+		if (finalWageCodeMappings.length === 0) {
+			const errorResponse = {
+				error: 'Inga wage code-mappningar hittades.',
+				message: 'Konfigurera mappning mellan EP-Tracker lönetyper (normal, övertid, OB) och Fortnox lönearter (SalaryCode) i Inställningar > Fortnox > Payroll Mappningar.',
+				code: 'MISSING_WAGE_CODE_MAPPINGS',
+				actionUrl: '/dashboard/settings/fortnox?tab=payroll',
+			};
+			console.log('[Fortnox Payroll Export] Returning 400 - no wage code mappings:', JSON.stringify(errorResponse, null, 2));
+			const response = NextResponse.json(errorResponse, { status: 400 });
+			console.log('[Fortnox Payroll Export] Response created:', {
+				status: response.status,
+				statusText: response.statusText,
+				headers: Object.fromEntries(response.headers.entries()),
+			});
+			return response;
 		}
 
 		// TODO: Verify OAuth scope includes payroll/salary (if there's a way to check)
@@ -154,13 +205,174 @@ export async function POST(request: NextRequest) {
 		}
 
 		if (!payrollBasisList || payrollBasisList.length === 0) {
-			return NextResponse.json(
-				{ error: 'Inga låsta löneunderlag hittades. Lås löneunderlaget först.' },
-				{ status: 400 }
-			);
+			const errorResponse = {
+				error: 'Inga låsta löneunderlag hittades. Lås löneunderlaget först.',
+			};
+			console.log('[Fortnox Payroll Export] Returning 400 - no locked payroll basis:', errorResponse);
+			return NextResponse.json(errorResponse, { status: 400 });
 		}
 
-		// Check if any are already exported
+		console.log('[Fortnox Payroll Export] Found locked payroll basis:', payrollBasisList.length);
+
+		// Now do auto-matching for only the profiles in the payroll_basis entries to be exported
+		// Get unique person_ids from payroll_basis entries
+		const personIdsInPayrollBasis = Array.from(new Set(payrollBasisList.map(pb => pb.person_id).filter(Boolean)));
+		console.log('[Fortnox Payroll Export] Person IDs in payroll basis entries to export:', personIdsInPayrollBasis);
+
+		// First, add direct mappings from database for person_ids in payroll_basis entries
+		if (personIdsInPayrollBasis.length > 0 && dbEmployeeMappings && dbEmployeeMappings.length > 0) {
+			personIdsInPayrollBasis.forEach(personId => {
+				const directMapping = dbEmployeeMappings.find(m => m.person_id === personId);
+				if (directMapping && fortnoxEmployeeIds.has(directMapping.fortnox_employee_id)) {
+					// Only add if not already in finalEmployeeMappings
+					if (!finalEmployeeMappings.find(m => m.person_id === personId)) {
+						finalEmployeeMappings.push({
+							person_id: personId,
+							fortnox_employee_id: directMapping.fortnox_employee_id,
+						});
+						console.log('[Fortnox Payroll Export] Added direct mapping from database:', {
+							person_id: personId,
+							fortnox_employee_id: directMapping.fortnox_employee_id,
+						});
+					}
+				}
+			});
+		}
+
+		// Get person_ids that still need mapping
+		const personIdsNeedingMapping = personIdsInPayrollBasis.filter(personId => 
+			!finalEmployeeMappings.find(m => m.person_id === personId)
+		);
+		console.log('[Fortnox Payroll Export] Person IDs still needing mapping:', personIdsNeedingMapping);
+
+		// Then do auto-matching for profiles that don't have mappings yet
+		if (personIdsNeedingMapping.length > 0) {
+			// Get profiles for these specific person_ids that need mapping
+			const { data: profiles } = await supabaseClient
+				.from('profiles')
+				.select('id, email, full_name')
+				.in('id', personIdsNeedingMapping);
+
+			// Also get employees to use their data for matching (employees have personal_identity_no and employee_no)
+			const { data: epEmployees } = await supabaseClient
+				.from('employees')
+				.select('id, user_id, employee_no, personal_identity_no, email')
+				.eq('org_id', membership.org_id)
+				.eq('is_archived', false)
+				.in('user_id', personIdsNeedingMapping);
+
+			// Create a map from profile_id to employee data for easier lookup
+			const employeesByProfileId = new Map<string, typeof epEmployees[0]>();
+			epEmployees?.forEach(emp => {
+				if (emp.user_id) {
+					employeesByProfileId.set(emp.user_id, emp);
+				}
+			});
+
+			// Auto-match only the profiles in payroll_basis entries to Fortnox employees
+			// We need to match profiles because payroll_basis.person_id refers to profiles.id
+			if (profiles && profiles.length > 0) {
+				profiles.forEach((profile) => {
+					const profileId = profile.id;
+
+					// Get employee data if available (for personal_identity_no and employee_no)
+					const employeeData = employeesByProfileId.get(profileId);
+
+					let matchedFortnoxId: string | undefined;
+
+					// Check direct mapping in fortnox_employee_mappings first
+					const directMapping = dbEmployeeMappings?.find(m => m.person_id === profileId);
+					if (directMapping && fortnoxEmployeeIds.has(directMapping.fortnox_employee_id)) {
+						matchedFortnoxId = directMapping.fortnox_employee_id;
+					}
+					// Match by personal_identity_no (from employee) - most reliable
+					else if (employeeData?.personal_identity_no) {
+						const normalized = employeeData.personal_identity_no.replace(/[-\s]/g, '');
+						if (fortnoxByPersonalId.has(normalized)) {
+							matchedFortnoxId = fortnoxByPersonalId.get(normalized);
+						}
+					}
+					// Match by employee_no (if it matches a Fortnox EmployeeId)
+					else if (employeeData?.employee_no && fortnoxEmployeeIds.has(employeeData.employee_no)) {
+						matchedFortnoxId = employeeData.employee_no;
+					}
+					// Match by email (from profile) - less reliable, use as last resort
+					else if (profile.email && fortnoxByEmail.has(profile.email.toLowerCase())) {
+						matchedFortnoxId = fortnoxByEmail.get(profile.email.toLowerCase());
+					}
+					// Match by email (from employee) - even less reliable
+					else if (employeeData?.email && fortnoxByEmail.has(employeeData.email.toLowerCase())) {
+						matchedFortnoxId = fortnoxByEmail.get(employeeData.email.toLowerCase());
+					}
+
+					if (matchedFortnoxId) {
+						console.log('[Fortnox Payroll Export] Auto-matched employee:', {
+							profile_id: profileId,
+							profile_name: profile.full_name,
+							profile_email: profile.email,
+							employee_no: employeeData?.employee_no,
+							employee_email: employeeData?.email,
+							personal_identity_no: employeeData?.personal_identity_no ? '***' : undefined,
+							matched_fortnox_employee_id: matchedFortnoxId,
+							match_method: directMapping ? 'direct_mapping' : 
+										   (employeeData?.personal_identity_no && fortnoxByPersonalId.has(employeeData.personal_identity_no.replace(/[-\s]/g, ''))) ? 'personal_id' :
+										   (employeeData?.employee_no && fortnoxEmployeeIds.has(employeeData.employee_no)) ? 'employee_no' :
+										   (profile.email && fortnoxByEmail.has(profile.email.toLowerCase())) ? 'profile_email' :
+										   (employeeData?.email && fortnoxByEmail.has(employeeData.email.toLowerCase())) ? 'employee_email' : 'unknown'
+						});
+						finalEmployeeMappings.push({
+							person_id: profileId,
+							fortnox_employee_id: matchedFortnoxId,
+						});
+					}
+				});
+			}
+		}
+
+		// Validate that all person_ids in payroll_basis entries have mappings
+		const personIdsWithMappings = finalEmployeeMappings.map(m => m.person_id);
+		const personIdsMissingMappings = personIdsInPayrollBasis.filter(personId => !personIdsWithMappings.includes(personId));
+
+		if (personIdsMissingMappings.length > 0) {
+			console.log('[Fortnox Payroll Export] Missing mappings for person_ids:', personIdsMissingMappings);
+			const errorResponse = {
+				error: 'Inga employee-mappningar hittades för alla anställda i löneunderlaget.',
+				message: `Saknar mappningar för ${personIdsMissingMappings.length} anställd(a). Importera anställda från Fortnox först eller konfigurera mappningar manuellt i inställningar.`,
+				personIdsMissingMappings,
+			};
+			console.log('[Fortnox Payroll Export] Returning 400 - missing employee mappings:', errorResponse);
+			return NextResponse.json(errorResponse, { status: 400 });
+		}
+
+		console.log('[Fortnox Payroll Export] All person_ids have mappings:', {
+			total: personIdsInPayrollBasis.length,
+			mappings: finalEmployeeMappings.length,
+		});
+
+		// Save auto-matched mappings to database for future use
+		if (finalEmployeeMappings.length > 0) {
+			const mappingsToSave = finalEmployeeMappings.map(m => ({
+				org_id: membership.org_id,
+				person_id: m.person_id,
+				fortnox_employee_id: m.fortnox_employee_id,
+			}));
+
+			// Upsert mappings (don't overwrite existing ones, but add new ones)
+			const { error: saveMappingsError } = await supabase
+				.from('fortnox_employee_mappings')
+				.upsert(mappingsToSave, {
+					onConflict: 'org_id,person_id',
+					ignoreDuplicates: false,
+				});
+
+			if (saveMappingsError) {
+				console.error('[Fortnox Payroll Export] Error saving auto-matched mappings:', saveMappingsError);
+				// Don't fail the export if saving mappings fails
+			} else {
+				console.log('[Fortnox Payroll Export] Saved auto-matched mappings to database:', mappingsToSave.length);
+			}
+		}
+
 		const fetchedIds = payrollBasisList.map((pb) => pb.id);
 		const { data: existingLinks } = await supabase
 			.from('fortnox_payroll_links')
@@ -171,13 +383,12 @@ export async function POST(request: NextRequest) {
 
 		if (existingLinks && existingLinks.length > 0) {
 			const alreadyExportedIds = existingLinks.map((link) => link.payroll_basis_id);
-			return NextResponse.json(
-				{
-					error: 'Några löneunderlag är redan exporterade till Fortnox',
-					alreadyExportedIds,
-				},
-				{ status: 400 }
-			);
+			const errorResponse = {
+				error: 'Några löneunderlag är redan exporterade till Fortnox',
+				alreadyExportedIds,
+			};
+			console.log('[Fortnox Payroll Export] Returning 400 - already exported:', errorResponse);
+			return NextResponse.json(errorResponse, { status: 400 });
 		}
 
 		// Build options for export
@@ -215,13 +426,13 @@ export async function POST(request: NextRequest) {
 
 		// Check validation errors
 		if (validationErrors.length > 0) {
-			return NextResponse.json(
-				{
-					error: 'Valideringsfel',
-					details: validationErrors,
-				},
-				{ status: 400 }
-			);
+			const errorResponse = {
+				error: 'Valideringsfel',
+				message: `Valideringsfel vid export: ${validationErrors.map((e: any) => e.message || e).join(', ')}`,
+				details: validationErrors,
+			};
+			console.log('[Fortnox Payroll Export] Returning 400 - validation errors:', JSON.stringify(errorResponse, null, 2));
+			return NextResponse.json(errorResponse, { status: 400 });
 		}
 
 		// Check if we have any transactions to export

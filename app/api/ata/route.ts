@@ -15,10 +15,35 @@ export async function GET(request: NextRequest) {
 	const projectId = searchParams.get('project_id');
 	const statusFilter = searchParams.get('status');
 
+	// ✅ PERFORMANCE: Select specific columns instead of *
 	let query = supabase
 		.from('ata')
 		.select(`
-			*,
+			id,
+			org_id,
+			project_id,
+			created_by,
+			ata_number,
+			title,
+			description,
+			qty,
+			unit,
+			unit_price_sek,
+			total_sek,
+			status,
+			approved_by,
+			approved_at,
+			signature_name,
+			signature_timestamp,
+			created_at,
+			updated_at,
+			signed_by_name,
+			signed_at,
+			approved_by_name,
+			billing_type,
+			fixed_amount_sek,
+			materials_amount_sek,
+			materials_sek,
 			project:projects(name, project_number),
 			created_by_profile:profiles!ata_created_by_fkey(full_name),
 			approved_by_profile:profiles!ata_approved_by_fkey(full_name)

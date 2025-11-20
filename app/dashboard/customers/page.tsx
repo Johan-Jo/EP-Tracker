@@ -46,10 +46,11 @@ export default async function CustomersPage(props: PageProps) {
 		? searchParams.includeArchived === 'true' 
 		: false;
 
+	// ✅ PERFORMANCE: Select specific columns instead of *
 	// Build query
 	let query = supabase
 		.from('customers')
-		.select('*')
+		.select('id, org_id, customer_no, type, company_name, org_no, first_name, last_name, personal_identity_no, is_archived, created_at, updated_at')
 		.eq('org_id', membership.org_id)
 		.order('created_at', { ascending: false });
 

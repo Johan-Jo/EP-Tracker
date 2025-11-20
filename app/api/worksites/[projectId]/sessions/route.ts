@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth/get-session';
 import { z } from 'zod';
 import { resolveRouteParams, type RouteContext } from '@/lib/utils/route-params';
 
@@ -56,26 +57,19 @@ export async function GET(req: NextRequest, context: RouteContext<RouteParams>) 
         const fromISO = normalizeFrom(from);
         const toISO = normalizeTo(to);
 
-		const supabase = await createClient();
-		const { data: { user }, error: authError } = await supabase.auth.getUser();
-		if (authError || !user) {
+		// ✅ PERFORMANCE: Use cached session instead of separate queries
+		const { user, membership } = await getSession();
+		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const { data: membership } = await supabase
-			.from('memberships')
-			.select('org_id, role')
-			.eq('user_id', user.id)
-			.eq('is_active', true)
-			.single();
-		if (!membership) {
-			return NextResponse.json({ error: 'No active organization membership' }, { status: 403 });
-		}
+		const supabase = await createClient();
 
+		// ✅ PERFORMANCE: Select only needed columns (removed projects join as it's not used)
 		// EPIC 32: Use attendance_session as source
 		let query = supabase
 			.from('attendance_session')
-			.select('id, person_id, project_id, check_in_ts, check_out_ts, corrected, immutable_hash, profiles:person_id(full_name), projects:project_id(name)')
+			.select('id, person_id, project_id, check_in_ts, check_out_ts, corrected, immutable_hash, profiles:person_id(full_name)')
 			.eq('project_id', resolvedParams.projectId)
 			.eq('org_id', membership.org_id)
 			.order('check_in_ts', { ascending: true })
@@ -89,7 +83,7 @@ export async function GET(req: NextRequest, context: RouteContext<RouteParams>) 
 			return NextResponse.json({ error: error.message }, { status: 500 });
 		}
 
-		// Map to a minimal session-like structure
+		// ✅ PERFORMANCE: Map to minimal session structure (removed unused project_name)
 		const sessions = (entries || []).map(e => ({
 			id: (e as any).id,
 			person_id: (e as any).person_id,
@@ -97,7 +91,6 @@ export async function GET(req: NextRequest, context: RouteContext<RouteParams>) 
 			check_in_ts: (e as any).check_in_ts,
 			check_out_ts: (e as any).check_out_ts,
 			name: (e as any).profiles?.full_name ?? null,
-			project_name: (e as any).projects?.name ?? null,
 			source_first: 'session',
 			source_last: 'session',
 			corrected: (e as any).corrected ?? false,

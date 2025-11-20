@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Search, User, Archive } from 'lucide-react';
+import { Plus, Search, User, Archive, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { FortnoxIntegrationSteps } from '@/components/employees/fortnox-integration-steps';
 import { toast } from 'sonner';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 
 interface EmployeesClientProps {
 	employees: Employee[];
@@ -19,6 +20,7 @@ interface EmployeesClientProps {
 	hasFortnoxConnection: boolean;
 	hasPayrollScope?: boolean;
 	orgId: string;
+	fortnoxMappings?: Map<string, string>; // Map: employee.id -> fortnox_employee_id
 }
 
 export default function EmployeesClient({ 
@@ -29,6 +31,7 @@ export default function EmployeesClient({
 	hasFortnoxConnection,
 	hasPayrollScope,
 	orgId,
+	fortnoxMappings = new Map<string, string>(),
 }: EmployeesClientProps) {
 	const router = useRouter();
 	const pathname = usePathname();
@@ -82,9 +85,18 @@ export default function EmployeesClient({
 
   const getEmployeeSubtitle = (employee: Employee) => {
     const parts: string[] = [];
+    
+    // Always show internal employee_no if it exists
     if (employee.employee_no) {
       parts.push(`Personalnr: ${employee.employee_no}`);
     }
+    
+    // Show Fortnox EmployeeId separately if it exists and differs from internal number
+    const fortnoxEmployeeId = fortnoxMappings.get(employee.id);
+    if (fortnoxEmployeeId && fortnoxEmployeeId !== employee.employee_no) {
+      parts.push(`Fortnox ID: ${fortnoxEmployeeId}`);
+    }
+    
     if (employee.employment_type) {
       const typeLabels: Record<string, string> = {
         FULL_TIME: 'Heltid',
@@ -383,12 +395,20 @@ export default function EmployeesClient({
                           <User className="h-5 w-5" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h4 className="mb-1 truncate text-lg font-semibold text-foreground">
-                            {displayName}
-                            {employee.is_archived && (
-                              <span className="ml-2 text-xs text-muted-foreground">(Arkiverad)</span>
+                          <div className="mb-1 flex items-center gap-2 flex-wrap">
+                            <h4 className="truncate text-lg font-semibold text-foreground">
+                              {displayName}
+                              {employee.is_archived && (
+                                <span className="ml-2 text-xs text-muted-foreground">(Arkiverad)</span>
+                              )}
+                            </h4>
+                            {hasFortnoxConnection && fortnoxMappings.has(employee.id) && (
+                              <Badge variant="outline" className="flex items-center gap-1 text-xs shrink-0">
+                                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                <span>Fortnox-lön</span>
+                              </Badge>
                             )}
-                          </h4>
+                          </div>
                           {subtitle && (
                             <p className="text-sm text-muted-foreground">{subtitle}</p>
                           )}

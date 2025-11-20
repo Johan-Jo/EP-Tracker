@@ -107,9 +107,10 @@ interface FortnoxErrorResponse {
 export async function getFortnoxConnectionForOrg(orgId: string): Promise<FortnoxConnection | null> {
 	const supabase = await createClient();
 
+	// ✅ PERFORMANCE: Select specific columns instead of *
 	const { data, error } = await supabase
 		.from('fortnox_connections')
-		.select('*')
+		.select('id, org_id, access_token, refresh_token, access_token_expires_at, scopes, created_at, updated_at')
 		.eq('org_id', orgId)
 		.single();
 
@@ -686,6 +687,8 @@ export async function createFortnoxSalaryTransaction(
 
 	console.log('[Fortnox Client] Sending salary transaction to Fortnox API');
 	console.log('[Fortnox Client] Payload keys:', Object.keys(payload as any));
+	const payloadObj = payload as { EmployeeId?: string; Date?: string; SalaryCode?: string; [key: string]: unknown };
+	console.log('[Fortnox Client] EmployeeId in payload:', payloadObj.EmployeeId);
 
 	const payloadStr = JSON.stringify(wrappedPayload);
 
@@ -768,6 +771,8 @@ export async function createFortnoxAttendanceTransaction(
 
 	console.log('[Fortnox Client] Sending attendance transaction to Fortnox API');
 	console.log('[Fortnox Client] Payload keys:', Object.keys(payload as any));
+	const payloadObj = payload as { EmployeeId?: string; Date?: string; CauseCode?: string; [key: string]: unknown };
+	console.log('[Fortnox Client] EmployeeId in payload:', payloadObj.EmployeeId);
 
 	const payloadStr = JSON.stringify(wrappedPayload);
 

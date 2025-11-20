@@ -55,14 +55,33 @@ export async function GET(request: NextRequest) {
 
 		const supabase = await createClient();
 
+		// ✅ PERFORMANCE: Select specific columns instead of * and use JOIN for export status
 		// Build query for payroll_basis
 		// Find records where period overlaps with requested period:
 		// period_start <= periodEnd AND period_end >= periodStart
 		let query = supabase
 			.from('payroll_basis')
 			.select(`
-				*,
-				person:profiles!payroll_basis_person_id_fkey(id, full_name, email)
+				id,
+				org_id,
+				person_id,
+				period_start,
+				period_end,
+				hours_norm,
+				hours_overtime,
+				ob_hours,
+				ob_hours_actual,
+				ob_hours_multiplier,
+				break_hours,
+				total_hours,
+				gross_salary_sek,
+				locked,
+				locked_by,
+				locked_at,
+				created_at,
+				updated_at,
+				person:profiles!payroll_basis_person_id_fkey(id, full_name, email),
+				fortnox_payroll_links:fortnox_payroll_links!fortnox_payroll_links_payroll_basis_id_fkey(status, exported_at)
 			`)
 			.eq('org_id', membership.org_id)
 			.lte('period_start', periodEnd)
@@ -93,37 +112,37 @@ export async function GET(request: NextRequest) {
 			}, 500);
 		}
 
-		// Fetch Fortnox export status for payroll basis entries
-		const payrollBasisIds = (payrollBasis || []).map((pb: { id: string }) => pb.id);
-		let exportStatusMap: Record<string, { status: string; exported_at?: string }> = {};
-
-		if (payrollBasisIds.length > 0) {
-			const { data: exportLinks } = await supabase
-				.from('fortnox_payroll_links')
-				.select('payroll_basis_id, status, exported_at')
-				.in('payroll_basis_id', payrollBasisIds)
-				.eq('org_id', membership.org_id);
-
-			if (exportLinks) {
-				exportStatusMap = exportLinks.reduce(
-					(acc, link) => ({
-						...acc,
-						[link.payroll_basis_id]: {
-							status: link.status,
-							exported_at: link.exported_at,
-						},
-					}),
-					{}
-				);
-			}
-		}
-
+		// ✅ PERFORMANCE: Extract export status from joined data instead of separate query
 		// Add export status to each payroll basis entry
-		const payrollBasisWithExportStatus = (payrollBasis || []).map((pb: { id: string }) => ({
-			...pb,
-			fortnox_export_status: exportStatusMap[pb.id]?.status || null,
-			fortnox_exported_at: exportStatusMap[pb.id]?.exported_at || null,
-		}));
+		const payrollBasisWithExportStatus = (payrollBasis || []).map((pb: any) => {
+			const exportLink = Array.isArray(pb.fortnox_payroll_links) && pb.fortnox_payroll_links.length > 0
+				? pb.fortnox_payroll_links[0]
+				: null;
+			
+			return {
+				id: pb.id,
+				org_id: pb.org_id,
+				person_id: pb.person_id,
+				period_start: pb.period_start,
+				period_end: pb.period_end,
+				hours_norm: pb.hours_norm,
+				hours_overtime: pb.hours_overtime,
+				ob_hours: pb.ob_hours,
+				ob_hours_actual: pb.ob_hours_actual,
+				ob_hours_multiplier: pb.ob_hours_multiplier,
+				break_hours: pb.break_hours,
+				total_hours: pb.total_hours,
+				gross_salary_sek: pb.gross_salary_sek,
+				locked: pb.locked,
+				locked_by: pb.locked_by,
+				locked_at: pb.locked_at,
+				created_at: pb.created_at,
+				updated_at: pb.updated_at,
+				person: pb.person,
+				fortnox_export_status: exportLink?.status || null,
+				fortnox_exported_at: exportLink?.exported_at || null,
+			};
+		});
 
 		return respond({ payroll_basis: payrollBasisWithExportStatus });
 	} catch (error) {

@@ -47,10 +47,11 @@ export default async function SubcontractorsPage(props: PageProps) {
 			? searchParams.includeArchived === 'true'
 			: false;
 
+	// ✅ PERFORMANCE: Select specific columns instead of *
 	// Build query
 	let query = supabase
 		.from('subcontractors')
-		.select('*')
+		.select('id, org_id, subcontractor_no, company_name, org_no, email, phone_mobile, phone_work, is_archived, user_id, created_at, updated_at')
 		.eq('org_id', membership.org_id)
 		.order('created_at', { ascending: false });
 

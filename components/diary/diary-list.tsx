@@ -45,43 +45,54 @@ const weatherEmojis: Record<string, string> = {
 export function DiaryList({ projectId, orgId }: DiaryListProps) {
 	const supabase = createClient();
 
-	const { data: diaryEntries, isLoading } = useQuery({
-		queryKey: ['diary', orgId, projectId],
-		queryFn: async () => {
-			// Optimized: Single query with photo count aggregation
-			let query = supabase
-				.from('diary_entries')
-                .select(`
-                    *,
-                    project:projects(name, project_number),
-                    diary_photos(id)
-                `)
-				.eq('org_id', orgId)
-				.order('date', { ascending: false });
+		// ✅ PERFORMANCE: Use API route instead of direct Supabase query for consistency
+		const { data: diaryEntries, isLoading } = useQuery({
+			queryKey: ['diary', orgId, projectId],
+			queryFn: async () => {
+				const url = projectId 
+					? `/api/diary?project_id=${projectId}` 
+					: '/api/diary';
+				
+				const res = await fetch(url);
+				if (!res.ok) {
+					const j = await res.json().catch(() => ({}));
+					throw new Error(j.error || 'Kunde inte hämta dagboksposter');
+				}
+				
+				const j = await res.json();
+				const entries = j.diary || [];
+				
+				// ✅ PERFORMANCE: Batch query for photo counts instead of N+1
+				if (entries.length > 0) {
+					const entryIds = entries.map((e: any) => e.id);
+					const { data: allPhotos } = await supabase
+						.from('diary_photos')
+						.select('diary_entry_id, id')
+						.in('diary_entry_id', entryIds);
+					
+					// Group photos by entry_id for O(1) lookup
+					const photosByEntry = (allPhotos || []).reduce((acc: any, photo: any) => {
+						if (!acc[photo.diary_entry_id]) {
+							acc[photo.diary_entry_id] = [];
+						}
+						acc[photo.diary_entry_id].push(photo);
+						return acc;
+					}, {});
+					
+					// Map entries with photo counts
+					return entries.map((entry: any) => ({
+						...entry,
+						_count: { 
+							photos: photosByEntry[entry.id]?.length || 0 
+						},
+					}));
+				}
 
-			if (projectId) {
-				query = query.eq('project_id', projectId);
-			}
-
-			const { data, error } = await query;
-
-			if (error) throw error;
-
-			// Count photos from the joined data (no extra queries!)
-			const entriesWithPhotos = (data || []).map((entry: any) => ({
-				...entry,
-				_count: { 
-					photos: entry.diary_photos?.length || 0 
-				},
-				// Remove the raw diary_photos array to clean up the response
-				diary_photos: undefined,
-			}));
-
-			return entriesWithPhotos as DiaryEntry[];
-		},
-		staleTime: 2 * 60 * 1000,  // 2 minutes (diary entries don't change often)
-		gcTime: 5 * 60 * 1000,      // 5 minutes
-	});
+				return entries;
+			},
+			staleTime: 2 * 60 * 1000,  // 2 minutes (diary entries don't change often)
+			gcTime: 5 * 60 * 1000,      // 5 minutes
+		});
 
 	if (isLoading) {
 		return (

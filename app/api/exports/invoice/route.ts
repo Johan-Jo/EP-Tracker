@@ -38,10 +38,11 @@ export async function GET(request: NextRequest) {
 
         const supabase = await createClient();
 
+        // ✅ PERFORMANCE: Select specific columns instead of *
         // Fetch locked invoice_basis record (export requires locked invoice basis)
         const { data: invoiceBasis, error: invoiceBasisError } = await supabase
             .from('invoice_basis')
-            .select('*')
+            .select('id, org_id, project_id, period_start, period_end, locked, lines_json, invoice_number, created_at, updated_at')
             .eq('org_id', membership.org_id)
             .eq('project_id', projectId)
             .eq('period_start', periodStart)

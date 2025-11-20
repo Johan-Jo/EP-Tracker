@@ -1,31 +1,30 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth/get-session';
 import { OrganizationPageNew } from '@/components/settings/organization-page-new';
 
 export default async function OrganizationSettingsPage() {
-	const supabase = await createClient();
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
+	const { user, membership } = await getSession();
 
 	if (!user) {
 		redirect('/sign-in');
 	}
 
-	// Get user's organization (first one for now)
-	const { data: membership } = await supabase
-		.from('memberships')
-		.select('org_id, role, organizations(*)')
-		.eq('user_id', user.id)
-		.eq('is_active', true)
-		.single();
-
-	// Only admin can manage organization - redirect others
 	if (!membership || membership.role !== 'admin') {
 		redirect('/dashboard');
 	}
 
-	const organization = membership.organizations as any;
+	const supabase = await createClient();
+	// ✅ PERFORMANCE: Select specific columns instead of *
+	const { data: organization } = await supabase
+		.from('organizations')
+		.select('id, name, org_number, phone, address, postal_code, city, vat_registered, vat_number, default_vat_rate, default_work_day_start, default_work_day_end, standard_work_hours_per_day, standard_breaks, bankgiro, plusgiro, iban, bic, logo_url, created_at')
+		.eq('id', membership.org_id)
+		.single();
+
+	if (!organization) {
+		redirect('/dashboard');
+	}
 
 	return (
 		<OrganizationPageNew

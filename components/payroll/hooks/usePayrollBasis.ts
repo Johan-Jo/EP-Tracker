@@ -24,6 +24,7 @@ export type PayrollBasisEntry = {
 };
 
 export function usePayrollBasis(orgId: string, start: string, end: string) {
+	// ✅ PERFORMANCE: Improved caching for payroll data
 	const query = useQuery<PayrollBasisEntry[]>({
 		queryKey: ['payroll-basis', orgId, start, end],
 		queryFn: async () => {
@@ -34,7 +35,9 @@ export function usePayrollBasis(orgId: string, start: string, end: string) {
 			const data = await response.json();
 			return data.payroll_basis || [];
 		},
-		staleTime: 30_000,
+		staleTime: 2 * 60 * 1000, // 2 minutes - payroll data doesn't change constantly
+		gcTime: 5 * 60 * 1000, // 5 minutes
+		refetchOnMount: false, // Don't refetch on mount if data is fresh
 	});
 
 	const refresh = async () => {

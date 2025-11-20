@@ -16,6 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import {
 	Select,
 	SelectContent,
@@ -62,7 +63,32 @@ const formatDate = (value: string) => new Date(value).toLocaleDateString('sv-SE'
 
 const formatDateRange = (start: string, end: string) => `${formatDate(start)} – ${formatDate(end)}`;
 
-export function PayrollBasisPage({ orgId }: { orgId: string }) {
+type ExportStatusMap = Map<
+	string,
+	{ status: string; exported_at: string | null; error_message: string | null }
+>;
+
+type PayrollBasisPageProps = {
+	orgId: string;
+	hasFortnoxConnection?: boolean;
+	hasPayrollScope?: boolean;
+	exportStatusMap?: ExportStatusMap;
+};
+
+export function PayrollBasisPage({
+	orgId,
+	hasFortnoxConnection = false,
+	hasPayrollScope = false,
+	exportStatusMap = new Map(),
+}: PayrollBasisPageProps) {
+	// Log when component mounts/renders
+	console.log('[PayrollBasisPage] Component rendered with props:', {
+		orgId,
+		hasFortnoxConnection,
+		hasPayrollScope,
+		exportStatusMapSize: exportStatusMap.size,
+	});
+
 	const makeStart = () => {
 		const date = new Date();
 		return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
@@ -80,12 +106,35 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 	const [searchTerm, setSearchTerm] = useState('');
 	const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
 	const [selected, setSelected] = useState<Record<string, boolean>>({});
+	const [isExportingToFortnox, setIsExportingToFortnox] = useState(false);
+	const [fortnoxExportProgress, setFortnoxExportProgress] = useState<{
+		current: number;
+		total: number;
+		status: 'idle' | 'exporting' | 'complete' | 'error';
+		message?: string;
+	}>({
+		current: 0,
+		total: 0,
+		status: 'idle',
+	});
 
 	const { data = [], isLoading, error, refetch, refresh, lock, exportFile } = usePayrollBasis(
 		orgId,
 		period.start,
 		period.end,
 	);
+
+	// Log when component mounts/updates
+	useEffect(() => {
+		console.log('[PayrollBasisPage] Component mounted/updated:', {
+			orgId,
+			hasFortnoxConnection,
+			hasPayrollScope,
+			dataLength: data.length,
+			isLoading,
+			exportStatusMapSize: exportStatusMap.size,
+		});
+	}, [orgId, hasFortnoxConnection, hasPayrollScope, data.length, isLoading, exportStatusMap.size]);
 
 	useEffect(() => {
 		setSelected((prev) => {
@@ -226,6 +275,289 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 		}
 	};
 
+	const handleExportFortnox = async (scope: 'all' | 'locked' | 'selected') => {
+		console.log('[Fortnox Export UI] ==========================================');
+		console.log('[Fortnox Export UI] handleExportFortnox CALLED with scope:', scope);
+		console.log('[Fortnox Export UI] Current state:', {
+			hasFortnoxConnection,
+			hasPayrollScope,
+			dataLength: data.length,
+			selectedIdsCount: selectedIds.length,
+		});
+
+		if (!hasFortnoxConnection || !hasPayrollScope) {
+			console.warn('[Fortnox Export UI] Missing connection or scope - aborting');
+			toast.error('Fortnox-anslutning saknas eller saknar lönebehörighet. Kontrollera inställningar.');
+			return;
+		}
+
+		// Determine which payroll basis IDs to export
+		let idsToExport: string[] = [];
+		if (scope === 'selected') {
+			if (selectedIds.length === 0) {
+				console.warn('[Fortnox Export UI] No selected entries - aborting');
+				toast.warning('Markera poster att exportera');
+				return;
+			}
+			idsToExport = selectedIds;
+			console.log('[Fortnox Export UI] Selected scope - using selectedIds:', selectedIds);
+		} else if (scope === 'locked') {
+			idsToExport = data.filter((entry) => entry.locked).map((entry) => entry.id);
+			console.log('[Fortnox Export UI] Locked scope - found locked entries:', idsToExport);
+		} else {
+			idsToExport = data.map((entry) => entry.id);
+			console.log('[Fortnox Export UI] All scope - using all entries:', idsToExport);
+		}
+
+		if (idsToExport.length === 0) {
+			console.warn('[Fortnox Export UI] No entries to export - aborting');
+			toast.warning('Inga poster att exportera');
+			return;
+		}
+
+		// Only export locked entries
+		const lockedIds = idsToExport.filter((id) => {
+			const entry = data.find((e) => e.id === id);
+			return entry?.locked;
+		});
+
+		console.log('[Fortnox Export UI] Filtered to locked entries:', {
+			totalIds: idsToExport.length,
+			lockedIds: lockedIds.length,
+			lockedIdsList: lockedIds,
+		});
+
+		if (lockedIds.length === 0) {
+			console.warn('[Fortnox Export UI] No locked entries - aborting');
+			toast.error('Inga låsta poster att exportera. Lås löneunderlaget först.');
+			return;
+		}
+
+		if (lockedIds.length < idsToExport.length) {
+			toast.warning(
+				`${idsToExport.length - lockedIds.length} poster är inte låsta och exporteras inte.`,
+			);
+		}
+
+		setIsExportingToFortnox(true);
+		setFortnoxExportProgress({
+			current: 0,
+			total: lockedIds.length,
+			status: 'exporting',
+			message: 'Förbereder export...',
+		});
+		
+		let errorResult: { code?: string; message?: string; actionUrl?: string } | null = null;
+
+		console.log('[Fortnox Export UI] Starting export for payroll basis IDs:', lockedIds);
+
+		try {
+			// Update progress to show we're sending request
+			setFortnoxExportProgress({
+				current: 0,
+				total: lockedIds.length,
+				status: 'exporting',
+				message: 'Skickar data till Fortnox...',
+			});
+			const response = await fetch('/api/integrations/fortnox/export-payroll', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					payrollBasisIds: lockedIds,
+				}),
+			});
+
+			// Read response as JSON (following pattern from offline-queue.ts:148 and other components)
+			// Use .catch() pattern to handle JSON parsing errors gracefully
+			const result = await response.json().catch(() => ({ 
+				error: 'Kunde inte tolka svar från server',
+				message: `Server returnerade ogiltig JSON. Status: ${response.status}` 
+			}));
+
+			// Log detailed info about result
+			console.log('[Fortnox Export UI] ==========================================');
+			console.log('[Fortnox Export UI] Response status:', response.status, response.statusText);
+			console.log('[Fortnox Export UI] Result (direct):', result);
+			console.log('[Fortnox Export UI] Result type:', typeof result);
+			console.log('[Fortnox Export UI] Result is array:', Array.isArray(result));
+			console.log('[Fortnox Export UI] Result keys:', Object.keys(result || {}));
+			console.log('[Fortnox Export UI] Result JSON stringified:', JSON.stringify(result));
+			console.log('[Fortnox Export UI] Result has error prop:', 'error' in (result || {}));
+			console.log('[Fortnox Export UI] Result has message prop:', 'message' in (result || {}));
+			console.log('[Fortnox Export UI] Result.error:', result?.error);
+			console.log('[Fortnox Export UI] Result.message:', result?.message);
+			console.log('[Fortnox Export UI] ==========================================');
+
+			if (!response.ok) {
+				// Store error details before throwing (so catch block can access details array)
+				errorResult = result;
+				
+				// Extract error message following pattern from other components (e.g. diary-form.tsx:111-112)
+				// For validation errors, include details in the message
+				let errorMessage =
+					result?.error ||
+					result?.message ||
+					`Export misslyckades: ${response.status} ${response.statusText}`;
+
+				// If it's a validation error with details, format the message better
+				if (result?.error === 'Valideringsfel' && result?.details && Array.isArray(result.details) && result.details.length > 0) {
+					const validationDetails = result.details as Array<{ field?: string; message?: string }>;
+					const validationMessages = validationDetails
+						.map((detail) => detail.message || detail.field || 'Okänt valideringsfel')
+						.join('; ');
+					errorMessage = `Valideringsfel: ${validationMessages}`;
+				}
+
+				console.error('[Fortnox Export UI] Export failed:', {
+					status: response.status,
+					statusText: response.statusText,
+					result,
+					resultType: typeof result,
+					resultKeys: Object.keys(result || {}),
+					resultStringified: JSON.stringify(result),
+					errorMessage,
+				});
+
+				throw new Error(errorMessage);
+			}
+
+			if (result.status === 'error') {
+				errorResult = result;
+				console.error('[Fortnox Export UI] Export returned error status:', result);
+				throw new Error(result.message || 'Export misslyckades');
+			}
+
+			// Success
+			const successCount = result.successCount || 0;
+			const failureCount = result.failureCount || 0;
+
+			console.log('[Fortnox Export UI] Export success:', {
+				successCount,
+				failureCount,
+				transactionIds: result.transactionIds,
+				details: result.details,
+			});
+
+			// Update progress to complete
+			setFortnoxExportProgress({
+				current: lockedIds.length,
+				total: lockedIds.length,
+				status: failureCount > 0 ? 'complete' : 'complete',
+				message: failureCount > 0
+					? `Export klar: ${successCount} lyckades, ${failureCount} misslyckades`
+					: `Export klar: ${successCount} transaktioner exporterade`,
+			});
+
+			if (failureCount > 0) {
+				toast.warning(
+					`Export delvis klar: ${successCount} lyckades, ${failureCount} misslyckades.`,
+				);
+			} else {
+				toast.success(`Exporterade ${successCount} transaktioner till Fortnox`);
+			}
+
+			// Refresh data to show updated export status
+			await refetch();
+			
+			// Reset progress after a delay
+			setTimeout(() => {
+				setFortnoxExportProgress({
+					current: 0,
+					total: 0,
+					status: 'idle',
+				});
+			}, 3000);
+		} catch (err) {
+			console.error('[Fortnox Export UI] Catch block - Error:', err);
+			console.error('[Fortnox Export UI] Error details:', {
+				error: err,
+				errorResult,
+				errorMessage: err instanceof Error ? err.message : 'Okänt fel',
+			});
+
+			// Update progress to error
+			setFortnoxExportProgress({
+				current: 0,
+				total: lockedIds.length,
+				status: 'error',
+				message: err instanceof Error ? err.message : 'Export misslyckades',
+			});
+
+			let errorMessage = err instanceof Error ? err.message : 'Okänt fel vid export';
+			let actionUrl: string | undefined;
+
+			// Handle validation errors with details
+			if (errorResult?.error === 'Valideringsfel' && errorResult?.details && Array.isArray(errorResult.details) && errorResult.details.length > 0) {
+				const validationDetails = errorResult.details as Array<{ field?: string; message?: string; value?: unknown }>;
+				const validationMessages = validationDetails
+					.map((detail) => detail.message || detail.field || 'Okänt valideringsfel')
+					.join('\n');
+				errorMessage = `Valideringsfel:\n${validationMessages}`;
+				
+				console.log('[Fortnox Export UI] Validation errors:', validationDetails);
+				
+				// Show detailed error with all validation issues
+				toast.error(errorMessage, {
+					duration: 15000,
+				});
+				return;
+			}
+
+			// Extract error details from the result
+			if (errorResult?.code === 'MISSING_WAGE_CODE_MAPPINGS' && errorResult?.actionUrl) {
+				actionUrl = errorResult.actionUrl;
+				errorMessage =
+					errorResult.message ||
+					'Konfigurera lönearter-mappningar i Inställningar > Fortnox > Payroll Mappningar för att kunna exportera.';
+				console.log('[Fortnox Export UI] Missing wage code mappings error detected:', {
+					code: errorResult.code,
+					actionUrl,
+					message: errorMessage,
+				});
+			} else if (errorResult?.actionUrl) {
+				actionUrl = errorResult.actionUrl;
+				console.log('[Fortnox Export UI] Error with action URL:', actionUrl);
+			}
+
+			// Check if it's a missing mappings error and provide helpful message
+			if (
+				err instanceof Error &&
+				(errorMessage.includes('wage code-mappningar') ||
+					errorMessage.includes('wage code-mappningar') ||
+					actionUrl?.includes('tab=payroll'))
+			) {
+				toast.error(errorMessage, {
+					action: actionUrl
+						? {
+								label: 'Öppna inställningar',
+								onClick: () => {
+									window.location.href = actionUrl || '/dashboard/settings/fortnox?tab=payroll';
+								},
+						  }
+						: undefined,
+					duration: 10000,
+				});
+			} else if (err instanceof Error && errorMessage.includes('employee-mappningar')) {
+				errorMessage =
+					'Importera anställda från Fortnox först, eller konfigurera mappningar manuellt i Inställningar > Fortnox.';
+				toast.error(errorMessage, {
+					action: {
+						label: 'Öppna inställningar',
+						onClick: () => {
+							window.location.href = actionUrl || '/dashboard/settings/fortnox';
+						},
+					},
+					duration: 10000,
+				});
+			} else {
+				toast.error(errorMessage);
+			}
+		} finally {
+			setIsExportingToFortnox(false);
+			// Don't reset progress here - let it show for a bit before resetting
+		}
+	};
+
 	const toggleAllFiltered = (checked: boolean) => {
 		setSelected((prev) => {
 			if (checked) {
@@ -297,6 +629,51 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 					<TabsContent value='basis' className='space-y-6'>
 						<StepBand steps={steps} />
 
+						{/* Fortnox Export Progress Bar */}
+						{fortnoxExportProgress.status !== 'idle' && (
+							<Card>
+								<CardContent className='pt-6'>
+									<div className='space-y-2'>
+										<div className='flex items-center justify-between text-sm'>
+											<span className='font-medium'>
+												{fortnoxExportProgress.status === 'exporting' && 'Exporterar till Fortnox...'}
+												{fortnoxExportProgress.status === 'complete' && 'Export till Fortnox klar'}
+												{fortnoxExportProgress.status === 'error' && 'Export till Fortnox misslyckades'}
+											</span>
+											<span className='text-muted-foreground'>
+												{fortnoxExportProgress.status === 'exporting' && (
+													`${fortnoxExportProgress.current}/${fortnoxExportProgress.total}`
+												)}
+												{fortnoxExportProgress.status === 'complete' && (
+													`${fortnoxExportProgress.current}/${fortnoxExportProgress.total}`
+												)}
+												{fortnoxExportProgress.status === 'error' && 'Fel'}
+											</span>
+										</div>
+										<Progress
+											value={
+												fortnoxExportProgress.status === 'exporting'
+													? (fortnoxExportProgress.current / Math.max(fortnoxExportProgress.total, 1)) * 100
+													: fortnoxExportProgress.status === 'complete'
+														? 100
+														: 0
+											}
+											className={
+												fortnoxExportProgress.status === 'error'
+													? 'bg-destructive/20'
+													: fortnoxExportProgress.status === 'complete'
+														? 'bg-emerald-500/20'
+														: ''
+											}
+										/>
+										{fortnoxExportProgress.message && (
+											<p className='text-xs text-muted-foreground'>{fortnoxExportProgress.message}</p>
+										)}
+									</div>
+								</CardContent>
+							</Card>
+						)}
+
 						<Card>
 							<CardContent className='flex flex-col gap-4 pt-4 md:flex-row md:items-end md:justify-between'>
 								<div className='flex-1 space-y-3'>
@@ -310,7 +687,12 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 									<Button onClick={doRefresh} size='sm' className='min-h-[44px]'>
 										<RefreshCw className='mr-2 h-4 w-4' /> Beräkna
 									</Button>
-									<ExportMenu onExport={handleExport} />
+									<ExportMenu
+										onExport={handleExport}
+										onExportFortnox={handleExportFortnox}
+										hasFortnoxConnection={hasFortnoxConnection && hasPayrollScope}
+										isExportingToFortnox={isExportingToFortnox}
+									/>
 								</div>
 							</CardContent>
 						</Card>
@@ -382,11 +764,39 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 																className='mt-0.5 shrink-0 accent-orange-500'
 																aria-label={`Markera ${row.person.full_name}`}
 															/>
-															<h3 className='truncate text-base font-semibold'>{row.person.full_name}</h3>
-														</div>
-														<div className='mt-0.5 text-[11px] text-slate-400 tabular'>
-															{formatDateRange(row.period_start, row.period_end)}
-														</div>
+													<h3 className='truncate text-base font-semibold'>{row.person.full_name}</h3>
+												</div>
+												<div className='mt-0.5 text-[11px] text-slate-400 tabular'>
+													{formatDateRange(row.period_start, row.period_end)}
+												</div>
+												{(() => {
+													const exportStatus = exportStatusMap.get(row.id);
+													if (exportStatus) {
+														if (exportStatus.status === 'exported') {
+															return (
+																<div className='mt-1 text-[11px] text-emerald-400'>
+																	✓ Exporterad till Fortnox{' '}
+																	{exportStatus.exported_at
+																		? formatDate(exportStatus.exported_at)
+																		: ''}
+																</div>
+															);
+														} else if (exportStatus.status === 'failed') {
+															return (
+																<div className='mt-1 text-[11px] text-red-400'>
+																	✗ Export misslyckades
+																	{exportStatus.error_message && (
+																		<span className='block text-[10px] text-red-300'>
+																			{exportStatus.error_message.substring(0, 50)}
+																			{exportStatus.error_message.length > 50 ? '...' : ''}
+																		</span>
+																	)}
+																</div>
+															);
+														}
+													}
+													return null;
+												})()}
 
 														<div className='mt-1 flex flex-wrap gap-1 text-[11px] tabular'>
 															{!isZeroHours(row.hours_overtime) && (
@@ -502,6 +912,7 @@ export function PayrollBasisPage({ orgId }: { orgId: string }) {
 											allSelected={allFilteredSelected}
 											toggleAll={toggleAllFiltered}
 											toggleSelection={toggleSelection}
+											exportStatusMap={exportStatusMap}
 										/>
 									</div>
 								</CardContent>
@@ -639,9 +1050,18 @@ type TableProps = {
 	allSelected: boolean;
 	toggleAll: (checked: boolean) => void;
 	toggleSelection: (id: string) => void;
+	exportStatusMap: ExportStatusMap;
 };
 
-function Table({ data, selected, selectedCount, allSelected, toggleAll, toggleSelection }: TableProps) {
+function Table({
+	data,
+	selected,
+	selectedCount,
+	allSelected,
+	toggleAll,
+	toggleSelection,
+	exportStatusMap,
+}: TableProps) {
 	const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
@@ -705,15 +1125,36 @@ function Table({ data, selected, selectedCount, allSelected, toggleAll, toggleSe
 							<td className='whitespace-nowrap py-2 pr-4 font-semibold'>{fmtH(row.total_hours)}</td>
 							<td className='whitespace-nowrap py-2 pr-4 text-right font-semibold'>{fmtMoneySEK(row.gross_salary_sek)}</td>
 							<td className='whitespace-nowrap py-2 text-right'>
-								{row.locked ? (
-									<span className='inline-flex items-center gap-1 text-emerald-600'>
-										<Lock className='h-3.5 w-3.5' /> Låst
-									</span>
-								) : (
-									<span className='inline-flex items-center gap-1 text-amber-600'>
-										<LockOpen className='h-3.5 w-3.5' /> Öppen
-									</span>
-								)}
+								<div className='flex flex-col items-end gap-1'>
+									{row.locked ? (
+										<span className='inline-flex items-center gap-1 text-emerald-600'>
+											<Lock className='h-3.5 w-3.5' /> Låst
+										</span>
+									) : (
+										<span className='inline-flex items-center gap-1 text-amber-600'>
+											<LockOpen className='h-3.5 w-3.5' /> Öppen
+										</span>
+									)}
+									{(() => {
+										const exportStatus = exportStatusMap.get(row.id);
+										if (exportStatus) {
+											if (exportStatus.status === 'exported') {
+												return (
+													<span className='text-[10px] text-emerald-500'>
+														✓ Fortnox
+													</span>
+												);
+											} else if (exportStatus.status === 'failed') {
+												return (
+													<span className='text-[10px] text-red-500' title={exportStatus.error_message || ''}>
+														✗ Export misslyckades
+													</span>
+												);
+											}
+										}
+										return null;
+									})()}
+								</div>
 							</td>
 						</tr>
 					))}

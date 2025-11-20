@@ -279,6 +279,12 @@ export function buildFortnoxSalaryTransactions(
 		// Should be caught by validation, but return empty array if missing
 		return [];
 	}
+	
+	console.log('[Fortnox Payroll Export] Using EmployeeId for salary transaction:', {
+		person_id: payrollBasis.person_id,
+		person_name: payrollBasis.person?.full_name,
+		fortnox_employee_id: employeeId,
+	});
 
 	// Use period_end as the transaction date (or period_start, depending on business logic)
 	const transactionDate = formatDateForFortnox(payrollBasis.period_end);

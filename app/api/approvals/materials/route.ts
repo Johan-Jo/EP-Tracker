@@ -29,18 +29,36 @@ export async function GET(request: NextRequest) {
 		);
 	}
 
-	const { data, error } = await supabase
+	// ✅ PERFORMANCE: Select specific columns instead of *
+	let query = supabase
 		.from('materials')
 		.select(`
-			*,
+			id,
+			org_id,
+			project_id,
+			user_id,
+			description,
+			qty,
+			unit,
+			unit_price_sek,
+			total_sek,
+			status,
+			ata_id,
+			notes,
+			created_at,
+			updated_at,
 			user:profiles!materials_user_id_fkey(full_name),
 			project:projects(name, project_number)
 		`)
 		.eq('org_id', membership.org_id)
 		.gte('created_at', periodStart)
-		.lte('created_at', periodEnd)
-		.eq('status', status)
-		.order('created_at', { ascending: false });
+		.lte('created_at', periodEnd);
+
+	if (status !== 'all') {
+		query = query.eq('status', status);
+	}
+
+	const { data, error } = await query.order('created_at', { ascending: false });
 
 	if (error) {
 		return NextResponse.json({ error: error.message }, { status: 500 });

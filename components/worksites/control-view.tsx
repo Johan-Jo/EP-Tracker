@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,20 +36,15 @@ interface ControlViewProps {
 
 export function ControlView({ projectId, initialData }: ControlViewProps) {
 	const [activeTab, setActiveTab] = useState<'now' | 'today' | 'period'>('now');
-	const [sessions, setSessions] = useState<Session[]>([]);
-	const [loading, setLoading] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [periodFrom, setPeriodFrom] = useState('');
 	const [periodTo, setPeriodTo] = useState('');
 	const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
-	useEffect(() => {
-		fetchSessions();
-	}, [activeTab, projectId]);
-
-	const fetchSessions = async () => {
-		setLoading(true);
-		try {
+	// ✅ PERFORMANCE: Use React Query for caching and automatic refetching
+	const { data: sessionsData, isLoading: loading, refetch } = useQuery<{ sessions: Session[] }>({
+		queryKey: ['worksite-sessions', projectId, activeTab, periodFrom, periodTo],
+		queryFn: async () => {
 			const now = new Date();
 			const today = format(now, 'yyyy-MM-dd');
 			let url = `/api/worksites/${projectId}/sessions`;
@@ -62,19 +58,23 @@ export function ControlView({ projectId, initialData }: ControlViewProps) {
 				url += `?from=${today}&to=${today}`;
 			} else if (activeTab === 'period' && periodFrom && periodTo) {
 				url += `?from=${periodFrom}&to=${periodTo}`;
+			} else {
+				// Return empty if period not selected
+				return { sessions: [] };
 			}
 			
 			const response = await fetch(url);
-			if (response.ok) {
-				const data = await response.json();
-				setSessions(data.sessions || []);
+			if (!response.ok) {
+				throw new Error('Failed to fetch sessions');
 			}
-		} catch (error) {
-			console.error('Error fetching sessions:', error);
-		} finally {
-			setLoading(false);
-		}
-	};
+			return response.json();
+		},
+		enabled: activeTab !== 'period' || (!!periodFrom && !!periodTo), // Only fetch if period is selected
+		staleTime: 30 * 1000, // 30 seconds - sessions can change frequently
+		gcTime: 2 * 60 * 1000, // 2 minutes
+	});
+
+	const sessions = sessionsData?.sessions || [];
 
 	const handleExportPDF = async () => {
 		try {
@@ -266,7 +266,7 @@ export function ControlView({ projectId, initialData }: ControlViewProps) {
 							</div>
 							<Button
 								className='mt-2 rounded-full bg-[var(--color-orange-500)] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-orange-600)] dark:bg-[#f3c089] dark:text-[#2f1b0f] dark:hover:bg-[#f5c99a]'
-								onClick={fetchSessions}
+								onClick={() => refetch()}
 								disabled={!periodFrom || !periodTo}
 							>
 								Visa period
@@ -359,7 +359,7 @@ export function ControlView({ projectId, initialData }: ControlViewProps) {
 					onOpenChange={(v) => !v && setSelectedSessionId(null)}
 					onUpdated={() => {
 						setSelectedSessionId(null);
-						fetchSessions();
+						refetch();
 					}}
 				/>
 			)}

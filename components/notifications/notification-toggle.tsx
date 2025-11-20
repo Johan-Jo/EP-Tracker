@@ -22,7 +22,7 @@ export function NotificationToggle({
   icon,
 }: NotificationToggleProps) {
   return (
-    <div className="flex items-start justify-between p-4 rounded-lg border border-gray-200 hover:border-orange-300 transition-colors">
+    <div className="flex items-start justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
       <div className="flex items-start gap-3 flex-1">
         {icon && (
           <div className="flex-shrink-0 mt-1">
@@ -30,8 +30,8 @@ export function NotificationToggle({
           </div>
         )}
         <div className="flex-1">
-          <h4 className="font-medium text-gray-900">{label}</h4>
-          <p className="text-sm text-gray-600 mt-1">{description}</p>
+          <h4 className="font-medium text-gray-900 dark:text-white">{label}</h4>
+          <p className="text-sm text-gray-600 dark:text-white mt-1">{description}</p>
         </div>
       </div>
       <Switch

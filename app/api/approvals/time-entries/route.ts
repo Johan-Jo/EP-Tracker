@@ -30,10 +30,29 @@ export async function GET(request: NextRequest) {
 		);
 	}
 
+	// ✅ PERFORMANCE: Select specific columns instead of *
 	let query = supabase
 		.from('time_entries')
 		.select(`
-			*,
+			id,
+			org_id,
+			project_id,
+			phase_id,
+			work_order_id,
+			user_id,
+			task_label,
+			start_at,
+			stop_at,
+			duration_min,
+			status,
+			billing_type,
+			fixed_block_id,
+			ata_id,
+			notes,
+			approved_by,
+			approved_at,
+			created_at,
+			updated_at,
 			user:profiles!time_entries_user_id_fkey(full_name, email),
 			project:projects(name, project_number),
 			phase:phases(name)

@@ -42,10 +42,11 @@ export default async function CustomerDetailPage(props: PageProps) {
 
 	const supabase = await createClient();
 
-	// Fetch customer
+	// ✅ PERFORMANCE: Select all columns for detail page (CustomerCard needs full customer data)
+	// Note: CustomerCard component fetches its own data, but we validate access here
 	const { data: customer, error: customerError } = await supabase
 		.from('customers')
-		.select('*')
+		.select('id, org_id')
 		.eq('id', customerId)
 		.eq('org_id', membership.org_id)
 		.single();

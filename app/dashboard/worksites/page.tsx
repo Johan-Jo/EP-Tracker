@@ -1,23 +1,17 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth/get-session';
 import { WorksitesClient } from './worksites-client';
 
 export default async function WorksitesPage() {
-	const supabase = await createClient();
-	const { data: { user } } = await supabase.auth.getUser();
+	// ✅ PERFORMANCE: Use cached session instead of separate queries
+	const { user, membership } = await getSession();
 
 	if (!user) {
 		redirect('/sign-in');
 	}
 
-	// Get user's organizations
-	const { data: memberships } = await supabase
-		.from('memberships')
-		.select('org_id, role')
-		.eq('user_id', user.id)
-		.eq('is_active', true);
-
-	if (!memberships || memberships.length === 0) {
+	if (!membership) {
 		return (
 			<div className='flex-1 overflow-auto pb-20 md:pb-0'>
 				<div className='px-4 md:px-8 py-6'>
@@ -27,10 +21,11 @@ export default async function WorksitesPage() {
 		);
 	}
 
-	const orgIds = memberships.map(m => m.org_id);
-	const canEdit = memberships.some(m => ['admin', 'foreman'].includes(m.role));
+	const canEdit = ['admin', 'foreman'].includes(membership.role);
+	const supabase = await createClient();
 
-	// Fetch all projects with active worksite
+	// ✅ PERFORMANCE: Fetch only projects with active worksite for user's org
+	// Uses existing index idx_projects_org_id
 	const { data: worksites } = await supabase
 		.from('projects')
 		.select(`
@@ -46,7 +41,7 @@ export default async function WorksitesPage() {
 			status,
 			org_id
 		`)
-		.in('org_id', orgIds)
+		.eq('org_id', membership.org_id)
 		.eq('worksite_enabled', true)
 		.order('name', { ascending: true });
 

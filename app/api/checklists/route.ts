@@ -17,14 +17,27 @@ export async function GET(request: NextRequest) {
 	const projectId = searchParams.get('project_id');
 
 	try {
+		// ✅ PERFORMANCE: Select specific columns instead of *
 		let query = supabase
 			.from('checklists')
 			.select(`
-				*,
+				id,
+				org_id,
+				project_id,
+				template_id,
+				created_by,
+				name,
+				completed_at,
+				checklist_data,
+				signature_name,
+				signature_timestamp,
+				created_at,
+				updated_at,
 				project:projects(name, project_number),
 				template:checklist_templates(name, category),
 				created_by_user:profiles!checklists_created_by_fkey(full_name)
 			`)
+			.eq('org_id', membership.org_id)
 			.order('created_at', { ascending: false });
 
 		if (projectId) {

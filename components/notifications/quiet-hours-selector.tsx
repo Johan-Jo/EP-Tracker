@@ -26,11 +26,11 @@ export function QuietHoursSelector({
   onEndChange,
 }: QuietHoursSelectorProps) {
   return (
-    <div className="p-4 rounded-lg border border-gray-200" data-tour="quiet-hours">
+    <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-800" data-tour="quiet-hours">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h4 className="font-medium text-gray-900">Tyst läge</h4>
-          <p className="text-sm text-gray-600 mt-1">
+          <h4 className="font-medium text-gray-900 dark:text-white">Tyst läge</h4>
+          <p className="text-sm text-gray-600 dark:text-white mt-1">
             Inga notiser under dessa tider
           </p>
         </div>
@@ -38,9 +38,9 @@ export function QuietHoursSelector({
       </div>
 
       {enabled && (
-        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100 dark:border-gray-800">
           <div>
-            <Label htmlFor="quiet-start" className="text-sm font-medium text-gray-700">
+            <Label htmlFor="quiet-start" className="text-sm font-medium text-gray-700 dark:text-white">
               Från
             </Label>
             <Input
@@ -52,7 +52,7 @@ export function QuietHoursSelector({
             />
           </div>
           <div>
-            <Label htmlFor="quiet-end" className="text-sm font-medium text-gray-700">
+            <Label htmlFor="quiet-end" className="text-sm font-medium text-gray-700 dark:text-white">
               Till
             </Label>
             <Input

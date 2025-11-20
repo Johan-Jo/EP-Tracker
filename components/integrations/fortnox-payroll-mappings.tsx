@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
 	Table,
 	TableBody,
@@ -13,28 +17,14 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components/ui/table';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select';
-import { Plus, Trash2, Save } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { InfoIcon, Loader2, Save, RefreshCw } from 'lucide-react';
 
-interface EmployeeMapping {
-	id?: string;
-	person_id: string;
-	fortnox_employee_id: string;
-	person?: {
-		id: string;
-		full_name: string;
-		email: string;
-	};
+interface FortnoxPayrollMappingsProps {
+	orgId: string;
 }
 
-interface WageCodeMapping {
+interface WageMapping {
 	id?: string;
 	ep_wage_type: string;
 	fortnox_salary_code: string;
@@ -42,21 +32,43 @@ interface WageCodeMapping {
 	is_active: boolean;
 }
 
-interface FortnoxPayrollMappingsProps {
-	orgId: string;
-}
+type WageTypeConfig = {
+	label: string;
+	recommended?: boolean;
+};
+
+/**
+ * UI configuration for each EP-Tracker wage type
+ * Maps internal wage types to human-readable Swedish labels
+ */
+const WAGE_TYPE_UI_CONFIG: Record<string, WageTypeConfig> = {
+	normal: {
+		label: 'Normal arbetstid (timlön)',
+		recommended: true,
+	},
+	overtime: {
+		label: 'Övertid',
+		recommended: true,
+	},
+	ob: {
+		label: 'OB (natt/helg/helgdag)',
+		recommended: true,
+	},
+};
+
+/**
+ * Default wage types that should always be available in the UI
+ */
+const DEFAULT_WAGE_TYPES = ['normal', 'overtime', 'ob'] as const;
 
 export function FortnoxPayrollMappings({ orgId }: FortnoxPayrollMappingsProps) {
 	const queryClient = useQueryClient();
 
-	// Fetch mappings
-	const { data, isLoading } = useQuery<{
-		employeeMappings: EmployeeMapping[];
-		wageCodeMappings: WageCodeMapping[];
-	}>({
-		queryKey: ['fortnox-payroll-mappings', orgId],
+	// Fetch existing mappings
+	const { data, isLoading, error } = useQuery<{ mappings: WageMapping[] }>({
+		queryKey: ['fortnox-wage-mappings', orgId],
 		queryFn: async () => {
-			const response = await fetch('/api/integrations/fortnox/payroll-mappings');
+			const response = await fetch('/api/integrations/fortnox/payroll-mappings/wage-codes');
 			if (!response.ok) {
 				throw new Error('Kunde inte hämta mappningar');
 			}
@@ -64,306 +76,281 @@ export function FortnoxPayrollMappings({ orgId }: FortnoxPayrollMappingsProps) {
 		},
 	});
 
-	// Fetch employees for dropdown - get from memberships
-	const { data: employeesData } = useQuery<Array<{ id: string; full_name: string; email: string }>>({
-		queryKey: ['employees-for-mapping', orgId],
-		queryFn: async () => {
-			const response = await fetch('/api/organizations/members');
-			if (!response.ok) {
-				return [];
+	// Local state for editable mappings
+	const [localMappings, setLocalMappings] = useState<Record<string, WageMapping>>({});
+	const [hasChanges, setHasChanges] = useState(false);
+
+	// Merge backend mappings with default wage types
+	const allMappings = useMemo(() => {
+		const backendMappings = (data?.mappings || []).reduce(
+			(acc, mapping) => {
+				acc[mapping.ep_wage_type] = mapping;
+				return acc;
+			},
+			{} as Record<string, WageMapping>
+		);
+
+		// Start with backend data, then merge with local changes
+		const merged = { ...backendMappings, ...localMappings };
+
+		// Ensure all default wage types exist
+		for (const wageType of DEFAULT_WAGE_TYPES) {
+			if (!merged[wageType]) {
+				merged[wageType] = {
+					ep_wage_type: wageType,
+					fortnox_salary_code: '',
+					is_active: true,
+				};
 			}
-			const data = await response.json();
-			// Extract profiles from memberships
-			return (data.members || []).map((m: any) => ({
-				id: m.profiles?.id || m.user_id,
-				full_name: m.profiles?.full_name || '',
-				email: m.profiles?.email || '',
-			})).filter((u: any) => u.id && u.full_name);
-		},
-	});
+		}
 
-	const [newEmployeeMapping, setNewEmployeeMapping] = useState<{
-		person_id: string;
-		fortnox_employee_id: string;
-	}>({ person_id: '', fortnox_employee_id: '' });
+		return merged;
+	}, [data?.mappings, localMappings]);
 
-	const [newWageCodeMapping, setNewWageCodeMapping] = useState<{
-		ep_wage_type: string;
-		fortnox_salary_code: string;
-	}>({ ep_wage_type: '', fortnox_salary_code: '' });
+	// Update local state when backend data changes (but preserve unsaved changes)
+	useEffect(() => {
+		if (data?.mappings && Object.keys(localMappings).length === 0 && !hasChanges) {
+			const initialMappings = data.mappings.reduce(
+				(acc, mapping) => {
+					acc[mapping.ep_wage_type] = mapping;
+					return acc;
+				},
+				{} as Record<string, WageMapping>
+			);
+			setLocalMappings(initialMappings);
+			setHasChanges(false);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [data?.mappings]);
 
-	// Employee mapping mutations
-	const createEmployeeMapping = useMutation({
-		mutationFn: async (mapping: { person_id: string; fortnox_employee_id: string }) => {
-			const response = await fetch('/api/integrations/fortnox/payroll-mappings/employees', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(mapping),
-			});
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Kunde inte skapa mappning');
-			}
-			return response.json();
-		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['fortnox-payroll-mappings', orgId] });
-			setNewEmployeeMapping({ person_id: '', fortnox_employee_id: '' });
-			toast.success('Employee-mappning skapad');
-		},
-		onError: (error: Error) => {
-			toast.error(error.message);
-		},
-	});
-
-	const deleteEmployeeMapping = useMutation({
-		mutationFn: async (id: string) => {
-			const response = await fetch(`/api/integrations/fortnox/payroll-mappings/employees/${id}`, {
-				method: 'DELETE',
-			});
-			if (!response.ok) {
-				throw new Error('Kunde inte ta bort mappning');
-			}
-		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['fortnox-payroll-mappings', orgId] });
-			toast.success('Employee-mappning borttagen');
-		},
-		onError: () => {
-			toast.error('Kunde inte ta bort mappning');
-		},
-	});
-
-	// Wage code mapping mutations
-	const createWageCodeMapping = useMutation({
-		mutationFn: async (mapping: { ep_wage_type: string; fortnox_salary_code: string }) => {
+	// Save mutation
+	const saveMappings = useMutation({
+		mutationFn: async (mappings: WageMapping[]) => {
 			const response = await fetch('/api/integrations/fortnox/payroll-mappings/wage-codes', {
-				method: 'POST',
+				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(mapping),
+				body: JSON.stringify({ mappings }),
 			});
+
 			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Kunde inte skapa mappning');
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || 'Kunde inte spara mappningar');
 			}
+
 			return response.json();
 		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['fortnox-payroll-mappings', orgId] });
-			setNewWageCodeMapping({ ep_wage_type: '', fortnox_salary_code: '' });
-			toast.success('Wage code-mappning skapad');
+			queryClient.invalidateQueries({ queryKey: ['fortnox-wage-mappings', orgId] });
+			setHasChanges(false);
+			setLocalMappings({});
+			toast.success('Lönemappning sparad');
 		},
 		onError: (error: Error) => {
-			toast.error(error.message);
+			toast.error(error.message || 'Kunde inte spara mappningar');
 		},
 	});
 
-	const deleteWageCodeMapping = useMutation({
-		mutationFn: async (id: string) => {
-			const response = await fetch(`/api/integrations/fortnox/payroll-mappings/wage-codes/${id}`, {
-				method: 'DELETE',
-			});
-			if (!response.ok) {
-				throw new Error('Kunde inte ta bort mappning');
+	const handleUpdateMapping = (wageType: string, field: keyof WageMapping, value: unknown) => {
+		setLocalMappings((prev) => ({
+			...prev,
+			[wageType]: {
+				...allMappings[wageType],
+				[field]: value,
+			},
+		}));
+		setHasChanges(true);
+	};
+
+	const handleSave = () => {
+		const mappingsToSave = Object.values(allMappings).filter(
+			(m) => m.fortnox_salary_code.trim() !== ''
+		);
+
+		if (mappingsToSave.length === 0) {
+			toast.error('Fyll i minst en Fortnox-kod innan du sparar');
+			return;
+		}
+
+		// Validate that all required mappings have codes
+		for (const wageType of DEFAULT_WAGE_TYPES) {
+			const mapping = allMappings[wageType];
+			if (mapping && !mapping.fortnox_salary_code.trim()) {
+				const config = WAGE_TYPE_UI_CONFIG[wageType];
+				toast.error(`Fyll i Fortnox-kod för "${config.label}" innan du sparar`);
+				return;
 			}
-		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['fortnox-payroll-mappings', orgId] });
-			toast.success('Wage code-mappning borttagen');
-		},
-		onError: () => {
-			toast.error('Kunde inte ta bort mappning');
-		},
-	});
+		}
+
+		saveMappings.mutate(mappingsToSave);
+	};
+
+	const handleReset = () => {
+		setLocalMappings({});
+		setHasChanges(false);
+		queryClient.invalidateQueries({ queryKey: ['fortnox-wage-mappings', orgId] });
+	};
 
 	if (isLoading) {
-		return <div className='text-sm text-muted-foreground'>Laddar mappningar...</div>;
+		return (
+			<Card>
+				<CardContent className='pt-6'>
+					<div className='flex items-center justify-center py-8'>
+						<Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+						<span className='ml-2 text-sm text-muted-foreground'>Laddar mappningar...</span>
+					</div>
+				</CardContent>
+			</Card>
+		);
 	}
 
-	const employeeMappings = data?.employeeMappings || [];
-	const wageCodeMappings = data?.wageCodeMappings || [];
+	if (error) {
+		return (
+			<Card>
+				<CardContent className='pt-6'>
+					<Alert variant='destructive'>
+						<AlertDescription>
+							Kunde inte ladda mappningar. Försök igen senare.
+						</AlertDescription>
+					</Alert>
+				</CardContent>
+			</Card>
+		);
+	}
 
 	return (
 		<div className='space-y-6'>
-			{/* Employee Mappings */}
+			{/* Intro Card */}
 			<Card>
 				<CardHeader>
-					<CardTitle>Anställd-mappningar</CardTitle>
+					<CardTitle>Lönearter & koder</CardTitle>
 					<CardDescription>
-						Mappa EP-Tracker anställda till Fortnox EmployeeId. EmployeeId måste existera i Fortnox Payroll.
+						Här kopplar du EP-Trackers lönetyper till Fortnox lönearter och registreringskoder.
+						Export av löner till Fortnox fungerar först när minst grundläggande koder är
+						ifyllda.
 					</CardDescription>
 				</CardHeader>
-				<CardContent className='space-y-4'>
-					<div className='flex gap-2'>
-						<Select
-							value={newEmployeeMapping.person_id}
-							onValueChange={(value) => setNewEmployeeMapping({ ...newEmployeeMapping, person_id: value })}
-						>
-							<SelectTrigger className='flex-1'>
-								<SelectValue placeholder='Välj anställd' />
-							</SelectTrigger>
-							<SelectContent>
-								{employeesData
-									?.filter((emp) => !employeeMappings.some((m) => m.person_id === emp.id))
-									.map((emp) => (
-										<SelectItem key={emp.id} value={emp.id}>
-											{emp.full_name} ({emp.email})
-										</SelectItem>
-									))}
-							</SelectContent>
-						</Select>
-						<Input
-							placeholder='Fortnox EmployeeId'
-							value={newEmployeeMapping.fortnox_employee_id}
-							onChange={(e) =>
-								setNewEmployeeMapping({ ...newEmployeeMapping, fortnox_employee_id: e.target.value })
-							}
-							className='w-48'
-						/>
-						<Button
-							onClick={() => {
-								if (newEmployeeMapping.person_id && newEmployeeMapping.fortnox_employee_id) {
-									createEmployeeMapping.mutate(newEmployeeMapping);
-								}
-							}}
-							disabled={!newEmployeeMapping.person_id || !newEmployeeMapping.fortnox_employee_id}
-						>
-							<Plus className='mr-2 h-4 w-4' /> Lägg till
-						</Button>
-					</div>
-
-					{employeeMappings.length > 0 ? (
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Anställd</TableHead>
-									<TableHead>Fortnox EmployeeId</TableHead>
-									<TableHead className='w-20'></TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{employeeMappings.map((mapping) => (
-									<TableRow key={mapping.id || mapping.person_id}>
-										<TableCell>
-											{mapping.person?.full_name || mapping.person_id}
-											{mapping.person?.email && (
-												<span className='text-xs text-muted-foreground ml-2'>
-													({mapping.person.email})
-												</span>
-											)}
-										</TableCell>
-										<TableCell className='font-mono'>{mapping.fortnox_employee_id}</TableCell>
-										<TableCell>
-											<Button
-												variant='ghost'
-												size='sm'
-												onClick={() => {
-													if (mapping.id && confirm('Är du säker på att du vill ta bort denna mappning?')) {
-														deleteEmployeeMapping.mutate(mapping.id);
-													}
-												}}
-											>
-												<Trash2 className='h-4 w-4 text-destructive' />
-											</Button>
-										</TableCell>
-									</TableRow>
-								))}
-							</TableBody>
-						</Table>
-					) : (
-						<p className='text-sm text-muted-foreground'>Inga employee-mappningar konfigurerade ännu.</p>
-					)}
+				<CardContent>
+					<Alert>
+						<InfoIcon className='h-4 w-4' />
+						<AlertDescription>
+							Tips: Öppna Fortnox → Register → Lönearter och koder och använd samma koder
+							här.
+						</AlertDescription>
+					</Alert>
 				</CardContent>
 			</Card>
 
-			{/* Wage Code Mappings */}
+			{/* Mapping Table Card */}
 			<Card>
 				<CardHeader>
-					<CardTitle>Lönearter-mappningar</CardTitle>
+					<CardTitle>Mappning av lönetyper</CardTitle>
 					<CardDescription>
-						Mappa EP-Tracker lönetyper till Fortnox SalaryCode. SalaryCode måste existera i Fortnox Payroll.
+						Ange Fortnox lönearter (SalaryCode) för varje EP-Tracker lönetyp
 					</CardDescription>
 				</CardHeader>
-				<CardContent className='space-y-4'>
-					<div className='flex gap-2'>
-						<Select
-							value={newWageCodeMapping.ep_wage_type}
-							onValueChange={(value) => setNewWageCodeMapping({ ...newWageCodeMapping, ep_wage_type: value })}
-						>
-							<SelectTrigger className='w-48'>
-								<SelectValue placeholder='Välj lönetyp' />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value='normal'>Normal (normaltimmar)</SelectItem>
-								<SelectItem value='overtime'>Övertid (overtime)</SelectItem>
-								<SelectItem value='ob'>OB (natt/helg/helgdag)</SelectItem>
-							</SelectContent>
-						</Select>
-						<Input
-							placeholder='Fortnox SalaryCode (t.ex. "100")'
-							value={newWageCodeMapping.fortnox_salary_code}
-							onChange={(e) =>
-								setNewWageCodeMapping({ ...newWageCodeMapping, fortnox_salary_code: e.target.value })
-							}
-							className='w-48'
-						/>
-						<Button
-							onClick={() => {
-								if (newWageCodeMapping.ep_wage_type && newWageCodeMapping.fortnox_salary_code) {
-									createWageCodeMapping.mutate(newWageCodeMapping);
-								}
-							}}
-							disabled={!newWageCodeMapping.ep_wage_type || !newWageCodeMapping.fortnox_salary_code}
-						>
-							<Plus className='mr-2 h-4 w-4' /> Lägg till
-						</Button>
-					</div>
-
-					{wageCodeMappings.length > 0 ? (
+				<CardContent>
+					<div className='overflow-x-auto'>
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead>EP-Tracker Lönetyp</TableHead>
-									<TableHead>Fortnox SalaryCode</TableHead>
-									<TableHead>Status</TableHead>
-									<TableHead className='w-20'></TableHead>
+									<TableHead>EP-lönetyp</TableHead>
+									<TableHead>Fortnox-kod</TableHead>
+									<TableHead>Beskrivning</TableHead>
+									<TableHead>Aktiv</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{wageCodeMappings.map((mapping) => (
-									<TableRow key={mapping.id || mapping.ep_wage_type}>
-										<TableCell className='font-medium'>{mapping.ep_wage_type}</TableCell>
-										<TableCell className='font-mono'>{mapping.fortnox_salary_code}</TableCell>
-										<TableCell>
-											{mapping.is_active ? (
-												<span className='text-emerald-600'>Aktiv</span>
-											) : (
-												<span className='text-muted-foreground'>Inaktiv</span>
-											)}
-										</TableCell>
-										<TableCell>
-											<Button
-												variant='ghost'
-												size='sm'
-												onClick={() => {
-													if (mapping.id && confirm('Är du säker på att du vill ta bort denna mappning?')) {
-														deleteWageCodeMapping.mutate(mapping.id);
+								{DEFAULT_WAGE_TYPES.map((wageType) => {
+									const mapping = allMappings[wageType];
+									const config = WAGE_TYPE_UI_CONFIG[wageType];
+
+									if (!mapping) return null;
+
+									return (
+										<TableRow key={wageType}>
+											<TableCell>
+												<div className='flex flex-col gap-1'>
+													<span className='font-medium'>{config.label}</span>
+													<Badge variant='outline' className='w-fit'>
+														{wageType}
+													</Badge>
+													{config.recommended && (
+														<span className='text-xs text-muted-foreground'>
+															Rekommenderad
+														</span>
+													)}
+												</div>
+											</TableCell>
+											<TableCell>
+												<Input
+													value={mapping.fortnox_salary_code || ''}
+													onChange={(e) =>
+														handleUpdateMapping(
+															wageType,
+															'fortnox_salary_code',
+															e.target.value
+														)
 													}
-												}}
-											>
-												<Trash2 className='h-4 w-4 text-destructive' />
-											</Button>
-										</TableCell>
-									</TableRow>
-								))}
+													placeholder='t.ex. "100"'
+													className='font-mono max-w-[120px]'
+												/>
+											</TableCell>
+											<TableCell>
+												<Input
+													value={mapping.description || ''}
+													onChange={(e) =>
+														handleUpdateMapping(
+															wageType,
+															'description',
+															e.target.value
+														)
+													}
+													placeholder='Valfritt'
+													className='max-w-[200px]'
+												/>
+											</TableCell>
+											<TableCell>
+												<Switch
+													checked={mapping.is_active !== false}
+													onCheckedChange={(checked) =>
+														handleUpdateMapping(wageType, 'is_active', checked)
+													}
+												/>
+											</TableCell>
+										</TableRow>
+									);
+								})}
 							</TableBody>
 						</Table>
-					) : (
-						<p className='text-sm text-muted-foreground'>Inga wage code-mappningar konfigurerade ännu.</p>
-					)}
+					</div>
 				</CardContent>
+				<CardFooter className='flex justify-between items-center'>
+					<Button
+						variant='outline'
+						onClick={handleReset}
+						disabled={!hasChanges || saveMappings.isPending}
+					>
+						<RefreshCw className='mr-2 h-4 w-4' />
+						Återställ ändringar
+					</Button>
+					<Button
+						onClick={handleSave}
+						disabled={!hasChanges || saveMappings.isPending}
+					>
+						{saveMappings.isPending ? (
+							<>
+								<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+								Sparar...
+							</>
+						) : (
+							<>
+								<Save className='mr-2 h-4 w-4' />
+								Spara mappning
+							</>
+						)}
+					</Button>
+				</CardFooter>
 			</Card>
 		</div>
 	);
 }
-

@@ -1,38 +1,39 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth/get-session';
 import { UsersPageNew } from '@/components/users/users-page-new';
 
 export default async function UsersSettingsPage() {
-	const supabase = await createClient();
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
+	const { user, membership } = await getSession();
 
 	if (!user) {
 		redirect('/sign-in');
 	}
-
-	// Get user's organization membership
-	const { data: membership } = await supabase
-		.from('memberships')
-		.select('org_id, role')
-		.eq('user_id', user.id)
-		.eq('is_active', true)
-		.single();
 
 	// Only admin can manage users - redirect others
 	if (!membership || membership.role !== 'admin') {
 		redirect('/dashboard');
 	}
 
+	const supabase = await createClient();
+	// ✅ PERFORMANCE: Select specific columns instead of *
 	// Get all members in organization with their profiles
 	const { data: members } = await supabase
 		.from('memberships')
 		.select(
 			`
-			*,
+			id,
+			user_id,
+			org_id,
+			role,
+			hourly_rate_sek,
+			salary_per_hour_sek,
+			created_at,
 			profiles (
-				*
+				id,
+				full_name,
+				email,
+				phone
 			)
 		`
 		)

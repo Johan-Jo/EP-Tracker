@@ -45,11 +45,11 @@ export function NotificationSettings() {
 
   if (!isSupported) {
     return (
-      <div className="rounded-xl bg-yellow-50 border-2 border-yellow-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+      <div className="rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-200 dark:border-yellow-800 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-yellow-300 mb-2">
           Push-notiser stöds inte
         </h3>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-yellow-200">
           Din webbläsare eller enhet stöder inte push-notiser. Prova att öppna EP-Tracker i Chrome, Firefox eller Safari.
         </p>
       </div>
@@ -58,14 +58,14 @@ export function NotificationSettings() {
 
   if (permission === 'denied') {
     return (
-      <div className="rounded-xl bg-red-50 border-2 border-red-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+      <div className="rounded-xl bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-red-300 mb-2">
           Notiser blockerade
         </h3>
-        <p className="text-gray-600 mb-4">
+        <p className="text-gray-600 dark:text-red-200 mb-4">
           Du har blockerat notiser för EP-Tracker. För att aktivera notiser igen, ändra inställningarna i din webbläsare:
         </p>
-        <ul className="list-disc list-inside space-y-2 text-sm text-gray-600">
+        <ul className="list-disc list-inside space-y-2 text-sm text-gray-600 dark:text-red-200">
           <li>Chrome/Edge: Klicka på låsikonen i adressfältet → Webbplatsinställningar</li>
           <li>Firefox: Klicka på skölden i adressfältet → Behörigheter</li>
           <li>Safari: Safari → Inställningar → Webbplatser → Notiser</li>
@@ -83,7 +83,7 @@ export function NotificationSettings() {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Laddar inställningar...</p>
+          <p className="text-gray-600 dark:text-white">Laddar inställningar...</p>
         </div>
       </div>
     );
@@ -92,14 +92,14 @@ export function NotificationSettings() {
   return (
     <div className="space-y-6">
       {/* Success Banner */}
-      <div className="rounded-xl bg-green-50 border-2 border-green-200 p-4">
+      <div className="rounded-xl bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 p-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-            <Bell className="h-5 w-5 text-green-600" />
+          <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center flex-shrink-0">
+            <Bell className="h-5 w-5 text-green-600 dark:text-green-400" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-green-900">Notiser aktiverade</h3>
-            <p className="text-sm text-green-700">Du får nu push-notiser från EP-Tracker</p>
+            <h3 className="font-semibold text-green-900 dark:text-green-300">Notiser aktiverade</h3>
+            <p className="text-sm text-green-700 dark:text-green-200">Du får nu push-notiser från EP-Tracker</p>
           </div>
         </div>
       </div>
@@ -119,10 +119,10 @@ export function NotificationSettings() {
 
       {/* Notification Types */}
       <div className="space-y-4" data-tour="notification-types">
-        <h3 className="text-lg font-semibold text-gray-900">Notis-typer</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notis-typer</h3>
 
         <NotificationToggle
-          icon={<Clock className="h-5 w-5 text-orange-600" />}
+          icon={<Clock className="h-5 w-5 text-orange-600 dark:text-orange-400" />}
           label="Check-out påminnelser"
           description="Påminnelse att checka ut i slutet av arbetsdagen"
           checked={preferences.checkout_reminders}
@@ -130,7 +130,7 @@ export function NotificationSettings() {
         />
 
         <NotificationToggle
-          icon={<Users className="h-5 w-5 text-blue-600" />}
+          icon={<Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
           label="Team check-ins"
           description="Se när ditt team checkar in och ut"
           checked={preferences.team_checkins}
@@ -138,7 +138,7 @@ export function NotificationSettings() {
         />
 
         <NotificationToggle
-          icon={<CheckSquare className="h-5 w-5 text-green-600" />}
+          icon={<CheckSquare className="h-5 w-5 text-green-600 dark:text-green-400" />}
           label="Godkännanden väntar"
           description="Notis när tidrapporter behöver godkännas"
           checked={preferences.approvals_needed}
@@ -146,7 +146,7 @@ export function NotificationSettings() {
         />
 
         <NotificationToggle
-          icon={<CheckSquare className="h-5 w-5 text-green-600" />}
+          icon={<CheckSquare className="h-5 w-5 text-green-600 dark:text-green-400" />}
           label="Din rapport godkänd"
           description="Notis när din tidrapport har godkänts"
           checked={preferences.approval_confirmed}
@@ -154,7 +154,7 @@ export function NotificationSettings() {
         />
 
         <NotificationToggle
-          icon={<FileEdit className="h-5 w-5 text-purple-600" />}
+          icon={<FileEdit className="h-5 w-5 text-purple-600 dark:text-purple-400" />}
           label="ÄTA-uppdateringar"
           description="Nya ÄTA på dina projekt"
           checked={preferences.ata_updates}
@@ -162,7 +162,7 @@ export function NotificationSettings() {
         />
 
         <NotificationToggle
-          icon={<BookOpen className="h-5 w-5 text-indigo-600" />}
+          icon={<BookOpen className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
           label="Dagboksinlägg"
           description="Nya dagboksinlägg på dina projekt"
           checked={preferences.diary_updates}
@@ -170,7 +170,7 @@ export function NotificationSettings() {
         />
 
         <NotificationToggle
-          icon={<TrendingUp className="h-5 w-5 text-orange-600" />}
+          icon={<TrendingUp className="h-5 w-5 text-orange-600 dark:text-orange-400" />}
           label="Veckosammanfattning"
           description="Sammanfattning av din arbetsvecka (fredag kväll)"
           checked={preferences.weekly_summary}
@@ -180,7 +180,7 @@ export function NotificationSettings() {
 
       {/* Quiet Hours */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Tyst läge</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Tyst läge</h3>
         <QuietHoursSelector
           enabled={preferences.quiet_hours_enabled}
           start={preferences.quiet_hours_start}
@@ -192,10 +192,10 @@ export function NotificationSettings() {
       </div>
 
       {/* Disable All */}
-      <div className="pt-6 border-t border-gray-200">
+      <div className="pt-6 border-t border-gray-200 dark:border-gray-800">
         <Button
           variant="outline"
-          className="text-red-600 border-red-300 hover:bg-red-50"
+          className="text-red-600 dark:text-red-400 border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
           onClick={async () => {
             if (confirm('Är du säker på att du vill inaktivera alla notiser?')) {
               try {

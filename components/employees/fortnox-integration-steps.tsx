@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { ReactNode } from 'react';
-import { Plug, Download, CheckCircle2, Info, Loader2, RefreshCcw, Settings } from 'lucide-react';
+import { ReactNode, useState } from 'react';
+import { Plug, Download, CheckCircle2, Info, Loader2, RefreshCcw, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -59,6 +59,7 @@ export function FortnoxIntegrationSteps(props: FortnoxIntegrationStepsProps) {
 		settingsHref = '/dashboard/settings/fortnox',
 	} = props;
 
+	const [isExpanded, setIsExpanded] = useState(false);
 	const lastImportFormatted = formatDateTime(lastImportAt);
 
 	const connectButton: ReactNode = onConnectClick ? (
@@ -98,8 +99,11 @@ export function FortnoxIntegrationSteps(props: FortnoxIntegrationStepsProps) {
 
 	return (
 		<Card className='mb-6 border border-dashed'>
-			<CardHeader className='flex flex-row items-center justify-between gap-3'>
-				<div className='space-y-1'>
+			<CardHeader 
+				className='flex flex-row items-center justify-between gap-3 cursor-pointer hover:bg-muted/50 transition-colors'
+				onClick={() => setIsExpanded(!isExpanded)}
+			>
+				<div className='space-y-1 flex-1'>
 					<CardTitle className='flex items-center gap-2 text-base sm:text-lg'>
 						<Plug className='h-5 w-5 text-emerald-500' />
 						Fortnox-integration för anställda & lön
@@ -109,32 +113,38 @@ export function FortnoxIntegrationSteps(props: FortnoxIntegrationStepsProps) {
 						exportera löneunderlag direkt till Fortnox Lön utan dubbelarbete.
 					</p>
 				</div>
-				<div className='flex flex-col items-end gap-2'>
+				<div className='flex items-center gap-3'>
 					{hasFortnoxConnection ? (
-						<Badge variant='outline' className='flex items-center gap-1'>
+						<Badge variant='outline' className='flex items-center gap-1' onClick={(e) => e.stopPropagation()}>
 							<CheckCircle2 className='h-3 w-3 text-emerald-500' />
 							Fortnox anslutet
 						</Badge>
 					) : (
-						<Badge variant='outline' className='flex items-center gap-1 text-amber-600 border-amber-300'>
+						<Badge variant='outline' className='flex items-center gap-1 text-amber-600 border-amber-300' onClick={(e) => e.stopPropagation()}>
 							<Info className='h-3 w-3' />
 							Ej anslutet
 						</Badge>
 					)}
-					{hasFortnoxConnection && typeof hasPayrollScope === 'boolean' && (
-						<span className='text-[11px] text-muted-foreground'>
-							Lön/anställda-scope:{' '}
-							{hasPayrollScope ? (
-								<span className='text-emerald-600 font-medium'>OK</span>
-							) : (
-								<span className='text-red-600 font-medium'>saknas</span>
-							)}
-						</span>
-					)}
+					<Button
+						variant='ghost'
+						size='icon'
+						className='h-8 w-8 shrink-0'
+						onClick={(e) => {
+							e.stopPropagation();
+							setIsExpanded(!isExpanded);
+						}}
+					>
+						{isExpanded ? (
+							<ChevronUp className='h-4 w-4' />
+						) : (
+							<ChevronDown className='h-4 w-4' />
+						)}
+					</Button>
 				</div>
 			</CardHeader>
 
-			<CardContent className='space-y-4'>
+			{isExpanded && (
+				<CardContent className='space-y-4'>
 				{/* Steg-för-steg */}
 				{!hasFortnoxConnection ? (
 					<Alert variant='default' className='border-amber-300 bg-amber-50/80'>
@@ -268,6 +278,7 @@ export function FortnoxIntegrationSteps(props: FortnoxIntegrationStepsProps) {
 					</div>
 				)}
 			</CardContent>
+			)}
 		</Card>
 	);
 }
