@@ -21,6 +21,7 @@ export const timeEntrySchema = z.object({
 		return isoRegex.test(val) && !isNaN(new Date(val).getTime());
 	}, { message: 'Sluttid måste vara ett giltigt datum' }).optional().nullable(),
 	hours: z.number().min(0).max(24).optional(), // For ÄTA entries: hours instead of start/stop
+	ata_minutes: z.number().min(0).max(1440).optional(), // ÄTA time to deduct from main project (0-1440 minutes = 0-24 hours)
 	notes: z.string().optional().nullable(),
 	status: z.enum(['draft', 'submitted', 'approved', 'rejected']).default('draft'),
 }).superRefine((data, ctx) => {

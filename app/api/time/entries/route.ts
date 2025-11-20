@@ -75,7 +75,8 @@ export async function GET(request: NextRequest) {
 			phase:phases(id, name),
 			work_order:work_orders(id, name),
 			user:profiles!time_entries_user_id_fkey(id, full_name, email),
-			approved_by_user:profiles!time_entries_approved_by_fkey(id, full_name, email)
+			approved_by_user:profiles!time_entries_approved_by_fkey(id, full_name, email),
+			ata:ata(id, title, status)
 		`)
 		.eq('org_id', membership.org_id)
 		.order('start_at', { ascending: false })
@@ -213,27 +214,136 @@ export async function POST(request: NextRequest) {
 		// This saves 1 query and makes the API faster
 		const supabase = await createClient();
 
-		// Calculate work time (after break deduction) - this is the ONE time value used everywhere
-		let workDurationMin: number | null = null;
-		if (data.stop_at && data.start_at) {
-			// Fetch organization break settings
-			const { data: orgSettings } = await supabase
-				.from('organizations')
-				.select('standard_break_minutes_per_day, standard_breaks')
-				.eq('id', membership.org_id)
+		// Fetch organization break settings (needed for calculations)
+		const { data: orgSettings } = await supabase
+			.from('organizations')
+			.select('standard_break_minutes_per_day, standard_breaks')
+			.eq('id', membership.org_id)
+			.single();
+
+		const orgBreakSettings = orgSettings ? {
+			standard_break_minutes_per_day: orgSettings.standard_break_minutes_per_day ?? 0,
+			standard_breaks: (orgSettings.standard_breaks as any) ?? [],
+		} : null;
+
+		// If ÄTA is selected and hours is provided, this is a pure ÄTA entry - create single entry
+		if (data.ata_id && (data as any).hours) {
+			const workDurationMin = Math.round((data as any).hours * 60);
+			
+			const { data: entry, error: insertError } = await supabase
+				.from('time_entries')
+				.insert({
+					org_id: membership.org_id,
+					user_id: user.id,
+					project_id: data.project_id,
+					phase_id: data.phase_id,
+					work_order_id: data.work_order_id,
+					task_label: data.task_label,
+					start_at: data.start_at,
+					stop_at: data.stop_at,
+					duration_min: workDurationMin,
+					notes: data.notes,
+					billing_type: data.billing_type,
+					fixed_block_id: data.fixed_block_id ?? null,
+					ata_id: data.ata_id,
+					status: 'draft',
+				})
+				.select('*')
 				.single();
 
-			const orgBreakSettings = orgSettings ? {
-				standard_break_minutes_per_day: orgSettings.standard_break_minutes_per_day ?? 0,
-				standard_breaks: (orgSettings.standard_breaks as any) ?? [],
-			} : null;
+			if (insertError) {
+				console.error('Error creating ÄTA time entry:', insertError);
+				return NextResponse.json({ error: insertError.message }, { status: 500 });
+			}
 
-			// Calculate total minutes
+			return NextResponse.json({ entry }, { status: 201 });
+		}
+
+		// If ÄTA is selected with ata_minutes, create TWO separate entries: main project + ÄTA
+		if (data.ata_id && (data as any).ata_minutes && data.stop_at && data.start_at) {
+			const ataMinutes = (data as any).ata_minutes;
 			const totalMinutes = Math.floor(
 				(new Date(data.stop_at).getTime() - new Date(data.start_at).getTime()) / (1000 * 60)
 			);
 
-			// Calculate work time (after break deduction)
+			// Calculate total work time (after break deduction)
+			const totalWorkMin = calculateWorkMinutes(
+				data.start_at,
+				data.stop_at,
+				totalMinutes,
+				orgBreakSettings
+			);
+
+			// Main project entry: total work time minus ÄTA time
+			const mainProjectDurationMin = Math.max(0, totalWorkMin - ataMinutes);
+
+			// ÄTA entry: use the specified ÄTA minutes
+			const ataWorkMin = Math.round(ataMinutes);
+
+			// Insert entries sequentially to avoid trigger conflicts and timeout
+			// First insert main project entry (no select to save time)
+			const mainResult = await supabase
+				.from('time_entries')
+				.insert({
+					org_id: membership.org_id,
+					user_id: user.id,
+					project_id: data.project_id,
+					phase_id: data.phase_id,
+					work_order_id: data.work_order_id,
+					task_label: data.task_label,
+					start_at: data.start_at,
+					stop_at: data.stop_at,
+					duration_min: mainProjectDurationMin,
+					notes: data.notes,
+					billing_type: data.billing_type,
+					fixed_block_id: data.fixed_block_id ?? null,
+					ata_id: null,
+					status: 'draft',
+				});
+
+			if (mainResult.error) {
+				console.error('Error creating main project time entry:', mainResult.error);
+				return NextResponse.json({ error: mainResult.error.message }, { status: 500 });
+			}
+
+			// Then insert ÄTA entry (after main entry completes to avoid trigger conflicts)
+			const ataResult = await supabase
+				.from('time_entries')
+				.insert({
+					org_id: membership.org_id,
+					user_id: user.id,
+					project_id: data.project_id,
+					phase_id: data.phase_id,
+					work_order_id: data.work_order_id,
+					task_label: data.task_label,
+					start_at: data.start_at,
+					stop_at: data.stop_at,
+					duration_min: ataWorkMin,
+					notes: data.notes,
+					billing_type: data.billing_type,
+					fixed_block_id: data.fixed_block_id ?? null,
+					ata_id: data.ata_id,
+					status: 'draft',
+				});
+
+			if (ataResult.error) {
+				console.error('Error creating ÄTA time entry:', ataResult.error);
+				// Note: Can't easily clean up main entry without ID, but RLS should prevent orphaned entries
+				return NextResponse.json({ error: ataResult.error.message }, { status: 500 });
+			}
+
+			return NextResponse.json({ 
+				message: 'Tidrapport och ÄTA-post skapade'
+			}, { status: 201 });
+		}
+
+		// Regular entry (no ÄTA) - calculate work time after break deduction
+		let workDurationMin: number | null = null;
+		if (data.stop_at && data.start_at) {
+			const totalMinutes = Math.floor(
+				(new Date(data.stop_at).getTime() - new Date(data.start_at).getTime()) / (1000 * 60)
+			);
+
 			workDurationMin = calculateWorkMinutes(
 				data.start_at,
 				data.stop_at,

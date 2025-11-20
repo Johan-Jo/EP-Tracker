@@ -257,6 +257,19 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 		}
 	}, [orgBreakSettings, editingEntry, startTime, endTime]);
 
+	// Recalculate ÄTA minutes when orgBreakSettings loads and we're editing an entry with ÄTA
+	useEffect(() => {
+		if (editingEntry && editingEntry.ata_id && editingEntry.stop_at && orgBreakSettings) {
+			const startDate = new Date(editingEntry.start_at);
+			const stopDate = new Date(editingEntry.stop_at);
+			const totalMinutes = Math.floor((stopDate.getTime() - startDate.getTime()) / (1000 * 60));
+			const workMinutes = editingEntry.duration_min || 0;
+			const breakMinutes = calculateBreakMinutes(startDate, stopDate);
+			const calculatedAtaMinutes = Math.max(0, totalMinutes - workMinutes - breakMinutes);
+			setAtaMinutes(calculatedAtaMinutes);
+		}
+	}, [editingEntry, orgBreakSettings]);
+
 	// Initialize start_at on mount and when date/time changes
 	useEffect(() => {
 		if (startTime) {
@@ -307,10 +320,30 @@ const previousProjectIdRef = useRef<string | null>(null);
 			setValue('billing_type', editingEntry.billing_type ?? 'LOPANDE', { shouldDirty: true });
 			setValue('fixed_block_id', editingEntry.fixed_block_id ?? null, { shouldDirty: true });
 			setValue('ata_id', editingEntry.ata_id ?? null, { shouldDirty: true });
-			// TODO: Load ÄTA hours from entry if stored (for now, reset to 0)
-			setAtaMinutes(0);
+			
+			// Calculate ÄTA minutes from entry data
+			// For grouped entries, use the ÄTA entry's duration directly
+			if (editingEntry._grouped && editingEntry._ataEntry) {
+				setAtaMinutes(editingEntry._ataEntry.duration_min || 0);
+			} else if (editingEntry.ata_id && stopDate) {
+				// Wait for orgBreakSettings to load if not available yet
+				if (orgBreakSettings) {
+					const totalMinutes = Math.floor((stopDate.getTime() - startDate.getTime()) / (1000 * 60));
+					const workMinutes = editingEntry.duration_min || 0;
+					const breakMinutes = calculateBreakMinutes(startDate, stopDate);
+					// ÄTA minutes = total - work - break
+					const calculatedAtaMinutes = Math.max(0, totalMinutes - workMinutes - breakMinutes);
+					setAtaMinutes(calculatedAtaMinutes);
+				} else {
+					// If orgBreakSettings not loaded yet, set to 0 temporarily
+					// It will be recalculated when orgBreakSettings loads
+					setAtaMinutes(0);
+				}
+			} else {
+				setAtaMinutes(0);
+			}
 		}
-	}, [editingEntry, setValue]);
+	}, [editingEntry, setValue, orgBreakSettings]);
 
 	// Always ensure date is today when form is not in edit mode
 	useEffect(() => {
@@ -543,6 +576,100 @@ useEffect(() => {
 	const timeEntries = timeEntriesData?.entries || [];
 	const serverStats = timeEntriesData?.stats;
 
+	// Group related entries (main project + ÄTA) that belong together
+	const groupedEntries = useMemo(() => {
+		// Simple approach: find pairs of entries (main + ÄTA) and group them
+		const result: any[] = [];
+		const processed = new Set<string>();
+		
+		timeEntries.forEach((entry: any) => {
+			if (processed.has(entry.id)) return;
+			
+			// Normalize timestamps for comparison (remove milliseconds and timezone differences)
+			const normalizeTime = (timeStr: string | null) => {
+				if (!timeStr) return '';
+				return new Date(timeStr).toISOString().slice(0, 19).replace('T', ' ');
+			};
+			
+			// If this is an ÄTA entry, look for matching main entry
+			if (entry.ata_id) {
+				const mainEntry = timeEntries.find((e: any) => 
+					!e.ata_id &&
+					e.project_id === entry.project_id &&
+					e.user_id === entry.user_id &&
+					normalizeTime(e.start_at) === normalizeTime(entry.start_at) &&
+					normalizeTime(e.stop_at) === normalizeTime(entry.stop_at) &&
+					!processed.has(e.id)
+				);
+				
+				if (mainEntry) {
+					// Group them
+					result.push({
+						...mainEntry,
+						_grouped: true,
+						_ataEntry: entry,
+						_mainDuration: mainEntry.duration_min || 0,
+						_ataDuration: entry.duration_min || 0,
+						_totalDuration: (mainEntry.duration_min || 0) + (entry.duration_min || 0),
+						_entryIds: [mainEntry.id, entry.id]
+					});
+					processed.add(mainEntry.id);
+					processed.add(entry.id);
+				} else {
+					// Single ÄTA entry
+					result.push(entry);
+					processed.add(entry.id);
+				}
+			} else {
+				// If this is a main entry, look for matching ÄTA entry
+				const normalizeTime = (timeStr: string | null) => {
+					if (!timeStr) return '';
+					return new Date(timeStr).toISOString().slice(0, 19).replace('T', ' ');
+				};
+				
+				const ataEntry = timeEntries.find((e: any) => 
+					e.ata_id &&
+					e.project_id === entry.project_id &&
+					e.user_id === entry.user_id &&
+					normalizeTime(e.start_at) === normalizeTime(entry.start_at) &&
+					normalizeTime(e.stop_at) === normalizeTime(entry.stop_at) &&
+					!processed.has(e.id)
+				);
+				
+				if (ataEntry) {
+					// Group them
+					result.push({
+						...entry,
+						_grouped: true,
+						_ataEntry: ataEntry,
+						_mainDuration: entry.duration_min || 0,
+						_ataDuration: ataEntry.duration_min || 0,
+						_totalDuration: (entry.duration_min || 0) + (ataEntry.duration_min || 0),
+						_entryIds: [entry.id, ataEntry.id]
+					});
+					processed.add(entry.id);
+					processed.add(ataEntry.id);
+				} else {
+					// Single main entry
+					result.push(entry);
+					processed.add(entry.id);
+				}
+			}
+		});
+		
+		// Sort by start_at descending
+		return result.sort((a, b) => {
+			const startAtA = new Date(a.start_at).getTime();
+			const startAtB = new Date(b.start_at).getTime();
+			if (startAtB !== startAtA) {
+				return startAtB - startAtA;
+			}
+			const createdAtA = new Date(a.created_at).getTime();
+			const createdAtB = new Date(b.created_at).getTime();
+			return createdAtB - createdAtA;
+		});
+	}, [timeEntries]);
+
 	// Helper function to check if diary exists for a time entry
 	const hasDiaryEntry = (entry: any): boolean => Boolean(entry?.diary_entry?.id);
 
@@ -597,9 +724,20 @@ useEffect(() => {
 
 	// ✅ PERFORMANCE: Memoize formatDuration to avoid recreating function on every render
 	const formatDuration = useCallback((minutes: number): string => {
-		if (!minutes) return '0h 0min';
+		if (!minutes || minutes <= 0) return '0min';
 		const hours = Math.floor(minutes / 60);
 		const mins = Math.round(minutes % 60);
+		if (hours === 0) return `${mins}min`;
+		if (mins === 0) return `${hours}h`;
+		return `${hours}h ${mins}min`;
+	}, []);
+
+	// Format duration without showing 0min (for breakdown display)
+	const formatDurationNoZeroMin = useCallback((minutes: number): string => {
+		if (!minutes) return '0h';
+		const hours = Math.floor(minutes / 60);
+		const mins = Math.round(minutes % 60);
+		if (mins === 0) return `${hours}h`;
 		return `${hours}h ${mins}min`;
 	}, []);
 
@@ -674,10 +812,8 @@ useEffect(() => {
 		const breakMinutes = calculateBreakMinutes(start, end);
 		let workMinutes = Math.max(0, totalMinutes - breakMinutes);
 		
-		// Deduct ÄTA minutes if ÄTA is selected
-		if (selectedAtaId && selectedAtaId !== 'none' && ataMinutes > 0) {
-			workMinutes = Math.max(0, workMinutes - ataMinutes);
-		}
+		// Note: ÄTA minutes are NOT deducted here - API will create two separate entries
+		// This calculation shows the total work time that will be split between main project and ÄTA
 		
 		if (workMinutes <= 0) return '';
 		
@@ -686,8 +822,13 @@ useEffect(() => {
 		return `${calculatedHours}h ${minutes}min`;
 	};
 
-	const handleDelete = (entryId: string) => {
-		setEntryToDelete(entryId);
+	const handleDelete = (entry: any) => {
+		// For grouped entries, store both entry IDs
+		if (entry._grouped && entry._entryIds) {
+			setEntryToDelete(JSON.stringify({ grouped: true, ids: entry._entryIds }));
+		} else {
+			setEntryToDelete(entry.id);
+		}
 		setDeleteDialogOpen(true);
 	};
 
@@ -695,17 +836,36 @@ useEffect(() => {
 		if (!entryToDelete) return;
 
 		try {
-			const response = await fetch(`/api/time/entries/${entryToDelete}`, {
-				method: 'DELETE',
-			});
+			// Check if it's a grouped entry
+			let deleteData: { grouped: boolean; ids?: string[]; id?: string };
+			try {
+				deleteData = JSON.parse(entryToDelete);
+			} catch {
+				deleteData = { grouped: false, id: entryToDelete };
+			}
 
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to delete time entry');
+			if (deleteData.grouped && deleteData.ids) {
+				// Delete both entries
+				await Promise.all(
+					deleteData.ids.map(id =>
+						fetch(`/api/time/entries/${id}`, { method: 'DELETE' })
+					)
+				);
+			} else if (deleteData.id) {
+				// Delete single entry
+				const response = await fetch(`/api/time/entries/${deleteData.id}`, {
+					method: 'DELETE',
+				});
+
+				if (!response.ok) {
+					const error = await response.json();
+					throw new Error(error.error || 'Failed to delete time entry');
+				}
 			}
 
 			// If we were editing this entry, clear the editing state
-			if (editingEntry?.id === entryToDelete) {
+			const entryIdToCheck = deleteData.grouped ? deleteData.ids?.[0] : deleteData.id;
+			if (editingEntry?.id === entryIdToCheck) {
 				setEditingEntry(null);
 				const today = new Date().toISOString().split('T')[0];
 				const defaults = getDefaultWorkTimes(orgBreakSettings);
@@ -774,6 +934,7 @@ useEffect(() => {
 				start_at: today.toISOString(),
 				stop_at: stopAt.toISOString(),
 				hours: hours,
+				ata_minutes: undefined, // Pure ÄTA entry, no deduction needed
 			};
 		} else {
 			// Regular entry - require start_at and stop_at
@@ -789,6 +950,7 @@ useEffect(() => {
 				billing_type: normalizedBillingType as BillingType,
 				fixed_block_id: data.fixed_block_id ?? null,
 				ata_id: data.ata_id ?? null,
+				ata_minutes: (data.ata_id && ataMinutes > 0) ? ataMinutes : undefined, // Send ÄTA minutes to deduct
 			};
 		}
 
@@ -808,15 +970,26 @@ useEffect(() => {
 				throw new Error(error.error || `Failed to ${isEditing ? 'update' : 'create'} time entry`);
 			}
 
+			const result = await response.json();
+			
+			// Handle case where API returns multiple entries (main project + ÄTA)
+			if (result.entries && Array.isArray(result.entries)) {
+				// Multiple entries created (main project + ÄTA)
+				toast.success(result.message || 'Tidrapport och ÄTA-post skapade');
+			} else if (result.entry) {
+				// Single entry created
+				toast.success(isEditing ? 'Tidrapport uppdaterad' : 'Tidrapport sparad');
+			} else {
+				// Fallback
+				toast.success(isEditing ? 'Tidrapport uppdaterad' : 'Tidrapport sparad');
+			}
+
 			// Invalidate cache and refetch - use more specific matching to ensure all related queries are invalidated
 			await queryClient.invalidateQueries({ 
 				queryKey: ['time-entries-stats'],
 				exact: false 
 			});
 			await refetch();
-
-			// Show success message
-			toast.success(isEditing ? 'Tidrapport uppdaterad' : 'Tidrapport sparad');
 
 			// Reset form and editing state - always use today's date
 			const today = new Date().toISOString().split('T')[0];
@@ -880,7 +1053,7 @@ useEffect(() => {
 		}
 	};
 
-	const recentEntries = timeEntries || [];
+	const recentEntries = groupedEntries;
 	const canLoadMoreEntries = recentEntries.length >= entriesLimit;
 
 	return (
@@ -1450,6 +1623,12 @@ useEffect(() => {
 						) : (
 							<>
 							{recentEntries.map((entry: any) => {
+								const isGrouped = entry._grouped === true;
+								const ataEntry = isGrouped ? entry._ataEntry : null;
+								const mainDuration = isGrouped ? (entry._mainDuration ?? 0) : (entry.duration_min || 0);
+								const ataDuration = isGrouped ? (entry._ataDuration ?? 0) : 0;
+								const totalDuration = isGrouped ? (entry._totalDuration ?? 0) : (entry.duration_min || 0);
+								
 								const billingTypeLabel = entry.billing_type === 'FAST' ? 'Fast' : 'Löpande';
 								const billingBadgeClasses =
 									entry.billing_type === 'FAST'
@@ -1458,7 +1637,7 @@ useEffect(() => {
 
 								return (
 									<div
-										key={entry.id}
+										key={isGrouped ? `grouped-${entry.id}-${ataEntry?.id}` : entry.id}
 										className='bg-card border-2 border-border rounded-xl p-4 hover:border-orange-300 hover:shadow-md hover:scale-[1.01] transition-all duration-200'
 									>
 										<div className='flex flex-col md:flex-row md:items-center justify-between gap-3'>
@@ -1510,6 +1689,46 @@ useEffect(() => {
 													</span>
 												</div>
 
+												{/* Show ÄTA info for grouped entries */}
+												{(isGrouped && ataEntry) && (
+													<div className='ml-11 mt-2 space-y-1'>
+														<div className='flex items-center gap-2 flex-wrap'>
+															<span className='text-xs font-medium text-muted-foreground'>
+																ÄTA:
+															</span>
+															<span className='text-xs text-muted-foreground'>
+																{ataEntry.ata?.title || 'Okänd ÄTA'}
+															</span>
+															<span className='text-xs text-orange-600 font-medium'>
+																{ataDuration > 0 ? formatDuration(ataDuration) : '0min'}
+															</span>
+														</div>
+														<div className='flex items-center gap-2 flex-wrap'>
+															<span className='text-xs font-medium text-muted-foreground'>
+																Ordinarie tid:
+															</span>
+															<span className='text-xs text-muted-foreground'>
+																{formatDuration(mainDuration)}
+															</span>
+														</div>
+													</div>
+												)}
+												{/* Show ÄTA info for single ÄTA entries (not grouped) */}
+												{!isGrouped && entry.ata && (
+													<div className='ml-11 mt-2 flex items-center gap-2 flex-wrap'>
+														<span className='text-xs font-medium text-muted-foreground'>
+															ÄTA:
+														</span>
+														<span className='text-xs text-muted-foreground'>
+															{entry.ata.title}
+														</span>
+														{entry.duration_min && entry.duration_min > 0 && (
+															<span className='text-xs text-orange-600 font-medium'>
+																{formatDuration(entry.duration_min)}
+															</span>
+														)}
+													</div>
+												)}
 												{entry.diary_entry?.work_performed && (
 													<div className='ml-11 mt-3 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3'>
 														<p className='text-xs font-semibold uppercase tracking-wide text-primary/80'>
@@ -1525,8 +1744,8 @@ useEffect(() => {
 											{/* Right side - Duration and Status */}
 											<div className='flex items-center gap-3 ml-11 md:ml-0'>
 												<div className='text-right'>
-													<p className='text-xl'>
-														{formatDuration(entry.duration_min || 0)}
+													<p className='text-xl font-semibold'>
+														{formatDuration(totalDuration)}
 													</p>
 												</div>
 												<span
@@ -1571,7 +1790,19 @@ useEffect(() => {
 																size='sm'
 																className='flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 md:w-auto md:px-4 md:gap-2'
 																onClick={() => {
-																	setEditingEntry(entry);
+																	// For grouped entries, edit the main entry but include ÄTA info
+																	if (isGrouped && ataEntry) {
+																		// Create a combined entry for editing
+																		const combinedEntry = {
+																			...entry,
+																			ata_id: ataEntry.ata_id,
+																			_ataEntry: ataEntry,
+																			_grouped: true
+																		};
+																		setEditingEntry(combinedEntry);
+																	} else {
+																		setEditingEntry(entry);
+																	}
 																	window.scrollTo({ top: 0, behavior: 'smooth' });
 																}}
 																title='Ändra'
@@ -1583,7 +1814,7 @@ useEffect(() => {
 																variant='outline'
 																size='sm'
 																className='flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:border-red-300 hover:bg-red-50 hover:text-red-700 md:w-auto md:px-4 md:gap-2'
-																onClick={() => handleDelete(entry.id)}
+																onClick={() => handleDelete(entry)}
 																title='Ta bort'
 															>
 																<Trash2 className='h-4 w-4' />
