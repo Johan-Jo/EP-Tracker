@@ -305,10 +305,17 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 		gcTime: 10 * 60 * 1000,     // 10 minutes
 	});
 
-	// Fetch materials and expenses
+	// ✅ PERFORMANCE: Fetch materials and expenses with date filter
+	// Default to last 3 months to prevent loading too much historical data
 	const { data: materials = [], isLoading, isFetching } = useQuery<UnifiedItem[]>({
 		queryKey: ['materials-expenses', orgId, selectedProject, entriesLimit],
 		queryFn: async () => {
+			// ✅ PERFORMANCE: Default to last 3 months for initial load
+			const threeMonthsAgo = new Date();
+			threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+			const defaultStartDate = threeMonthsAgo.toISOString().split('T')[0];
+			const defaultEndDate = new Date().toISOString().split('T')[0];
+
 			// Fetch materials
 			let materialsQuery = supabase
 				.from('materials')
@@ -331,7 +338,9 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 					phase:phases(id, name)
 				`,
 				)
-				.eq('org_id', orgId);
+				.eq('org_id', orgId)
+				.gte('created_at', defaultStartDate)
+				.lte('created_at', `${defaultEndDate}T23:59:59`);
 
 			if (selectedProject !== 'all') {
 				materialsQuery = materialsQuery.eq('project_id', selectedProject);
@@ -360,7 +369,9 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 					project:projects(id, name)
 				`,
 				)
-				.eq('org_id', orgId);
+				.eq('org_id', orgId)
+				.gte('created_at', defaultStartDate)
+				.lte('created_at', `${defaultEndDate}T23:59:59`);
 
 			if (selectedProject !== 'all') {
 				expensesQuery = expensesQuery.eq('project_id', selectedProject);
@@ -410,7 +421,7 @@ export function MaterialsPageNew({ orgId, projectId, ataDraftId, ataTitle, retur
 				.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 				.slice(0, entriesLimit);
 		},
-		staleTime: 1 * 60 * 1000,  // 1 minute (materials change more frequently)
+		staleTime: 2 * 60 * 1000,  // ✅ PERFORMANCE: 2 minutes (materials don't change constantly)
 		gcTime: 5 * 60 * 1000,      // 5 minutes
 	});
 

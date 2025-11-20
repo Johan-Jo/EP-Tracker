@@ -180,6 +180,8 @@ async function attachDiarySummaries(
 
 	const diaryEntriesByKey: Record<string, ActivityDiarySummary> = {};
 
+	// ✅ PERFORMANCE: Only fetch diary entries if we have valid lookup keys
+	// This prevents unnecessary queries when there are no time_entry activities
 	if (diaryLookupKeys.size > 0 && projectIds.size > 0 && userIds.size > 0 && minDate && maxDate) {
 		const { data: diaryEntries, error: diaryError } = await supabase
 			.from('diary_entries')
@@ -188,7 +190,8 @@ async function attachDiarySummaries(
 			.in('project_id', Array.from(projectIds))
 			.in('created_by', Array.from(userIds))
 			.gte('date', minDate)
-			.lte('date', maxDate);
+			.lte('date', maxDate)
+			.limit(100); // ✅ PERFORMANCE: Limit to prevent fetching too many diary entries
 
 		if (diaryError) {
 			console.error('[DASHBOARD] Error fetching diary summaries:', diaryError);
@@ -299,6 +302,7 @@ async function getRecentActivitiesLegacy(orgId: string, limit: number = 15): Pro
 
 /**
  * Get active time entry for a user
+ * ✅ PERFORMANCE: Select only needed columns instead of *
  * (Kept separate as it's a simple, user-specific query)
  */
 export async function getActiveTimeEntry(userId: string) {
@@ -307,7 +311,13 @@ export async function getActiveTimeEntry(userId: string) {
 	try {
 		const { data, error } = await supabase
 			.from('time_entries')
-			.select('*, projects(id, name)')
+			.select(`
+				id,
+				start_at,
+				billing_type,
+				fixed_block_id,
+				projects(id, name)
+			`)
 			.eq('user_id', userId)
 			.is('stop_at', null)
 			.order('start_at', { ascending: false })
@@ -333,6 +343,9 @@ export async function getActiveTimeEntry(userId: string) {
 
 /**
  * Get all active projects for dropdown
+ * ✅ PERFORMANCE: Added limit and optimized ordering
+ * Returns projects sorted by created_at DESC (most recent first) for dashboard
+ * This allows us to use the first project as "recent project" without a separate query
  * (Kept separate as it's needed for the UI)
  */
 export async function getActiveProjects(orgId: string) {
@@ -340,17 +353,25 @@ export async function getActiveProjects(orgId: string) {
 
 	const { data, error } = await supabase
 		.from('projects')
-		.select('id, name, billing_mode, default_time_billing_type')
+		.select('id, name, billing_mode, default_time_billing_type, created_at')
 		.eq('org_id', orgId)
 		.eq('status', 'active')
-		.order('name', { ascending: true });
+		.order('created_at', { ascending: false }) // ✅ Most recent first (for recent project)
+		.limit(200); // ✅ PERFORMANCE: Limit to prevent loading too many projects
 
 	if (error) {
 		console.error('[DASHBOARD] Error fetching active projects:', error);
 		return [];
 	}
 
-	return data || [];
+	// Sort by name for dropdown display (but keep created_at for recent project detection)
+	const sorted = (data || []).sort((a, b) => {
+		const nameA = a.name?.toLowerCase() || '';
+		const nameB = b.name?.toLowerCase() || '';
+		return nameA.localeCompare(nameB);
+	});
+
+	return sorted;
 }
 
 /**

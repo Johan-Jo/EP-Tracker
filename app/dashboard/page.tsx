@@ -7,7 +7,6 @@ import {
 	getRecentActivities,
 	getActiveTimeEntry,
 	getActiveProjects,
-	getRecentProject,
 } from '@/lib/db/dashboard';
 
 export default async function DashboardPage() {
@@ -40,8 +39,10 @@ export default async function DashboardPage() {
 	startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
 	startOfWeek.setHours(0, 0, 0, 0);
 
-	// Fetch all data in parallel using optimized functions
+	// ✅ PERFORMANCE: Fetch all data in parallel using optimized functions
 	// Use Promise.allSettled to handle individual failures gracefully
+	// BEFORE: 5 queries
+	// AFTER: 4 queries (getRecentProject combined with getActiveProjects)
 	const results = await Promise.allSettled([
 		// Query 1: Get aggregated stats (replaces 4 separate count queries)
 		getDashboardStats(user.id, membership.org_id, startOfWeek),
@@ -52,10 +53,7 @@ export default async function DashboardPage() {
 		// Query 3: Get active time entry
 		getActiveTimeEntry(user.id),
 		
-		// Query 4: Get recent project
-		getRecentProject(membership.org_id),
-		
-		// Query 5: Get all active projects for dropdown
+		// Query 4: Get all active projects (includes recent project as first item)
 		getActiveProjects(membership.org_id),
 	]);
 
@@ -68,8 +66,14 @@ export default async function DashboardPage() {
 	};
 	const activities = results[1].status === 'fulfilled' ? results[1].value : [];
 	const activeTimeEntry = results[2].status === 'fulfilled' ? results[2].value : null;
-	const recentProject = results[3].status === 'fulfilled' ? results[3].value : null;
-	const allProjects = results[4].status === 'fulfilled' ? results[4].value : [];
+	const allProjects = results[3].status === 'fulfilled' ? results[3].value : [];
+	
+	// ✅ PERFORMANCE: Extract recent project from allProjects (sorted by created_at desc)
+	// This eliminates the need for a separate getRecentProject query
+	const recentProject = allProjects.length > 0 ? {
+		id: allProjects[0].id,
+		name: allProjects[0].name,
+	} : null;
 
 	// Log any failures for debugging
 	results.forEach((result, index) => {

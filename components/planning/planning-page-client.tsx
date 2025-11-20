@@ -35,10 +35,10 @@ export function PlanningPageClient() {
 				absences: json.absences || [],
 			};
 		},
-		// EPIC 26.6: Enable smart caching for planning data!
-		staleTime: 30 * 1000, // 30 seconds - planning data can be cached briefly
-		gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache for quick nav
-		refetchOnMount: true, // Refetch when component mounts if data is stale
+		// ✅ PERFORMANCE: Improved caching for planning data
+		staleTime: 2 * 60 * 1000, // 2 minutes - planning data doesn't change constantly
+		gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache for quick navigation between weeks
+		refetchOnMount: false, // ✅ Don't refetch on mount if data is fresh (saves unnecessary requests)
 	});
 
 	// Drag-and-drop mutation with optimistic updates

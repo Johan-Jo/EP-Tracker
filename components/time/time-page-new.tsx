@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Calendar, Clock, Save, Filter, Loader2, Trash2, BookOpen, CheckCircle2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -519,25 +519,44 @@ useEffect(() => {
 		return `/api/time/entries?${params.toString()}`;
 	};
 
-	// Fetch time entries for stats and list
-	const { data: timeEntries, refetch, isFetching: isFetchingEntries } = useQuery({
+	// ✅ PERFORMANCE: Fetch time entries with stats from server
+	// Stats are calculated server-side for better performance
+	const { data: timeEntriesData, refetch, isFetching: isFetchingEntries } = useQuery({
 		queryKey: ['time-entries-stats', orgId, userId, userRole, filterProject, filterStatus, filterUserId, filterStartDate, filterEndDate, entriesLimit],
 		queryFn: async () => {
-			const response = await fetch(buildEntriesUrl());
+			const url = buildEntriesUrl();
+			// Add include_stats parameter to get server-side calculated stats
+			const urlWithStats = url.includes('?') ? `${url}&include_stats=true` : `${url}?include_stats=true`;
+			const response = await fetch(urlWithStats);
 			if (!response.ok) throw new Error('Failed to fetch time entries');
 			const data = await response.json();
-			return data.entries || [];
+			return {
+				entries: data.entries || [],
+				stats: data.stats || null, // Server-calculated stats
+			};
 		},
-		staleTime: 0,                // Always refetch to show latest entries
+		staleTime: 30 * 1000,       // ✅ PERFORMANCE: 30 seconds (entries change but not constantly)
 		gcTime: 5 * 60 * 1000,       // 5 minutes
 	});
+
+	const timeEntries = timeEntriesData?.entries || [];
+	const serverStats = timeEntriesData?.stats;
 
 	// Helper function to check if diary exists for a time entry
 	const hasDiaryEntry = (entry: any): boolean => Boolean(entry?.diary_entry?.id);
 
-	// Calculate stats
-	const calculateStats = () => {
-		if (!timeEntries) return { today: 0, yesterday: 0, thisWeek: 0, thisMonth: 0 };
+	// ✅ PERFORMANCE: Use server-calculated stats if available, otherwise calculate client-side
+	// Server-side calculation is much faster for large datasets
+	const stats = useMemo(() => {
+		// If server provided stats, use them (much faster!)
+		if (serverStats) {
+			return serverStats;
+		}
+
+		// Fallback to client-side calculation if server stats not available
+		if (!timeEntries || timeEntries.length === 0) {
+			return { today: 0, yesterday: 0, thisWeek: 0, thisMonth: 0 };
+		}
 
 		const now = new Date();
 		const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -573,16 +592,15 @@ useEffect(() => {
 		});
 
 		return { today, yesterday, thisWeek, thisMonth };
-	};
+	}, [timeEntries, serverStats]);
 
-	const stats = useMemo(calculateStats, [timeEntries]);
-
-	const formatDuration = (minutes: number): string => {
+	// ✅ PERFORMANCE: Memoize formatDuration to avoid recreating function on every render
+	const formatDuration = useCallback((minutes: number): string => {
 		if (!minutes) return '0h 0min';
 		const hours = Math.floor(minutes / 60);
 		const mins = Math.round(minutes % 60);
 		return `${hours}h ${mins}min`;
-	};
+	}, []);
 
 	// Calculate break minutes to deduct based on time range
 	const calculateBreakMinutes = (start: Date, end: Date): number => {
