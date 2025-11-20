@@ -439,6 +439,7 @@ const Tab2 = lazy(() => import('./Tab2'));
 3. ✅ `docs/NO-CACHE-DEVELOPMENT.md` - Caching strategy
 4. ✅ `docs/LAZY-LOADING-OPTIMIZATION.md` - Code splitting details
 5. ✅ `docs/PERFORMANCE-SUMMARY.md` - This document (complete overview)
+6. ✅ `docs/performance/cache-refresh-optimization.md` - Asynkron cache refresh för snabbare time entry submits (2025-02-02)
 
 ---
 
@@ -476,7 +477,20 @@ const Tab2 = lazy(() => import('./Tab2'));
 
 ---
 
-**Last Updated:** 2024-10-19  
-**Total Commits:** 6 performance-related commits  
+**Last Updated:** 2025-02-02  
+**Total Commits:** 6+ performance-related commits  
 **Impact:** Application now feels fast and responsive! 🎉
+
+---
+
+## 🆕 Recent Optimizations (2025-02-02)
+
+### Cache Refresh Optimization
+**Problem:** Time entry submits var långsamma p.g.a. synkron cache refresh vid varje INSERT.
+
+**Solution:** Asynkron queue-baserad cache refresh som eliminerar blockeringar.
+
+**Result:** ~99% snabbare submit-operationer (från ~1.5ms till ~0.01ms för queue insert).
+
+**Documentation:** Se [`docs/performance/cache-refresh-optimization.md`](./performance/cache-refresh-optimization.md) för detaljer.
 
