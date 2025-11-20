@@ -112,6 +112,12 @@ export async function PATCH(
 				orgBreakSettings
 			);
 
+			// If ÄTA is selected and ata_minutes is provided, deduct ÄTA time from work time
+			if (data.ata_id && workDurationMin !== null && (data as any).ata_minutes) {
+				const ataMinutes = (data as any).ata_minutes;
+				workDurationMin = Math.max(0, workDurationMin - ataMinutes);
+			}
+
 			if (workDurationMin > MAX_MINUTES_PER_DAY) {
 				return NextResponse.json(
 					{ error: 'En användare kan inte registrera mer än 24 timmar på ett dygn.' },
