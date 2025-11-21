@@ -5,6 +5,7 @@ import { QueryProvider } from '@/lib/providers/query-provider';
 import { ToasterProvider } from '@/components/core/toaster';
 import ThemeProvider from '@/components/core/theme-provider';
 import { ZodInit } from '@/components/core/zod-init';
+import { NotificationHandler } from '@/components/core/notification-handler';
 
 const inter = Inter({
 	subsets: ['latin'],
@@ -62,6 +63,7 @@ export default function RootLayout({
 			<body className={`${inter.variable} font-sans antialiased`}>
 				<ThemeProvider>
 					<ZodInit />
+					<NotificationHandler />
 					<QueryProvider>{children}</QueryProvider>
 					<ToasterProvider />
 				</ThemeProvider>

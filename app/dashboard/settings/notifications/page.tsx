@@ -25,6 +25,16 @@ export default async function NotificationsPage() {
     redirect('/sign-in');
   }
 
+  // Get user's role from membership
+  const { data: membership } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .single();
+
+  const userRole = membership?.role || 'worker';
+
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto">
       {/* Header */}
@@ -48,7 +58,7 @@ export default async function NotificationsPage() {
       </div>
 
       {/* Settings */}
-      <NotificationSettings />
+      <NotificationSettings userRole={userRole} />
 
       {/* Tour Trigger */}
       <PageTourTrigger tourId="notifications" />

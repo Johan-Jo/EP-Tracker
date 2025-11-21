@@ -1,10 +1,11 @@
 /**
  * Core notification sending service
- * Handles preference checking, quiet hours, and FCM delivery
+ * Handles preference checking, quiet hours, FCM delivery, and email delivery
  */
 
 import { getMessaging } from './firebase-admin';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { sendEmail } from '@/lib/email/send';
 
 export interface NotificationPayload {
   userId: string;
@@ -14,6 +15,9 @@ export interface NotificationPayload {
   url: string;
   data?: Record<string, any>;
   requireInteraction?: boolean;
+  skipQuietHours?: boolean; // For project-alerts compatibility
+  orgId?: string; // For project-alerts compatibility
+  tag?: string; // For project-alerts compatibility
 }
 
 export interface SendNotificationResult {
@@ -21,6 +25,10 @@ export interface SendNotificationResult {
   sent: number;
   failed: number;
   errors?: string[];
+  method?: 'push' | 'email' | 'both'; // For project-alerts compatibility
+  messageId?: string; // For email messageId
+  pushResult?: { sent: number; failed: number };
+  emailResult?: { success: boolean; messageId?: string; error?: string };
 }
 
 /**
@@ -38,6 +46,8 @@ function getPreferenceKey(type: string): string {
     weekly_summary: 'weekly_summary',
     project_checkin_reminder: 'project_checkin_reminders',
     project_checkout_reminder: 'project_checkout_reminders',
+    reminder: 'project_checkin_reminders', // Generic reminder (used by project-alerts for check-in reminders)
+    alert: 'project_checkout_reminders', // Generic alert (used by project-alerts for late check-in/forgotten checkout)
   };
 
   return typeMap[type] || type;
@@ -65,7 +75,86 @@ async function isInQuietHours(userId: string, supabase: any): Promise<boolean> {
 }
 
 /**
- * Main function to send a push notification
+ * Send email notification using announcement template
+ */
+async function sendEmailNotification(
+  payload: NotificationPayload,
+  supabase: any,
+  organizationName?: string
+): Promise<{ success: boolean; messageId?: string; error?: string } | null> {
+  try {
+    // Get user email using admin client
+    const adminClient = createAdminClient();
+    const { data: userData, error: userError } = await adminClient.auth.admin.getUserById(payload.userId);
+    
+    let userEmail: string | undefined;
+    let userName: string | undefined;
+
+    if (!userError && userData?.user?.email) {
+      userEmail = userData.user.email;
+      userName = userData.user.user_metadata?.full_name || organizationName;
+    } else {
+      // Fallback: try profiles table
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', payload.userId)
+        .maybeSingle();
+      
+      if (profile?.email) {
+        userEmail = profile.email;
+        userName = profile.full_name || organizationName;
+      }
+    }
+    
+    if (!userEmail) {
+      console.warn(`[Notifications] No email found for user ${payload.userId}, skipping email`);
+      return null;
+    }
+
+    // Build email URL
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://eptracker.app';
+    const emailUrl = `${baseUrl}${payload.url}`;
+
+    // Use announcement template for notifications
+    const emailResult = await sendEmail({
+      to: userEmail,
+      toName: userName,
+      subject: payload.title,
+      template: 'announcement',
+      templateData: {
+        organizationName: userName || 'Användare',
+        subject: payload.title,
+        message: payload.body,
+        ctaText: 'Öppna i EP-Tracker',
+        ctaUrl: emailUrl,
+      },
+      organizationId: payload.orgId,
+      emailType: 'notification',
+    });
+
+    if (emailResult.success) {
+      return {
+        success: true,
+        messageId: emailResult.messageId,
+      };
+    } else {
+      return {
+        success: false,
+        error: emailResult.error || 'Unknown error',
+      };
+    }
+  } catch (error: any) {
+    console.error('[Notifications] Email send error:', error);
+    return {
+      success: false,
+      error: error.message || 'Email send failed',
+    };
+  }
+}
+
+/**
+ * Main function to send a notification (push, email, or both)
  */
 export async function sendNotification(
   payload: NotificationPayload
@@ -79,13 +168,6 @@ export async function sendNotification(
 
   try {
     const supabase = await createClient();
-    const messaging = getMessaging();
-
-    if (!messaging) {
-      console.error('[Notifications] Firebase not configured');
-      result.errors?.push('Firebase not configured');
-      return result;
-    }
 
     // 1. Check user preferences
     const { data: prefs } = await supabase
@@ -101,84 +183,236 @@ export async function sendNotification(
       return result;
     }
 
-    // 2. Check quiet hours
-    const inQuietHours = await isInQuietHours(payload.userId, supabase);
-    if (inQuietHours) {
-      console.log(`[Notifications] User ${payload.userId} in quiet hours, skipping`);
-      return result;
-    }
-
-    // 3. Get FCM tokens
-    const { data: subscriptions } = await supabase
-      .from('push_subscriptions')
-      .select('fcm_token, id')
-      .eq('user_id', payload.userId)
-      .eq('is_active', true);
-
-    if (!subscriptions || subscriptions.length === 0) {
-      console.log(`[Notifications] No active subscriptions for user ${payload.userId}`);
-      return result;
-    }
-
-    const tokens = subscriptions.map((s) => s.fcm_token);
-
-    // 4. Send notification via FCM
-    const message = {
-      notification: {
-        title: payload.title,
-        body: payload.body,
-        icon: '/images/faviconEP.png',
-      },
-      data: {
-        url: payload.url,
-        type: payload.type,
-        ...payload.data,
-      },
-      tokens,
+    // 2. Get delivery method from preferences
+    const defaultDeliveryMethods: Record<string, string> = {
+      checkout_reminders: 'push',
+      team_checkins: 'push',
+      approvals_needed: 'push',
+      approval_confirmed: 'push',
+      ata_updates: 'push',
+      diary_updates: 'push',
+      weekly_summary: 'push',
+      project_checkin_reminders: 'push',
+      project_checkout_reminders: 'push',
     };
 
-    try {
-      const response = await messaging.sendEachForMulticast(message);
+    const deliveryMethods = prefs?.delivery_methods || defaultDeliveryMethods;
+    const deliveryMethod = (deliveryMethods[prefKey] || 'push') as 'push' | 'email' | 'both';
 
-      result.sent = response.successCount;
-      result.failed = response.failureCount;
-      result.success = response.successCount > 0;
+    console.log(`[Notifications] Sending ${payload.type} to user ${payload.userId}, deliveryMethod: ${deliveryMethod}, enabled: ${prefs ? prefs[prefKey] !== false : 'default (true)'}`);
 
-      // Handle failed tokens
-      if (response.failureCount > 0) {
-        const failedTokens: string[] = [];
-        response.responses.forEach((resp, idx) => {
-          if (!resp.success) {
-            failedTokens.push(tokens[idx]);
-            result.errors?.push(resp.error?.message || 'Unknown error');
-          }
-        });
-
-        // Deactivate failed tokens
-        if (failedTokens.length > 0) {
-          await supabase
-            .from('push_subscriptions')
-            .update({ is_active: false })
-            .in('fcm_token', failedTokens);
-        }
-      }
-
-      console.log(
-        `[Notifications] Sent to ${result.sent}/${tokens.length} devices for user ${payload.userId}`
-      );
-    } catch (error: any) {
-      console.error('[Notifications] FCM send error:', error);
-      result.errors?.push(error.message || 'FCM send failed');
-      return result;
+    // 3. Get organization name for email (if orgId is provided)
+    let organizationName: string | undefined;
+    if (payload.orgId) {
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('name')
+        .eq('id', payload.orgId)
+        .maybeSingle();
+      organizationName = org?.name;
     }
 
-    // 5. Log notification
+    // 4. Send push notification if method is 'push' or 'both'
+    let pushSuccess = false;
+    let pushSent = 0;
+    let pushFailed = 0;
+
+    if (deliveryMethod === 'push' || deliveryMethod === 'both') {
+      const messaging = getMessaging();
+      if (messaging) {
+        // Check quiet hours for push (unless skipQuietHours is true)
+        const inQuietHours = payload.skipQuietHours ? false : await isInQuietHours(payload.userId, supabase);
+        
+        if (!inQuietHours) {
+          // Get FCM tokens
+          const { data: subscriptions } = await supabase
+            .from('push_subscriptions')
+            .select('fcm_token, id')
+            .eq('user_id', payload.userId)
+            .eq('is_active', true);
+
+          if (subscriptions && subscriptions.length > 0) {
+            const tokens = subscriptions.map((s) => s.fcm_token);
+
+            // Send notification via FCM
+            // Note: Firebase Admin SDK doesn't support 'icon' in notification object
+            // Use webpush.notification for web-specific options
+            const message = {
+              notification: {
+                title: payload.title,
+                body: payload.body,
+              },
+              webpush: {
+                notification: {
+                  icon: '/images/faviconEP.png',
+                  badge: '/images/faviconEP.png',
+                },
+              },
+              data: {
+                url: payload.url,
+                type: payload.type,
+                icon: '/images/faviconEP.png', // Also include in data for service worker
+                // Convert all data values to strings (Firebase requirement)
+                ...Object.fromEntries(
+                  Object.entries(payload.data || {}).map(([key, value]) => [
+                    key,
+                    typeof value === 'string' ? value : JSON.stringify(value),
+                  ])
+                ),
+              },
+              tokens,
+            };
+
+            try {
+              const response = await messaging.sendEachForMulticast(message);
+
+              pushSent = response.successCount;
+              pushFailed = response.failureCount;
+              pushSuccess = response.successCount > 0;
+
+              // Handle failed tokens
+              if (response.failureCount > 0) {
+                const failedTokens: string[] = [];
+                response.responses.forEach((resp, idx) => {
+                  if (!resp.success) {
+                    failedTokens.push(tokens[idx]);
+                    const errorMsg = resp.error?.message || resp.error?.code || 'Unknown error';
+                    result.errors?.push(errorMsg);
+                    console.error(`[Notifications] Failed to send to token ${tokens[idx].substring(0, 20)}...:`, errorMsg);
+                  }
+                });
+
+                // Deactivate failed tokens (only for permanent errors)
+                if (failedTokens.length > 0) {
+                  const permanentErrors = ['messaging/invalid-registration-token', 'messaging/registration-token-not-registered'];
+                  const tokensToDeactivate: string[] = [];
+                  
+                  response.responses.forEach((resp, idx) => {
+                    if (!resp.success && resp.error?.code && permanentErrors.includes(resp.error.code)) {
+                      tokensToDeactivate.push(tokens[idx]);
+                    }
+                  });
+
+                  if (tokensToDeactivate.length > 0) {
+                    await supabase
+                      .from('push_subscriptions')
+                      .update({ is_active: false })
+                      .in('fcm_token', tokensToDeactivate);
+                    console.log(`[Notifications] Deactivated ${tokensToDeactivate.length} invalid tokens`);
+                  }
+                }
+              }
+
+              console.log(
+                `[Notifications] Push sent to ${pushSent}/${tokens.length} devices for user ${payload.userId}`
+              );
+            } catch (error: any) {
+              console.error('[Notifications] FCM send error:', error);
+              const errorMsg = error.message || error.code || 'FCM send failed';
+              result.errors?.push(errorMsg);
+              // Log full error for debugging
+              console.error('[Notifications] Full FCM error details:', {
+                message: error.message,
+                code: error.code,
+                stack: error.stack,
+              });
+            }
+          } else {
+            console.log(`[Notifications] No active subscriptions for user ${payload.userId}`);
+            // If deliveryMethod is 'push' and no subscriptions, fallback to email
+            if (deliveryMethod === 'push') {
+              console.log(`[Notifications] Fallback to email for user ${payload.userId} (no push subscriptions)`);
+            }
+          }
+        } else {
+          console.log(`[Notifications] User ${payload.userId} in quiet hours, skipping push`);
+          // If deliveryMethod is 'push' and in quiet hours, fallback to email
+          if (deliveryMethod === 'push') {
+            console.log(`[Notifications] Fallback to email for user ${payload.userId} (quiet hours)`);
+          }
+        }
+      } else {
+        console.warn('[Notifications] Firebase not configured, skipping push');
+        if (deliveryMethod === 'push') {
+          console.log(`[Notifications] Fallback to email for user ${payload.userId} (Firebase not configured)`);
+        }
+      }
+    }
+
+    // 5. Send email notification if method is 'email' or 'both', OR if push failed and method was 'push'
+    let emailSuccess = false;
+    let emailMessageId: string | undefined;
+    const shouldSendEmail = 
+      deliveryMethod === 'email' || 
+      deliveryMethod === 'both' ||
+      (deliveryMethod === 'push' && !pushSuccess);
+
+    if (shouldSendEmail) {
+      console.log(`[Notifications] Attempting to send email to user ${payload.userId} (deliveryMethod: ${deliveryMethod}, pushSuccess: ${pushSuccess})`);
+      const emailResult = await sendEmailNotification(payload, supabase, organizationName);
+      
+      if (emailResult) {
+        emailSuccess = emailResult.success;
+        emailMessageId = emailResult.messageId;
+        result.emailResult = emailResult;
+        
+        if (!emailResult.success) {
+          console.error(`[Notifications] Email send failed for user ${payload.userId}:`, emailResult.error);
+          result.errors?.push(emailResult.error || 'Email send failed');
+        } else {
+          console.log(`[Notifications] ✅ Email sent to user ${payload.userId} (messageId: ${emailMessageId})`);
+        }
+      } else {
+        console.warn(`[Notifications] Email notification returned null for user ${payload.userId} (no email found or error)`);
+      }
+    } else {
+      console.log(`[Notifications] Skipping email for user ${payload.userId} (deliveryMethod: ${deliveryMethod}, pushSuccess: ${pushSuccess})`);
+    }
+
+    // 6. Combine results
+    if (deliveryMethod === 'both') {
+      result.success = pushSuccess || emailSuccess;
+      result.sent = pushSent + (emailSuccess ? 1 : 0);
+      result.failed = pushFailed + (emailSuccess ? 0 : 1);
+      result.method = 'both';
+    } else if (deliveryMethod === 'email') {
+      result.success = emailSuccess;
+      result.sent = emailSuccess ? 1 : 0;
+      result.failed = emailSuccess ? 0 : 1;
+      result.method = 'email';
+    } else {
+      // deliveryMethod === 'push'
+      // If push failed but email succeeded (fallback), use email result
+      if (!pushSuccess && emailSuccess) {
+        result.success = true;
+        result.sent = 1;
+        result.failed = 0;
+        result.method = 'email'; // Changed from push to email due to fallback
+      } else {
+        result.success = pushSuccess;
+        result.sent = pushSent;
+        result.failed = pushFailed;
+        result.method = 'push';
+      }
+    }
+
+    result.pushResult = { sent: pushSent, failed: pushFailed };
+    result.messageId = emailMessageId;
+
+    // Log final result
+    console.log(`[Notifications] Final result for user ${payload.userId}: success=${result.success}, method=${result.method}, sent=${result.sent}, failed=${result.failed}, pushSuccess=${pushSuccess}, emailSuccess=${emailSuccess}`);
+
+    // 7. Log notification
     await supabase.from('notification_log').insert({
       user_id: payload.userId,
       type: payload.type,
       title: payload.title,
       body: payload.body,
-      data: payload.data || {},
+      data: {
+        ...(payload.data || {}),
+        delivery_method: result.method,
+        email_message_id: emailMessageId,
+      },
       delivery_status: result.success ? 'sent' : 'failed',
       error_message: result.errors && result.errors.length > 0 ? result.errors.join(', ') : null,
     });
@@ -198,15 +432,23 @@ export async function sendNotificationToMultipleUsers(
   userIds: string[],
   payload: Omit<NotificationPayload, 'userId'>
 ): Promise<SendNotificationResult[]> {
+  console.log(`[Notifications] sendNotificationToMultipleUsers: Sending ${payload.type} to ${userIds.length} users`);
+  
   const results = await Promise.all(
-    userIds.map((userId) =>
-      sendNotification({
+    userIds.map(async (userId) => {
+      console.log(`[Notifications] sendNotificationToMultipleUsers: Calling sendNotification for user ${userId.substring(0, 8)}...`);
+      const result = await sendNotification({
         ...payload,
         userId,
-      })
-    )
+      });
+      console.log(`[Notifications] sendNotificationToMultipleUsers: Result for user ${userId.substring(0, 8)}...: success=${result.success}, method=${result.method}`);
+      return result;
+    })
   );
 
+  const successCount = results.filter(r => r.success).length;
+  console.log(`[Notifications] sendNotificationToMultipleUsers: Completed. ${successCount}/${userIds.length} succeeded`);
+  
   return results;
 }
 

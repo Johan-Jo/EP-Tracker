@@ -62,13 +62,25 @@ export async function requestNotificationPermission(): Promise<string | null> {
 /**
  * Listen for foreground messages
  */
-export function onMessageListener(callback: (payload: any) => void) {
+export function onMessageListener(callback: (payload: any) => void): () => void {
   if (!messaging) {
     console.error('Firebase Messaging not initialized');
-    return () => {};
+    return () => {}; // Return no-op function
   }
 
-  return onMessage(messaging, callback);
+  try {
+    const unsubscribe = onMessage(messaging, callback);
+    // Ensure we always return a function
+    if (typeof unsubscribe === 'function') {
+      return unsubscribe;
+    } else {
+      console.warn('onMessage did not return a function, returning no-op');
+      return () => {};
+    }
+  } catch (error) {
+    console.error('Error setting up message listener:', error);
+    return () => {}; // Return no-op function on error
+  }
 }
 
 /**

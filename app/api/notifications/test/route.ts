@@ -52,10 +52,23 @@ export async function POST() {
     });
 
     if (!result.success) {
+      const errorMessage = result.errors && result.errors.length > 0 
+        ? result.errors.join(', ')
+        : 'Failed to send notification';
+      
+      console.error('[Test Notification] Send failed:', {
+        sent: result.sent,
+        failed: result.failed,
+        errors: result.errors,
+        pushResult: result.pushResult,
+      });
+
       return NextResponse.json(
         {
-          error: 'Failed to send notification',
+          error: errorMessage,
           details: result.errors,
+          sent: result.sent,
+          failed: result.failed,
         },
         { status: 500 }
       );
@@ -71,8 +84,12 @@ export async function POST() {
     });
   } catch (error: any) {
     console.error('[Test Notification] Unexpected error:', error);
+    console.error('[Test Notification] Error stack:', error.stack);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { 
+        error: error.message || 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      },
       { status: 500 }
     );
   }

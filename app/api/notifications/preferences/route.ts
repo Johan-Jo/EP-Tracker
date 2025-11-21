@@ -45,9 +45,35 @@ export async function GET() {
         quiet_hours_enabled: true,
         quiet_hours_start: '22:00',
         quiet_hours_end: '07:00',
+        delivery_methods: {
+          checkout_reminders: 'push',
+          team_checkins: 'push',
+          approvals_needed: 'push',
+          approval_confirmed: 'push',
+          ata_updates: 'push',
+          diary_updates: 'push',
+          weekly_summary: 'push',
+          project_checkin_reminders: 'push',
+          project_checkout_reminders: 'push',
+        },
       };
 
       return NextResponse.json(defaultPrefs);
+    }
+
+    // Ensure delivery_methods exists, add defaults if missing
+    if (!prefs.delivery_methods) {
+      prefs.delivery_methods = {
+        checkout_reminders: 'push',
+        team_checkins: 'push',
+        approvals_needed: 'push',
+        approval_confirmed: 'push',
+        ata_updates: 'push',
+        diary_updates: 'push',
+        weekly_summary: 'push',
+        project_checkin_reminders: 'push',
+        project_checkout_reminders: 'push',
+      };
     }
 
     return NextResponse.json(prefs);
@@ -82,6 +108,22 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Invalid quiet_hours_end format' }, { status: 400 });
     }
 
+    // Validate delivery_methods if provided
+    if (updates.delivery_methods) {
+      const validMethods = ['push', 'email', 'both'];
+      const deliveryMethods = updates.delivery_methods;
+      
+      // Validate each method value
+      for (const [key, value] of Object.entries(deliveryMethods)) {
+        if (value && !validMethods.includes(value as string)) {
+          return NextResponse.json(
+            { error: `Invalid delivery method for ${key}: ${value}. Must be 'push', 'email', or 'both'` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     // Upsert preferences
     const { data, error } = await supabase
       .from('notification_preferences')
@@ -100,6 +142,21 @@ export async function PUT(request: Request) {
     if (error) {
       console.error('[Preferences] Error updating:', error);
       return NextResponse.json({ error: 'Failed to update preferences' }, { status: 500 });
+    }
+
+    // Ensure delivery_methods exists in response
+    if (!data.delivery_methods) {
+      data.delivery_methods = {
+        checkout_reminders: 'push',
+        team_checkins: 'push',
+        approvals_needed: 'push',
+        approval_confirmed: 'push',
+        ata_updates: 'push',
+        diary_updates: 'push',
+        weekly_summary: 'push',
+        project_checkin_reminders: 'push',
+        project_checkout_reminders: 'push',
+      };
     }
 
     console.log(`[Preferences] Updated for user ${user.id}`);

@@ -4,7 +4,7 @@
  * Epic 25 Phase 2
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { sendNotification } from './send-notification';
 
 interface ProjectAlertSettings {
@@ -39,32 +39,34 @@ export async function notifyOnCheckIn(params: {
   checkinTime: Date;
 }) {
   const { projectId, userId, userName, checkinTime } = params;
-  const supabase = await createClient();
-
+  
   try {
+    // Use admin client to bypass RLS for fetching project and members
+    const adminClient = createAdminClient();
+    
     // Get project with alert settings
-    const { data: project, error: projectError } = await supabase
+    const { data: project, error: projectError } = await adminClient
       .from('projects')
       .select('name, org_id, alert_settings')
       .eq('id', projectId)
       .single();
 
     if (projectError || !project) {
-      console.error('Error fetching project for check-in notification:', projectError);
+      console.error('[Check-in Notification] Error fetching project:', projectError);
       return;
     }
 
     const alertSettings = project.alert_settings as ProjectAlertSettings;
 
-    // Check if check-in notifications are enabled
-    if (!alertSettings?.notify_on_checkin) {
-      return;
-    }
+    // Note: We don't require notify_on_checkin to be enabled in project settings
+    // because sendNotification() will check each user's team_checkins preference
+    // This makes it consistent with sendTeamCheckInNotification behavior
 
     // Get admin and foreman users in the organization
+    // Use admin client to bypass RLS (we need to find all admins regardless of current user)
     const rolesToCheck = alertSettings.alert_recipients || ['admin', 'foreman'];
     
-    const { data: recipients, error: recipientsError } = await supabase
+    const { data: recipients, error: recipientsError } = await adminClient
       .from('memberships')
       .select('user_id')
       .eq('org_id', project.org_id)
@@ -72,13 +74,24 @@ export async function notifyOnCheckIn(params: {
       .in('role', rolesToCheck);
 
     if (recipientsError) {
-      console.error('Error fetching recipients for check-in notification:', recipientsError);
+      console.error('[Check-in Notification] Error fetching recipients:', recipientsError);
       return;
     }
     
     if (!recipients || recipients.length === 0) {
+      console.log('[Check-in Notification] No admins/foremen to notify in organization', project.org_id);
       return;
     }
+
+    // Filter out the user who checked in
+    const filteredRecipients = recipients.filter((r) => r.user_id !== userId);
+    
+    if (filteredRecipients.length === 0) {
+      console.log('[Check-in Notification] No recipients after filtering out user');
+      return;
+    }
+
+    console.log(`[Check-in Notification] Sending to ${filteredRecipients.length} admins/foremen`);
 
     // Format time
     const timeString = checkinTime.toLocaleTimeString('sv-SE', {
@@ -91,13 +104,10 @@ export async function notifyOnCheckIn(params: {
     let failedCount = 0;
     const results: any[] = [];
     
-    for (const recipient of recipients) {
-      // Don't send to the person who checked in
-      if (recipient.user_id === userId) {
-        continue;
-      }
+    for (const recipient of filteredRecipients) {
 
       try {
+        console.log(`[Check-in Notification] Sending to user ${recipient.user_id.substring(0, 8)}...`);
         const result = await sendNotification({
           userId: recipient.user_id,
           type: 'team_checkin',
@@ -113,6 +123,12 @@ export async function notifyOnCheckIn(params: {
           orgId: project.org_id,
           skipQuietHours: true, // Team check-ins are operational alerts, should bypass quiet hours
         });
+        
+        if (result && result.success) {
+          console.log(`[Check-in Notification] ✅ Sent to ${recipient.user_id.substring(0, 8)}... (method: ${result.method || 'push'})`);
+        } else {
+          console.log(`[Check-in Notification] ❌ Failed to send to ${recipient.user_id.substring(0, 8)}...`, result?.errors);
+        }
         
         // Determine method and messageId based on result type
         let method = 'unknown';
@@ -178,30 +194,32 @@ export async function notifyOnCheckOut(params: {
   const { projectId, userId, userName, checkoutTime, hoursWorked } = params;
   
   try {
-    const supabase = await createClient();
+    // Use admin client to bypass RLS for fetching project and members
+    const adminClient = createAdminClient();
+    
     // Get project with alert settings
-    const { data: project, error: projectError } = await supabase
+    const { data: project, error: projectError } = await adminClient
       .from('projects')
       .select('name, org_id, alert_settings')
       .eq('id', projectId)
       .single();
 
     if (projectError || !project) {
-      console.error('Error fetching project for check-out notification:', projectError);
+      console.error('[Check-out Notification] Error fetching project:', projectError);
       return;
     }
 
     const alertSettings = project.alert_settings as ProjectAlertSettings;
 
-    // Check if check-out notifications are enabled
-    if (!alertSettings?.notify_on_checkout) {
-      return;
-    }
+    // Note: We don't require notify_on_checkout to be enabled in project settings
+    // because sendNotification() will check each user's team_checkins preference
+    // This makes it consistent with sendTeamCheckInNotification behavior
 
     // Get admin and foreman users in the organization
+    // Use admin client to bypass RLS (we need to find all admins regardless of current user)
     const rolesToCheck = alertSettings.alert_recipients || ['admin', 'foreman'];
     
-    const { data: recipients, error: recipientsError } = await supabase
+    const { data: recipients, error: recipientsError } = await adminClient
       .from('memberships')
       .select('user_id')
       .eq('org_id', project.org_id)
@@ -209,13 +227,24 @@ export async function notifyOnCheckOut(params: {
       .in('role', rolesToCheck);
 
     if (recipientsError) {
-      console.error('Error fetching recipients for check-out notification:', recipientsError);
+      console.error('[Check-out Notification] Error fetching recipients:', recipientsError);
       return;
     }
 
     if (!recipients || recipients.length === 0) {
+      console.log('[Check-out Notification] No admins/foremen to notify in organization', project.org_id);
       return;
     }
+
+    // Filter out the user who checked out
+    const filteredRecipients = recipients.filter((r) => r.user_id !== userId);
+    
+    if (filteredRecipients.length === 0) {
+      console.log('[Check-out Notification] No recipients after filtering out user');
+      return;
+    }
+
+    console.log(`[Check-out Notification] Sending to ${filteredRecipients.length} admins/foremen`);
 
     // Format time
     const timeString = checkoutTime.toLocaleTimeString('sv-SE', {
@@ -233,13 +262,10 @@ export async function notifyOnCheckOut(params: {
     let failedCount = 0;
     const results: any[] = [];
     
-    for (const recipient of recipients) {
-      // Don't send to the person who checked out
-      if (recipient.user_id === userId) {
-        continue;
-      }
+    for (const recipient of filteredRecipients) {
 
       try {
+        console.log(`[Check-out Notification] Sending to user ${recipient.user_id.substring(0, 8)}...`);
         const result = await sendNotification({
           userId: recipient.user_id,
           type: 'team_checkout',
@@ -255,6 +281,12 @@ export async function notifyOnCheckOut(params: {
           orgId: project.org_id,
           skipQuietHours: true, // Team check-outs are operational alerts, should bypass quiet hours
         });
+        
+        if (result && result.success) {
+          console.log(`[Check-out Notification] ✅ Sent to ${recipient.user_id.substring(0, 8)}... (method: ${result.method || 'push'})`);
+        } else {
+          console.log(`[Check-out Notification] ❌ Failed to send to ${recipient.user_id.substring(0, 8)}...`, result?.errors);
+        }
         
         // Determine method and messageId based on result type
         let method = 'unknown';
@@ -339,6 +371,13 @@ export async function sendCheckInReminder(params: {
       return;
     }
 
+    // Get org_id for email
+    const { data: projectWithOrg } = await supabase
+      .from('projects')
+      .select('org_id')
+      .eq('id', projectId)
+      .single();
+
     await sendNotification({
       userId,
       type: 'reminder',
@@ -350,6 +389,7 @@ export async function sendCheckInReminder(params: {
         type: 'checkin_reminder',
       },
       tag: `checkin-reminder-${projectId}-${userId}`,
+      orgId: projectWithOrg?.org_id,
     });
 
     console.log(`✅ Sent check-in reminder to ${userName} for ${project.name}`);
@@ -383,6 +423,13 @@ export async function sendCheckOutReminder(params: {
       return;
     }
 
+    // Get org_id for email
+    const { data: projectWithOrg } = await supabase
+      .from('projects')
+      .select('org_id')
+      .eq('id', projectId)
+      .single();
+
     await sendNotification({
       userId,
       type: 'reminder',
@@ -394,6 +441,7 @@ export async function sendCheckOutReminder(params: {
         type: 'checkout_reminder',
       },
       tag: `checkout-reminder-${projectId}-${userId}`,
+      orgId: projectWithOrg?.org_id,
     });
 
     console.log(`✅ Sent check-out reminder to ${userName} for ${project.name}`);
@@ -459,6 +507,7 @@ export async function sendLateCheckInAlert(params: {
           type: 'late_checkin',
         },
         tag: `late-checkin-${projectId}-${userId}`,
+        orgId: project.org_id,
         skipQuietHours: true, // Operational alerts should bypass quiet hours
       });
     }
@@ -526,6 +575,7 @@ export async function sendForgottenCheckOutAlert(params: {
           type: 'forgotten_checkout',
         },
         tag: `forgotten-checkout-${projectId}-${userId}`,
+        orgId: project.org_id,
         skipQuietHours: true, // Operational alerts should bypass quiet hours
       });
     }

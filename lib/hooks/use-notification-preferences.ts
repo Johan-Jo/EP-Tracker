@@ -7,6 +7,18 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 
+export interface DeliveryMethods {
+  checkout_reminders: 'push' | 'email' | 'both';
+  team_checkins: 'push' | 'email' | 'both';
+  approvals_needed: 'push' | 'email' | 'both';
+  approval_confirmed: 'push' | 'email' | 'both';
+  ata_updates: 'push' | 'email' | 'both';
+  diary_updates: 'push' | 'email' | 'both';
+  weekly_summary: 'push' | 'email' | 'both';
+  project_checkin_reminders: 'push' | 'email' | 'both';
+  project_checkout_reminders: 'push' | 'email' | 'both';
+}
+
 export interface NotificationPreferences {
   checkout_reminders: boolean;
   team_checkins: boolean;
@@ -20,6 +32,7 @@ export interface NotificationPreferences {
   quiet_hours_enabled: boolean;
   quiet_hours_start: string;
   quiet_hours_end: string;
+  delivery_methods?: DeliveryMethods;
 }
 
 interface UseNotificationPreferencesReturn {
