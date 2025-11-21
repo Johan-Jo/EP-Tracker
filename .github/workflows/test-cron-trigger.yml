@@ -1,0 +1,127 @@
+name: Test Cron Trigger
+
+# This workflow is for testing that GitHub Actions actually triggers cron jobs at scheduled times
+# To test: Update the schedule below to a time 2-3 minutes in the future, commit and push
+# Then wait and watch the Actions tab in GitHub to see if it runs at the scheduled time
+
+on:
+  schedule:
+    # ⚠️ TEST MODE: Set to run at exact time (UTC time)
+    # Format: minute hour day month weekday (UTC time)
+    # SET TO: 20:40 UTC (exact time as requested)
+    - cron: '40 20 * * *'  # Runs at 20:40 UTC
+  workflow_dispatch: # Allow manual triggering for immediate testing
+    inputs:
+      test_type:
+        description: 'Which cron job to test'
+        required: true
+        default: 'checkout-reminders'
+        type: choice
+        options:
+          - checkout-reminders
+          - checkin-reminders
+          - late-checkin-alerts
+          - forgotten-checkout-alerts
+
+jobs:
+  test-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check current time
+        run: |
+          echo "Current UTC time: $(date -u)"
+          echo "Current local time: $(date)"
+      
+      - name: Test Check-out Reminders
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'checkout-reminders')
+        env:
+          TEST_USER_EMAIL: 'oi@johan.com.br'
+          TEST_PROJECT_NAME: 'Fast och Löpande'
+        run: |
+          echo "🚀 Testing Check-out Reminders cron job..."
+          echo "Test user: $TEST_USER_EMAIL"
+          echo "Test project: $TEST_PROJECT_NAME"
+          echo ""
+          response=$(curl -s -w "\n%{http_code}" -X GET "${{ secrets.APP_URL }}/api/cron/checkout-reminders" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          echo ""
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ Check-out reminders triggered successfully!"
+            echo "📧 Check email for $TEST_USER_EMAIL to verify notification was sent"
+            echo "📱 Check push notifications if enabled for $TEST_USER_EMAIL"
+          else
+            echo "❌ Failed to trigger check-out reminders"
+            exit 1
+          fi
+      
+      - name: Test Check-in Reminders
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'checkin-reminders'
+        run: |
+          echo "🚀 Testing Check-in Reminders cron job..."
+          response=$(curl -s -w "\n%{http_code}" -X GET "${{ secrets.APP_URL }}/api/cron/checkin-reminders" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ Check-in reminders triggered successfully!"
+          else
+            echo "❌ Failed to trigger check-in reminders"
+            exit 1
+          fi
+      
+      - name: Test Late Check-in Alerts
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'late-checkin-alerts'
+        run: |
+          echo "🚀 Testing Late Check-in Alerts cron job..."
+          response=$(curl -s -w "\n%{http_code}" -X GET "${{ secrets.APP_URL }}/api/cron/late-checkin-alerts" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ Late check-in alerts triggered successfully!"
+          else
+            echo "❌ Failed to trigger late check-in alerts"
+            exit 1
+          fi
+      
+      - name: Test Forgotten Check-out Alerts
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'forgotten-checkout-alerts'
+        run: |
+          echo "🚀 Testing Forgotten Check-out Alerts cron job..."
+          response=$(curl -s -w "\n%{http_code}" -X GET "${{ secrets.APP_URL }}/api/cron/forgotten-checkout-alerts" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ Forgotten check-out alerts triggered successfully!"
+          else
+            echo "❌ Failed to trigger forgotten check-out alerts"
+            exit 1
+          fi
+
