@@ -10,27 +10,72 @@ jobs:
   cron:
     runs-on: ubuntu-latest
     steps:
+      - name: Check current time
+        run: |
+          echo "Current UTC time: $(date -u)"
+          echo "Current Swedish time: $(TZ='Europe/Stockholm' date)"
+      
       - name: Trigger Check-in Reminders
         run: |
-          curl -X GET "${{ secrets.APP_URL }}/api/cron/checkin-reminders" \
+          echo "🔄 Triggering Check-in Reminders..."
+          response=$(curl -s -w "\n%{http_code}" -X GET "${{ secrets.APP_URL }}/api/cron/checkin-reminders" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          if [ "$http_code" -ne 200 ]; then
+            echo "❌ Check-in reminders failed"
+          else
+            echo "✅ Check-in reminders completed"
+          fi
       
       - name: Trigger Check-out Reminders
         run: |
-          curl -X GET "${{ secrets.APP_URL }}/api/cron/checkout-reminders" \
+          echo "🔄 Triggering Check-out Reminders..."
+          response=$(curl -s -w "\n%{http_code}" -X GET "${{ secrets.APP_URL }}/api/cron/checkout-reminders" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          if [ "$http_code" -ne 200 ]; then
+            echo "❌ Check-out reminders failed"
+          else
+            echo "✅ Check-out reminders completed"
+          fi
       
       - name: Trigger Late Check-in Alerts
         run: |
-          curl -X GET "${{ secrets.APP_URL }}/api/cron/late-checkin-alerts" \
+          echo "🔄 Triggering Late Check-in Alerts..."
+          response=$(curl -s -w "\n%{http_code}" -X GET "${{ secrets.APP_URL }}/api/cron/late-checkin-alerts" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          if [ "$http_code" -ne 200 ]; then
+            echo "❌ Late check-in alerts failed"
+          else
+            echo "✅ Late check-in alerts completed"
+          fi
       
       - name: Trigger Forgotten Check-out Alerts
         run: |
-          curl -X GET "${{ secrets.APP_URL }}/api/cron/forgotten-checkout-alerts" \
+          echo "🔄 Triggering Forgotten Check-out Alerts..."
+          response=$(curl -s -w "\n%{http_code}" -X GET "${{ secrets.APP_URL }}/api/cron/forgotten-checkout-alerts" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          if [ "$http_code" -ne 200 ]; then
+            echo "❌ Forgotten check-out alerts failed"
+          else
+            echo "✅ Forgotten check-out alerts completed"
+          fi
 
