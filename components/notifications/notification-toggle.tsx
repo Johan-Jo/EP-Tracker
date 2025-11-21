@@ -43,7 +43,7 @@ export function NotificationToggle({
   };
 
   return (
-    <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
+    <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-start gap-3 flex-1">
           {icon && (
