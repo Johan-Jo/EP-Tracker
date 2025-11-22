@@ -213,6 +213,15 @@ export async function POST(request: NextRequest) {
 		}
 
 		console.log('[Fortnox Payroll Export] Found locked payroll basis:', payrollBasisList.length);
+		
+		// Log period information for debugging
+		const periods = payrollBasisList.map(pb => ({
+			id: pb.id,
+			person: pb.person?.full_name,
+			period_start: pb.period_start,
+			period_end: pb.period_end,
+		}));
+		console.log('[Fortnox Payroll Export] Payroll basis periods:', periods);
 
 		// Now do auto-matching for only the profiles in the payroll_basis entries to be exported
 		// Get unique person_ids from payroll_basis entries
@@ -534,18 +543,57 @@ export async function POST(request: NextRequest) {
 
 		// Return response
 		if (hasFailures && allTransactionIds.length === 0) {
+			// Extract common error patterns for better user messages
+			const firstError = exportErrors[0]?.error || 'Okänt fel';
+			let userMessage = 'Alla transaktioner misslyckades';
+			
+			// Check if it's a token refresh error
+			if (firstError.includes('Invalid refresh token') || firstError.includes('invalid_grant')) {
+				userMessage = 'Fortnox-anslutningen är ogiltig. Logga ut och logga in igen i Fortnox-inställningar.';
+			} else if (firstError.includes('refresh')) {
+				userMessage = 'Kunde inte uppdatera Fortnox-anslutningen. Kontrollera att Fortnox-anslutningen fungerar.';
+			} else if (firstError.includes('Unauthorized') || firstError.includes('401') || firstError.includes('403')) {
+				userMessage = 'Inte tillstånd att exportera till Fortnox. Kontrollera att Fortnox-anslutningen har rätt behörigheter.';
+			}
+			
+			// Get unique error messages (don't duplicate the same error)
+			const uniqueErrors = Array.from(new Set(exportErrors.map(e => e.error))).slice(0, 3);
+			
 			return NextResponse.json(
 				{
 					status: 'error',
-					message: 'Alla transaktioner misslyckades',
+					error: 'Export misslyckades',
+					message: userMessage,
 					errors: exportErrors,
+					errorDetails: uniqueErrors.length > 0 ? uniqueErrors.join('; ') : firstError,
 				},
 				{ status: 500 }
 			);
 		}
 
+		// Build user-friendly error messages
+		const errorMessages: string[] = [];
+		const uniqueErrors = new Set<string>();
+		
+		exportErrors.forEach(err => {
+			const errorMsg = err.error || 'Okänt fel';
+			// Extract Fortnox-specific error messages for better UX
+			if (errorMsg.includes('Tillåt kalenderregistrering')) {
+				const salaryCodeMatch = errorMsg.match(/Löneart (\d+)/);
+				const salaryCode = salaryCodeMatch ? salaryCodeMatch[1] : '';
+				const friendlyMsg = `Löneart ${salaryCode} behöver ha "Tillåt kalenderregistrering" aktiverat i Fortnox. Gå till Register > Lönearter och koder > Registrering i Fortnox.`;
+				if (!uniqueErrors.has(friendlyMsg)) {
+					uniqueErrors.add(friendlyMsg);
+					errorMessages.push(friendlyMsg);
+				}
+			} else if (!uniqueErrors.has(errorMsg)) {
+				uniqueErrors.add(errorMsg);
+				errorMessages.push(errorMsg);
+			}
+		});
+
 		return NextResponse.json({
-			status: 'ok',
+			status: exportErrors.length > 0 ? 'partial' : 'ok',
 			successCount: allTransactionIds.length,
 			failureCount: exportErrors.length,
 			transactionIds: allTransactionIds,
@@ -553,8 +601,11 @@ export async function POST(request: NextRequest) {
 				attendanceTransactions: attendanceTransactions.length,
 				salaryTransactions: salaryTransactions.length,
 				errors: exportErrors,
+				errorMessages: errorMessages.length > 0 ? errorMessages : undefined,
 			},
-			message: `Exporterade ${allTransactionIds.length} transaktioner till Fortnox${exportErrors.length > 0 ? ` (${exportErrors.length} misslyckades)` : ''}`,
+			message: exportErrors.length > 0 
+				? `Exporterade ${allTransactionIds.length} transaktioner till Fortnox, ${exportErrors.length} misslyckades.${errorMessages.length > 0 ? ` ${errorMessages.join(' ')}` : ''}`
+				: `Exporterade ${allTransactionIds.length} transaktioner till Fortnox`,
 		});
 	} catch (error) {
 		console.error('[Fortnox Payroll Export API] Error:', error);
@@ -566,8 +617,17 @@ export async function POST(request: NextRequest) {
 			errorMessage = error;
 		}
 
+		// Check if it's a token refresh error
+		if (errorMessage.includes('Invalid refresh token') || errorMessage.includes('invalid_grant')) {
+			errorMessage = 'Fortnox-anslutningen är ogiltig. Logga ut och logga in igen i Fortnox-inställningar.';
+		}
+
 		return NextResponse.json(
-			{ status: 'error', message: errorMessage },
+			{ 
+				status: 'error',
+				error: 'Export misslyckades',
+				message: errorMessage,
+			},
 			{ status: 500 }
 		);
 	}

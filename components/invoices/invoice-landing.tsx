@@ -37,7 +37,7 @@ export function InvoiceLanding({ role = 'finance' }: InvoiceLandingProps) {
 	};
 
 	return (
-		<section className="mx-auto mb-6 mt-4 w-full max-w-5xl px-4 md:mt-6 md:px-6">
+		<section className="mx-auto mb-6 w-full max-w-5xl px-4 md:px-6">
 			<div className="overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-amber-900/40 via-background to-background shadow-sm">
 				<div className="grid gap-6 px-5 py-5 md:grid-cols-[minmax(0,2fr)_minmax(0,1.1fr)] md:px-7 md:py-7">
 					{/* Vänster sida: huvudtext om fakturaunderlag */}

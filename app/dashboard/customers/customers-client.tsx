@@ -1,11 +1,16 @@
 "use client";
 
-import { Plus, Search, ContactRound, Building2, User, Archive } from 'lucide-react';
+import { Plus, Search, ContactRound, Building2, User, Archive, Download, Loader2, RefreshCcw, CheckCircle2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { type Customer } from '@/lib/schemas/customer';
 import Link from 'next/link';
+import { FortnoxBanner } from '@/components/integrations/fortnox-banner';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 interface CustomersClientProps {
   customers: Customer[];
@@ -13,6 +18,8 @@ interface CustomersClientProps {
   search: string;
   type?: string;
   includeArchived: boolean;
+  hasFortnoxConnection?: boolean;
+  hasCustomerScope?: boolean;
 }
 
 export default function CustomersClient({ 
@@ -20,11 +27,21 @@ export default function CustomersClient({
 	canManageCustomers, 
 	search, 
 	type,
-	includeArchived 
+	includeArchived,
+	hasFortnoxConnection = false,
+	hasCustomerScope = false,
 }: CustomersClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isImporting, setIsImporting] = useState(false);
+  const [lastImportAt, setLastImportAt] = useState<string | null>(null);
+  const [lastImportSummary, setLastImportSummary] = useState<{
+    imported: number;
+    skipped: number;
+    skippedArchived: number;
+    errors: Array<{ customerNumber: string; error: string }>;
+  } | null>(null);
 
   const handleSearch = (searchValue: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -98,6 +115,82 @@ export default function CustomersClient({
     { key: 'COMPANY', label: 'Företag', count: companyCustomers },
     { key: 'PRIVATE', label: 'Privat', count: privateCustomers },
   ];
+
+  // Format last import time
+  const formatDateTime = (value?: string | null): string | null => {
+    if (!value) return null;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    return d.toLocaleString('sv-SE', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+  const lastImportFormatted = formatDateTime(lastImportAt);
+
+  // Handle import from Fortnox
+  const handleImportClick = async () => {
+    if (!hasFortnoxConnection) {
+      toast.error('Fortnox-anslutning saknas. Koppla Fortnox först.');
+      return;
+    }
+
+    setIsImporting(true);
+    toast.loading('Importerar kunder från Fortnox...', { id: 'fortnox-customer-import' });
+
+    try {
+      const response = await fetch('/api/integrations/fortnox/customers/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+
+      if (!response.ok) {
+        let body: any = null;
+        try {
+          body = await response.json();
+        } catch {
+          // ignore
+        }
+
+        const errorMessage = body?.error || body?.message || 'Import misslyckades';
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+
+      setLastImportAt(new Date().toISOString());
+      if (result.results) {
+        setLastImportSummary({
+          imported: result.results.imported || 0,
+          skipped: result.results.skipped || 0,
+          skippedArchived: result.results.skippedArchived || 0,
+          errors: result.results.errors || [],
+        });
+      }
+
+      toast.success(
+        result.message || `Importerade ${result.results?.imported || 0} nya kunder`,
+        { id: 'fortnox-customer-import' }
+      );
+
+      // Refresh the page to show new customers
+      router.refresh();
+    } catch (err) {
+      console.error('Fortnox customer import error:', err);
+      const error = err as any;
+      
+      toast.error(
+        error.message || 'Import misslyckades',
+        { id: 'fortnox-customer-import' }
+      );
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   return (
     <div className="flex-1 overflow-auto bg-gray-50 pb-20 transition-colors dark:bg-black md:pb-0">
@@ -175,6 +268,94 @@ export default function CustomersClient({
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">
+        {/* Fortnox Banner */}
+        {canManageCustomers && (
+          <FortnoxBanner
+            title='Fortnox-integration för kunder'
+            description='Koppla EP-Tracker till Fortnox för att importera och synkronisera kunder med Fortnox.'
+            hasFortnoxConnection={hasFortnoxConnection}
+            hasRequiredScope={hasCustomerScope}
+            requiredScope='customer'
+            requiredScopeName='Kunder'
+            settingsHref='/dashboard/settings/fortnox'
+            connectedContent={
+              <div className='space-y-4'>
+                <div className='flex flex-wrap items-center gap-2'>
+                  <Button
+                    size='sm'
+                    variant='default'
+                    onClick={handleImportClick}
+                    disabled={isImporting || !hasFortnoxConnection}
+                  >
+                    {isImporting ? (
+                      <>
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                        Importerar...
+                      </>
+                    ) : (
+                      <>
+                        <Download className='mr-2 h-4 w-4' />
+                        Importera från Fortnox
+                      </>
+                    )}
+                  </Button>
+                  <Button asChild size='sm' variant='outline' className='gap-1'>
+                    <Link href='/dashboard/settings/fortnox'>
+                      <Info className='h-4 w-4' />
+                      Fortnox-inställningar
+                    </Link>
+                  </Button>
+                  <Button
+                    size='icon'
+                    variant='ghost'
+                    className='h-8 w-8'
+                    type='button'
+                    onClick={handleImportClick}
+                    disabled={isImporting}
+                    aria-label='Kör om import'
+                  >
+                    <RefreshCcw className='h-4 w-4' />
+                  </Button>
+                </div>
+
+                <Separator />
+
+                <div className='space-y-2 text-xs sm:text-sm text-muted-foreground'>
+                  <div className='flex items-center justify-between'>
+                    <span>Senaste Fortnox-import:</span>
+                    <span className='font-medium'>{lastImportFormatted ?? 'Ingen import ännu'}</span>
+                  </div>
+                  {lastImportSummary && (
+                    <div className='flex flex-wrap gap-2'>
+                      <Badge variant='outline' className='gap-1'>
+                        <CheckCircle2 className='h-3 w-3' />
+                        Importerade: {lastImportSummary.imported}
+                      </Badge>
+                      {lastImportSummary.skipped > 0 && (
+                        <Badge variant='outline' className='gap-1'>
+                          <Info className='h-3 w-3' />
+                          Hoppade över: {lastImportSummary.skipped}
+                        </Badge>
+                      )}
+                      {lastImportSummary.errors.length > 0 && (
+                        <Badge variant='outline' className='gap-1 text-amber-700 border-amber-300'>
+                          <Info className='h-3 w-3' />
+                          Fel: {lastImportSummary.errors.length}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  {!lastImportSummary && (
+                    <p className='text-[11px] sm:text-xs text-muted-foreground'>
+                      När du har kört första importen visas en sammanfattning här.
+                    </p>
+                  )}
+                </div>
+              </div>
+            }
+          />
+        )}
+
         {/* Type Filters */}
         <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-3">
           {typeOptions.map((option) => {

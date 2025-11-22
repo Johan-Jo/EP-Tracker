@@ -745,6 +745,10 @@ export async function createFortnoxSalaryTransaction(
 		throw new Error(errorMessage);
 	}
 
+	// Log successful response for debugging
+	console.log('[Fortnox Client] Salary transaction created successfully');
+	console.log('[Fortnox Client] Full response:', JSON.stringify(responseData, null, 2));
+
 	return responseData;
 }
 
@@ -828,6 +832,10 @@ export async function createFortnoxAttendanceTransaction(
 		
 		throw new Error(errorMessage);
 	}
+
+	// Log successful response for debugging (attendance transaction)
+	console.log('[Fortnox Client] Attendance transaction created successfully');
+	console.log('[Fortnox Client] Full response:', JSON.stringify(responseData, null, 2));
 
 	return responseData;
 }

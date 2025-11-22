@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
 import CustomersClient from './customers-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getFortnoxConnectionForOrg } from '@/lib/integrations/fortnox/client';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -77,6 +78,12 @@ export default async function CustomersPage(props: PageProps) {
 
 	const canManageCustomers = membership.role === 'admin' || membership.role === 'foreman';
 
+	// Check Fortnox connection
+	const fortnoxConnection = await getFortnoxConnectionForOrg(membership.org_id);
+	const hasFortnoxConnection = !!fortnoxConnection;
+	// Check if scope includes customer
+	const hasCustomerScope = fortnoxConnection?.scopes?.includes('customer') ?? false;
+
 	return (
 		<CustomersClient 
 			customers={customers || []} 
@@ -84,6 +91,8 @@ export default async function CustomersPage(props: PageProps) {
 			search={search}
 			type={type}
 			includeArchived={includeArchived}
+			hasFortnoxConnection={hasFortnoxConnection}
+			hasCustomerScope={hasCustomerScope}
 		/>
 	);
 }

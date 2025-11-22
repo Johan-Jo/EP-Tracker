@@ -27,8 +27,16 @@ export async function createFortnoxSalaryTransactionsBatch(
 		const payload = payloads[i];
 		try {
 			const response = await createFortnoxSalaryTransaction(connection, payload);
-			const salaryResponse = response as { SalaryTransaction?: { SalaryRow?: number } };
+			
+			// Log full response for debugging
+			console.log('[Fortnox Batch] Salary transaction response:', JSON.stringify(response, null, 2));
+			
+			const salaryResponse = response as { SalaryTransaction?: { SalaryRow?: number; [key: string]: unknown } };
 			const salaryRow = salaryResponse.SalaryTransaction?.SalaryRow;
+
+			// Log extracted transaction ID
+			console.log('[Fortnox Batch] Extracted SalaryRow:', salaryRow);
+			console.log('[Fortnox Batch] Full SalaryTransaction object:', JSON.stringify(salaryResponse.SalaryTransaction, null, 2));
 
 			results.push({
 				index: i,
@@ -38,6 +46,7 @@ export async function createFortnoxSalaryTransactionsBatch(
 			successCount++;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
+			console.error(`[Fortnox Batch] Salary transaction ${i} failed:`, errorMessage);
 			results.push({
 				index: i,
 				success: false,
@@ -79,8 +88,16 @@ export async function createFortnoxAttendanceTransactionsBatch(
 		const payload = payloads[i];
 		try {
 			const response = await createFortnoxAttendanceTransaction(connection, payload);
-			const attendanceResponse = response as { AttendanceTransaction?: { id?: string } };
+			
+			// Log full response for debugging
+			console.log('[Fortnox Batch] Attendance transaction response:', JSON.stringify(response, null, 2));
+			
+			const attendanceResponse = response as { AttendanceTransaction?: { id?: string; [key: string]: unknown } };
 			const transactionId = attendanceResponse.AttendanceTransaction?.id;
+
+			// Log extracted transaction ID
+			console.log('[Fortnox Batch] Extracted attendance transaction id:', transactionId);
+			console.log('[Fortnox Batch] Full AttendanceTransaction object:', JSON.stringify(attendanceResponse.AttendanceTransaction, null, 2));
 
 			results.push({
 				index: i,
@@ -90,6 +107,7 @@ export async function createFortnoxAttendanceTransactionsBatch(
 			successCount++;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
+			console.error(`[Fortnox Batch] Attendance transaction ${i} failed:`, errorMessage);
 			results.push({
 				index: i,
 				success: false,

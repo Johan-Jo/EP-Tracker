@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
 import { InvoiceBasisPageClient } from '@/components/invoice-basis/invoice-basis-page-client';
+import { getFortnoxConnectionForOrg } from '@/lib/integrations/fortnox/client';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -37,6 +38,12 @@ export default async function InvoiceBasisDashboardPage() {
 		.eq('org_id', membership.org_id)
 		.order('name', { ascending: true });
 
+	// Check Fortnox connection
+	const fortnoxConnection = await getFortnoxConnectionForOrg(membership.org_id);
+	const hasFortnoxConnection = !!fortnoxConnection;
+	// Check if scope includes invoice
+	const hasInvoiceScope = fortnoxConnection?.scopes?.includes('invoice') ?? false;
+
 	return (
 		<InvoiceBasisPageClient
 			orgId={membership.org_id}
@@ -47,6 +54,8 @@ export default async function InvoiceBasisDashboardPage() {
 			})) ?? []}
 			userRole={membership.role}
 			onboardingCompleted={!!organization?.invoice_onboarding_completed_at}
+			hasFortnoxConnection={hasFortnoxConnection}
+			hasInvoiceScope={hasInvoiceScope}
 		/>
 	);
 }

@@ -187,20 +187,38 @@ export async function GET(request: NextRequest) {
 			}
 
 			const targetDir = path.join(process.cwd(), 'exports');
-			const baseName =
-				personId && entries.length === 1 && entries[0]?.person?.full_name
-					? `loneunderlag_${periodStart}_${periodEnd}_${sanitizeFilenameSegment(entries[0].person.full_name)}`
-					: `loneunderlag_${periodStart}_${periodEnd}_samtliga`;
+		
+			// Create timestamp for filename (YYYYMMDD_HHMMSS)
+			const now = new Date();
+			const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+			
+			// Determine employee name(s) for filename
+			let employeeNamePart = '';
+			if (entries.length === 1 && entries[0]?.person?.full_name) {
+				// Single employee
+				employeeNamePart = sanitizeFilenameSegment(entries[0].person.full_name);
+			} else if (entries.length > 1) {
+				// Multiple employees - use first few names or count
+				const uniqueNames = Array.from(new Set(entries.map(e => e.person?.full_name).filter(Boolean)));
+				if (uniqueNames.length === 1) {
+					employeeNamePart = sanitizeFilenameSegment(uniqueNames[0]!);
+				} else if (uniqueNames.length <= 3) {
+					employeeNamePart = uniqueNames.map(n => sanitizeFilenameSegment(n!)).join('_');
+				} else {
+					employeeNamePart = `${uniqueNames.length}_anstallda`;
+				}
+			} else {
+				employeeNamePart = 'medarbetare';
+			}
+			
+			const baseName = `loneunderlag_${periodStart}_${periodEnd}_${employeeNamePart}_${timestamp}`;
 
 			const exportResult = exportPayrollFiles({
 				rows: csvRows,
 				meta: { periodFrom: periodStart, periodTo: periodEnd },
 				employee: {
-					name:
-						personId && payrollBasis.length === 1
-							? payrollBasis[0]?.person?.full_name ?? undefined
-							: undefined,
-					personalNumber: personId && csvRows[0]?.personnummer ? csvRows[0]?.personnummer : '',
+					name: entries.length === 1 ? entries[0]?.person?.full_name ?? undefined : undefined,
+					personalNumber: entries.length === 1 && csvRows[0]?.personnummer ? csvRows[0]?.personnummer : '',
 				},
 				fileBasename: baseName,
 				directory: targetDir,
@@ -253,7 +271,12 @@ export async function GET(request: NextRequest) {
 				const personName = targetEntry?.person?.full_name ||
 					entries?.find((p: any) => p.person_id === targetPersonId)?.person?.full_name || 
 					entries?.[0]?.person?.full_name || 'medarbetare';
-				const filename = `loneunderlag_${periodStart}_${periodEnd}_${sanitizeFilenameSegment(personName)}.pdf`;
+				
+				// Create timestamp for filename (YYYYMMDD_HHMMSS)
+				const now = new Date();
+				const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+				
+				const filename = `loneunderlag_${periodStart}_${periodEnd}_${sanitizeFilenameSegment(personName)}_${timestamp}.pdf`;
 
 				return new NextResponse(pdfBody, {
 					headers: {

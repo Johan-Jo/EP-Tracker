@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PAXml>
+  <Payrolls>
+    <Payroll>
+      <Employee>
+        <SocialSecurityNumber>000000000000</SocialSecurityNumber>
+        <Name>Johan Jonsson</Name>
+      </Employee>
+      <Period>
+        <From>2025-11-01</From>
+        <To>2025-11-30</To>
+      </Period>
+      <SalaryRows>
+        <SalaryRow>
+          <WageTypeNumber>ORDINARIE</WageTypeNumber>
+          <Quantity>40.00</Quantity>
+          <Amount>1000.00</Amount>
+          <Project>Sammanfattning</Project>
+          <Comment>[Saknar personnummer i systemet] Period: 2025-10-27 - 2025-11-02</Comment>
+        </SalaryRow>
+        <SalaryRow>
+          <WageTypeNumber>OVERTID_KVAL</WageTypeNumber>
+          <Quantity>11.83</Quantity>
+          <Amount>443.63</Amount>
+          <Project>Sammanfattning</Project>
+          <Comment>[Saknar personnummer i systemet] Period: 2025-10-27 - 2025-11-02</Comment>
+        </SalaryRow>
+        <SalaryRow>
+          <WageTypeNumber>OB_STORHELG</WageTypeNumber>
+          <Quantity>69.20</Quantity>
+          <Amount>3460.00</Amount>
+          <Project>Sammanfattning</Project>
+          <Comment>[Saknar personnummer i systemet] Period: 2025-10-27 - 2025-11-02</Comment>
+        </SalaryRow>
+      </SalaryRows>
+    </Payroll>
+  </Payrolls>
+</PAXml>

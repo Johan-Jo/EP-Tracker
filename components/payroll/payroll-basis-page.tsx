@@ -11,7 +11,10 @@ import {
 	LockOpen,
 	RefreshCw,
 	Search,
+	XCircle,
+	AlertCircle,
 } from 'lucide-react';
+import { FortnoxBanner } from '@/components/integrations/fortnox-banner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -258,12 +261,33 @@ export function PayrollBasisPage({
 		}
 
 		try {
-			const blob = await exportFile(format, scope, selectedIds);
+			const params = new URLSearchParams({
+				start: period.start,
+				end: period.end,
+				format,
+				locked_only: String(scope === 'locked'),
+				selected_ids: scope === 'selected' ? selectedIds.join(',') : '',
+			});
+			const response = await fetch(`/api/payroll/basis/export?${params.toString()}`);
+			if (!response.ok) {
+				throw new Error(await response.text());
+			}
+			
+			// Extract filename from Content-Disposition header, fallback to generated name
+			let filename = `loneunderlag_${period.start}_${period.end}.${format === 'paxml' ? 'xml' : format}`;
+			const contentDisposition = response.headers.get('Content-Disposition');
+			if (contentDisposition) {
+				const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
+				if (filenameMatch && filenameMatch[1]) {
+					filename = filenameMatch[1];
+				}
+			}
+			
+			const blob = await response.blob();
 			const url = URL.createObjectURL(blob);
 			const anchor = document.createElement('a');
 			anchor.href = url;
-			const base = `loneunderlag_${period.start}_${period.end}`;
-			anchor.download = `${base}.${format === 'paxml' ? 'xml' : format}`;
+			anchor.download = filename;
 			document.body.appendChild(anchor);
 			anchor.click();
 			anchor.remove();
@@ -424,7 +448,10 @@ export function PayrollBasisPage({
 			if (result.status === 'error') {
 				errorResult = result;
 				console.error('[Fortnox Export UI] Export returned error status:', result);
-				throw new Error(result.message || 'Export misslyckades');
+				
+				// Use errorDetails if available, otherwise use message or error
+				const errorMessage = result.errorDetails || result.message || result.error || 'Export misslyckades';
+				throw new Error(errorMessage);
 			}
 
 			// Success
@@ -486,6 +513,17 @@ export function PayrollBasisPage({
 			let errorMessage = err instanceof Error ? err.message : 'Okänt fel vid export';
 			let actionUrl: string | undefined;
 
+			// Extract message from errorResult if available
+			if (errorResult) {
+				if (errorResult.errorDetails) {
+					errorMessage = errorResult.errorDetails;
+				} else if (errorResult.message) {
+					errorMessage = errorResult.message;
+				} else if (errorResult.error) {
+					errorMessage = errorResult.error;
+				}
+			}
+
 			// Handle validation errors with details
 			if (errorResult?.error === 'Valideringsfel' && errorResult?.details && Array.isArray(errorResult.details) && errorResult.details.length > 0) {
 				const validationDetails = errorResult.details as Array<{ field?: string; message?: string; value?: unknown }>;
@@ -537,6 +575,18 @@ export function PayrollBasisPage({
 						: undefined,
 					duration: 10000,
 				});
+			} else if (err instanceof Error && (errorMessage.includes('Invalid refresh token') || errorMessage.includes('invalid_grant') || errorMessage.includes('ogiltig'))) {
+				errorMessage = 'Fortnox-anslutningen är ogiltig. Logga ut och logga in igen i Fortnox-inställningar.';
+				toast.error(errorMessage, {
+					action: {
+						label: 'Öppna Fortnox-inställningar',
+						onClick: () => {
+							window.location.href = '/dashboard/settings/fortnox';
+						},
+					},
+					duration: 10000,
+				});
+				return;
 			} else if (err instanceof Error && errorMessage.includes('employee-mappningar')) {
 				errorMessage =
 					'Importera anställda från Fortnox först, eller konfigurera mappningar manuellt i Inställningar > Fortnox.';
@@ -674,10 +724,21 @@ export function PayrollBasisPage({
 							</Card>
 						)}
 
-						<Card>
-							<CardContent className='flex flex-col gap-4 pt-4 md:flex-row md:items-end md:justify-between'>
-								<div className='flex-1 space-y-3'>
-									<PeriodPicker value={period} onChange={setPeriod} />
+					{/* Fortnox Banner */}
+					<FortnoxBanner
+						title='Fortnox-integration för löneunderlag'
+						description='Koppla EP-Tracker till Fortnox för att exportera löneunderlag direkt till Fortnox Lön utan dubbelarbete.'
+						hasFortnoxConnection={hasFortnoxConnection}
+						hasRequiredScope={hasPayrollScope}
+						requiredScope='salary'
+						requiredScopeName='Lön'
+						settingsHref='/dashboard/settings/fortnox'
+					/>
+
+					<Card>
+						<CardContent className='flex flex-col gap-4 pt-4 md:flex-row md:items-end md:justify-between'>
+							<div className='flex-1 space-y-3'>
+								<PeriodPicker value={period} onChange={setPeriod} />
 									<p className='text-xs text-muted-foreground'>
 										PDF innehåller alltid endast <b>låsta</b> poster. CSV/PAXml kan exportera <i>Alla</i>, <i>Låsta</i> eller{' '}
 										<i>Markerade</i>.

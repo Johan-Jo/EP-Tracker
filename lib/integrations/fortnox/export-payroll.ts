@@ -284,10 +284,18 @@ export function buildFortnoxSalaryTransactions(
 		person_id: payrollBasis.person_id,
 		person_name: payrollBasis.person?.full_name,
 		fortnox_employee_id: employeeId,
+		period_start: payrollBasis.period_start,
+		period_end: payrollBasis.period_end,
 	});
 
 	// Use period_end as the transaction date (or period_start, depending on business logic)
 	const transactionDate = formatDateForFortnox(payrollBasis.period_end);
+	console.log('[Fortnox Payroll Export] Transaction date for Fortnox:', {
+		period_start: payrollBasis.period_start,
+		period_end: payrollBasis.period_end,
+		transaction_date: transactionDate,
+		person_name: payrollBasis.person?.full_name,
+	});
 
 	// Normal hours salary transaction
 	if (payrollBasis.hours_norm > 0) {

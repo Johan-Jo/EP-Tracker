@@ -9,6 +9,8 @@ interface InvoiceBasisPageClientProps {
 	projects: Array<{ id: string; name: string; projectNumber: string | null }>;
 	userRole: string;
 	onboardingCompleted: boolean;
+	hasFortnoxConnection?: boolean;
+	hasInvoiceScope?: boolean;
 }
 
 /**
@@ -20,6 +22,8 @@ export function InvoiceBasisPageClient({
 	projects,
 	userRole,
 	onboardingCompleted: initialOnboardingCompleted,
+	hasFortnoxConnection = false,
+	hasInvoiceScope = false,
 }: InvoiceBasisPageClientProps) {
 	const [onboardingCompleted, setOnboardingCompleted] = useState(initialOnboardingCompleted);
 
@@ -37,6 +41,8 @@ export function InvoiceBasisPageClient({
 			orgId={orgId}
 			projects={projects}
 			userRole={userRole as 'admin' | 'foreman' | 'finance'}
+			hasFortnoxConnection={hasFortnoxConnection}
+			hasInvoiceScope={hasInvoiceScope}
 		/>
 	);
 }

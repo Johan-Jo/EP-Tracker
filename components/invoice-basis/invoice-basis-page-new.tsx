@@ -42,11 +42,14 @@ import { InvoiceLanding } from '@/components/invoices/invoice-landing';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown } from 'lucide-react';
+import { FortnoxBanner } from '@/components/integrations/fortnox-banner';
 
 interface InvoiceBasisPageProps {
 	orgId: string;
 	projects: Array<{ id: string; name: string; projectNumber: string | null }>;
 	userRole?: 'admin' | 'foreman' | 'finance';
+	hasFortnoxConnection?: boolean;
+	hasInvoiceScope?: boolean;
 }
 
 interface LineEditState {
@@ -78,7 +81,7 @@ function formatDefaultPeriodEnd(): string {
 
 type Step = 'select' | 'approvals' | 'preview' | 'lock' | 'completed';
 
-export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: InvoiceBasisPageProps) {
+export function InvoiceBasisPage({ orgId, projects, userRole = 'admin', hasFortnoxConnection = false, hasInvoiceScope = false }: InvoiceBasisPageProps) {
 	const canApprove = userRole === 'admin' || userRole === 'foreman';
 	const canEdit = userRole === 'admin';
 	const canLock = userRole === 'admin';
@@ -908,13 +911,28 @@ export function InvoiceBasisPage({ orgId, projects, userRole = 'admin' }: Invoic
 			{/* Step Indicator */}
 			<InvoiceStepIndicator currentStep={currentStep === 'select' ? 'select' : currentStep === 'approvals' ? 'approvals' : currentStep === 'preview' ? 'preview' : currentStep === 'completed' ? 'completed' : 'lock'} />
 
+			{/* Fortnox Banner - högst upp med samma bredd som huvudkortet */}
+			{canExportToFortnox && (
+				<section className='mx-auto mb-6 mt-6 w-full max-w-5xl px-4 md:px-6'>
+					<FortnoxBanner
+						title='Fortnox-integration för fakturor'
+						description='Koppla EP-Tracker till Fortnox för att exportera fakturor direkt till Fortnox utan dubbelarbete.'
+						hasFortnoxConnection={hasFortnoxConnection}
+						hasRequiredScope={hasInvoiceScope}
+						requiredScope='invoice'
+						requiredScopeName='Fakturor'
+						settingsHref='/dashboard/settings/fortnox'
+					/>
+				</section>
+			)}
+
 			{/* Landing / welcome section */}
 			<InvoiceLanding role={roleForLanding} />
 
 			{/* Step 1: Project & Period Filter */}
 			<section
 				id='invoice-step-1'
-				className='mx-auto mb-8 mt-4 w-full max-w-5xl px-4 md:mt-2 md:px-6'
+				className='mx-auto mb-6 w-full max-w-5xl px-4 md:px-6'
 			>
 				<InvoiceProjectFilter
 					projects={projects}

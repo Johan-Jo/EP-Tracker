@@ -1,0 +1,4 @@
+﻿Datum,Projekt,Löneart,Antal tim,À-pris (SEK),Belopp (SEK),⚠︎,Löneartkod,Personnummer,Namn,Period från,Period till,Kostnadsställe,Kommentar/Källa
+2025-10-27,Sammanfattning,Ordinarie tid,40.00,25.00,1000.00,⚠︎,ORDINARIE,000000000000,Johan Jonsson,2025-11-01,2025-11-30,,[Saknar personnummer i systemet] Period: 2025-10-27 - 2025-11-02
+2025-10-27,Sammanfattning,Övertid Kvalificerad,11.83,37.50,443.63,⚠︎,OVERTID_KVAL,000000000000,Johan Jonsson,2025-11-01,2025-11-30,,[Saknar personnummer i systemet] Period: 2025-10-27 - 2025-11-02
+2025-10-27,Sammanfattning,OB Storhelg,69.20,50.00,3460.00,⚠︎,OB_STORHELG,000000000000,Johan Jonsson,2025-11-01,2025-11-30,,[Saknar personnummer i systemet] Period: 2025-10-27 - 2025-11-02
