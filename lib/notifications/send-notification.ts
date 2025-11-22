@@ -46,6 +46,7 @@ function getPreferenceKey(type: string): string {
     weekly_summary: 'weekly_summary',
     project_checkin_reminder: 'project_checkin_reminders',
     project_checkout_reminder: 'project_checkout_reminders',
+    forgotten_checkout_alert: 'forgotten_checkout_alert', // Specific type for forgotten checkout alerts
     reminder: 'project_checkin_reminders', // Generic reminder (used by project-alerts for check-in reminders)
     alert: 'project_checkout_reminders', // Generic alert (used by project-alerts for late check-in/forgotten checkout)
   };
@@ -83,6 +84,8 @@ async function sendEmailNotification(
   organizationName?: string
 ): Promise<{ success: boolean; messageId?: string; error?: string } | null> {
   try {
+    console.log(`[Notifications] sendEmailNotification called for user ${payload.userId}`);
+    
     // Get user email using admin client
     const adminClient = createAdminClient();
     const { data: userData, error: userError } = await adminClient.auth.admin.getUserById(payload.userId);
@@ -93,17 +96,24 @@ async function sendEmailNotification(
     if (!userError && userData?.user?.email) {
       userEmail = userData.user.email;
       userName = userData.user.user_metadata?.full_name || organizationName;
+      console.log(`[Notifications] Found email via auth.admin: ${userEmail}`);
     } else {
+      console.log(`[Notifications] Auth.admin failed, trying profiles table. Error:`, userError);
       // Fallback: try profiles table
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('email, full_name')
         .eq('id', payload.userId)
         .maybeSingle();
       
+      if (profileError) {
+        console.error(`[Notifications] Error fetching profile:`, profileError);
+      }
+      
       if (profile?.email) {
         userEmail = profile.email;
         userName = profile.full_name || organizationName;
+        console.log(`[Notifications] Found email via profiles: ${userEmail}`);
       }
     }
     
@@ -111,6 +121,8 @@ async function sendEmailNotification(
       console.warn(`[Notifications] No email found for user ${payload.userId}, skipping email`);
       return null;
     }
+    
+    console.log(`[Notifications] Sending email to ${userEmail} with subject: ${payload.title}`);
 
     // Build email URL
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://eptracker.app';
@@ -167,7 +179,8 @@ export async function sendNotification(
   };
 
   try {
-    const supabase = await createClient();
+    // Use admin client to bypass RLS when logging notifications
+    const supabase = createAdminClient();
 
     // 1. Check user preferences
     const { data: prefs } = await supabase
@@ -194,12 +207,37 @@ export async function sendNotification(
       weekly_summary: 'push',
       project_checkin_reminders: 'push',
       project_checkout_reminders: 'push',
+      forgotten_checkout_alert: 'both', // Default to both for forgotten checkout alerts (operational alerts)
     };
 
-    const deliveryMethods = prefs?.delivery_methods || defaultDeliveryMethods;
-    const deliveryMethod = (deliveryMethods[prefKey] || 'push') as 'push' | 'email' | 'both';
+    // Merge user's delivery_methods with defaults (user preferences override defaults)
+    const userDeliveryMethods = prefs?.delivery_methods || {};
+    const deliveryMethods = { ...defaultDeliveryMethods, ...userDeliveryMethods };
+    
+    // Get delivery method: use user's preference if set, otherwise use default, otherwise fallback to 'push'
+    let deliveryMethod = (deliveryMethods[prefKey] || defaultDeliveryMethods[prefKey] || 'push') as 'push' | 'email' | 'both';
+    
+    console.error(`[Notifications] Delivery method lookup: prefKey=${prefKey}, deliveryMethods[prefKey]=${deliveryMethods[prefKey]}, defaultDeliveryMethods[prefKey]=${defaultDeliveryMethods[prefKey]}, final=${deliveryMethod}`);
+    
+    // Override: If this is a forgotten_checkout_alert, always use 'both' to ensure email is sent
+    // This ensures operational alerts always send email even if user hasn't configured it
+    if (payload.type === 'forgotten_checkout_alert') {
+      if (deliveryMethod === 'push') {
+        console.error(`[Notifications] Overriding deliveryMethod for forgotten_checkout_alert from 'push' to 'both'`);
+        deliveryMethod = 'both';
+      } else {
+        console.error(`[Notifications] forgotten_checkout_alert deliveryMethod is already '${deliveryMethod}', keeping it`);
+      }
+    }
 
-    console.log(`[Notifications] Sending ${payload.type} to user ${payload.userId}, deliveryMethod: ${deliveryMethod}, enabled: ${prefs ? prefs[prefKey] !== false : 'default (true)'}`);
+    console.error(`[Notifications] Sending ${payload.type} to user ${payload.userId}:`, {
+      prefKey,
+      deliveryMethod,
+      enabled: prefs ? prefs[prefKey] !== false : 'default (true)',
+      deliveryMethods: JSON.stringify(deliveryMethods),
+      prefsDeliveryMethods: prefs?.delivery_methods ? JSON.stringify(prefs.delivery_methods) : 'null',
+      defaultForPrefKey: defaultDeliveryMethods[prefKey],
+    });
 
     // 3. Get organization name for email (if orgId is provided)
     let organizationName: string | undefined;
@@ -218,18 +256,27 @@ export async function sendNotification(
     let pushFailed = 0;
 
     if (deliveryMethod === 'push' || deliveryMethod === 'both') {
+      console.log(`[Notifications] Attempting to send push to user ${payload.userId} (deliveryMethod: ${deliveryMethod})`);
       const messaging = getMessaging();
       if (messaging) {
+        console.log(`[Notifications] Firebase messaging initialized for user ${payload.userId}`);
         // Check quiet hours for push (unless skipQuietHours is true)
         const inQuietHours = payload.skipQuietHours ? false : await isInQuietHours(payload.userId, supabase);
+        console.log(`[Notifications] Quiet hours check for user ${payload.userId}: ${inQuietHours ? 'in quiet hours' : 'not in quiet hours'}`);
         
         if (!inQuietHours) {
           // Get FCM tokens
-          const { data: subscriptions } = await supabase
+          const { data: subscriptions, error: subsError } = await supabase
             .from('push_subscriptions')
             .select('fcm_token, id')
             .eq('user_id', payload.userId)
             .eq('is_active', true);
+
+          if (subsError) {
+            console.error(`[Notifications] Error fetching subscriptions for user ${payload.userId}:`, subsError);
+          }
+
+          console.log(`[Notifications] Found ${subscriptions?.length || 0} active subscriptions for user ${payload.userId}`);
 
           if (subscriptions && subscriptions.length > 0) {
             const tokens = subscriptions.map((s) => s.fcm_token);
@@ -251,6 +298,7 @@ export async function sendNotification(
               data: {
                 url: payload.url,
                 type: payload.type,
+                tag: payload.tag || payload.data?.type || 'ep-tracker-notification', // Include tag in data for service worker
                 icon: '/images/faviconEP.png', // Also include in data for service worker
                 // Convert all data values to strings (Firebase requirement)
                 ...Object.fromEntries(
@@ -264,11 +312,14 @@ export async function sendNotification(
             };
 
             try {
+              console.log(`[Notifications] Sending push to ${tokens.length} tokens for user ${payload.userId}`);
               const response = await messaging.sendEachForMulticast(message);
 
               pushSent = response.successCount;
               pushFailed = response.failureCount;
               pushSuccess = response.successCount > 0;
+
+              console.log(`[Notifications] Push response for user ${payload.userId}: successCount=${response.successCount}, failureCount=${response.failureCount}`);
 
               // Handle failed tokens
               if (response.failureCount > 0) {
@@ -318,10 +369,11 @@ export async function sendNotification(
               });
             }
           } else {
-            console.log(`[Notifications] No active subscriptions for user ${payload.userId}`);
+            console.log(`[Notifications] ⚠️ No active subscriptions for user ${payload.userId}`);
+            console.log(`[Notifications] 💡 User needs to enable push notifications at /dashboard/settings/notifications`);
             // If deliveryMethod is 'push' and no subscriptions, fallback to email
             if (deliveryMethod === 'push') {
-              console.log(`[Notifications] Fallback to email for user ${payload.userId} (no push subscriptions)`);
+              console.log(`[Notifications] 📧 Fallback to email for user ${payload.userId} (no push subscriptions - user needs to enable push notifications)`);
             }
           }
         } else {
@@ -332,11 +384,13 @@ export async function sendNotification(
           }
         }
       } else {
-        console.warn('[Notifications] Firebase not configured, skipping push');
+        console.warn(`[Notifications] Firebase not configured for user ${payload.userId}, skipping push`);
         if (deliveryMethod === 'push') {
           console.log(`[Notifications] Fallback to email for user ${payload.userId} (Firebase not configured)`);
         }
       }
+    } else {
+      console.log(`[Notifications] Skipping push for user ${payload.userId} (deliveryMethod: ${deliveryMethod}, not 'push' or 'both')`);
     }
 
     // 5. Send email notification if method is 'email' or 'both', OR if push failed and method was 'push'
@@ -347,23 +401,37 @@ export async function sendNotification(
       deliveryMethod === 'both' ||
       (deliveryMethod === 'push' && !pushSuccess);
 
+    console.log(`[Notifications] Email decision for user ${payload.userId}:`, {
+      deliveryMethod,
+      pushSuccess,
+      shouldSendEmail,
+      prefKey,
+      deliveryMethods: JSON.stringify(deliveryMethods),
+    });
+
     if (shouldSendEmail) {
       console.log(`[Notifications] Attempting to send email to user ${payload.userId} (deliveryMethod: ${deliveryMethod}, pushSuccess: ${pushSuccess})`);
-      const emailResult = await sendEmailNotification(payload, supabase, organizationName);
-      
-      if (emailResult) {
-        emailSuccess = emailResult.success;
-        emailMessageId = emailResult.messageId;
-        result.emailResult = emailResult;
+      try {
+        const emailResult = await sendEmailNotification(payload, supabase, organizationName);
         
-        if (!emailResult.success) {
-          console.error(`[Notifications] Email send failed for user ${payload.userId}:`, emailResult.error);
-          result.errors?.push(emailResult.error || 'Email send failed');
+        if (emailResult) {
+          emailSuccess = emailResult.success;
+          emailMessageId = emailResult.messageId;
+          result.emailResult = emailResult;
+          
+          if (!emailResult.success) {
+            console.error(`[Notifications] Email send failed for user ${payload.userId}:`, emailResult.error);
+            result.errors?.push(emailResult.error || 'Email send failed');
+          } else {
+            console.log(`[Notifications] ✅ Email sent to user ${payload.userId} (messageId: ${emailMessageId})`);
+          }
         } else {
-          console.log(`[Notifications] ✅ Email sent to user ${payload.userId} (messageId: ${emailMessageId})`);
+          console.warn(`[Notifications] Email notification returned null for user ${payload.userId} (no email found or error)`);
+          result.errors?.push('Email notification returned null (no email found)');
         }
-      } else {
-        console.warn(`[Notifications] Email notification returned null for user ${payload.userId} (no email found or error)`);
+      } catch (error: any) {
+        console.error(`[Notifications] Exception in sendEmailNotification for user ${payload.userId}:`, error);
+        result.errors?.push(error.message || 'Email send exception');
       }
     } else {
       console.log(`[Notifications] Skipping email for user ${payload.userId} (deliveryMethod: ${deliveryMethod}, pushSuccess: ${pushSuccess})`);
@@ -403,19 +471,31 @@ export async function sendNotification(
     console.log(`[Notifications] Final result for user ${payload.userId}: success=${result.success}, method=${result.method}, sent=${result.sent}, failed=${result.failed}, pushSuccess=${pushSuccess}, emailSuccess=${emailSuccess}`);
 
     // 7. Log notification
-    await supabase.from('notification_log').insert({
-      user_id: payload.userId,
-      type: payload.type,
-      title: payload.title,
-      body: payload.body,
-      data: {
-        ...(payload.data || {}),
-        delivery_method: result.method,
-        email_message_id: emailMessageId,
-      },
-      delivery_status: result.success ? 'sent' : 'failed',
-      error_message: result.errors && result.errors.length > 0 ? result.errors.join(', ') : null,
-    });
+    try {
+      const { error: logError } = await supabase.from('notification_log').insert({
+        user_id: payload.userId,
+        type: payload.type,
+        title: payload.title,
+        body: payload.body,
+        data: {
+          ...(payload.data || {}),
+          delivery_method: result.method,
+          email_message_id: emailMessageId,
+        },
+        delivery_status: result.success ? 'sent' : 'failed',
+        error_message: result.errors && result.errors.length > 0 ? result.errors.join(', ') : null,
+      });
+
+      if (logError) {
+        console.error(`[Notifications] ❌ Failed to log notification to database:`, logError);
+        console.error(`[Notifications] Log error details:`, JSON.stringify(logError, null, 2));
+      } else {
+        console.error(`[Notifications] ✅ Logged notification to database for user ${payload.userId}, type: ${payload.type}`);
+      }
+    } catch (logErr: any) {
+      console.error(`[Notifications] ❌ Exception while logging notification:`, logErr);
+      console.error(`[Notifications] Log exception stack:`, logErr?.stack);
+    }
 
     return result;
   } catch (error: any) {

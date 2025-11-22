@@ -44,6 +44,8 @@ export async function PATCH(request: NextRequest, context: RouteContext<RoutePar
 
 		// Parse request body
 		const body = await request.json();
+		console.log('[Projects API PATCH] Request body:', JSON.stringify(body, null, 2));
+		
 		const {
 			name,
 			project_number,
@@ -75,7 +77,10 @@ export async function PATCH(request: NextRequest, context: RouteContext<RoutePar
 		if (budget_mode !== undefined) updateData.budget_mode = budget_mode;
 		if (budget_hours !== undefined) updateData.budget_hours = budget_hours;
 		if (budget_amount !== undefined) updateData.budget_amount = budget_amount;
-		if (alert_settings !== undefined) updateData.alert_settings = alert_settings;
+		if (alert_settings !== undefined) {
+			console.log('[Projects API PATCH] Updating alert_settings:', JSON.stringify(alert_settings, null, 2));
+			updateData.alert_settings = alert_settings;
+		}
 		if (billing_mode !== undefined) updateData.billing_mode = billing_mode;
 		if (default_time_billing_type !== undefined) updateData.default_time_billing_type = default_time_billing_type;
 		if (quoted_amount_sek !== undefined) updateData.quoted_amount_sek = quoted_amount_sek;
@@ -94,6 +99,8 @@ export async function PATCH(request: NextRequest, context: RouteContext<RoutePar
 
 		updateData.default_ata_billing_type = derivedAta;
 
+		console.log('[Projects API PATCH] Update data:', JSON.stringify(updateData, null, 2));
+
 		// Update project
 		const { data: updatedProject, error: updateError } = await supabase
 			.from('projects')
@@ -103,10 +110,11 @@ export async function PATCH(request: NextRequest, context: RouteContext<RoutePar
 			.single();
 
 		if (updateError) {
-			console.error('Error updating project:', updateError);
+			console.error('[Projects API PATCH] Update error:', updateError);
 			return NextResponse.json({ error: 'Failed to update project' }, { status: 500 });
 		}
 
+		console.log('[Projects API PATCH] Update successful. Updated alert_settings:', JSON.stringify(updatedProject?.alert_settings, null, 2));
 		return NextResponse.json({ project: updatedProject }, { status: 200 });
 	} catch (error) {
 		console.error('Error in PATCH /api/projects/[id]:', error);

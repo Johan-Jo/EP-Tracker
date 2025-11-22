@@ -80,9 +80,11 @@ export function TopNav({ userEmail, userName }: TopNavProps) {
 					<SyncStatus />
 					<DarkModeToggle />
 
-					<Button variant='ghost' size='icon' className='text-[var(--color-sidebar-foreground)] hover:bg-white/10'>
+				<Button variant='ghost' size='icon' className='text-[var(--color-sidebar-foreground)] hover:bg-white/10' asChild>
+					<Link href='/dashboard/settings/notifications'>
 						<Bell className='h-5 w-5' />
-					</Button>
+					</Link>
+				</Button>
 
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>

@@ -113,7 +113,7 @@ export async function notifyOnCheckIn(params: {
           type: 'team_checkin',
           title: `👷 ${userName} checkade in`,
           body: `På projekt: ${project.name}\nTid: ${timeString}`,
-          url: `/dashboard/projects/${projectId}`,
+          url: `/dashboard`,
           data: {
             projectId,
             userId,
@@ -271,7 +271,7 @@ export async function notifyOnCheckOut(params: {
           type: 'team_checkout',
           title: `🏠 ${userName} checkade ut`,
           body: `På projekt: ${project.name}\nTid: ${timeString}\nArbetat: ${hoursString}`,
-          url: `/dashboard/projects/${projectId}`,
+          url: `/dashboard`,
           data: {
             projectId,
             userId,
@@ -380,10 +380,10 @@ export async function sendCheckInReminder(params: {
 
     await sendNotification({
       userId,
-      type: 'reminder',
+      type: 'project_checkin_reminder',
       title: '⏰ Dags att checka in snart',
       body: `Projekt: ${project.name}\nStarttid: ${workDayStart}`,
-      url: `/dashboard/time`,
+      url: `/dashboard`,
       data: {
         projectId,
         type: 'checkin_reminder',
@@ -432,10 +432,10 @@ export async function sendCheckOutReminder(params: {
 
     await sendNotification({
       userId,
-      type: 'reminder',
+      type: 'project_checkout_reminder',
       title: '⏰ Glöm inte checka ut',
       body: `Projekt: ${project.name}\nSluttid: ${workDayEnd}`,
-      url: `/dashboard/time`,
+      url: `/dashboard?checkout=true`,
       data: {
         projectId,
         type: 'checkout_reminder',
@@ -519,8 +519,9 @@ export async function sendLateCheckInAlert(params: {
 }
 
 /**
- * Send forgotten check-out alert to admin/foreman
+ * Send forgotten check-out alert to the user who forgot to check out
  * This will be called by a cron job
+ * Note: The user can be admin, foreman, or worker - all users get this alert if they forgot to check out
  */
 export async function sendForgottenCheckOutAlert(params: {
   projectId: string;
@@ -530,59 +531,56 @@ export async function sendForgottenCheckOutAlert(params: {
   checkedInSince: string;
 }) {
   const { projectId, userId, userName, workDayEnd, checkedInSince } = params;
-  const supabase = await createClient();
+  const { createAdminClient } = await import('@/lib/supabase/server');
+  const adminClient = createAdminClient();
 
   try {
-    // Get project with alert settings
-    const { data: project, error: projectError } = await supabase
+    console.error(`[sendForgottenCheckOutAlert] Starting for user ${userName} (${userId}) on project ${projectId}`);
+    
+    // Get project with alert settings (use admin client to bypass RLS)
+    const { data: project, error: projectError } = await adminClient
       .from('projects')
       .select('name, org_id, alert_settings')
       .eq('id', projectId)
       .single();
 
     if (projectError || !project) {
+      console.error(`[sendForgottenCheckOutAlert] ❌ Error fetching project:`, projectError);
       return;
     }
 
-    // Get admin and foreman users in the organization
-    const { data: recipients } = await supabase
-      .from('memberships')
-      .select('user_id')
-      .eq('org_id', project.org_id)
-      .eq('is_active', true)
-      .in('role', ['admin', 'foreman']);
-
-    if (!recipients?.length) {
-      return;
-    }
+    console.error(`[sendForgottenCheckOutAlert] Found project: ${project.name}, org_id: ${project.org_id}`);
 
     const currentTime = new Date().toLocaleTimeString('sv-SE', {
       hour: '2-digit',
       minute: '2-digit',
     });
 
-    // Send notification to each recipient
-    for (const recipient of recipients) {
-      await sendNotification({
-        userId: recipient.user_id,
-        type: 'alert',
-        title: '⚠️ Glömt check-out',
-        body: `${userName} har inte checkat ut från ${project.name}\nSluttid var ${workDayEnd} (nu ${currentTime})\nIncheckad sedan: ${checkedInSince}`,
-        url: `/dashboard/projects/${projectId}`,
-        data: {
-          projectId,
-          userId,
-          type: 'forgotten_checkout',
-        },
-        tag: `forgotten-checkout-${projectId}-${userId}`,
-        orgId: project.org_id,
-        skipQuietHours: true, // Operational alerts should bypass quiet hours
-      });
-    }
+    // Send notification to the user who forgot to check out
+    // Note: This user can be admin, foreman, or worker - all users get this alert if they forgot to check out
+    console.error(`[sendForgottenCheckOutAlert] 📧 Sending to user who forgot to check out: ${userId} (${userName})`);
+    await sendNotification({
+      userId: userId, // The user who forgot to check out (can be admin, foreman, or worker)
+      type: 'forgotten_checkout_alert',
+      title: '⚠️ Glömt check-out',
+      body: `Du har inte checkat ut från ${project.name}\nSluttid var ${workDayEnd} (nu ${currentTime})\nIncheckad sedan: ${checkedInSince}`,
+      url: `/dashboard?checkout=true`, // Trigger checkout dialog
+      data: {
+        projectId,
+        userId,
+        type: 'forgotten_checkout',
+      },
+      tag: `forgotten-checkout-${projectId}-${userId}`,
+      orgId: project.org_id,
+      skipQuietHours: true, // Operational alerts should bypass quiet hours
+    });
+    console.error(`[sendForgottenCheckOutAlert] ✅ Sent notification to user ${userId}`);
 
-    console.log(`✅ Sent forgotten check-out alert for ${userName} on ${project.name}`);
+    console.error(`✅ Sent forgotten check-out alert for ${userName} on ${project.name}`);
+    return { success: true, recipientsCount: 1 };
   } catch (error) {
-    console.error('Error in sendForgottenCheckOutAlert:', error);
+    console.error('❌ Error in sendForgottenCheckOutAlert:', error);
+    throw error; // Re-throw to let cron job know it failed
   }
 }
 

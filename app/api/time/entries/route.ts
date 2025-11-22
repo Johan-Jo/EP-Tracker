@@ -387,11 +387,19 @@ export async function POST(request: NextRequest) {
 		// EPIC 25: Send team check-in notification
 		// Don't await - fire and forget to keep API fast
 		if (entry) {
+			// Get project name for notification
+			const { data: project } = await supabase
+				.from('projects')
+				.select('name')
+				.eq('id', entry.project_id)
+				.single();
+
 			sendTeamCheckInNotification({
 				userId: user.id,
 				userName: user.user_metadata?.full_name || user.email || 'Unknown',
 				projectId: entry.project_id,
-				action: entry.stop_at ? 'checkout' : 'checkin',
+				projectName: project?.name || 'Okänt projekt',
+				action: entry.stop_at ? 'check_out' : 'check_in',
 				timestamp: entry.stop_at || entry.start_at,
 			}).catch((err) => {
 				console.error('[Time Entry] Failed to send team notification:', err);

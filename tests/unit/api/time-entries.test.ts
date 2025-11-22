@@ -6,6 +6,9 @@ import { createClient } from '@/lib/supabase/server';
 
 jest.mock('@/lib/auth/get-session');
 jest.mock('@/lib/supabase/server');
+jest.mock('@/lib/email/send', () => ({
+	sendEmail: jest.fn().mockResolvedValue({ success: true, messageId: 'test-email-id' }),
+}));
 
 type SupabaseBuilder = {
 	select: jest.MockedFunction<any>;

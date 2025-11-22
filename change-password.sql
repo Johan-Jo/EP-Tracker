@@ -1,11 +1,11 @@
--- Change password for user mkmatte@gmail.com to Nellie1234
+-- Change password for user j@johan.com.br to KalleBalle
 -- Run this in Supabase SQL Editor
 -- Note: Requires service_role permissions to update auth.users
 
 DO $$
 DECLARE
-    target_email TEXT := 'mkmatte@gmail.com';
-    new_password TEXT := 'Nellie1234';
+    target_email TEXT := 'j@johan.com.br';
+    new_password TEXT := 'KalleBalle';
     target_user_id UUID;
     password_hash TEXT;
 BEGIN

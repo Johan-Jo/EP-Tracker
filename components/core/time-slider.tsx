@@ -37,6 +37,8 @@ interface TimeSliderProps {
   onCheckOut: (customStopAt?: string, customStartAt?: string) => Promise<void>;
   onCheckOutComplete?: (projectId: string) => void;
   onProjectChange?: (projectId: string) => void;
+  openCheckoutDialog?: boolean;
+  onCheckoutDialogClose?: () => void;
 }
 
 export function TimeSlider({
@@ -49,7 +51,9 @@ export function TimeSlider({
   onCheckIn, 
   onCheckOut,
   onCheckOutComplete,
-  onProjectChange 
+  onProjectChange,
+  openCheckoutDialog = false,
+  onCheckoutDialogClose,
 }: TimeSliderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState(0);
@@ -127,6 +131,13 @@ export function TimeSlider({
         setBillingSelectionError(null);
     }
   }, [selectedProjectDetails, billingPreferenceKey, isActive, activeBillingType]);
+
+  // Open checkout dialog if prop is set
+  useEffect(() => {
+    if (openCheckoutDialog && isActive && !showCheckOutConfirmDialog) {
+      setShowCheckOutConfirmDialog(true);
+    }
+  }, [openCheckoutDialog, isActive, showCheckOutConfirmDialog]);
 
   useEffect(() => {
     if (!billingPreferenceKey) return;
@@ -431,6 +442,7 @@ useEffect(() => {
       setShowCheckOutConfirmDialog(false);
       setIsEditingTime(false);
       setTimeError('');
+      onCheckoutDialogClose?.();
       
       // Notify parent component about check-out completion
       if (currentProjectId && onCheckOutComplete) {
@@ -449,6 +461,7 @@ useEffect(() => {
 
   const handleCancelCheckOut = () => {
     setShowCheckOutConfirmDialog(false);
+    onCheckoutDialogClose?.();
     setIsEditingTime(false);
     setTimeError('');
     setEditedStartTime('');

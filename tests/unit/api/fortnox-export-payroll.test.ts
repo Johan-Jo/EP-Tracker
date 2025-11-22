@@ -142,27 +142,44 @@ describe('POST /api/integrations/fortnox/export-payroll', () => {
 			access_token_expires_at: new Date().toISOString(),
 		});
 
+		const createBuilder = (resolveValue: any) => {
+			const builder = {
+				select: jest.fn().mockReturnThis(),
+				in: jest.fn().mockReturnThis(),
+				eq: jest.fn().mockReturnThis(),
+			};
+			// Last eq resolves with data
+			builder.eq.mockResolvedValueOnce(resolveValue);
+			return builder;
+		};
+
 		const mockSupabase = {
-			from: jest.fn(() => ({
-				select: jest.fn(() => ({
-					in: jest.fn(() => ({
-						eq: jest.fn(() => ({
-							eq: jest.fn(() =>
-								Promise.resolve({
-									data: [
-										{
-											id: 'basis-1',
-											locked: false, // Not locked
-											person: { id: 'person-1', full_name: 'Test', email: 'test@example.com' },
-										},
-									],
-									error: null,
-								})
-							),
-						})),
-					})),
-				})),
-			})),
+			from: jest.fn((table: string) => {
+				// Wage code mappings query (first in code)
+				if (table === 'fortnox_wage_code_mappings') {
+					return createBuilder({
+						data: [
+							{ ep_wage_type: 'normal', fortnox_salary_code: '100', is_active: true },
+						],
+						error: null,
+					});
+				}
+				// Payroll basis query
+				if (table === 'payroll_basis') {
+					return createBuilder({
+						data: [
+							{
+								id: 'basis-1',
+								locked: false, // Not locked
+								person: { id: 'person-1', full_name: 'Test', email: 'test@example.com' },
+							},
+						],
+						error: null,
+					});
+				}
+				// Default
+				return createBuilder({ data: [], error: null });
+			}),
 		};
 
 		createClient.mockResolvedValue(mockSupabase);
@@ -198,47 +215,38 @@ describe('POST /api/integrations/fortnox/export-payroll', () => {
 		});
 
 		let callCount = 0;
+		const createBuilder = (resolveValue: any) => {
+			const builder = {
+				select: jest.fn().mockReturnThis(),
+				in: jest.fn().mockReturnThis(),
+				eq: jest.fn().mockReturnThis(),
+			};
+			// Last eq resolves with data
+			builder.eq.mockResolvedValueOnce(resolveValue);
+			return builder;
+		};
+
 		const mockSupabase = {
 			from: jest.fn(() => {
 				callCount++;
 				if (callCount === 1) {
 					// First call: fetch payroll_basis
-					return {
-						select: jest.fn(() => ({
-							in: jest.fn(() => ({
-								eq: jest.fn(() => ({
-									eq: jest.fn(() =>
-										Promise.resolve({
-											data: [
-												{
-													id: 'basis-1',
-													locked: true,
-													person: { id: 'person-1', full_name: 'Test', email: 'test@example.com' },
-												},
-											],
-											error: null,
-										})
-									),
-								})),
-							})),
-						})),
-					};
+					return createBuilder({
+						data: [
+							{
+								id: 'basis-1',
+								locked: true,
+								person: { id: 'person-1', full_name: 'Test', email: 'test@example.com' },
+							},
+						],
+						error: null,
+					});
 				} else {
 					// Second call: check existing links
-					return {
-						select: jest.fn(() => ({
-							in: jest.fn(() => ({
-								eq: jest.fn(() => ({
-									eq: jest.fn(() =>
-										Promise.resolve({
-											data: [{ payroll_basis_id: 'basis-1', status: 'exported' }],
-											error: null,
-										})
-									),
-								})),
-							})),
-						})),
-					};
+					return createBuilder({
+						data: [{ payroll_basis_id: 'basis-1', status: 'exported' }],
+						error: null,
+					});
 				}
 			}),
 		};
@@ -276,73 +284,98 @@ describe('POST /api/integrations/fortnox/export-payroll', () => {
 			access_token_expires_at: new Date().toISOString(),
 		});
 
+		const createBuilder = (resolveValue: any, chainMethod = 'eq') => {
+			const builder = {
+				select: jest.fn().mockReturnThis(),
+				in: jest.fn().mockReturnThis(),
+				eq: jest.fn().mockReturnThis(),
+			};
+			// Last method call resolves with data
+			if (chainMethod === 'eq') {
+				builder.eq.mockResolvedValueOnce(resolveValue);
+			} else if (chainMethod === 'in') {
+				builder.in.mockResolvedValueOnce(resolveValue);
+			}
+			return builder;
+		};
+
 		let callCount = 0;
 		const mockSupabase = {
-			from: jest.fn(() => {
+			from: jest.fn((table: string) => {
 				callCount++;
-				if (callCount === 1) {
-					// Fetch payroll_basis
-					return {
-						select: jest.fn(() => ({
-							in: jest.fn(() => ({
-								eq: jest.fn(() => ({
-									eq: jest.fn(() =>
-										Promise.resolve({
-											data: [
-												{
-													id: 'basis-1',
-													locked: true,
-													person: { id: 'person-1', full_name: 'Test', email: 'test@example.com' },
-												},
-											],
-											error: null,
-										})
-									),
-								})),
-							})),
-						})),
-					};
-				} else if (callCount === 2) {
-					// Check existing links
-					return {
-						select: jest.fn(() => ({
-							in: jest.fn(() => ({
-								eq: jest.fn(() => ({
-									eq: jest.fn(() => Promise.resolve({ data: [], error: null })),
-								})),
-							})),
-						})),
-					};
-				} else if (callCount === 3) {
-					// Fetch employee mappings
-					return {
-						select: jest.fn(() => ({
-							eq: jest.fn(() =>
-								Promise.resolve({
-									data: [{ person_id: 'person-1', fortnox_employee_id: '101' }],
-									error: null,
-								})
-							),
-						})),
-					};
-				} else {
-					// Fetch wage code mappings
-					return {
-						select: jest.fn(() => ({
-							eq: jest.fn(() => ({
-								eq: jest.fn(() =>
-									Promise.resolve({
-										data: [
-											{ ep_wage_type: 'normal', fortnox_salary_code: '100' },
-											{ ep_wage_type: 'overtime', fortnox_salary_code: '200' },
-										],
-										error: null,
-									})
-								),
-							})),
-						})),
-					};
+				// Order matches actual code execution:
+				// 1. Wage code mappings (first query in code)
+				if (table === 'fortnox_wage_code_mappings') {
+					return createBuilder({
+						data: [
+							{ ep_wage_type: 'normal', fortnox_salary_code: '100', is_active: true },
+							{ ep_wage_type: 'overtime', fortnox_salary_code: '200', is_active: true },
+						],
+						error: null,
+					});
 				}
+				// 2. Employee mappings (second query)
+				if (table === 'fortnox_employee_mappings') {
+					return createBuilder({
+						data: [{ person_id: 'person-1', fortnox_employee_id: '101' }],
+						error: null,
+					});
+				}
+				// 3. Payroll basis (third query)
+				if (table === 'payroll_basis') {
+					const builder = createBuilder({
+						data: [
+							{
+								id: 'basis-1',
+								locked: true,
+								person: { id: 'person-1', full_name: 'Test', email: 'test@example.com' },
+							},
+						],
+						error: null,
+					}, 'in');
+					builder.in.mockReturnValue(builder); // Allow chaining
+					builder.eq.mockReturnValue(builder);
+					builder.eq.mockResolvedValueOnce({
+						data: [
+							{
+								id: 'basis-1',
+								locked: true,
+								person: { id: 'person-1', full_name: 'Test', email: 'test@example.com' },
+							},
+						],
+						error: null,
+					});
+					return builder;
+				}
+				// 4. Check existing links (fourth query if needed)
+				if (table === 'fortnox_payroll_links') {
+					const builder = createBuilder({ data: [], error: null }, 'in');
+					builder.in.mockReturnValue(builder);
+					builder.eq.mockReturnValue(builder);
+					builder.eq.mockResolvedValueOnce({ data: [], error: null });
+					return builder;
+				}
+				// 5. Profiles (if auto-matching needed)
+				if (table === 'profiles') {
+					return createBuilder({
+						data: [{ id: 'person-1', email: 'test@example.com', full_name: 'Test' }],
+						error: null,
+					}, 'in');
+				}
+				// 6. Employees (if auto-matching needed)
+				if (table === 'employees') {
+					const builder = createBuilder({
+						data: [],
+						error: null,
+					});
+					builder.in.mockReturnValue(builder);
+					builder.eq.mockReturnValue(builder);
+					builder.eq.mockReturnValue(builder);
+					builder.eq.mockResolvedValueOnce({ data: [], error: null });
+					return builder;
+				}
+				// Default fallback
+				return createBuilder({ data: [], error: null });
 			}),
 		};
 

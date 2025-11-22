@@ -356,6 +356,17 @@ export function ProjectDetailClient({
 					alertSettings={summary.project.alertSettings}
 					projectId={projectId}
 					canEdit={canEdit}
+					onSaveSuccess={(savedSettings) => {
+						// Update summary state with saved alert settings
+						setSummary((prev) => ({
+							...prev,
+							project: {
+								...prev.project,
+								alertSettings: savedSettings,
+							},
+						}));
+						console.log('[ProjectDetailClient] Updated summary.project.alertSettings:', savedSettings);
+					}}
 				/>
 			)}
 

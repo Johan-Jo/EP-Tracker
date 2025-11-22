@@ -188,7 +188,7 @@ describe('buildFortnoxInvoicePayloadFromInvoiceBasis', () => {
 		expect(payload.InvoiceRows[0]?.Unit).toBe('st');
 	});
 
-	it('should not include unit for time entries', async () => {
+	it('should include unit for time entries when present', async () => {
 		const basis = {
 			...mockInvoiceBasis,
 			lines_json: {
@@ -197,7 +197,7 @@ describe('buildFortnoxInvoicePayloadFromInvoiceBasis', () => {
 						type: 'time',
 						description: 'Arbete',
 						quantity: 8,
-						unit: 'tim', // Should not be included
+						unit: 'tim',
 						unit_price: 500,
 						vat_rate: 25,
 					},
@@ -210,7 +210,8 @@ describe('buildFortnoxInvoicePayloadFromInvoiceBasis', () => {
 			customerFortnoxNumber: '6',
 		});
 
-		expect(payload.InvoiceRows[0]).not.toHaveProperty('Unit');
+		// Unit is now included when present in the line data (per implementation)
+		expect(payload.InvoiceRows[0]).toHaveProperty('Unit', 'tim');
 	});
 
 	it('should include optional fields when present', async () => {

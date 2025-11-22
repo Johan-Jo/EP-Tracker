@@ -123,3 +123,4 @@ Efter att ha fixat redirect URI:n, bör du se i terminalen:
 
 Och när du klickar på "Anslut till Fortnox" bör du omdirigeras till Fortnox utan fel.
 
+

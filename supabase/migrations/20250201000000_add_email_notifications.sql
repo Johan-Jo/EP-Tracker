@@ -42,3 +42,4 @@ COMMENT ON COLUMN notification_preferences.delivery_methods IS 'User preferences
 -- END OF MIGRATION
 -- =====================================================
 
+

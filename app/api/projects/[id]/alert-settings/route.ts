@@ -44,6 +44,17 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+    
+    if (!id || id === 'undefined') {
+      console.error('[Alert Settings PUT] Missing or invalid project ID:', id);
+      return NextResponse.json(
+        { error: 'Project ID is required' },
+        { status: 400 }
+      );
+    }
+
+    console.log('[Alert Settings PUT] Updating alert settings for project:', id);
+    
     const { user, membership } = await getSession();
 
     if (!user || !membership) {
@@ -55,14 +66,20 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { alert_settings } = await request.json();
+    const body = await request.json();
+    console.log('[Alert Settings PUT] Request body:', body);
+    
+    const { alert_settings } = body;
 
     if (!alert_settings) {
+      console.error('[Alert Settings PUT] Missing alert_settings in request body');
       return NextResponse.json(
         { error: 'alert_settings is required' },
         { status: 400 }
       );
     }
+
+    console.log('[Alert Settings PUT] Updating with alert_settings:', alert_settings);
 
     const supabase = await createClient();
 
@@ -75,9 +92,11 @@ export async function PUT(
       .single();
 
     if (error) {
+      console.error('[Alert Settings PUT] Supabase error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    console.log('[Alert Settings PUT] Successfully updated project:', data?.id);
     return NextResponse.json({ project: data });
   } catch (error: any) {
     console.error('[Alert Settings PUT] Error:', error);

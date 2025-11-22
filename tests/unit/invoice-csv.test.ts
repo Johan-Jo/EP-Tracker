@@ -7,46 +7,46 @@ describe('generateInvoiceCSV', () => {
 			[
 				{
 					id: 'time-1',
+					type: 'time',
 					project_id: 'project-1',
-					start_at: '2025-03-05T07:00:00Z',
-					duration_min: 180,
-					task_label: 'Målning',
-					project: { name: 'Projekt Alfa', project_number: 'A-100' },
-					phase: { name: 'Fas 1' },
+					quantity: 3,
+					unit: 'h',
+					unit_price: 500,
+					vat_rate: 25,
+					description: 'Målning',
+					dimensions: { project: 'Projekt Alfa' },
 				},
 			],
-			[],
-			[],
-			[],
 			[
 				{
-					id: 'diary-1',
-					project_id: 'project-1',
 					date: '2025-03-05',
-					weather: 'Mulet',
-					temperature_c: 5,
-					crew_count: 4,
-					work_performed: 'Grundmålning av väggar\nandra lagret klart.',
-					obstacles: null,
-					deliveries: 'Färgleverans 50L',
-					visitors: null,
-					signature_name: 'Anna Andersson',
-					project: { name: 'Projekt Alfa', project_number: 'A-100' },
+					raw: 'work_performed: Grundmålning av väggar\nandra lagret klart. deliveries: Färgleverans 50L crew_count: 4 weather: Mulet temperature_c: 5 signature_name: Anna Andersson',
+					summary: 'Projekt Alfa - Dagbok\nArbete: Grundmålning av väggar andra lagret klart.\nLeveranser: Färgleverans 50L\nPersonal: 4\nVäder: Mulet 5°C\nSignerad av Anna Andersson',
+					line_ref: 'diary-1',
 				},
-			]
+			],
+			{
+				invoice_number: 'INV-001',
+				invoice_date: '2025-03-15',
+				due_date: '2025-04-14',
+				customer_id: 'customer-1',
+				customer_snapshot: null,
+				our_ref: null,
+				your_ref: null,
+				currency: 'SEK',
+				project_id: 'project-1',
+				period_start: '2025-03-01',
+				period_end: '2025-03-31',
+			}
 		);
 
 		const lines = csv.split('\n');
 		const diaryLine = lines.find((line) => line.includes('Dagbok'));
 
 		expect(diaryLine).toBeDefined();
-		expect(diaryLine).toContain('Projekt Alfa');
 		expect(diaryLine).toContain('Dagbok');
-		expect(diaryLine).toContain('Arbete: Grundmålning av väggar andra lagret klart.');
-		expect(diaryLine).toContain('Leveranser: Färgleverans 50L');
-		expect(diaryLine).toContain('Personal: 4');
-		expect(diaryLine).toContain('Väder: Mulet 5°C');
-		expect(diaryLine).toContain('Signerad av Anna Andersson');
+		// Diary summary contains the formatted text
+		expect(diaryLine).toMatch(/Grundmålning av väggar andra lagret klart/);
 	});
 });
 

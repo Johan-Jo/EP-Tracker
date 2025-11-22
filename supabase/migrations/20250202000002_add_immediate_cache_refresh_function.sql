@@ -24,3 +24,4 @@ $$;
 COMMENT ON FUNCTION refresh_dashboard_stats_cache_immediate IS 
   'EPIC 26.9: Immediately refresh cache (use when user views dashboard, ensures fresh data)';
 
+

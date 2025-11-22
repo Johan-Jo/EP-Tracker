@@ -29,3 +29,4 @@ DROP COLUMN IF EXISTS work_duration_min;
 -- Step 6: Make duration_min nullable and add a comment
 COMMENT ON COLUMN time_entries.duration_min IS 'Work time in minutes (after break deduction). Calculated when entry is created/updated.';
 
+

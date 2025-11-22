@@ -21,7 +21,7 @@ export async function sendCheckOutReminder(data: CheckOutReminderData) {
     type: 'checkout_reminder',
     title: 'Glöm inte checka ut!',
     body: `Du är incheckad på ${data.projectName} sedan ${duration}`,
-    url: '/dashboard',
+    url: '/dashboard?checkout=true',
     data: {
       project_id: data.projectId,
       project_name: data.projectName,

@@ -16,3 +16,4 @@ COMMENT ON COLUMN organizations.bic IS 'BIC/SWIFT code for international bank tr
 
 
 
+

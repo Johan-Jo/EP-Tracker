@@ -29,9 +29,14 @@ export interface ProjectAlertSettings {
 }
 
 interface ProjectAlertSettingsProps {
-  projectId: string;
+  // For standalone page usage
+  projectId?: string;
   initialSettings?: Partial<ProjectAlertSettings>;
   onSave?: (settings: ProjectAlertSettings) => Promise<void>;
+  // For dialog/display usage
+  settings?: Partial<ProjectAlertSettings>;
+  onChange?: (settings: Partial<ProjectAlertSettings>) => void;
+  disabled?: boolean;
 }
 
 const DEFAULT_SETTINGS: ProjectAlertSettings = {
@@ -52,41 +57,146 @@ export function ProjectAlertSettings({
   projectId,
   initialSettings,
   onSave,
+  settings: controlledSettings,
+  onChange,
+  disabled = false,
 }: ProjectAlertSettingsProps) {
-  const [settings, setSettings] = useState<ProjectAlertSettings>({
-    ...DEFAULT_SETTINGS,
-    ...initialSettings,
-  });
+  // Support both controlled (from display component) and uncontrolled (standalone page) usage
+  const isControlled = controlledSettings !== undefined && onChange !== undefined;
+  
+  // Map between different schema formats
+  const mapToProjectAlertSettings = (input: any): ProjectAlertSettings => {
+    return {
+      ...DEFAULT_SETTINGS,
+      ...input,
+      // Map schema field names to component field names
+      late_checkin_alert_enabled: input.late_checkin_alert_enabled ?? input.late_checkin_enabled ?? DEFAULT_SETTINGS.late_checkin_alert_enabled,
+      late_checkin_alert_minutes_after: input.late_checkin_alert_minutes_after ?? input.late_checkin_minutes_after ?? DEFAULT_SETTINGS.late_checkin_alert_minutes_after,
+      forgotten_checkout_alert_enabled: input.forgotten_checkout_alert_enabled ?? input.forgotten_checkout_enabled ?? DEFAULT_SETTINGS.forgotten_checkout_alert_enabled,
+      forgotten_checkout_alert_minutes_after: input.forgotten_checkout_alert_minutes_after ?? input.forgotten_checkout_minutes_after ?? DEFAULT_SETTINGS.forgotten_checkout_alert_minutes_after,
+    };
+  };
+
+  const [internalSettings, setInternalSettings] = useState<ProjectAlertSettings>(
+    mapToProjectAlertSettings({ ...initialSettings, ...controlledSettings })
+  );
+
+  // Use controlled settings if provided, otherwise use internal state
+  const settings = isControlled 
+    ? mapToProjectAlertSettings(controlledSettings) 
+    : internalSettings;
   const [isSaving, setIsSaving] = useState(false);
+
+  // Validate projectId only for standalone usage (when saving directly)
+  if (!isControlled && !projectId) {
+    console.error('[ProjectAlertSettings] projectId is required but was not provided');
+    return (
+      <div className="rounded-lg border-2 border-red-200 bg-red-50 p-4">
+        <p className="text-red-800 font-semibold">Fel: Projekt-ID saknas</p>
+        <p className="text-red-600 text-sm mt-1">
+          Ladda om sidan eller gå tillbaka till projektlistan.
+        </p>
+      </div>
+    );
+  }
 
   const updateSetting = <K extends keyof ProjectAlertSettings>(
     key: K,
     value: ProjectAlertSettings[K]
   ) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
+    if (isControlled && onChange) {
+      // Controlled: notify parent with mapped field names
+      const updated = { ...settings, [key]: value };
+      // Map back to schema format - keep all fields but ensure schema field names exist
+      const mapped: any = { ...updated };
+      
+      // Map component field names to schema field names (for compatibility)
+      if (updated.late_checkin_alert_enabled !== undefined) {
+        mapped.late_checkin_enabled = updated.late_checkin_alert_enabled;
+      }
+      if (updated.late_checkin_alert_minutes_after !== undefined) {
+        mapped.late_checkin_minutes_after = updated.late_checkin_alert_minutes_after;
+      }
+      if (updated.forgotten_checkout_alert_enabled !== undefined) {
+        mapped.forgotten_checkout_enabled = updated.forgotten_checkout_alert_enabled;
+      }
+      if (updated.forgotten_checkout_alert_minutes_after !== undefined) {
+        mapped.forgotten_checkout_minutes_after = updated.forgotten_checkout_alert_minutes_after;
+      }
+      
+      console.log('[ProjectAlertSettings] updateSetting - key:', key, 'value:', value);
+      console.log('[ProjectAlertSettings] updateSetting - updated settings:', updated);
+      console.log('[ProjectAlertSettings] updateSetting - mapped to schema:', mapped);
+      
+      onChange(mapped);
+    } else {
+      // Uncontrolled: update internal state
+      setInternalSettings((prev) => ({ ...prev, [key]: value }));
+    }
   };
 
   const handleSave = async () => {
+    // For controlled usage, saving is handled by parent component
+    if (isControlled) {
+      console.log('[ProjectAlertSettings] Controlled mode - save handled by parent');
+      return;
+    }
+
+    if (!projectId) {
+      toast.error('Projekt-ID saknas. Ladda om sidan och försök igen.');
+      console.error('[ProjectAlertSettings] projectId is undefined');
+      return;
+    }
+
+    // Use current settings state (either controlled or internal)
+    const settingsToSave = isControlled ? settings : internalSettings;
+    
+    console.log('[ProjectAlertSettings] Saving settings for project:', projectId);
+    console.log('[ProjectAlertSettings] isControlled:', isControlled);
+    console.log('[ProjectAlertSettings] Settings to save:', settingsToSave);
+    console.log('[ProjectAlertSettings] Current internalSettings:', internalSettings);
+    console.log('[ProjectAlertSettings] Current settings:', settings);
+    
     setIsSaving(true);
     try {
       if (onSave) {
-        await onSave(settings);
+        await onSave(settingsToSave);
       } else {
         // Default save implementation
-        const response = await fetch(`/api/projects/${projectId}/alert-settings`, {
+        const url = `/api/projects/${projectId}/alert-settings`;
+        const payload = { alert_settings: settingsToSave };
+        
+        console.log('[ProjectAlertSettings] Calling:', url);
+        console.log('[ProjectAlertSettings] Payload:', JSON.stringify(payload, null, 2));
+        
+        const response = await fetch(url, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ alert_settings: settings }),
+          body: JSON.stringify(payload),
         });
 
+        console.log('[ProjectAlertSettings] Response status:', response.status);
+        console.log('[ProjectAlertSettings] Response ok:', response.ok);
+
         if (!response.ok) {
-          throw new Error('Failed to save alert settings');
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('[ProjectAlertSettings] Save failed:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData
+          });
+          throw new Error(errorData.error || `Failed to save alert settings (${response.status})`);
         }
+
+        const result = await response.json();
+        console.log('[ProjectAlertSettings] Save successful:', result);
       }
 
       toast.success('Alert-inställningar sparade');
     } catch (error: any) {
-      toast.error(error.message || 'Kunde inte spara inställningar');
+      console.error('[ProjectAlertSettings] Error saving:', error);
+      const errorMessage = error.message || 'Kunde inte spara inställningar';
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -108,6 +218,7 @@ export function ProjectAlertSettings({
               type="time"
               value={settings.work_day_start}
               onChange={(e) => updateSetting('work_day_start', e.target.value)}
+              disabled={disabled}
             />
           </div>
           <div>
@@ -117,6 +228,7 @@ export function ProjectAlertSettings({
               type="time"
               value={settings.work_day_end}
               onChange={(e) => updateSetting('work_day_end', e.target.value)}
+              disabled={disabled}
             />
           </div>
         </div>
@@ -132,6 +244,7 @@ export function ProjectAlertSettings({
           <Switch
             checked={settings.checkin_reminder_enabled}
             onCheckedChange={(val) => updateSetting('checkin_reminder_enabled', val)}
+            disabled={disabled}
           />
         </div>
         {settings.checkin_reminder_enabled && (
@@ -142,10 +255,12 @@ export function ProjectAlertSettings({
               type="number"
               min="0"
               max="60"
-              value={settings.checkin_reminder_minutes_before}
-              onChange={(e) =>
-                updateSetting('checkin_reminder_minutes_before', parseInt(e.target.value))
-              }
+              value={settings.checkin_reminder_minutes_before || ''}
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                updateSetting('checkin_reminder_minutes_before', isNaN(value) ? 0 : value);
+              }}
+              disabled={disabled}
             />
             <p className="text-xs text-gray-600 mt-1">
               Påminner arbetare att checka in {settings.checkin_reminder_minutes_before} minuter innan
@@ -165,6 +280,7 @@ export function ProjectAlertSettings({
           <Switch
             checked={settings.checkout_reminder_enabled}
             onCheckedChange={(val) => updateSetting('checkout_reminder_enabled', val)}
+            disabled={disabled}
           />
         </div>
         {settings.checkout_reminder_enabled && (
@@ -175,10 +291,12 @@ export function ProjectAlertSettings({
               type="number"
               min="0"
               max="60"
-              value={settings.checkout_reminder_minutes_before}
-              onChange={(e) =>
-                updateSetting('checkout_reminder_minutes_before', parseInt(e.target.value))
-              }
+              value={settings.checkout_reminder_minutes_before || ''}
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                updateSetting('checkout_reminder_minutes_before', isNaN(value) ? 0 : value);
+              }}
+              disabled={disabled}
             />
             <p className="text-xs text-gray-600 mt-1">
               Påminner arbetare att checka ut {settings.checkout_reminder_minutes_before} minuter
@@ -198,6 +316,7 @@ export function ProjectAlertSettings({
           <Switch
             checked={settings.late_checkin_alert_enabled}
             onCheckedChange={(val) => updateSetting('late_checkin_alert_enabled', val)}
+            disabled={disabled}
           />
         </div>
         {settings.late_checkin_alert_enabled && (
@@ -208,10 +327,12 @@ export function ProjectAlertSettings({
               type="number"
               min="0"
               max="120"
-              value={settings.late_checkin_alert_minutes_after}
-              onChange={(e) =>
-                updateSetting('late_checkin_alert_minutes_after', parseInt(e.target.value))
-              }
+              value={settings.late_checkin_alert_minutes_after || ''}
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                updateSetting('late_checkin_alert_minutes_after', isNaN(value) ? 0 : value);
+              }}
+              disabled={disabled}
             />
             <p className="text-xs text-gray-600 mt-1">
               Varnar arbetsledare om arbetare inte checkat in{' '}
@@ -231,6 +352,7 @@ export function ProjectAlertSettings({
           <Switch
             checked={settings.forgotten_checkout_alert_enabled}
             onCheckedChange={(val) => updateSetting('forgotten_checkout_alert_enabled', val)}
+            disabled={disabled}
           />
         </div>
         {settings.forgotten_checkout_alert_enabled && (
@@ -241,10 +363,12 @@ export function ProjectAlertSettings({
               type="number"
               min="0"
               max="120"
-              value={settings.forgotten_checkout_alert_minutes_after}
-              onChange={(e) =>
-                updateSetting('forgotten_checkout_alert_minutes_after', parseInt(e.target.value))
-              }
+              value={settings.forgotten_checkout_alert_minutes_after || ''}
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                updateSetting('forgotten_checkout_alert_minutes_after', isNaN(value) ? 0 : value);
+              }}
+              disabled={disabled}
             />
             <p className="text-xs text-gray-600 mt-1">
               Varnar arbetsledare om arbetare inte checkat ut{' '}
@@ -254,12 +378,14 @@ export function ProjectAlertSettings({
         )}
       </Card>
 
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving ? 'Sparar...' : 'Spara inställningar'}
-        </Button>
-      </div>
+      {/* Save Button - only show for standalone usage */}
+      {!isControlled && (
+        <div className="flex justify-end">
+          <Button onClick={handleSave} disabled={isSaving || disabled}>
+            {isSaving ? 'Sparar...' : 'Spara inställningar'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

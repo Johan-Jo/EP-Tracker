@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ProjectAlertSettings } from './project-alert-settings';
 import { Bell, Clock, AlertTriangle, Check, X, Edit2, Loader2, ChevronDown } from 'lucide-react';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import type { AlertSettings as SchemaAlertSettings } from '@/lib/schemas/project';
 
 interface AlertSettings {
@@ -38,6 +38,7 @@ interface ProjectAlertSettingsDisplayProps {
   alertSettings?: AlertSettings | null;
   projectId?: string;
   canEdit?: boolean;
+  onSaveSuccess?: (savedSettings: AlertSettings) => void;
 }
 
 const defaultAlertSettings: AlertSettings = {
@@ -62,8 +63,7 @@ const defaultAlertSettings: AlertSettings = {
   alert_recipients: ['admin', 'foreman'],
 };
 
-export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit = false }: ProjectAlertSettingsDisplayProps) {
-  const settings = alertSettings || defaultAlertSettings;
+export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit = false, onSaveSuccess }: ProjectAlertSettingsDisplayProps) {
   const router = useRouter();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -83,8 +83,20 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
     };
   };
   
-  const [editSettings, setEditSettings] = useState<SchemaAlertSettings>(normalizeSettings(settings));
+  // Use state for settings so it can be updated when prop changes
+  const [settings, setSettings] = useState<SchemaAlertSettings>(normalizeSettings(alertSettings || defaultAlertSettings));
+  const [editSettings, setEditSettings] = useState<SchemaAlertSettings>(normalizeSettings(alertSettings || defaultAlertSettings));
   const [isSaving, setIsSaving] = useState(false);
+
+  // Update settings and editSettings when alertSettings prop changes (e.g., after save and refresh)
+  useEffect(() => {
+    if (alertSettings) {
+      const normalized = normalizeSettings(alertSettings);
+      setSettings(normalized);
+      setEditSettings(normalized);
+      console.log('[ProjectAlertSettingsDisplay] Updated settings from prop:', normalized);
+    }
+  }, [alertSettings]);
 
   // Helper to calculate time with offset
   const calculateTime = (timeString: string, offsetMinutes: number): string => {
@@ -109,7 +121,14 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
   };
 
   const handleSave = async () => {
-    if (!projectId) return;
+    if (!projectId) {
+      console.error('[ProjectAlertSettingsDisplay] No projectId provided');
+      toast.error('Projekt-ID saknas');
+      return;
+    }
+
+    console.log('[ProjectAlertSettingsDisplay] Saving alert settings for project:', projectId);
+    console.log('[ProjectAlertSettingsDisplay] Settings to save:', editSettings);
 
     setIsSaving(true);
     try {
@@ -121,16 +140,46 @@ export function ProjectAlertSettingsDisplay({ alertSettings, projectId, canEdit 
         }),
       });
 
+      console.log('[ProjectAlertSettingsDisplay] Response status:', response.status);
+      console.log('[ProjectAlertSettingsDisplay] Response ok:', response.ok);
+
       if (!response.ok) {
-        throw new Error('Failed to update alert settings');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[ProjectAlertSettingsDisplay] Save failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        throw new Error(errorData.error || `Failed to update alert settings (${response.status})`);
       }
 
-      toast.success('Alert-inställningar uppdaterade');
+      const result = await response.json();
+      console.log('[ProjectAlertSettingsDisplay] Save successful:', result);
+      console.log('[ProjectAlertSettingsDisplay] Updated alert_settings:', result.project?.alert_settings);
+
+      // Update local state with saved data
+      if (result.project?.alert_settings) {
+        const savedSettings = normalizeSettings(result.project.alert_settings);
+        setEditSettings(savedSettings);
+        
+        // Notify parent component to update its state
+        if (onSaveSuccess) {
+          onSaveSuccess(result.project.alert_settings);
+        }
+      }
+
+      // Show success toast
+      toast.success('Alert-inställningar uppdaterade', {
+        duration: 3000,
+      });
+      
       setIsEditDialogOpen(false);
+      
+      // Refresh the page to show updated data
       router.refresh();
-    } catch (error) {
-      console.error('Error updating alert settings:', error);
-      toast.error('Misslyckades att uppdatera alert-inställningar');
+    } catch (error: any) {
+      console.error('[ProjectAlertSettingsDisplay] Error updating alert settings:', error);
+      toast.error(error.message || 'Misslyckades att uppdatera alert-inställningar');
     } finally {
       setIsSaving(false);
     }

@@ -32,8 +32,74 @@ jobs:
           echo "Current UTC time: $(date -u)"
           echo "Current local time: $(date)"
       
+      - name: Test Forgotten Check-out Alerts (Full Workflow Test)
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'forgotten-checkout-alerts')
+        env:
+          TEST_USER_EMAIL: 'oi@johan.com.br'
+          TEST_PROJECT_NAME: 'Fast och Löpande'
+        run: |
+          echo "🚀 Testing FULL WORKFLOW: Forgotten Check-out Alerts"
+          echo "=========================================="
+          echo "Test user: $TEST_USER_EMAIL"
+          echo "Test project: $TEST_PROJECT_NAME"
+          echo ""
+          echo "This tests the complete flow:"
+          echo "1. Cron job runs at scheduled time"
+          echo "2. Finds projects with forgotten_checkout_enabled=true"
+          echo "3. Checks work_day_end + minutes_after"
+          echo "4. Finds users with active time entries"
+          echo "5. Sends alerts to admin/foreman"
+          echo ""
+          echo "Calling: ${{ secrets.APP_URL }}/api/cron/forgotten-checkout-alerts"
+          echo ""
+          
+          # Call API and capture response with HTTP code on last line
+          response=$(curl -s -w "\n%{http_code}" -X GET "${{ secrets.APP_URL }}/api/cron/forgotten-checkout-alerts" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          # Extract HTTP code (last line) and body (everything else)
+          http_code=$(echo "$response" | tail -n1 | tr -d '\n')
+          body=$(echo "$response" | head -n-1)
+          
+          echo ""
+          echo "=== RESPONSE ==="
+          echo "HTTP Status: $http_code"
+          echo "Response Body:"
+          echo "$body"
+          echo "================"
+          echo ""
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ Forgotten checkout alerts triggered successfully!"
+            echo ""
+            echo "📋 Next steps to verify:"
+            echo "1. Check email for admin/foreman users"
+            echo "2. Check push notifications if enabled"
+            echo "3. Check notification_log table in Supabase"
+            echo "4. Verify that $TEST_USER_EMAIL has an active time entry"
+            echo "5. Verify project '$TEST_PROJECT_NAME' has:"
+            echo "   - work_day_end set (e.g., 16:00)"
+            echo "   - forgotten_checkout_enabled: true"
+            echo "   - forgotten_checkout_minutes_after: 30"
+          else
+            echo "❌ Failed to trigger forgotten checkout alerts (HTTP $http_code)"
+            echo ""
+            echo "Error details:"
+            echo "$body"
+            echo ""
+            echo "Troubleshooting:"
+            echo "- Check that CRON_SECRET is set correctly in GitHub Secrets"
+            echo "- Check that APP_URL is set correctly (should be production URL)"
+            echo "- Check that endpoint exists: /api/cron/forgotten-checkout-alerts"
+            echo "- Check server logs for more details"
+            echo "- Verify user $TEST_USER_EMAIL is checked in (active time_entry)"
+            echo "- Verify project '$TEST_PROJECT_NAME' has correct alert_settings"
+            exit 1
+          fi
+      
       - name: Test Check-out Reminders
-        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'checkout-reminders')
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'checkout-reminders'
         env:
           TEST_USER_EMAIL: 'oi@johan.com.br'
           TEST_PROJECT_NAME: 'Fast och Löpande'
@@ -104,7 +170,7 @@ jobs:
             exit 1
           fi
       
-      - name: Test Forgotten Check-out Alerts
+      - name: Test Forgotten Check-out Alerts (Manual)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'forgotten-checkout-alerts'
         run: |
           echo "🚀 Testing Forgotten Check-out Alerts cron job..."

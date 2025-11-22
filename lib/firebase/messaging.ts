@@ -36,8 +36,8 @@ export async function requestNotificationPermission(): Promise<string | null> {
       return null;
     }
 
-    // Register service worker
-    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    // Register service worker (use /sw.js which handles both push and offline caching)
+    const registration = await navigator.serviceWorker.register('/sw.js');
     await navigator.serviceWorker.ready;
 
     // Get FCM token

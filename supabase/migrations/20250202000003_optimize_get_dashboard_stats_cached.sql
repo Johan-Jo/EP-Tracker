@@ -57,3 +57,4 @@ $$;
 COMMENT ON FUNCTION get_dashboard_stats_cached IS 
   'EPIC 26.9: Get dashboard stats from cache (refreshes immediately if stale, ensures fresh data when user views dashboard)';
 
+

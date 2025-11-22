@@ -18,9 +18,19 @@ export async function GET(request: NextRequest) {
   }
 
   const adminClient = createAdminClient();
+  
+  // Get current time in Swedish timezone (Europe/Stockholm)
+  // Cron jobs should run based on Swedish time, not server UTC time
   const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
+  const swedishTime = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Stockholm',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(now);
+  
+  const currentHour = parseInt(swedishTime.find(p => p.type === 'hour')?.value || '0', 10);
+  const currentMinute = parseInt(swedishTime.find(p => p.type === 'minute')?.value || '0', 10);
   const currentTimeMinutes = currentHour * 60 + currentMinute;
 
   try {

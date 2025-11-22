@@ -59,3 +59,4 @@ Om scriptet misslyckas:
 3. Kontrollera loggarna i Supabase för detaljerade felmeddelanden
 
 
+

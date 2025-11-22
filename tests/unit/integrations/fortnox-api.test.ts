@@ -201,10 +201,13 @@ describe('/api/integrations/fortnox', () => {
 			const builder: any = {
 				select: jest.fn().mockReturnThis(),
 				eq: jest.fn().mockReturnThis(),
-				single: jest.fn()
+				maybeSingle: jest.fn()
 					.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } }) // No existing by fortnox_customer_number
 					.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } }), // No existing by customer_no
-				insert: jest.fn().mockResolvedValue({ data: null, error: null }),
+				single: jest.fn()
+					.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
+					.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } }),
+				insert: jest.fn().mockResolvedValue({ data: [{ id: 'customer-1' }], error: null }),
 			};
 
 			mockedCreateClient.mockResolvedValue({
@@ -254,6 +257,10 @@ describe('/api/integrations/fortnox', () => {
 			const builder: any = {
 				select: jest.fn().mockReturnThis(),
 				eq: jest.fn().mockReturnThis(),
+				maybeSingle: jest.fn().mockResolvedValue({
+					data: { id: 'existing-customer' },
+					error: null,
+				}),
 				single: jest.fn().mockResolvedValue({
 					data: { id: 'existing-customer' },
 					error: null,

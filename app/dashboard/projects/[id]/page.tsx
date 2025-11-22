@@ -48,6 +48,12 @@ export default async function ProjectDetailPage(props: PageProps) {
 
 	if (error) {
 		console.error('[Project Detail] Error fetching project:', error);
+		console.error('[Project Detail] Error details:', {
+			code: error.code,
+			message: error.message,
+			details: error.details,
+			hint: error.hint,
+		});
 		notFound();
 	}
 
@@ -57,13 +63,24 @@ export default async function ProjectDetailPage(props: PageProps) {
 	}
 
 	// Check if user has access to this project's organization
-	const { data: membership } = await supabase
+
+	const { data: membership, error: membershipError } = await supabase
 		.from('memberships')
 		.select('role')
 		.eq('user_id', user.id)
 		.eq('org_id', project.org_id)
 		.eq('is_active', true)
 		.single();
+
+	if (membershipError) {
+		console.error('[Project Detail] Error fetching membership:', membershipError);
+		console.error('[Project Detail] Membership error details:', {
+			code: membershipError.code,
+			message: membershipError.message,
+			details: membershipError.details,
+			hint: membershipError.hint,
+		});
+	}
 
 	if (!membership) {
 		console.error('[Project Detail] User has no access to project org:', {
@@ -94,6 +111,11 @@ export default async function ProjectDetailPage(props: PageProps) {
 		const defaultStartDate = threeMonthsAgo.toISOString().split('T')[0];
 		const defaultEndDate = new Date().toISOString().split('T')[0];
 
+		// Add timeout to prevent hanging queries (10 seconds max)
+		const queryTimeout = new Promise((_, reject) => {
+			setTimeout(() => reject(new Error('Query timeout')), 10000);
+		});
+
 		const [
 			timeEntriesResult,
 			materialsResult,
@@ -101,7 +123,8 @@ export default async function ProjectDetailPage(props: PageProps) {
 			mileageResult,
 			projectMembersResult,
 			diaryEntriesResult,
-		] = await Promise.all([
+		] = await Promise.race([
+			Promise.all([
 			// ✅ OPTIMIZED: Add date filter and limit for initial load
 			supabase
 				.from('time_entries')
@@ -164,7 +187,9 @@ export default async function ProjectDetailPage(props: PageProps) {
 				.lte('date', defaultEndDate)
 				.order('date', { ascending: false })
 				.limit(100), // Limit to 100 most recent
-		]);
+			]),
+			queryTimeout,
+		]) as any;
 
 		const timeEntries = timeEntriesResult.data || [];
 		const materials = materialsResult.data || [];
@@ -285,8 +310,13 @@ export default async function ProjectDetailPage(props: PageProps) {
 				total: totalCosts,
 			},
 		};
-	} catch (error) {
-		console.error('Error pre-fetching summary:', error);
+	} catch (error: any) {
+		console.error('[Project Detail] Error pre-fetching summary:', error);
+		console.error('[Project Detail] Summary error details:', {
+			message: error?.message,
+			name: error?.name,
+			stack: error?.stack?.substring(0, 500),
+		});
 		// Continue without initial summary - component will fetch it
 	}
 

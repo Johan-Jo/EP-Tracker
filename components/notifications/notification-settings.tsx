@@ -213,6 +213,17 @@ export function NotificationSettings({ userRole = 'worker' }: NotificationSettin
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notis-typer</h3>
 
         <NotificationToggle
+          icon={<Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
+          label="Check-in påminnelser"
+          description="Påminnelse att checka in innan arbetsdagen börjar"
+          checked={preferences.project_checkin_reminders}
+          onToggle={(val) => handleToggle('project_checkin_reminders', val)}
+          deliveryMethod={getDeliveryMethod('project_checkin_reminders')}
+          onDeliveryMethodChange={(method) => handleDeliveryMethodChange('project_checkin_reminders', method)}
+          preferenceKey="project_checkin_reminders"
+        />
+
+        <NotificationToggle
           icon={<Clock className="h-5 w-5 text-orange-600 dark:text-orange-400" />}
           label="Check-out påminnelser"
           description="Påminnelse att checka ut i slutet av arbetsdagen"

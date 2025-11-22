@@ -414,6 +414,7 @@ export async function GET(
 			estimatedEndDate: project.estimated_end_date,
 			createdAt: project.created_at,
 			projectHourlyRateSek: project.project_hourly_rate_sek,
+			alertSettings: project.alert_settings || null,
 		},
 		time: {
 			totalHours,

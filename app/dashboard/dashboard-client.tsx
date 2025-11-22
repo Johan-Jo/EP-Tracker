@@ -1,5 +1,5 @@
 "use client";
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -42,12 +42,14 @@ interface DashboardClientProps {
 
 export default function DashboardClient({ userName, stats, activeTimeEntry, recentProject, allProjects, recentActivities, userId }: DashboardClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [showDiaryPromptDialog, setShowDiaryPromptDialog] = useState(false);
   const [completedProjectId, setCompletedProjectId] = useState<string | null>(null);
   const [showQuickStartBanner, setShowQuickStartBanner] = useState(true);
+  const [shouldOpenCheckoutDialog, setShouldOpenCheckoutDialog] = useState(false);
   
   // EPIC 26: Optimistic UI state for instant feedback
   const [optimisticTimeEntry, setOptimisticTimeEntry] = useState(activeTimeEntry);
@@ -63,7 +65,24 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
     if (dismissed === 'true') {
       setShowQuickStartBanner(false);
     }
-  }, [userId]);
+
+    // Check if checkout parameter is in URL
+    const checkoutParam = searchParams.get('checkout');
+    if (checkoutParam === 'true') {
+      if (optimisticTimeEntry && !shouldOpenCheckoutDialog) {
+        console.log('[Dashboard] Opening checkout dialog from URL parameter (has active time entry)');
+        setShouldOpenCheckoutDialog(true);
+      } else if (!optimisticTimeEntry) {
+        console.log('[Dashboard] checkout=true in URL but no active time entry found - will wait for time entry to load');
+        // Don't remove parameter yet - wait for time entry to load
+        // The effect will run again when optimisticTimeEntry changes
+      }
+      // Remove the parameter from URL without reload (after a short delay to ensure dialog opens)
+      setTimeout(() => {
+        router.replace('/dashboard', { scroll: false });
+      }, 100);
+    }
+  }, [userId, searchParams, optimisticTimeEntry, router, shouldOpenCheckoutDialog]);
 
   // EPIC 26: Sync optimistic state when server data changes
   useEffect(() => {
@@ -312,6 +331,8 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
           onCheckIn={handleCheckIn}
           onCheckOut={handleCheckOut}
           onCheckOutComplete={handleCheckOutComplete}
+          openCheckoutDialog={shouldOpenCheckoutDialog}
+          onCheckoutDialogClose={() => setShouldOpenCheckoutDialog(false)}
         />
       </section>
 

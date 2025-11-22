@@ -344,6 +344,8 @@ describe('/api/subcontractors', () => {
 				select: jest.fn().mockReturnThis(),
 				single: jest.fn().mockResolvedValue({ data: updatedSubcontractor, error: null }),
 			};
+			// Make updateBuilder.update return the builder itself for chaining
+			updateBuilder.update.mockReturnValue(updateBuilder);
 
 			// Use an object to track call count (closure issue fix)
 			const callTracker = { count: 0 };
