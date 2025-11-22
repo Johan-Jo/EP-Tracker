@@ -83,3 +83,27 @@
 [32m+[m[32m            echo "✅ Forgotten check-out alerts completed"[m
 [32m+[m[32m          fi[m
  [m
+warning: in the working copy of 'app/api/integrations/fortnox/export-payroll/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/payroll/basis/export/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/dashboard/customers/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/dashboard/invoice-basis/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/invoice-basis/invoice-basis-page-client.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/invoice-basis/invoice-basis-page-new.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/invoices/invoice-landing.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/payroll/payroll-basis-page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/integrations/fortnox/client-batch.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/integrations/fortnox/client.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/integrations/fortnox/export-payroll.ts', LF will be replaced by CRLF the next time Git touches it
+ .../integrations/fortnox/export-payroll/route.ts   |  68 [32m+++++++[m[31m-[m
+ app/api/payroll/basis/export/route.ts              |  43 [32m+++[m[31m--[m
+ app/dashboard/customers/customers-client.tsx       | 185 [32m++++++++++++++++++++[m[31m-[m
+ app/dashboard/customers/page.tsx                   |   9 [32m+[m
+ app/dashboard/invoice-basis/page.tsx               |   9 [32m+[m
+ .../invoice-basis/invoice-basis-page-client.tsx    |   6 [32m+[m
+ .../invoice-basis/invoice-basis-page-new.tsx       |  22 [32m++[m[31m-[m
+ components/invoices/invoice-landing.tsx            |   2 [32m+[m[31m-[m
+ components/payroll/payroll-basis-page.tsx          |  77 [32m++++++++[m[31m-[m
+ lib/integrations/fortnox/client-batch.ts           |  22 [32m++[m[31m-[m
+ lib/integrations/fortnox/client.ts                 |   8 [32m+[m
+ lib/integrations/fortnox/export-payroll.ts         |   8 [32m+[m
+ 12 files changed, 430 insertions(+), 29 deletions(-)
