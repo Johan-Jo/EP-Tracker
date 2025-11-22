@@ -38,6 +38,7 @@ interface TimeSliderProps {
   onCheckOutComplete?: (projectId: string) => void;
   onProjectChange?: (projectId: string) => void;
   openCheckoutDialog?: boolean;
+  openCheckoutDialogWithEdit?: boolean;
   onCheckoutDialogClose?: () => void;
 }
 
@@ -53,6 +54,7 @@ export function TimeSlider({
   onCheckOutComplete,
   onProjectChange,
   openCheckoutDialog = false,
+  openCheckoutDialogWithEdit = false,
   onCheckoutDialogClose,
 }: TimeSliderProps) {
   const [isDragging, setIsDragging] = useState(false);
@@ -136,8 +138,32 @@ export function TimeSlider({
   useEffect(() => {
     if (openCheckoutDialog && isActive && !showCheckOutConfirmDialog) {
       setShowCheckOutConfirmDialog(true);
+      
+      // If edit mode is requested, enable it and set up time fields
+      if (openCheckoutDialogWithEdit && startTime) {
+        setIsEditingTime(true);
+        setTimeError('');
+        
+        // Parse startTime to extract date and time
+        const startDateObj = new Date(startTime);
+        const year = startDateObj.getFullYear();
+        const month = String(startDateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(startDateObj.getDate()).padStart(2, '0');
+        setStartDate(`${year}-${month}-${day}`);
+        
+        // Set start time (current check-in time)
+        const startHours = String(startDateObj.getHours()).padStart(2, '0');
+        const startMinutes = String(startDateObj.getMinutes()).padStart(2, '0');
+        setEditedStartTime(`${startHours}:${startMinutes}`);
+        
+        // Set stop time to current time (now)
+        const now = new Date();
+        const stopHours = String(now.getHours()).padStart(2, '0');
+        const stopMinutes = String(now.getMinutes()).padStart(2, '0');
+        setEditedStopTime(`${stopHours}:${stopMinutes}`);
+      }
     }
-  }, [openCheckoutDialog, isActive, showCheckOutConfirmDialog]);
+  }, [openCheckoutDialog, openCheckoutDialogWithEdit, isActive, showCheckOutConfirmDialog, startTime]);
 
   useEffect(() => {
     if (!billingPreferenceKey) return;

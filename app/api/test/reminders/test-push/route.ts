@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { getMessaging } from '@/lib/firebase/firebase-admin';
+import { getMessaging } from '@/lib/notifications/firebase-admin';
 
 /**
  * Test endpoint to send a test push notification directly

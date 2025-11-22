@@ -50,6 +50,7 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
   const [completedProjectId, setCompletedProjectId] = useState<string | null>(null);
   const [showQuickStartBanner, setShowQuickStartBanner] = useState(true);
   const [shouldOpenCheckoutDialog, setShouldOpenCheckoutDialog] = useState(false);
+  const [shouldOpenCheckoutDialogWithEdit, setShouldOpenCheckoutDialogWithEdit] = useState(false);
   
   // EPIC 26: Optimistic UI state for instant feedback
   const [optimisticTimeEntry, setOptimisticTimeEntry] = useState(activeTimeEntry);
@@ -68,14 +69,14 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
 
     // Check if checkout parameter is in URL
     const checkoutParam = searchParams.get('checkout');
-    if (checkoutParam === 'true') {
-      if (optimisticTimeEntry && !shouldOpenCheckoutDialog) {
-        console.log('[Dashboard] Opening checkout dialog from URL parameter (has active time entry)');
-        setShouldOpenCheckoutDialog(true);
-      } else if (!optimisticTimeEntry) {
-        console.log('[Dashboard] checkout=true in URL but no active time entry found - will wait for time entry to load');
-        // Don't remove parameter yet - wait for time entry to load
-        // The effect will run again when optimisticTimeEntry changes
+    const editParam = searchParams.get('edit');
+    if (checkoutParam === 'true' && !shouldOpenCheckoutDialog) {
+      console.log('[Dashboard] Opening checkout dialog from URL parameter');
+      setShouldOpenCheckoutDialog(true);
+      // If edit=true, also enable edit mode
+      if (editParam === 'true') {
+        console.log('[Dashboard] Enabling edit mode for checkout dialog');
+        setShouldOpenCheckoutDialogWithEdit(true);
       }
       // Remove the parameter from URL without reload (after a short delay to ensure dialog opens)
       setTimeout(() => {
@@ -332,7 +333,11 @@ export default function DashboardClient({ userName, stats, activeTimeEntry, rece
           onCheckOut={handleCheckOut}
           onCheckOutComplete={handleCheckOutComplete}
           openCheckoutDialog={shouldOpenCheckoutDialog}
-          onCheckoutDialogClose={() => setShouldOpenCheckoutDialog(false)}
+          openCheckoutDialogWithEdit={shouldOpenCheckoutDialogWithEdit}
+          onCheckoutDialogClose={() => {
+            setShouldOpenCheckoutDialog(false);
+            setShouldOpenCheckoutDialogWithEdit(false);
+          }}
         />
       </section>
 

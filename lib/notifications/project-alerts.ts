@@ -564,7 +564,7 @@ export async function sendForgottenCheckOutAlert(params: {
       type: 'forgotten_checkout_alert',
       title: '⚠️ Glömt check-out',
       body: `Du har inte checkat ut från ${project.name}\nSluttid var ${workDayEnd} (nu ${currentTime})\nIncheckad sedan: ${checkedInSince}`,
-      url: `/dashboard?checkout=true`, // Trigger checkout dialog
+      url: `/dashboard?checkout=true&edit=true`, // Trigger checkout dialog with edit mode
       data: {
         projectId,
         userId,
