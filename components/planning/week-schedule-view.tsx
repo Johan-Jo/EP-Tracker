@@ -31,7 +31,7 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 	const [selectedPerson, setSelectedPerson] = useState('');
 	const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
 	const [currentWeekStart, setCurrentWeekStart] = useState(new Date());
-	const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+	const [selectedProject, setSelectedProject] = useState<string | null>(null);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const [showAddToProjectDialog, setShowAddToProjectDialog] = useState(false);
@@ -161,16 +161,8 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 		setShowAddDialog(true);
 	};
 
-	const handleProjectToggle = (projectId: string) => {
-		if (projectId === 'all') {
-			setSelectedProjects([]);
-		} else {
-			setSelectedProjects(prev => 
-				prev.includes(projectId) 
-					? prev.filter(id => id !== projectId)
-					: [...prev, projectId]
-			);
-		}
+	const handleProjectChange = (projectId: string | null) => {
+		setSelectedProject(projectId);
 	};
 
 	const handlePreviousWeek = () => {
@@ -376,7 +368,7 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 					</div>
 
 					<div className="flex flex-wrap gap-2" data-tour="project-chips">
-						<ProjectChips projects={data.projects} selectedProjects={selectedProjects} onToggle={handleProjectToggle} />
+						<ProjectChips projects={data.projects} selectedProject={selectedProject} onChange={handleProjectChange} />
 					</div>
 
 					<div className="flex flex-col gap-2 sm:flex-row" data-tour="planning-search">

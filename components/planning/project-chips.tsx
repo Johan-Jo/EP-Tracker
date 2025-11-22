@@ -1,6 +1,6 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Project {
 	id: string;
@@ -10,50 +10,46 @@ interface Project {
 
 interface ProjectChipsProps {
 	projects: Project[];
-	selectedProjects: string[];
-	onToggle: (projectId: string) => void;
+	selectedProject: string | null;
+	onChange: (projectId: string | null) => void;
 }
 
-export function ProjectChips({ projects, selectedProjects, onToggle }: ProjectChipsProps) {
-	const isAllSelected = selectedProjects.length === 0;
+export function ProjectChips({ projects, selectedProject, onChange }: ProjectChipsProps) {
+	const selectedValue = selectedProject || 'all';
+	const selectedProjectData = selectedProject ? projects.find(p => p.id === selectedProject) : null;
+
+	const handleValueChange = (value: string) => {
+		onChange(value === 'all' ? null : value);
+	};
 
 	return (
-		<div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-			<button
-				type="button"
-				className={[
-					'flex items-center gap-2 rounded-full px-3 py-1 text-sm transition-colors',
-					'border border-border/60 bg-[var(--color-card)] text-muted-foreground hover:text-foreground dark:border-[#3a251d] dark:bg-[#22140f] dark:text-white/70 dark:hover:text-white',
-					isAllSelected ? 'border-orange-500/60 bg-orange-500/10 text-orange-600 dark:border-orange-400/70 dark:bg-orange-500/20 dark:text-white' : '',
-				].join(' ')}
-				onClick={() => onToggle('all')}
-			>
-				Alla projekt
-				{isAllSelected && <X className="h-3.5 w-3.5" />}
-			</button>
-			{projects.map((project) => {
-				const isSelected = selectedProjects.includes(project.id);
-				return (
-					<button
-						type="button"
-						key={project.id}
-						className={[
-							'flex items-center gap-2 rounded-full px-3 py-1 text-sm transition-colors',
-							'border border-border/60 bg-[var(--color-card)] text-muted-foreground hover:text-foreground dark:border-[#3a251d] dark:bg-[#22140f] dark:text-white/70 dark:hover:text-white',
-							isSelected ? 'border-orange-500/60 bg-orange-500/10 text-orange-600 dark:border-orange-400/70 dark:bg-orange-500/20 dark:text-white' : '',
-						].join(' ')}
-						onClick={() => onToggle(project.id)}
-					>
+		<Select value={selectedValue} onValueChange={handleValueChange}>
+			<SelectTrigger className="h-10 w-full max-w-xs rounded-xl border border-border/60 bg-white text-sm text-foreground focus-visible:ring-orange-500 dark:border-[#3a251d] dark:bg-[#261912] dark:text-white">
+				<span className="flex items-center gap-2">
+					{selectedProjectData && (
 						<div
-							className="h-2.5 w-2.5 rounded-full"
-							style={{ backgroundColor: project.color }}
+							className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+							style={{ backgroundColor: selectedProjectData.color }}
 						/>
-						{project.name}
-						{isSelected && <X className="h-3.5 w-3.5" />}
-					</button>
-				);
-			})}
-		</div>
+					)}
+					<SelectValue placeholder="Alla projekt" />
+				</span>
+			</SelectTrigger>
+			<SelectContent>
+				<SelectItem value="all">Alla projekt</SelectItem>
+				{projects.map((project) => (
+					<SelectItem key={project.id} value={project.id}>
+						<div className="flex items-center gap-2">
+							<div
+								className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+								style={{ backgroundColor: project.color }}
+							/>
+							{project.name}
+						</div>
+					</SelectItem>
+				))}
+			</SelectContent>
+		</Select>
 	);
 }
 
