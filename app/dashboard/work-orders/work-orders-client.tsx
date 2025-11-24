@@ -245,15 +245,17 @@ export function WorkOrdersClient({
 				</CardContent>
 			</Card>
 
-			{showCreateModal && (
-				<CreateWorkOrderModal
-					projects={projects}
-					customers={customers}
-					users={users}
-					onClose={() => setShowCreateModal(false)}
-					onSuccess={handleWorkOrderCreated}
-				/>
-			)}
+			<CreateWorkOrderModal
+				source={{ source: 'calendar' }}
+				open={showCreateModal}
+				onOpenChange={setShowCreateModal}
+				onSuccess={handleWorkOrderCreated}
+				users={users.map(u => ({
+					id: u.id,
+					full_name: u.full_name || null,
+					email: u.email || '',
+				}))}
+			/>
 		</div>
 	);
 }
