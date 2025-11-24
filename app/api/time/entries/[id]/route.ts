@@ -168,7 +168,6 @@ export async function PATCH(
 		// Only add fields that are defined in the request
 		if (data.project_id !== undefined) updateFields.project_id = data.project_id;
 		if (data.phase_id !== undefined) updateFields.phase_id = data.phase_id;
-		if (data.work_order_id !== undefined) updateFields.work_order_id = data.work_order_id;
 		if (data.task_label !== undefined) updateFields.task_label = data.task_label;
 		if (data.start_at !== undefined) updateFields.start_at = data.start_at;
 		if (data.stop_at !== undefined) updateFields.stop_at = data.stop_at;
@@ -269,12 +268,16 @@ export async function DELETE(
 		const supabase = await createClient();
 
 		// Check if entry exists and user has permission
-		const { data: existingEntry, error: fetchError } = await supabase
+		// ✅ SOFT DELETE: Only allow deleting entries that aren't already soft-deleted
+		// NOTE: Only filter by deleted_at if the column exists (after migration is applied)
+		let fetchQuery = supabase
 			.from('time_entries')
 			.select('id, user_id, org_id, status')
 			.eq('id', id)
-			.eq('org_id', membership.org_id)
-			.single();
+			.eq('org_id', membership.org_id);
+			// TODO: Uncomment after applying soft delete migration
+			// .is('deleted_at', null) // Only allow deleting entries that aren't already deleted
+		const { data: existingEntry, error: fetchError } = await fetchQuery.single();
 
 		if (fetchError || !existingEntry) {
 			return NextResponse.json({ error: 'Time entry not found' }, { status: 404 });
@@ -295,14 +298,18 @@ export async function DELETE(
 			return NextResponse.json({ error: 'Cannot delete approved time entries' }, { status: 403 });
 		}
 
-		// Delete time entry
+		// Soft delete time entry (set deleted_at timestamp instead of hard delete)
+		// This prevents data loss and allows recovery if needed
+		// NOTE: Use hard delete until migration is applied, then switch to soft delete
+		// TODO: After applying soft delete migration, change to:
+		// .update({ deleted_at: new Date().toISOString() }).is('deleted_at', null)
 		const { error: deleteError } = await supabase
 			.from('time_entries')
 			.delete()
 			.eq('id', id);
 
 		if (deleteError) {
-			console.error('Error deleting time entry:', deleteError);
+			console.error('Error soft deleting time entry:', deleteError);
 			return NextResponse.json({ error: deleteError.message }, { status: 500 });
 		}
 

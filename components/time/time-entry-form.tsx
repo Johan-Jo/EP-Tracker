@@ -20,7 +20,6 @@ import { billingTypeOptions, type BillingType } from '@/lib/schemas/billing-type
 
 const NO_ATA_SELECT_VALUE = '__no_ata__';
 const NO_PHASE_SELECT_VALUE = '__no_phase__';
-const NO_WORK_ORDER_SELECT_VALUE = '__no_work_order__';
 
 type ProjectOption = {
 	id: string;
@@ -78,11 +77,10 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 		reset,
 	} = useForm<TimeEntryFormValues>({
 		resolver: zodResolver(createTimeEntrySchema) as Resolver<TimeEntryFormValues>,
-		defaultValues: initialData
+				defaultValues: initialData
 			? {
 					project_id: initialData.project_id ? String(initialData.project_id) : '',
 					phase_id: initialData.phase_id,
-					work_order_id: initialData.work_order_id,
 					task_label: initialData.task_label,
 					start_at: initialData.start_at.slice(0, 16), // Format for datetime-local
 					stop_at: initialData.stop_at ? initialData.stop_at.slice(0, 16) : null,
@@ -107,7 +105,6 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 			reset({
 				project_id: initialData.project_id ? String(initialData.project_id) : '',
 				phase_id: initialData.phase_id,
-				work_order_id: initialData.work_order_id,
 				task_label: initialData.task_label,
 				start_at: initialData.start_at.slice(0, 16),
 				stop_at: initialData.stop_at ? initialData.stop_at.slice(0, 16) : null,
@@ -155,23 +152,7 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 		enabled: !!selectedProjectId,
 	});
 
-	// Fetch work orders for selected project
-	const { data: workOrders } = useQuery({
-		queryKey: ['work-orders', selectedProjectId],
-		queryFn: async () => {
-			if (!selectedProjectId) return [];
-			const { data, error } = await supabase
-				.from('work_orders')
-				.select('id, name, status')
-				.eq('project_id', selectedProjectId)
-				.in('status', ['pending', 'in_progress'])
-				.order('name');
-
-			if (error) throw error;
-			return data || [];
-		},
-		enabled: !!selectedProjectId,
-	});
+	// Work orders feature removed - moved to feature/work-orders branch
 
 	const selectedProjectDetails = useMemo(() => {
 		if (!selectedProjectId) return null;
@@ -418,7 +399,6 @@ useEffect(() => {
 				reset({
 					project_id: '',
 					phase_id: null,
-					work_order_id: null,
 					task_label: '',
 					start_at: new Date().toISOString().slice(0, 16),
 					stop_at: null,
@@ -749,31 +729,7 @@ useEffect(() => {
 						</pre>
 					)}
 
-					{/* Work Order Selection (Optional) */}
-					{selectedProjectId && workOrders && workOrders.length > 0 && (
-						<div className="space-y-2">
-							<Label htmlFor="work_order_id">Arbetsorder (valfritt)</Label>
-							<Select
-								name="work_order_id"
-								value={watch('work_order_id') ?? NO_WORK_ORDER_SELECT_VALUE}
-								onValueChange={(value) =>
-									setValue('work_order_id', value === NO_WORK_ORDER_SELECT_VALUE ? null : value)
-								}
-							>
-								<SelectTrigger id="work_order_id">
-									<SelectValue placeholder="Välj arbetsorder" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value={NO_WORK_ORDER_SELECT_VALUE}>Ingen arbetsorder</SelectItem>
-									{workOrders?.map((wo) => (
-										<SelectItem key={wo.id} value={wo.id}>
-											{wo.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-					)}
+					{/* Work Order Selection removed - feature moved to feature/work-orders branch */}
 
 					{/* Task Label */}
 					<div className="space-y-2">

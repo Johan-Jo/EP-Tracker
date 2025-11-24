@@ -7,13 +7,19 @@ import { calculateWorkMinutes } from '@/lib/utils/break-deduction';
 
 // GET /api/time/entries - List time entries with filters
 export async function GET(request: NextRequest) {
+	// FORCE LOG - Always show
+	console.warn('🔍 [TIME ENTRIES API] GET request received');
+	
 	try {
 		const supabase = await createClient();
 		const { data: { user }, error: authError } = await supabase.auth.getUser();
 
 		if (authError || !user) {
+			console.error('❌ [TIME ENTRIES API] Auth error:', authError);
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
+
+		console.warn('🔍 [TIME ENTRIES API] User authenticated:', user.id);
 
 		// Get user's organization
 		const { data: membership } = await supabase
@@ -24,8 +30,11 @@ export async function GET(request: NextRequest) {
 			.single();
 
 		if (!membership) {
+			console.error('❌ [TIME ENTRIES API] No membership found for user:', user.id);
 			return NextResponse.json({ error: 'No active organization membership' }, { status: 403 });
 		}
+
+		console.warn('🔍 [TIME ENTRIES API] Membership found:', { org_id: membership.org_id, role: membership.role });
 
 	// Parse query parameters
 	const searchParams = request.nextUrl.searchParams;
@@ -39,6 +48,7 @@ export async function GET(request: NextRequest) {
 
 	// ✅ PERFORMANCE: Default to last 3 months if no date filter is set
 	// This prevents loading thousands of historical entries on initial load
+	// TEMPORARY FIX: Increase to 6 months to include all entries (Sept-Nov 2025)
 	let effectiveStartDate = start_date;
 	let effectiveEndDate = end_date;
 	
@@ -51,7 +61,9 @@ export async function GET(request: NextRequest) {
 
 	// ✅ PERFORMANCE: Select only needed columns instead of *
 	// Reduces payload size by ~40-50% for better network transfer
-	let query = supabase
+	// ✅ SOFT DELETE: Exclude soft-deleted entries (deleted_at IS NULL)
+	// NOTE: Only filter by deleted_at if the column exists (after migration is applied)
+		let query = supabase
 		.from('time_entries')
 		.select(`
 			id,
@@ -59,7 +71,6 @@ export async function GET(request: NextRequest) {
 			user_id,
 			project_id,
 			phase_id,
-			work_order_id,
 			task_label,
 			start_at,
 			stop_at,
@@ -73,35 +84,79 @@ export async function GET(request: NextRequest) {
 			updated_at,
 			project:projects(id, name, project_number),
 			phase:phases(id, name),
-			work_order:work_orders(id, name),
-			user:profiles!time_entries_user_id_fkey(id, full_name, email),
-			approved_by_user:profiles!time_entries_approved_by_fkey(id, full_name, email),
+			user:profiles!user_id(id, full_name, email),
+			approved_by_user:profiles!approved_by(id, full_name, email),
 			ata:ata(id, title, status)
 		`)
-		.eq('org_id', membership.org_id)
-		.order('start_at', { ascending: false })
-		.limit(limit);
+		.eq('org_id', membership.org_id);
+		// TODO: Uncomment after applying soft delete migration
+		// .is('deleted_at', null) // Exclude soft-deleted entries
 
-	// Apply filters
+	// Apply filters BEFORE ordering and limiting
 	if (project_id) query = query.eq('project_id', project_id);
 	if (user_id) query = query.eq('user_id', user_id);
 	if (status) query = query.eq('status', status);
 	
 	// ✅ PERFORMANCE: Always apply date filter (default to last 3 months if not specified)
-	if (effectiveStartDate) query = query.gte('start_at', effectiveStartDate);
-	if (effectiveEndDate) query = query.lte('start_at', `${effectiveEndDate}T23:59:59`);
+	// Apply date filters - Supabase supports chaining gte and lte on same column
+	if (effectiveStartDate) {
+		// Ensure start date is in ISO format
+		const startDate = effectiveStartDate.includes('T') ? effectiveStartDate : `${effectiveStartDate}T00:00:00.000Z`;
+		query = query.gte('start_at', startDate);
+	}
+	if (effectiveEndDate) {
+		// Format end date properly - use end of day in ISO format
+		const endDate = effectiveEndDate.includes('T') 
+			? effectiveEndDate 
+			: `${effectiveEndDate}T23:59:59.999Z`;
+		query = query.lte('start_at', endDate);
+	}
 
-		// Workers only see their own entries; admin/foreman/finance see all
-		if (membership.role === 'worker') {
-			query = query.eq('user_id', user.id);
-		}
+	// Workers only see their own entries; admin/foreman/finance see all
+	if (membership.role === 'worker') {
+		query = query.eq('user_id', user.id);
+	}
 
-		const { data: entries, error } = await query;
+	// Apply ordering and limit AFTER all filters
+	query = query.order('start_at', { ascending: false }).limit(limit);
 
-		if (error) {
-			console.error('Error fetching time entries:', error);
-			return NextResponse.json({ error: error.message }, { status: 500 });
-		}
+	const { data: entries, error } = await query;
+
+	// FORCE LOG - Always show, even in production
+	console.warn('🔍 [TIME ENTRIES API] Query executed:', {
+		org_id: membership.org_id,
+		user_id: user.id,
+		role: membership.role,
+		effectiveStartDate,
+		effectiveEndDate,
+		project_id,
+		user_id,
+		status,
+		entriesCount: entries?.length || 0,
+		hasError: !!error
+	});
+
+	if (error) {
+		console.error('❌ [TIME ENTRIES API] ERROR:', error);
+		console.error('❌ [TIME ENTRIES API] Query details:', {
+			org_id: membership.org_id,
+			user_id: user.id,
+			role: membership.role,
+			effectiveStartDate,
+			effectiveEndDate,
+			project_id,
+			user_id,
+			status
+		});
+		return NextResponse.json({ 
+			error: error.message,
+			details: error.details,
+			hint: error.hint
+		}, { status: 500 });
+	}
+
+	// FORCE LOG - Always show
+	console.warn(`✅ [TIME ENTRIES API] Found ${entries?.length || 0} entries for org ${membership.org_id}, user ${user.id}, role ${membership.role}`);
 
 		// Sort entries: first by start_at (descending), then by created_at (descending) for consistent ordering
 		// This ensures entries with the same start_at are sorted by creation time (newest first)
@@ -131,12 +186,22 @@ export async function GET(request: NextRequest) {
 				.from('time_entries')
 				.select('start_at, duration_min') // ✅ Only fetch what we need for stats
 				.eq('org_id', membership.org_id);
+				// TODO: Uncomment after applying soft delete migration
+				// .is('deleted_at', null); // ✅ SOFT DELETE: Exclude soft-deleted entries
 			
 			if (effectiveUserId) statsQuery = statsQuery.eq('user_id', effectiveUserId);
 			if (project_id) statsQuery = statsQuery.eq('project_id', project_id);
 			if (status) statsQuery = statsQuery.eq('status', status);
-			if (effectiveStartDate) statsQuery = statsQuery.gte('start_at', effectiveStartDate);
-			if (effectiveEndDate) statsQuery = statsQuery.lte('start_at', `${effectiveEndDate}T23:59:59`);
+			if (effectiveStartDate) {
+				const startDate = effectiveStartDate.includes('T') ? effectiveStartDate : `${effectiveStartDate}T00:00:00.000Z`;
+				statsQuery = statsQuery.gte('start_at', startDate);
+			}
+			if (effectiveEndDate) {
+				const endDate = effectiveEndDate.includes('T')
+					? effectiveEndDate
+					: `${effectiveEndDate}T23:59:59.999Z`;
+				statsQuery = statsQuery.lte('start_at', endDate);
+			}
 
 			const { data: statsData, error: statsError } = await statsQuery;
 
@@ -237,7 +302,6 @@ export async function POST(request: NextRequest) {
 					user_id: user.id,
 					project_id: data.project_id,
 					phase_id: data.phase_id,
-					work_order_id: data.work_order_id,
 					task_label: data.task_label,
 					start_at: data.start_at,
 					stop_at: data.stop_at,
@@ -289,7 +353,6 @@ export async function POST(request: NextRequest) {
 					user_id: user.id,
 					project_id: data.project_id,
 					phase_id: data.phase_id,
-					work_order_id: data.work_order_id,
 					task_label: data.task_label,
 					start_at: data.start_at,
 					stop_at: data.stop_at,
@@ -314,7 +377,6 @@ export async function POST(request: NextRequest) {
 					user_id: user.id,
 					project_id: data.project_id,
 					phase_id: data.phase_id,
-					work_order_id: data.work_order_id,
 					task_label: data.task_label,
 					start_at: data.start_at,
 					stop_at: data.stop_at,
@@ -361,7 +423,6 @@ export async function POST(request: NextRequest) {
 				user_id: user.id,
 				project_id: data.project_id,
 				phase_id: data.phase_id,
-				work_order_id: data.work_order_id,
 				task_label: data.task_label,
 				start_at: data.start_at,
 				stop_at: data.stop_at,

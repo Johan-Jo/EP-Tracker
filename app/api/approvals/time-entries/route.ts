@@ -31,6 +31,8 @@ export async function GET(request: NextRequest) {
 	}
 
 	// ✅ PERFORMANCE: Select specific columns instead of *
+	// ✅ SOFT DELETE: Exclude soft-deleted entries (deleted_at IS NULL)
+	// NOTE: Only filter by deleted_at if the column exists (after migration is applied)
 	let query = supabase
 		.from('time_entries')
 		.select(`
@@ -38,7 +40,6 @@ export async function GET(request: NextRequest) {
 			org_id,
 			project_id,
 			phase_id,
-			work_order_id,
 			user_id,
 			task_label,
 			start_at,
@@ -57,8 +58,10 @@ export async function GET(request: NextRequest) {
 			project:projects(name, project_number),
 			phase:phases(name)
 		`)
-		.eq('org_id', membership.org_id)
-		.gte('start_at', periodStart)
+		.eq('org_id', membership.org_id);
+		// TODO: Uncomment after applying soft delete migration
+		// .is('deleted_at', null) // Exclude soft-deleted entries
+	query = query.gte('start_at', periodStart)
 		.lte('start_at', periodEnd)
 		.order('start_at', { ascending: false });
 

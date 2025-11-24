@@ -84,6 +84,11 @@ function getDefaultWorkTimes(orgBreakSettings?: {
 }
 
 export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewProps) {
+	// FORCE LOG on component mount - Always show
+	useEffect(() => {
+		console.warn('🚀 [TimePageNew] COMPONENT MOUNTED', { orgId, userId, userRole, projectId });
+	}, []);
+
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [editingEntry, setEditingEntry] = useState<any | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -225,7 +230,6 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 			start_at: new Date().toISOString().split('T')[0] + 'T07:00',
 			project_id: '',
 			phase_id: null,
-			work_order_id: null,
 			task_label: '',
 			billing_type: '',
 			fixed_block_id: null,
@@ -555,26 +559,75 @@ useEffect(() => {
 
 	// ✅ PERFORMANCE: Fetch time entries with stats from server
 	// Stats are calculated server-side for better performance
-	const { data: timeEntriesData, refetch, isFetching: isFetchingEntries } = useQuery({
+	const { data: timeEntriesData, refetch, isFetching: isFetchingEntries, error: entriesError } = useQuery({
 		queryKey: ['time-entries-stats', orgId, userId, userRole, filterProject, filterStatus, filterUserId, filterStartDate, filterEndDate, entriesLimit],
 		queryFn: async () => {
+			// FORCE LOG - Always show, even in production
+			console.warn('🔍 [TimePageNew] STARTING FETCH', { orgId, userId, userRole });
+			
 			const url = buildEntriesUrl();
 			// Add include_stats parameter to get server-side calculated stats
 			const urlWithStats = url.includes('?') ? `${url}&include_stats=true` : `${url}?include_stats=true`;
-			const response = await fetch(urlWithStats);
-			if (!response.ok) throw new Error('Failed to fetch time entries');
-			const data = await response.json();
-			return {
-				entries: data.entries || [],
-				stats: data.stats || null, // Server-calculated stats
-			};
+			
+			console.warn('🔍 [TimePageNew] Fetching from:', urlWithStats);
+			console.warn('🔍 [TimePageNew] Full URL:', window.location.origin + urlWithStats);
+			
+			try {
+				const response = await fetch(urlWithStats);
+				console.warn('🔍 [TimePageNew] Response status:', response.status, response.statusText);
+				
+				if (!response.ok) {
+					const errorData = await response.json().catch(() => ({ error: 'Failed to parse error' }));
+					console.error('❌ [TimePageNew] API ERROR:', response.status, errorData);
+					throw new Error(errorData.error || `Failed to fetch time entries: ${response.status}`);
+				}
+				
+				const data = await response.json();
+				console.warn('✅ [TimePageNew] API SUCCESS:', {
+					entriesCount: data.entries?.length || 0,
+					hasStats: !!data.stats,
+					firstEntry: data.entries?.[0]?.id,
+					allEntries: data.entries
+				});
+				
+				return {
+					entries: data.entries || [],
+					stats: data.stats || null, // Server-calculated stats
+				};
+			} catch (error) {
+				console.error('❌ [TimePageNew] FETCH ERROR:', error);
+				throw error;
+			}
 		},
 		staleTime: 30 * 1000,       // ✅ PERFORMANCE: 30 seconds (entries change but not constantly)
 		gcTime: 5 * 60 * 1000,       // 5 minutes
+		onError: (error) => {
+			console.error('❌ [TimePageNew] QUERY ERROR:', error);
+			alert('Error fetching time entries: ' + error.message); // Force visible error
+		}
 	});
 
 	const timeEntries = timeEntriesData?.entries || [];
 	const serverStats = timeEntriesData?.stats;
+
+	// FORCE LOG - Always show, even in production
+	useEffect(() => {
+		console.warn('🔍 [TimePageNew] STATE UPDATE:', {
+			timeEntriesCount: timeEntries.length,
+			groupedEntriesCount: groupedEntries.length,
+			orgId,
+			userId,
+			userRole,
+			filterProject,
+			filterStatus,
+			filterUserId,
+			filterStartDate,
+			filterEndDate,
+			entriesError: entriesError?.message,
+			isFetching: isFetchingEntries,
+			hasData: !!timeEntriesData
+		});
+	}, [timeEntries.length, groupedEntries.length, orgId, userId, userRole, filterProject, filterStatus, filterUserId, filterStartDate, filterEndDate, entriesError, isFetchingEntries, timeEntriesData]);
 
 	// Group related entries (main project + ÄTA) that belong together
 	const groupedEntries = useMemo(() => {
@@ -876,7 +929,6 @@ useEffect(() => {
 				reset({
 					project_id: '',
 					phase_id: null,
-					work_order_id: null,
 					task_label: '',
 					start_at: `${today}T${defaults.start}`,
 					stop_at: `${today}T${defaults.end}`,
@@ -1001,7 +1053,6 @@ useEffect(() => {
 			reset({
 				project_id: '',
 				phase_id: null,
-				work_order_id: null,
 				task_label: '',
 				notes: '',
 				start_at: `${today}T${defaults.start}`,
@@ -1227,7 +1278,6 @@ useEffect(() => {
 									reset({
 										project_id: '',
 										phase_id: null,
-										work_order_id: null,
 										task_label: '',
 										start_at: `${today}T${defaults.start}`,
 										stop_at: `${today}T${defaults.end}`,
@@ -1610,14 +1660,40 @@ useEffect(() => {
 					</div>
 
 					<div className='space-y-3'>
-						{recentEntries.length === 0 ? (
+						{isFetchingEntries ? (
+							<Card className='border-2 border-border'>
+								<CardContent className='flex flex-col items-center justify-center p-12 text-center'>
+									<Loader2 className='w-12 h-12 text-muted-foreground mb-4 animate-spin' />
+									<p className='text-muted-foreground'>Laddar tidrapporter...</p>
+								</CardContent>
+							</Card>
+						) : entriesError ? (
+							<Card className='border-2 border-destructive'>
+								<CardContent className='flex flex-col items-center justify-center p-12 text-center'>
+									<p className='text-destructive font-medium mb-2'>Fel vid hämtning av tidrapporter</p>
+									<p className='text-sm text-muted-foreground'>{entriesError.message}</p>
+									<Button onClick={() => refetch()} className='mt-4' variant='outline'>
+										Försök igen
+									</Button>
+								</CardContent>
+							</Card>
+						) : recentEntries.length === 0 ? (
 							<Card className='border-2 border-border'>
 								<CardContent className='flex flex-col items-center justify-center p-12 text-center'>
 									<Clock className='w-12 h-12 text-muted-foreground mb-4' />
 									<p className='text-muted-foreground'>Inga tidrapporter hittades</p>
 									<p className='text-sm text-muted-foreground mt-2'>
-										Börja genom att fylla i formuläret ovan
+										{filterProject || filterStatus || filterUserId || filterStartDate || filterEndDate
+											? 'Prova att rensa filtren'
+											: 'Börja genom att fylla i formuläret ovan'}
 									</p>
+									{process.env.NODE_ENV !== 'production' && (
+										<div className='text-xs text-muted-foreground mt-4 space-y-1'>
+											<p>Debug: {timeEntries.length} entries from API</p>
+											<p>Debug: {groupedEntries.length} after grouping</p>
+											<p>Debug: URL = {buildEntriesUrl()}</p>
+										</div>
+									)}
 								</CardContent>
 							</Card>
 						) : (

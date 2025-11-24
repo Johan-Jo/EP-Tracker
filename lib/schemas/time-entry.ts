@@ -5,7 +5,6 @@ import { billingTypeEnum, type BillingType } from './billing-types';
 export const timeEntrySchema = z.object({
 	project_id: z.string().uuid({ message: 'Giltigt projekt måste väljas' }),
 	phase_id: z.string().uuid().optional().nullable(),
-	work_order_id: z.string().uuid().optional().nullable(),
 	task_label: z.string().optional().nullable(),
 	billing_type: billingTypeEnum.default('LOPANDE'),
 	fixed_block_id: z.string().uuid().optional().nullable(),
@@ -73,7 +72,6 @@ export const updateTimeEntrySchema = timeEntrySchema.partial();
 export const crewClockInSchema = z.object({
 	project_id: z.string().uuid({ message: 'Giltigt projekt måste väljas' }),
 	phase_id: z.string().uuid().optional().nullable(),
-	work_order_id: z.string().uuid().optional().nullable(),
 	task_label: z.string().optional().nullable(),
 	user_ids: z.array(z.string().uuid()).min(1, { message: 'Minst en användare måste väljas' }),
 	start_at: z.string().refine((val) => {
@@ -110,10 +108,6 @@ export type TimeEntryWithRelations = TimeEntry & {
 		project_number: string | null;
 	};
 	phase: {
-		id: string;
-		name: string;
-	} | null;
-	work_order: {
 		id: string;
 		name: string;
 	} | null;
