@@ -29,11 +29,17 @@ export function TimeEntriesList({ orgId, userId, projectId, onEdit }: TimeEntrie
 			if (projectFilter !== 'all') params.append('project_id', projectFilter);
 			if (statusFilter !== 'all') params.append('status', statusFilter);
 
-			const response = await fetch(`/api/time/entries?${params.toString()}`);
-			if (!response.ok) throw new Error('Failed to fetch time entries');
-			
-			const data = await response.json();
-			return data.entries as TimeEntryWithRelations[];
+		const response = await fetch(`/api/time/entries?${params.toString()}`);
+		if (!response.ok) throw new Error('Failed to fetch time entries');
+		
+		const data = await response.json();
+		// Ensure entries is always an array, never null/undefined
+		const entries = Array.isArray(data?.entries) ? data.entries : [];
+		// Ensure each entry has work_order property (null if missing)
+		return entries.map((entry: any) => ({
+			...entry,
+			work_order: entry.work_order ?? null
+		})) as TimeEntryWithRelations[];
 		},
 		staleTime: 30 * 1000,       // 30 seconds (time entries change frequently)
 		gcTime: 5 * 60 * 1000,       // 5 minutes
