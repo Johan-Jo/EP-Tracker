@@ -195,10 +195,10 @@ export function TimeEntriesList({ orgId, userId, projectId, onEdit }: TimeEntrie
 														{getStatusBadge(entry.status)}
 													</div>
 													
-													{(entry.phase || entry.work_order || entry.task_label) && (
+													{(entry.phase || entry.work_orders || entry.task_label) && (
 														<div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
 															{entry.phase && <Badge variant="outline">{entry.phase.name}</Badge>}
-															{entry.work_order && <Badge variant="outline">{entry.work_order.name}</Badge>}
+															{entry.work_orders && <Badge variant="outline">{entry.work_orders.title}</Badge>}
 															{entry.task_label && <span>{entry.task_label}</span>}
 														</div>
 													)}
