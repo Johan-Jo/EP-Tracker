@@ -100,14 +100,16 @@ export function TimeEntriesList({ orgId, userId, projectId, onEdit }: TimeEntrie
 		return <Badge variant={config.variant}>{config.label}</Badge>;
 	};
 
-	// Group entries by date
-	const groupedEntries = entries?.reduce((acc, entry) => {
+	// Group entries by date - ensure entries is always an array
+	const entriesArray = Array.isArray(entries) ? entries : [];
+	const groupedEntries = entriesArray.reduce((acc, entry) => {
+		if (!entry || !entry.start_at) return acc; // Skip invalid entries
 		// Use Intl API instead of date-fns (0KB vs 190KB!)
 		const date = new Date(entry.start_at).toISOString().split('T')[0]; // yyyy-MM-dd
 		if (!acc[date]) acc[date] = [];
 		acc[date].push(entry);
 		return acc;
-	}, {} as Record<string, TimeEntryWithRelations[]>) || {};
+	}, {} as Record<string, TimeEntryWithRelations[]>);
 
 	const sortedDates = Object.keys(groupedEntries).sort((a, b) => b.localeCompare(a));
 
