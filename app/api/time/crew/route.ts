@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
 			user_id: userId,
 			project_id: data.project_id,
 			phase_id: data.phase_id,
+			work_order_id: data.work_order_id ?? null,
 			task_label: data.task_label,
 			start_at: data.start_at,
 			status: 'draft' as const,

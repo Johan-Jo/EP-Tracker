@@ -168,6 +168,7 @@ export async function PATCH(
 		// Only add fields that are defined in the request
 		if (data.project_id !== undefined) updateFields.project_id = data.project_id;
 		if (data.phase_id !== undefined) updateFields.phase_id = data.phase_id;
+		if (data.work_order_id !== undefined) updateFields.work_order_id = data.work_order_id;
 		if (data.task_label !== undefined) updateFields.task_label = data.task_label;
 		if (data.start_at !== undefined) updateFields.start_at = data.start_at;
 		if (data.stop_at !== undefined) updateFields.stop_at = data.stop_at;
