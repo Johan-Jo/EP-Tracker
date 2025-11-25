@@ -39,8 +39,7 @@ export default async function ProjectDetailPage(props: PageProps) {
 			created_at,
 			updated_at,
 			customer:customers!projects_customer_id_fkey(id, type, company_name, first_name, last_name),
-			phases(id, name, sort_order, budget_hours, budget_amount),
-			work_orders(id, name, status)
+			phases(id, name, sort_order, budget_hours, budget_amount)
 		`
 		)
 		.eq('id', params.id)
