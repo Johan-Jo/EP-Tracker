@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
 			updated_at,
 			project:projects(id, name, project_number),
 			phase:phases(id, name),
-			work_order:work_orders(id, title),
+			work_orders!work_order_id(id, title),
 			user:profiles!user_id(id, full_name, email),
 			approved_by_user:profiles!approved_by(id, full_name, email),
 			ata:ata(id, title, status)
