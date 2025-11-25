@@ -163,7 +163,7 @@ export type ProjectWithPhases = Project & {
 		invoice_email: string | null;
 	};
 	phases?: Phase[];
-	work_orders?: WorkOrder[];
+	// work_orders removed - feature reverted to feature/work-orders branch
 };
 
 // Phase schema
