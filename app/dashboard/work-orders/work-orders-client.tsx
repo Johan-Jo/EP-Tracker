@@ -141,7 +141,7 @@ export function WorkOrdersClient({
 	};
 
 	return (
-		<div className='p-4 md:p-8 space-y-4 md:space-y-6'>
+		<div className='p-4 md:p-8 space-y-4 md:space-y-6 bg-black min-h-screen'>
 			<div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
 				<div>
 					<h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>Arbetsorder</h1>
@@ -190,7 +190,7 @@ export function WorkOrdersClient({
 				/>
 			)}
 
-			<Card>
+			<Card className="bg-gray-800/50 border-gray-700">
 				<CardHeader>
 					<CardTitle>Arbetsorder ({workOrders.length})</CardTitle>
 				</CardHeader>
@@ -230,7 +230,7 @@ export function WorkOrdersClient({
 
 								{/* Benefits */}
 								<div className='grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 text-left'>
-									<div className='bg-card border rounded-lg p-3 md:p-4 space-y-2'>
+									<div className='bg-gray-800/50 border-gray-700 border rounded-lg p-3 md:p-4 space-y-2'>
 										<div className='flex items-center gap-2'>
 											<CheckCircle2 className='w-4 h-4 md:w-5 md:h-5 text-green-600 flex-shrink-0' />
 											<h4 className='font-semibold text-sm md:text-base'>Bättre planering</h4>
@@ -260,7 +260,7 @@ export function WorkOrdersClient({
 								</div>
 
 								{/* How to get started */}
-								<div className='bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-lg p-4 md:p-6 text-left space-y-3 md:space-y-4 border border-orange-200 dark:border-orange-800'>
+								<div className='bg-gray-800/50 border-gray-700 border rounded-lg p-4 md:p-6 text-left space-y-3 md:space-y-4'>
 									<h3 className='font-semibold text-base md:text-lg flex items-center gap-2'>
 										<ArrowRight className='w-4 h-4 md:w-5 md:h-5 text-orange-600 flex-shrink-0' />
 										Så här kommer du igång:
@@ -286,7 +286,7 @@ export function WorkOrdersClient({
 
 								{/* Quick tips */}
 								<div className='grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 text-left'>
-									<div className='flex items-start gap-2 md:gap-3 p-3 md:p-4 bg-card border rounded-lg'>
+									<div className='flex items-start gap-2 md:gap-3 p-3 md:p-4 bg-gray-800/50 border-gray-700 border rounded-lg'>
 										<Users className='w-4 h-4 md:w-5 md:h-5 text-blue-600 mt-0.5 flex-shrink-0' />
 										<div>
 											<h4 className='font-semibold mb-1 text-sm md:text-base'>Tips: Tilldela ansvarig</h4>
@@ -295,7 +295,7 @@ export function WorkOrdersClient({
 											</p>
 										</div>
 									</div>
-									<div className='flex items-start gap-2 md:gap-3 p-3 md:p-4 bg-card border rounded-lg'>
+									<div className='flex items-start gap-2 md:gap-3 p-3 md:p-4 bg-gray-800/50 border-gray-700 border rounded-lg'>
 										<MapPin className='w-4 h-4 md:w-5 md:h-5 text-green-600 mt-0.5 flex-shrink-0' />
 										<div>
 											<h4 className='font-semibold mb-1 text-sm md:text-base'>Tips: Lägg till plats</h4>
@@ -304,7 +304,7 @@ export function WorkOrdersClient({
 											</p>
 										</div>
 									</div>
-									<div className='flex items-start gap-2 md:gap-3 p-3 md:p-4 bg-card border rounded-lg'>
+									<div className='flex items-start gap-2 md:gap-3 p-3 md:p-4 bg-gray-800/50 border-gray-700 border rounded-lg'>
 										<Clock className='w-4 h-4 md:w-5 md:h-5 text-purple-600 mt-0.5 flex-shrink-0' />
 										<div>
 											<h4 className='font-semibold mb-1 text-sm md:text-base'>Tips: Använd heldag</h4>
@@ -313,7 +313,7 @@ export function WorkOrdersClient({
 											</p>
 										</div>
 									</div>
-									<div className='flex items-start gap-2 md:gap-3 p-3 md:p-4 bg-card border rounded-lg'>
+									<div className='flex items-start gap-2 md:gap-3 p-3 md:p-4 bg-gray-800/50 border-gray-700 border rounded-lg'>
 										<Calendar className='w-4 h-4 md:w-5 md:h-5 text-orange-600 mt-0.5 flex-shrink-0' />
 										<div>
 											<h4 className='font-semibold mb-1 text-sm md:text-base'>Tips: Koppla till planering</h4>
@@ -349,7 +349,7 @@ export function WorkOrdersClient({
 									</div>
 								) : (
 									<div className='pt-2 md:pt-4'>
-										<div className='bg-muted/50 rounded-lg p-3 md:p-4'>
+										<div className='bg-gray-800/50 border-gray-700 border rounded-lg p-3 md:p-4'>
 											<p className='text-xs md:text-sm text-muted-foreground'>
 												Du behöver administratörs- eller förmanbehörighet för att skapa arbetsorder. 
 												Kontakta din administratör om du behöver skapa arbetsorder.
