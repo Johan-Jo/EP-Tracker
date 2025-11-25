@@ -570,7 +570,9 @@ useEffect(() => {
 			const urlWithStats = url.includes('?') ? `${url}&include_stats=true` : `${url}?include_stats=true`;
 			
 			console.warn('🔍 [TimePageNew] Fetching from:', urlWithStats);
-			console.warn('🔍 [TimePageNew] Full URL:', window.location.origin + urlWithStats);
+			if (typeof window !== 'undefined') {
+				console.warn('🔍 [TimePageNew] Full URL:', window.location.origin + urlWithStats);
+			}
 			
 			try {
 			const response = await fetch(urlWithStats);
@@ -601,33 +603,31 @@ useEffect(() => {
 		},
 		staleTime: 30 * 1000,       // ✅ PERFORMANCE: 30 seconds (entries change but not constantly)
 		gcTime: 5 * 60 * 1000,       // 5 minutes
-		onError: (error) => {
-			console.error('❌ [TimePageNew] QUERY ERROR:', error);
-			alert('Error fetching time entries: ' + error.message); // Force visible error
-		}
 	});
 
 	const timeEntries = timeEntriesData?.entries || [];
 	const serverStats = timeEntriesData?.stats;
 
-	// FORCE LOG - Always show, even in production
-	useEffect(() => {
-		console.warn('🔍 [TimePageNew] STATE UPDATE:', {
-			timeEntriesCount: timeEntries.length,
-			groupedEntriesCount: groupedEntries.length,
-			orgId,
-			userId,
-			userRole,
-			filterProject,
-			filterStatus,
-			filterUserId,
-			filterStartDate,
-			filterEndDate,
-			entriesError: entriesError?.message,
-			isFetching: isFetchingEntries,
-			hasData: !!timeEntriesData
-		});
-	}, [timeEntries.length, groupedEntries.length, orgId, userId, userRole, filterProject, filterStatus, filterUserId, filterStartDate, filterEndDate, entriesError, isFetchingEntries, timeEntriesData]);
+	// Handle error in render path - show friendly error UI instead of crashing
+	if (entriesError) {
+		console.error('[TimePageNew] Failed to load time entries', entriesError);
+
+		return (
+			<div className='p-4 md:p-8 border border-red-300 rounded bg-red-50 text-red-800'>
+				<p className='font-semibold'>Kunde inte hämta tidrapporter.</p>
+				<p className='text-sm mt-1'>
+					Ladda om sidan eller försök igen senare. Om felet kvarstår, kolla loggarna för /api/time/entries.
+				</p>
+				<button
+					className='mt-2 text-sm underline'
+					type='button'
+					onClick={() => refetch()}
+				>
+					Försök igen
+				</button>
+			</div>
+		);
+	}
 
 	// Group related entries (main project + ÄTA) that belong together
 	const groupedEntries = useMemo(() => {
@@ -722,6 +722,25 @@ useEffect(() => {
 			return createdAtB - createdAtA;
 		});
 	}, [timeEntries]);
+
+	// FORCE LOG - Always show, even in production
+	useEffect(() => {
+		console.warn('🔍 [TimePageNew] STATE UPDATE:', {
+			timeEntriesCount: timeEntries.length,
+			groupedEntriesCount: groupedEntries.length,
+			orgId,
+			userId,
+			userRole,
+			filterProject,
+			filterStatus,
+			filterUserId,
+			filterStartDate,
+			filterEndDate,
+			entriesError: entriesError?.message,
+			isFetching: isFetchingEntries,
+			hasData: !!timeEntriesData
+		});
+	}, [timeEntries.length, groupedEntries.length, orgId, userId, userRole, filterProject, filterStatus, filterUserId, filterStartDate, filterEndDate, entriesError, isFetchingEntries, timeEntriesData]);
 
 	// Helper function to check if diary exists for a time entry
 	const hasDiaryEntry = (entry: any): boolean => Boolean(entry?.diary_entry?.id);

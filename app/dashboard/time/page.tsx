@@ -7,24 +7,58 @@ interface PageProps {
 }
 
 export default async function TimePage(props: PageProps) {
-	const searchParams = await props.searchParams;
-	const projectId = searchParams.project_id;
-	
-	// Server-side: Only fetch session
-	const { user, membership } = await getSession();
+	try {
+		const searchParams = await props.searchParams;
+		const projectId = searchParams.project_id;
+		
+		// Server-side: Only fetch session with error handling
+		let session;
+		try {
+			session = await getSession();
+		} catch (sessionError) {
+			console.error('[TimePage] Error getting session:', sessionError);
+			return (
+				<div className='p-4 md:p-8 border border-red-300 rounded bg-red-50 text-red-800'>
+					<p className='font-semibold'>Fel vid autentisering.</p>
+					<p className='text-sm mt-1'>Försök ladda om sidan eller logga in igen.</p>
+				</div>
+			);
+		}
 
-	if (!user) {
-		redirect('/sign-in');
-	}
+		const { user, membership } = session || { user: null, membership: null };
 
-	if (!membership) {
+		if (!user) {
+			redirect('/sign-in');
+		}
+
+		if (!membership) {
+			return (
+				<div className='p-4 md:p-8'>
+					<p className='text-destructive'>Ingen aktiv organisation hittades</p>
+				</div>
+			);
+		}
+
+		return <TimePageNew orgId={membership.org_id} userId={user.id} userRole={membership.role} projectId={projectId} />;
+	} catch (error) {
+		console.error('[TimePage] SSR render error', error);
+		console.error('[TimePage] Error details:', {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+		});
+
 		return (
-			<div className='p-4 md:p-8'>
-				<p className='text-destructive'>Ingen aktiv organisation hittades</p>
+			<div className='p-4 md:p-8 border border-red-300 rounded bg-red-50 text-red-800'>
+				<p className='font-semibold'>Internt fel i tidssidan.</p>
+				<p className='text-sm mt-1'>Försök ladda om sidan. Om felet kvarstår, se server-loggarna.</p>
+				{process.env.NODE_ENV === 'development' && error instanceof Error && (
+					<pre className='mt-2 text-xs bg-red-100 p-2 rounded overflow-auto'>
+						{error.message}
+						{error.stack && `\n\n${error.stack}`}
+					</pre>
+				)}
 			</div>
 		);
 	}
-
-	return <TimePageNew orgId={membership.org_id} userId={user.id} userRole={membership.role} projectId={projectId} />;
 }
 

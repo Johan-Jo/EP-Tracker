@@ -73,7 +73,7 @@ self.addEventListener('notificationclick', (event) => {
 // OFFLINE CACHING (Workbox-style)
 // ==========================================
 
-const CACHE_NAME = 'ep-tracker-cache-v1';
+const CACHE_NAME = 'ep-tracker-cache-v2'; // Bump version to force cache clear
 
 // Assets to cache immediately on install
 const PRECACHE_ASSETS = [
@@ -119,15 +119,28 @@ self.addEventListener('activate', (event) => {
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
-              console.log('[SW] Deleting old cache:', cacheName);
-              return caches.delete(cacheName);
-            }
+            // Delete ALL old caches to ensure clean slate
+            console.log('[SW] Deleting cache:', cacheName);
+            return caches.delete(cacheName);
           })
         );
       })
-      .then(() => self.clients.claim()) // Take control immediately
+      .then(() => {
+        // Force take control and skip waiting
+        return self.clients.claim();
+      })
+      .then(() => {
+        // Notify all clients to reload
+        return self.clients.matchAll().then((clients) => {
+          clients.forEach((client) => {
+            client.postMessage({ type: 'SW_UPDATED', action: 'reload' });
+          });
+        });
+      })
   );
+  
+  // Skip waiting immediately to activate new service worker
+  self.skipWaiting();
 });
 
 // Fetch event - serve from cache, fallback to network
@@ -157,11 +170,40 @@ self.addEventListener('fetch', (event) => {
 
   // For navigation requests (pages)
   if (event.request.mode === 'navigate') {
+    // Don't cache dynamic dashboard routes - always fetch fresh
+    const url = new URL(event.request.url);
+    if (url.pathname.startsWith('/dashboard/')) {
+      event.respondWith(
+        fetch(event.request)
+          .then((response) => {
+            // Don't cache error responses, and don't cache dashboard routes
+            // Always return fresh response for dashboard pages
+            return response;
+          })
+          .catch(() => {
+            // Offline - try cache as fallback only
+            return caches.match(event.request).then((cached) => {
+              // Only use cache if it's a successful response (not error)
+              if (cached && cached.ok) {
+                return cached;
+              }
+              // Return offline error if no good cache
+              return new Response('Offline', {
+                status: 503,
+                statusText: 'Service Unavailable',
+              });
+            });
+          })
+      );
+      return;
+    }
+
+    // For other navigation requests, use network-first with cache fallback
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          // Cache successful responses
-          if (response.ok) {
+          // Only cache successful responses (2xx)
+          if (response.ok && response.status >= 200 && response.status < 300) {
             const responseToCache = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, responseToCache);
@@ -183,27 +225,42 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request)
       .then((cachedResponse) => {
         if (cachedResponse) {
-          // Return cached version, but update in background
-          fetch(event.request)
-            .then((networkResponse) => {
-              if (networkResponse.ok) {
-                caches.open(CACHE_NAME).then((cache) => {
-                  cache.put(event.request, networkResponse);
-                });
-              }
-            })
-            .catch(() => {
-              // Network failed, cached version is fine
+          // Only return cached version if it's a successful response
+          // Don't serve cached error responses
+          if (cachedResponse.ok) {
+            // Return cached version, but update in background
+            fetch(event.request)
+              .then((networkResponse) => {
+                // Only cache successful responses (2xx)
+                if (networkResponse.ok && networkResponse.status >= 200 && networkResponse.status < 300) {
+                  caches.open(CACHE_NAME).then((cache) => {
+                    cache.put(event.request, networkResponse);
+                  });
+                } else {
+                  // Remove bad cached response
+                  caches.open(CACHE_NAME).then((cache) => {
+                    cache.delete(event.request);
+                  });
+                }
+              })
+              .catch(() => {
+                // Network failed, cached version is fine (it's already successful)
+              });
+            
+            return cachedResponse;
+          } else {
+            // Cached response is an error, delete it and fetch fresh
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.delete(event.request);
             });
-          
-          return cachedResponse;
+          }
         }
 
-        // Not in cache, fetch from network
+        // Not in cache or cached response was bad, fetch from network
         return fetch(event.request)
           .then((response) => {
-            // Cache successful responses
-            if (response.ok && event.request.url.startsWith('http')) {
+            // Only cache successful responses (2xx)
+            if (response.ok && response.status >= 200 && response.status < 300 && event.request.url.startsWith('http')) {
               const responseToCache = response.clone();
               caches.open(CACHE_NAME).then((cache) => {
                 cache.put(event.request, responseToCache);

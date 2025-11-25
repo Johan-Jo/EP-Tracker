@@ -6,6 +6,7 @@ import { ToasterProvider } from '@/components/core/toaster';
 import ThemeProvider from '@/components/core/theme-provider';
 import { ZodInit } from '@/components/core/zod-init';
 import { NotificationHandler } from '@/components/core/notification-handler';
+import { ErrorBoundary } from '@/components/core/error-boundary';
 
 const inter = Inter({
 	subsets: ['latin'],
@@ -61,12 +62,14 @@ export default function RootLayout({
 				/>
 			</head>
 			<body className={`${inter.variable} font-sans antialiased`}>
-				<ThemeProvider>
-					<ZodInit />
-					<NotificationHandler />
-					<QueryProvider>{children}</QueryProvider>
-					<ToasterProvider />
-				</ThemeProvider>
+				<ErrorBoundary>
+					<ThemeProvider>
+						<ZodInit />
+						<NotificationHandler />
+						<QueryProvider>{children}</QueryProvider>
+						<ToasterProvider />
+					</ThemeProvider>
+				</ErrorBoundary>
 			</body>
 		</html>
 	);

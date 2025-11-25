@@ -21,7 +21,7 @@ export function TimeEntriesList({ orgId, userId, projectId, onEdit }: TimeEntrie
 	const [projectFilter, setProjectFilter] = useState<string>(projectId || 'all');
 	
 	// Fetch time entries
-	const { data: entries, isLoading, refetch } = useQuery({
+	const { data: entries, isLoading, error: entriesError, refetch } = useQuery({
 		queryKey: ['time-entries', orgId, userId, projectFilter, statusFilter],
 		queryFn: async () => {
 			const params = new URLSearchParams();
@@ -30,7 +30,10 @@ export function TimeEntriesList({ orgId, userId, projectId, onEdit }: TimeEntrie
 			if (statusFilter !== 'all') params.append('status', statusFilter);
 
 		const response = await fetch(`/api/time/entries?${params.toString()}`);
-		if (!response.ok) throw new Error('Failed to fetch time entries');
+		if (!response.ok) {
+			const errorData = await response.json().catch(() => ({ error: 'Failed to fetch time entries' }));
+			throw new Error(errorData.error || 'Failed to fetch time entries');
+		}
 		
 		const data = await response.json();
 		// Ensure entries is always an array, never null/undefined
@@ -117,6 +120,27 @@ export function TimeEntriesList({ orgId, userId, projectId, onEdit }: TimeEntrie
 		return (
 			<div className="flex items-center justify-center p-8">
 				<Loader2 className="w-8 h-8 animate-spin text-primary" />
+			</div>
+		);
+	}
+
+	// Handle error in render path - show friendly error UI instead of crashing
+	if (entriesError) {
+		console.error('[TimeEntriesList] Failed to load time entries', entriesError);
+
+		return (
+			<div className="p-4 border border-red-300 rounded bg-red-50 text-red-800">
+				<p className="font-semibold">Kunde inte hämta tidrapporter.</p>
+				<p className="text-sm mt-1">
+					Ladda om sidan eller försök igen senare. Om felet kvarstår, kolla loggarna för /api/time/entries.
+				</p>
+				<button
+					className="mt-2 text-sm underline"
+					type="button"
+					onClick={() => refetch()}
+				>
+					Försök igen
+				</button>
 			</div>
 		);
 	}
