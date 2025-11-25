@@ -160,44 +160,54 @@ export async function GET(request: NextRequest) {
 	console.warn(`✅ [TIME ENTRIES API] Found ${entries?.length || 0} entries for org ${membership.org_id}, user ${user.id}, role ${membership.role}`);
 
 	// Fetch work orders separately to avoid RLS issues with nested joins
-	let enrichedEntries = entries;
-	if (entries && entries.length > 0) {
-		const entriesWithWorkOrders = entries.filter((e: any) => e.work_order_id);
+	// Always ensure work_order property exists on all entries (even if null)
+	let enrichedEntries: any[] = entries || [];
+	
+	if (enrichedEntries.length > 0) {
+		const entriesWithWorkOrders = enrichedEntries.filter((e: any) => e.work_order_id);
 		if (entriesWithWorkOrders.length > 0) {
 			try {
-				const workOrderIds = [...new Set(entriesWithWorkOrders.map((e: any) => e.work_order_id))];
-				const { data: workOrders, error: workOrdersError } = await supabase
-					.from('work_orders')
-					.select('id, title')
-					.in('id', workOrderIds)
-					.eq('organization_id', membership.org_id);
-				
-				// Map work orders to entries (even if query fails, entries still have work_order_id)
-				if (workOrders && !workOrdersError) {
-					const workOrderMap = new Map(workOrders.map((wo: any) => [wo.id, wo]));
-					enrichedEntries = entries.map((entry: any) => ({
-						...entry,
-						work_order: entry.work_order_id ? (workOrderMap.get(entry.work_order_id) || null) : null
-					}));
+				const workOrderIds = [...new Set(entriesWithWorkOrders.map((e: any) => e.work_order_id).filter(Boolean))];
+				if (workOrderIds.length > 0) {
+					const { data: workOrders, error: workOrdersError } = await supabase
+						.from('work_orders')
+						.select('id, title')
+						.in('id', workOrderIds)
+						.eq('organization_id', membership.org_id);
+					
+					// Map work orders to entries (even if query fails, entries still have work_order_id)
+					if (workOrders && !workOrdersError) {
+						const workOrderMap = new Map(workOrders.map((wo: any) => [wo.id, wo]));
+						enrichedEntries = enrichedEntries.map((entry: any) => ({
+							...entry,
+							work_order: entry.work_order_id ? (workOrderMap.get(entry.work_order_id) || null) : null
+						}));
+					} else {
+						// If work_orders query fails, just set work_order to null for all entries
+						console.warn('⚠️ [TIME ENTRIES API] Failed to fetch work_orders:', workOrdersError);
+						enrichedEntries = enrichedEntries.map((entry: any) => ({
+							...entry,
+							work_order: null
+						}));
+					}
 				} else {
-					// If work_orders query fails, just set work_order to null for all entries
-					console.warn('⚠️ [TIME ENTRIES API] Failed to fetch work_orders:', workOrdersError);
-					enrichedEntries = entries.map((entry: any) => ({
+					// No valid work_order_ids, ensure work_order is null for all
+					enrichedEntries = enrichedEntries.map((entry: any) => ({
 						...entry,
 						work_order: null
 					}));
 				}
 			} catch (error) {
-				// If anything goes wrong, return entries without work_order data
+				// If anything goes wrong, return entries with work_order set to null
 				console.error('❌ [TIME ENTRIES API] Error fetching work_orders:', error);
-				enrichedEntries = entries.map((entry: any) => ({
+				enrichedEntries = enrichedEntries.map((entry: any) => ({
 					...entry,
 					work_order: null
 				}));
 			}
 		} else {
 			// No entries with work_order_id, just ensure work_order is null for all
-			enrichedEntries = entries.map((entry: any) => ({
+			enrichedEntries = enrichedEntries.map((entry: any) => ({
 				...entry,
 				work_order: null
 			}));
@@ -290,7 +300,7 @@ export async function GET(request: NextRequest) {
 			}
 		}
 
-		return NextResponse.json({ entries: enrichedEntries || entries, stats }, { status: 200 });
+		return NextResponse.json({ entries: enrichedEntries || [], stats }, { status: 200 });
 	} catch (error) {
 		console.error('Error in GET /api/time/entries:', error);
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
