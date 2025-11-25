@@ -72,7 +72,6 @@ export async function POST(request: NextRequest) {
 			user_id: userId,
 			project_id: data.project_id,
 			phase_id: data.phase_id,
-			work_order_id: data.work_order_id,
 			task_label: data.task_label,
 			start_at: data.start_at,
 			status: 'draft' as const,
@@ -85,7 +84,6 @@ export async function POST(request: NextRequest) {
 				*,
 				project:projects(id, name, project_number),
 				phase:phases(id, name),
-				work_order:work_orders(id, name),
 				user:profiles(id, full_name, email)
 			`);
 
