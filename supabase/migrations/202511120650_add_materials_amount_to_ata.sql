@@ -1,4 +1,4 @@
--- EP-Tracker: Add materials amount column to ÄTA entries
+co-- EP-Tracker: Add materials amount column to ÄTA entries
 -- Adds explicit material cost tracking for change orders.
 
 DO $$

@@ -108,7 +108,7 @@ export function TimePickerInput({
 			</PopoverTrigger>
 
 				<PopoverContent
-					className="w-80 border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+					className="w-80 border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800 z-[10000]"
 					align="start"
 				>
 					<div className="space-y-4">
