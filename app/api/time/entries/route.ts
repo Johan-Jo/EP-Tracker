@@ -159,6 +159,37 @@ export async function GET(request: NextRequest) {
 	// FORCE LOG - Always show
 	console.warn(`✅ [TIME ENTRIES API] Found ${entries?.length || 0} entries for org ${membership.org_id}, user ${user.id}, role ${membership.role}`);
 
+		// Enrich entries with work_order data if work_order_id exists
+		if (entries && entries.length > 0) {
+			const workOrderIds = entries
+				.map((e: any) => e.work_order_id)
+				.filter((id: any): id is string => id !== null && id !== undefined);
+			
+			let workOrdersMap: Record<string, { id: string; title: string }> = {};
+			if (workOrderIds.length > 0) {
+				const { data: workOrders } = await supabase
+					.from('work_orders')
+					.select('id, title')
+					.in('id', workOrderIds);
+				
+				if (workOrders) {
+					workOrdersMap = workOrders.reduce((acc, wo) => {
+						acc[wo.id] = { id: wo.id, title: wo.title };
+						return acc;
+					}, {} as Record<string, { id: string; title: string }>);
+				}
+			}
+			
+			// Add work_orders to each entry
+			entries.forEach((entry: any) => {
+				if (entry.work_order_id && workOrdersMap[entry.work_order_id]) {
+					entry.work_orders = workOrdersMap[entry.work_order_id];
+				} else {
+					entry.work_orders = null;
+				}
+			});
+		}
+
 		// Sort entries: first by start_at (descending), then by created_at (descending) for consistent ordering
 		// This ensures entries with the same start_at are sorted by creation time (newest first)
 		if (entries && entries.length > 0) {
