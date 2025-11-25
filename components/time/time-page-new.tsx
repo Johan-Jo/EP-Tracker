@@ -573,7 +573,7 @@ useEffect(() => {
 			console.warn('🔍 [TimePageNew] Full URL:', window.location.origin + urlWithStats);
 			
 			try {
-				const response = await fetch(urlWithStats);
+			const response = await fetch(urlWithStats);
 				console.warn('🔍 [TimePageNew] Response status:', response.status, response.statusText);
 				
 				if (!response.ok) {
@@ -582,7 +582,7 @@ useEffect(() => {
 					throw new Error(errorData.error || `Failed to fetch time entries: ${response.status}`);
 				}
 				
-				const data = await response.json();
+			const data = await response.json();
 				console.warn('✅ [TimePageNew] API SUCCESS:', {
 					entriesCount: data.entries?.length || 0,
 					hasStats: !!data.stats,
@@ -590,10 +590,10 @@ useEffect(() => {
 					allEntries: data.entries
 				});
 				
-				return {
-					entries: data.entries || [],
-					stats: data.stats || null, // Server-calculated stats
-				};
+			return {
+				entries: data.entries || [],
+				stats: data.stats || null, // Server-calculated stats
+			};
 			} catch (error) {
 				console.error('❌ [TimePageNew] FETCH ERROR:', error);
 				throw error;

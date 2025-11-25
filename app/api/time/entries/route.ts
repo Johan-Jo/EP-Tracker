@@ -85,7 +85,6 @@ export async function GET(request: NextRequest) {
 			updated_at,
 			project:projects(id, name, project_number),
 			phase:phases(id, name),
-			work_order:work_orders!work_order_id(id, title),
 			user:profiles!user_id(id, full_name, email),
 			approved_by_user:profiles!approved_by(id, full_name, email),
 			ata:ata(id, title, status)
@@ -160,10 +159,33 @@ export async function GET(request: NextRequest) {
 	// FORCE LOG - Always show
 	console.warn(`✅ [TIME ENTRIES API] Found ${entries?.length || 0} entries for org ${membership.org_id}, user ${user.id}, role ${membership.role}`);
 
+	// Fetch work orders separately to avoid RLS issues with nested joins
+	let enrichedEntries = entries;
+	if (entries && entries.length > 0) {
+		const entriesWithWorkOrders = entries.filter((e: any) => e.work_order_id);
+		if (entriesWithWorkOrders.length > 0) {
+			const workOrderIds = [...new Set(entriesWithWorkOrders.map((e: any) => e.work_order_id))];
+			const { data: workOrders } = await supabase
+				.from('work_orders')
+				.select('id, title')
+				.in('id', workOrderIds)
+				.eq('organization_id', membership.org_id);
+			
+			// Map work orders to entries
+			if (workOrders) {
+				const workOrderMap = new Map(workOrders.map((wo: any) => [wo.id, wo]));
+				enrichedEntries = entries.map((entry: any) => ({
+					...entry,
+					work_order: entry.work_order_id ? (workOrderMap.get(entry.work_order_id) || null) : null
+				}));
+			}
+		}
+	}
+
 		// Sort entries: first by start_at (descending), then by created_at (descending) for consistent ordering
 		// This ensures entries with the same start_at are sorted by creation time (newest first)
-		if (entries && entries.length > 0) {
-			entries.sort((a, b) => {
+		if (enrichedEntries && enrichedEntries.length > 0) {
+			enrichedEntries.sort((a, b) => {
 				const startAtA = new Date(a.start_at).getTime();
 				const startAtB = new Date(b.start_at).getTime();
 				if (startAtB !== startAtA) {
@@ -246,7 +268,7 @@ export async function GET(request: NextRequest) {
 			}
 		}
 
-		return NextResponse.json({ entries, stats }, { status: 200 });
+		return NextResponse.json({ entries: enrichedEntries || entries, stats }, { status: 200 });
 	} catch (error) {
 		console.error('Error in GET /api/time/entries:', error);
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
