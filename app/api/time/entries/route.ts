@@ -164,21 +164,43 @@ export async function GET(request: NextRequest) {
 	if (entries && entries.length > 0) {
 		const entriesWithWorkOrders = entries.filter((e: any) => e.work_order_id);
 		if (entriesWithWorkOrders.length > 0) {
-			const workOrderIds = [...new Set(entriesWithWorkOrders.map((e: any) => e.work_order_id))];
-			const { data: workOrders } = await supabase
-				.from('work_orders')
-				.select('id, title')
-				.in('id', workOrderIds)
-				.eq('organization_id', membership.org_id);
-			
-			// Map work orders to entries
-			if (workOrders) {
-				const workOrderMap = new Map(workOrders.map((wo: any) => [wo.id, wo]));
+			try {
+				const workOrderIds = [...new Set(entriesWithWorkOrders.map((e: any) => e.work_order_id))];
+				const { data: workOrders, error: workOrdersError } = await supabase
+					.from('work_orders')
+					.select('id, title')
+					.in('id', workOrderIds)
+					.eq('organization_id', membership.org_id);
+				
+				// Map work orders to entries (even if query fails, entries still have work_order_id)
+				if (workOrders && !workOrdersError) {
+					const workOrderMap = new Map(workOrders.map((wo: any) => [wo.id, wo]));
+					enrichedEntries = entries.map((entry: any) => ({
+						...entry,
+						work_order: entry.work_order_id ? (workOrderMap.get(entry.work_order_id) || null) : null
+					}));
+				} else {
+					// If work_orders query fails, just set work_order to null for all entries
+					console.warn('⚠️ [TIME ENTRIES API] Failed to fetch work_orders:', workOrdersError);
+					enrichedEntries = entries.map((entry: any) => ({
+						...entry,
+						work_order: null
+					}));
+				}
+			} catch (error) {
+				// If anything goes wrong, return entries without work_order data
+				console.error('❌ [TIME ENTRIES API] Error fetching work_orders:', error);
 				enrichedEntries = entries.map((entry: any) => ({
 					...entry,
-					work_order: entry.work_order_id ? (workOrderMap.get(entry.work_order_id) || null) : null
+					work_order: null
 				}));
 			}
+		} else {
+			// No entries with work_order_id, just ensure work_order is null for all
+			enrichedEntries = entries.map((entry: any) => ({
+				...entry,
+				work_order: null
+			}));
 		}
 	}
 
