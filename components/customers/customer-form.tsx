@@ -210,11 +210,45 @@ export function CustomerForm({
 			} catch (error) {
 				console.error('[CustomerForm] Submit error:', error);
 				if (error instanceof Error) {
-					// Check if it's a Zod validation error
-					if (error.message.includes('expected string') || error.message.includes('Invalid input')) {
-						setFormError('Kontrollera att alla obligatoriska fält är ifyllda korrekt.');
+					// Check if error has structured validation issues
+					const errorWithIssues = error as Error & {
+						issues?: Array<{ path: string; message: string }>;
+						status?: number;
+					};
+					
+					if (errorWithIssues.issues && errorWithIssues.issues.length > 0) {
+						// Format validation errors for display
+						const fieldErrors = errorWithIssues.issues.map(issue => {
+							const fieldName = issue.path.split('.').pop() || issue.path;
+							// Map field names to Swedish labels
+							const fieldLabels: Record<string, string> = {
+								'company_name': 'Företagsnamn',
+								'org_no': 'Organisationsnummer',
+								'invoice_email': 'Fakturamejl',
+								'invoice_address_street': 'Fakturaadress',
+								'first_name': 'Förnamn',
+								'last_name': 'Efternamn',
+								'personal_identity_no': 'Personnummer',
+							};
+							const label = fieldLabels[fieldName] || fieldName;
+							return `${label}: ${issue.message}`;
+						});
+						
+						setFormError(`Valideringsfel:\n${fieldErrors.join('\n')}`);
+					} else if (error.message.includes('expected string') || error.message.includes('Invalid input') || error.message.includes('Valideringsfel')) {
+						// Parse multi-line error messages
+						const errorLines = error.message.split('\n').filter(line => line.trim());
+						if (errorLines.length > 1) {
+							setFormError(errorLines.join('\n'));
+						} else {
+							setFormError('Kontrollera att alla obligatoriska fält är ifyllda korrekt.');
+						}
 					} else {
-						setFormError(error.message);
+						// Show the error message, but limit length for UI
+						const displayMessage = error.message.length > 200 
+							? error.message.substring(0, 200) + '...'
+							: error.message;
+						setFormError(displayMessage);
 					}
 				} else {
 					setFormError('Kunde inte spara kund');
@@ -240,7 +274,10 @@ export function CustomerForm({
 	return (
 		<form onSubmit={submitHandler} className="space-y-6" noValidate>
 			{formError ? (
-				<p className="text-sm text-destructive text-right">{formError}</p>
+				<div className="rounded-md bg-destructive/10 border border-destructive/20 p-3">
+					<p className="text-sm font-medium text-destructive mb-1">Fel vid skapande av kund:</p>
+					<pre className="text-xs text-destructive whitespace-pre-wrap break-words">{formError}</pre>
+				</div>
 			) : null}
 
 			<Card>

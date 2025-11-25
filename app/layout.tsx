@@ -1,12 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { QueryProvider } from '@/lib/providers/query-provider';
-import { ToasterProvider } from '@/components/core/toaster';
-import ThemeProvider from '@/components/core/theme-provider';
-import { ZodInit } from '@/components/core/zod-init';
-import { NotificationHandler } from '@/components/core/notification-handler';
-import { ErrorBoundary } from '@/components/core/error-boundary';
+import { ErrorBoundaryWrapper } from '@/components/core/error-boundary-wrapper';
 
 const inter = Inter({
 	subsets: ['latin'],
@@ -62,14 +57,7 @@ export default function RootLayout({
 				/>
 			</head>
 			<body className={`${inter.variable} font-sans antialiased`}>
-				<ErrorBoundary>
-					<ThemeProvider>
-						<ZodInit />
-						<NotificationHandler />
-						<QueryProvider>{children}</QueryProvider>
-						<ToasterProvider />
-					</ThemeProvider>
-				</ErrorBoundary>
+				<ErrorBoundaryWrapper>{children}</ErrorBoundaryWrapper>
 			</body>
 		</html>
 	);

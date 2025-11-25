@@ -6,6 +6,7 @@ import { TrialEndingEmail } from './templates/trial-ending';
 import { PaymentFailedEmail } from './templates/payment-failed';
 import { PaymentSuccessfulEmail } from './templates/payment-successful';
 import { TimeApprovalInviteEmail } from './templates/time-approval-invite';
+import { WorkOrderTimeApprovalEmail } from './templates/work-order-time-approval';
 import { AccountSuspendedEmail } from './templates/account-suspended';
 import { WelcomeEmail } from './templates/welcome';
 import { PasswordResetEmail } from './templates/password-reset';
@@ -14,7 +15,7 @@ interface SendEmailOptions {
   to: string;
   toName?: string;
   subject: string;
-  template: 'announcement' | 'trial-ending' | 'payment-failed' | 'payment-successful' | 'account-suspended' | 'welcome' | 'password-reset' | 'time-approval-invite' | 'custom';
+  template: 'announcement' | 'trial-ending' | 'payment-failed' | 'payment-successful' | 'account-suspended' | 'welcome' | 'password-reset' | 'time-approval-invite' | 'work-order-time-approval' | 'custom';
   templateData: Record<string, any>;
   organizationId?: string;
   emailType?: 'announcement' | 'notification' | 'transactional' | 'marketing';
@@ -62,6 +63,9 @@ export async function sendEmail(options: SendEmailOptions) {
         break;
       case 'time-approval-invite':
         html = await render(TimeApprovalInviteEmail(templateData as any));
+        break;
+      case 'work-order-time-approval':
+        html = await render(WorkOrderTimeApprovalEmail(templateData as any));
         break;
       case 'welcome':
         html = await render(WelcomeEmail(templateData as any));

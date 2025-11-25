@@ -55,14 +55,35 @@ const fetchJson = async <T>(
 			errorBody = { error: errorText || `HTTP ${response.status} ${response.statusText}` };
 		}
 		
-		const errorData = errorBody as { error?: string; details?: unknown; issues?: Array<{ path: string; message: string }> };
-		let message = errorData.error ?? `Serverfel (${response.status})`;
+		const errorData = errorBody as { 
+			error?: string; 
+			details?: unknown; 
+			issues?: Array<{ path: string; message: string; code?: string }>;
+			message?: string;
+		};
+		
+		// Create a more detailed error message
+		let message = errorData.error ?? errorData.message ?? `Serverfel (${response.status})`;
 		
 		// Add validation details if available
 		if (errorData.issues && errorData.issues.length > 0) {
-			const issuesText = errorData.issues.map(i => `${i.path}: ${i.message}`).join(', ');
-			message = `${message} (${issuesText})`;
+			// Format validation errors in a user-friendly way
+			const fieldErrors = errorData.issues.map(i => {
+				const fieldName = i.path.split('.').pop() || i.path;
+				return `${fieldName}: ${i.message}`;
+			});
+			message = `${message}\n\n${fieldErrors.join('\n')}`;
 		}
+		
+		// Create error object with structured data for better error handling
+		const error = new Error(message) as Error & {
+			status?: number;
+			details?: unknown;
+			issues?: Array<{ path: string; message: string; code?: string }>;
+		};
+		error.status = response.status;
+		error.details = errorData.details;
+		error.issues = errorData.issues;
 		
 		console.error('[use-customers] API error:', { 
 			status: response.status, 
@@ -70,7 +91,7 @@ const fetchJson = async <T>(
 			errorBody,
 			errorText: errorText.substring(0, 500), // First 500 chars
 		});
-		throw new Error(message);
+		throw error;
 	}
 
 	return response.json() as Promise<T>;

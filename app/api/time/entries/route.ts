@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
 	const searchParams = request.nextUrl.searchParams;
 	const project_id = searchParams.get('project_id');
 	const user_id = searchParams.get('user_id');
+	const work_order_id = searchParams.get('work_order_id');
 	const status = searchParams.get('status');
 	const start_date = searchParams.get('start_date');
 	const end_date = searchParams.get('end_date');
@@ -96,6 +97,7 @@ export async function GET(request: NextRequest) {
 	// Apply filters BEFORE ordering and limiting
 	if (project_id) query = query.eq('project_id', project_id);
 	if (user_id) query = query.eq('user_id', user_id);
+	if (work_order_id) query = query.eq('work_order_id', work_order_id);
 	if (status) query = query.eq('status', status);
 	
 	// ✅ PERFORMANCE: Always apply date filter (default to last 3 months if not specified)
@@ -132,6 +134,7 @@ export async function GET(request: NextRequest) {
 		effectiveEndDate,
 		project_id,
 		user_id,
+		work_order_id,
 		status,
 		entriesCount: entries?.length || 0,
 		hasError: !!error

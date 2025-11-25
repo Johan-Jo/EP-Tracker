@@ -39,6 +39,7 @@ interface TimePageNewProps {
 	userId: string;
 	userRole: string;
 	projectId?: string;
+	workOrderId?: string;
 }
 
 interface ProjectOption {
@@ -83,7 +84,7 @@ function getDefaultWorkTimes(orgBreakSettings?: {
 	return { start: '07:00', end: '16:00' };
 }
 
-export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewProps) {
+export function TimePageNew({ orgId, userId, userRole, projectId, workOrderId }: TimePageNewProps) {
 	// FORCE LOG on component mount - Always show
 	useEffect(() => {
 		console.warn('🚀 [TimePageNew] COMPONENT MOUNTED', { orgId, userId, userRole, projectId });
@@ -230,6 +231,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 			start_at: new Date().toISOString().split('T')[0] + 'T07:00',
 			project_id: '',
 			phase_id: null,
+			work_order_id: null,
 			task_label: '',
 			billing_type: '',
 			fixed_block_id: null,
@@ -245,6 +247,13 @@ export function TimePageNew({ orgId, userId, userRole, projectId }: TimePageNewP
 			setValue('project_id', projectId, { shouldDirty: true });
 		}
 	}, [projectId, setValue]);
+
+	// Set work_order_id when workOrderId prop changes
+	useEffect(() => {
+		if (workOrderId) {
+			setValue('work_order_id', workOrderId, { shouldDirty: true });
+		}
+	}, [workOrderId, setValue]);
 
 	// Set default start and end times from organization settings when loaded
 	useEffect(() => {
@@ -1002,6 +1011,7 @@ useEffect(() => {
 				billing_type: normalizedBillingType as BillingType,
 				fixed_block_id: data.fixed_block_id ?? null,
 				ata_id: data.ata_id,
+				work_order_id: data.work_order_id ?? null,
 				start_at: today.toISOString(),
 				stop_at: stopAt.toISOString(),
 				hours: hours,
@@ -1021,6 +1031,7 @@ useEffect(() => {
 				billing_type: normalizedBillingType as BillingType,
 				fixed_block_id: data.fixed_block_id ?? null,
 				ata_id: data.ata_id ?? null,
+				work_order_id: data.work_order_id ?? null,
 				ata_minutes: (data.ata_id && ataMinutes > 0) ? ataMinutes : undefined, // Send ÄTA minutes to deduct
 			};
 		}
@@ -1070,8 +1081,9 @@ useEffect(() => {
 			setEndTime(defaults.end);
 			setAtaMinutes(0); // Reset ÄTA minutes
 			reset({
-				project_id: '',
+				project_id: workOrderId ? projectId || '' : '', // Keep project if workOrderId exists
 				phase_id: null,
+				work_order_id: workOrderId || null, // Keep work_order_id if it exists
 				task_label: '',
 				notes: '',
 				start_at: `${today}T${defaults.start}`,

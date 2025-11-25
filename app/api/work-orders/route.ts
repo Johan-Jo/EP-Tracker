@@ -114,11 +114,19 @@ export async function POST(request: NextRequest) {
 		// Extract assignments if provided
 		const { assignments, ...workOrderData } = validated;
 
+		// Convert undefined to null for nullable fields (Supabase doesn't accept undefined)
+		const cleanedWorkOrderData = Object.fromEntries(
+			Object.entries(workOrderData).map(([key, value]) => [
+				key,
+				value === undefined ? null : value,
+			])
+		);
+
 		// Create work order
 		const { data: workOrder, error: workOrderError } = await supabase
 			.from('work_orders')
 			.insert({
-				...workOrderData,
+				...cleanedWorkOrderData,
 				organization_id: membership.org_id,
 				created_by_id: user.id,
 			})

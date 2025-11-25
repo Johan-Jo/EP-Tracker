@@ -165,6 +165,7 @@ export async function POST(request: NextRequest) {
 				'Organisationsnummer krävs för företagskund',
 				'Ogiltigt personnummer',
 				'Personnummer krävs för privatkund',
+				'Personnummer krävs för ROT-verksamhet',
 			]);
 			if (knownMessages.has(error.message)) {
 				return NextResponse.json({ error: error.message }, { status: 400 });
@@ -172,8 +173,18 @@ export async function POST(request: NextRequest) {
 		}
 
 		if (error instanceof z.ZodError) {
+			// Provide more detailed error information
+			const issues = error.issues.map((issue) => ({
+				path: issue.path.join('.'),
+				message: issue.message,
+				code: issue.code,
+			}));
 			return NextResponse.json(
-				{ error: 'Ogiltig indata', details: error.flatten() },
+				{ 
+					error: 'Valideringsfel', 
+					details: issues,
+					message: issues.map(i => `${i.path}: ${i.message}`).join(', ')
+				},
 				{ status: 422 }
 			);
 		}

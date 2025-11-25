@@ -46,6 +46,7 @@ type AtaOption = {
 type TimeEntryFormValues = Omit<CreateTimeEntryInput, 'billing_type' | 'fixed_block_id'> & {
 	billing_type: '' | BillingType;
 	fixed_block_id: string | null;
+	work_order_id?: string | null;
 	hours?: number; // For ÄTA entries
 };
 
@@ -54,9 +55,10 @@ interface TimeEntryFormProps {
 	onSuccess?: () => void;
 	onCancel?: () => void;
 	initialData?: TimeEntryWithRelations;
+	hideAta?: boolean; // Hide ÄTA section when used from work orders
 }
 
-export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeEntryFormProps) {
+export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData, hideAta = false }: TimeEntryFormProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [showSuccess, setShowSuccess] = useState(false);
 	const [showDiaryPromptDialog, setShowDiaryPromptDialog] = useState(false);
@@ -80,11 +82,12 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 				defaultValues: initialData
 			? {
 					project_id: initialData.project_id ? String(initialData.project_id) : '',
-					phase_id: initialData.phase_id,
-					task_label: initialData.task_label,
-					start_at: initialData.start_at.slice(0, 16), // Format for datetime-local
-					stop_at: initialData.stop_at ? initialData.stop_at.slice(0, 16) : null,
-					notes: initialData.notes,
+					phase_id: initialData.phase_id ?? null,
+					work_order_id: (initialData as any).work_order_id ?? null,
+					task_label: initialData.task_label ?? '',
+					start_at: ('start_at' in initialData && initialData.start_at) ? (initialData.start_at as string).slice(0, 16) : new Date().toISOString().slice(0, 16),
+					stop_at: ('stop_at' in initialData && initialData.stop_at) ? (initialData.stop_at as string).slice(0, 16) : null,
+					notes: initialData.notes ?? '',
 					billing_type: initialData.billing_type ?? 'LOPANDE',
 					fixed_block_id: initialData.fixed_block_id ?? null,
 					ata_id: initialData.ata_id ?? null,
@@ -102,13 +105,16 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData }: TimeE
 	// Reset form when initialData changes
 	useEffect(() => {
 		if (initialData) {
+			// Handle both full TimeEntryWithRelations and partial initial data (e.g., from work order)
+			const hasFullData = 'start_at' in initialData && initialData.start_at;
 			reset({
 				project_id: initialData.project_id ? String(initialData.project_id) : '',
-				phase_id: initialData.phase_id,
-				task_label: initialData.task_label,
-				start_at: initialData.start_at.slice(0, 16),
-				stop_at: initialData.stop_at ? initialData.stop_at.slice(0, 16) : null,
-				notes: initialData.notes,
+				phase_id: initialData.phase_id ?? null,
+				work_order_id: (initialData as any).work_order_id ?? null,
+				task_label: initialData.task_label ?? '',
+				start_at: hasFullData ? (initialData.start_at as string).slice(0, 16) : new Date().toISOString().slice(0, 16),
+				stop_at: hasFullData && initialData.stop_at ? (initialData.stop_at as string).slice(0, 16) : null,
+				notes: initialData.notes ?? '',
 				billing_type: initialData.billing_type ?? 'LOPANDE',
 				fixed_block_id: initialData.fixed_block_id ?? null,
 				ata_id: initialData.ata_id ?? null,
@@ -360,6 +366,7 @@ useEffect(() => {
 				billing_type: (data.billing_type === '' ? 'LOPANDE' : data.billing_type) as BillingType,
 				fixed_block_id: data.fixed_block_id ?? null,
 				ata_id: data.ata_id,
+				work_order_id: (data as any).work_order_id ?? null,
 				start_at: today.toISOString(),
 				stop_at: stopAt.toISOString(),
 				hours: data.hours,
@@ -370,6 +377,7 @@ useEffect(() => {
 				billing_type: (data.billing_type === '' ? 'LOPANDE' : data.billing_type) as BillingType,
 				fixed_block_id: data.fixed_block_id ?? null,
 				ata_id: data.ata_id ?? null,
+				work_order_id: (data as any).work_order_id ?? null,
 			};
 		}
 

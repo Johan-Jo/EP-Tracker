@@ -126,7 +126,14 @@ const projNumber = watch('project_number');
 const projName = watch('name');
 const billingMode = watch('billing_mode');
 const defaultTimeBilling = watch('default_time_billing_type');
-const { data: selectedCustomer } = useCustomer(customerId || null);
+	const { data: selectedCustomer } = useCustomer(customerId || null);
+
+	// Set customer_id when project prop changes (e.g., when opened from work order modal)
+	useEffect(() => {
+		if (project?.customer_id) {
+			setValue('customer_id', project.customer_id, { shouldValidate: false, shouldDirty: false });
+		}
+	}, [project?.customer_id, setValue]);
 const timeBillingOptions = useMemo(() => {
 	if (billingMode === 'FAST_ONLY') return billingTypeOptions.filter((opt) => opt.value === 'FAST');
 	if (billingMode === 'LOPANDE_ONLY') return billingTypeOptions.filter((opt) => opt.value === 'LOPANDE');
@@ -270,11 +277,20 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 			
 			console.log('Submit result:', result);
 			
-			// Client-side redirect to avoid NEXT_REDIRECT error
-			if (result.success && result.project?.id) {
-				router.push(`/dashboard/projects/${result.project.id}`);
-			} else if (!result.success) {
+			// Only redirect if we're not in a modal (i.e., if project prop has an id, we're editing)
+			// If project prop is undefined or doesn't have an id, we're creating and might be in a modal
+			if (result && result.success && result.project?.id) {
+				// Only redirect if we're editing an existing project (not creating in a modal)
+				if (project?.id) {
+					router.push(`/dashboard/projects/${result.project.id}`);
+				}
+				// If creating (no project.id), let the parent component handle the result
+				// This allows modals to close themselves
+			} else if (result && !result.success) {
 				setError('Kunde inte skapa projekt');
+				setIsSubmitting(false);
+			} else if (!result) {
+				setError('Kunde inte skapa projekt - inget svar från servern');
 				setIsSubmitting(false);
 			}
 		} catch (err) {
@@ -324,23 +340,8 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 						<Label>
 							Kund <span className='text-destructive'>*</span>
 						</Label>
-						<CustomerSelect
-							value={selectedCustomer ?? null}
-							onChange={(customer) => {
-								setValue('customer_id', customer.id, { shouldDirty: true, shouldValidate: true });
-								const fallbackName =
-									customer.type === 'COMPANY'
-										? customer.company_name
-										: `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim() || null;
-								setValue('client_name', fallbackName, { shouldDirty: true });
-							}}
-							placeholder='Välj kund'
-						/>
-						{errors.customer_id && (
-							<p className='text-sm text-destructive'>{errors.customer_id.message}</p>
-						)}
 						{selectedCustomer && customerId ? (
-							<Card className='mt-2'>
+							<Card>
 								<CardContent className='pt-4'>
 									<div className='flex items-center justify-between'>
 										<div className='flex items-center gap-3'>
@@ -373,7 +374,23 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 									</div>
 								</CardContent>
 							</Card>
-						) : null}
+						) : (
+							<CustomerSelect
+								value={null}
+								onChange={(customer) => {
+									setValue('customer_id', customer.id, { shouldDirty: true, shouldValidate: true });
+									const fallbackName =
+										customer.type === 'COMPANY'
+											? customer.company_name
+											: `${customer.first_name ?? ''} ${customer.last_name ?? ''}`.trim() || null;
+									setValue('client_name', fallbackName, { shouldDirty: true });
+								}}
+								placeholder='Välj kund'
+							/>
+						)}
+						{errors.customer_id && (
+							<p className='text-sm text-destructive'>{errors.customer_id.message}</p>
+						)}
 					</div>
 
 					<div className='space-y-2'>

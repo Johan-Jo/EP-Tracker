@@ -21,6 +21,7 @@ import {
 	ContactRound,
 	Users,
 	Building2,
+	ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -92,6 +93,12 @@ const menuItems: NavItem[] = [
 		href: '/dashboard/planning',
 		icon: Calendar,
 		roles: ['admin', 'foreman', 'finance'],
+	},
+	{
+		label: 'Arbetsorder',
+		href: '/dashboard/work-orders',
+		icon: ClipboardList,
+		roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 	},
 	{
 		label: 'ÄTA',
