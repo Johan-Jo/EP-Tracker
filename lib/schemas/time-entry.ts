@@ -114,7 +114,7 @@ export type TimeEntryWithRelations = TimeEntry & {
 		id: string;
 		name: string;
 	} | null;
-	work_orders: {
+	work_order: {
 		id: string;
 		title: string;
 	} | null;
