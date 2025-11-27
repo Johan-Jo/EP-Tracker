@@ -65,6 +65,7 @@ export function AddressAutocomplete({
 	const containerRef = useRef<HTMLDivElement>(null);
 	const suggestionsRef = useRef<GeoapifyResult[]>([]);
 	const isFocusedRef = useRef(false);
+	const isSelectingRef = useRef(false);
 
 	// Sync suggestionsRef with suggestions state
 	useEffect(() => {
@@ -73,6 +74,12 @@ export function AddressAutocomplete({
 
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
+			// Don't hide if we're in the process of selecting a suggestion
+			if (isSelectingRef.current) {
+				isSelectingRef.current = false;
+				return;
+			}
+			// Check if click is outside the container
 			if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
 				setShowSuggestions(false);
 				isFocusedRef.current = false;
@@ -180,6 +187,9 @@ export function AddressAutocomplete({
 	};
 
 	const handleSelect = (result: GeoapifyResult) => {
+		// Mark that we're selecting to prevent click outside from firing
+		isSelectingRef.current = true;
+		
 		const props = result.properties;
 		console.log('[AddressAutocomplete] handleSelect called with:', props);
 		const formatted = props.formatted;
@@ -199,6 +209,11 @@ export function AddressAutocomplete({
 		setSuggestions([]);
 		suggestionsRef.current = [];
 		isFocusedRef.current = false;
+		
+		// Reset after a short delay
+		setTimeout(() => {
+			isSelectingRef.current = false;
+		}, 100);
 	};
 
 	return (
@@ -253,10 +268,14 @@ export function AddressAutocomplete({
 							key={idx}
 							className='flex cursor-pointer items-start gap-2 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted dark:text-white dark:hover:bg-white/10'
 							onMouseDown={(e) => {
-								// Prevent blur from firing before click
+								// Prevent blur and click outside from firing
 								e.preventDefault();
+								e.stopPropagation();
+								// Immediately select to avoid any timing issues
+								handleSelect(result);
 							}}
 							onClick={(e) => {
+								// Backup handler in case mousedown doesn't work
 								e.preventDefault();
 								e.stopPropagation();
 								handleSelect(result);
