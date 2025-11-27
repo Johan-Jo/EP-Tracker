@@ -426,16 +426,12 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 								
 								console.log('[ProjectForm] Setting values:', { formattedAddress, latNum, lonNum });
 								
-								// Set address (coordinates are optional, no longer required)
 								setValue('site_address', formattedAddress, { shouldDirty: true, shouldValidate: true });
-								// Optionally set coordinates if available, but not required
-								if (!isNaN(latNum) && !isNaN(lonNum)) {
-									setValue('site_lat', latNum, { shouldDirty: true, shouldValidate: false });
-									setValue('site_lon', lonNum, { shouldDirty: true, shouldValidate: false });
-								}
+								setValue('site_lat', latNum, { shouldDirty: true, shouldValidate: true });
+								setValue('site_lon', lonNum, { shouldDirty: true, shouldValidate: true });
 								
-								// Trigger validation for address
-								trigger('site_address');
+								// Trigger validation to ensure watch() picks up the changes
+								trigger(['site_address', 'site_lat', 'site_lon']);
 							}}
 							placeholder='Ex: Observatoriegatan 13, 113 29 Stockholm'
 						/>
