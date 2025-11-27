@@ -533,10 +533,17 @@ export async function POST(request: NextRequest) {
 			// Send work order time approval email if this entry is linked to a work order
 			// Don't await - fire and forget to keep API fast
 			if (entry.work_order_id) {
+				// Get base URL from request or environment
+				const requestUrl = new URL(request.url);
+				const baseUrl = process.env.NEXT_PUBLIC_SITE_URL 
+					|| (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+					|| requestUrl.origin;
+				
 				sendWorkOrderTimeApprovalEmail({
 					supabase,
 					workOrderId: entry.work_order_id,
 					orgId: membership.org_id,
+					baseUrl,
 				}).catch((err) => {
 					console.error('[Time Entry] Failed to send work order approval email:', err);
 				});

@@ -7,6 +7,7 @@ interface SendWorkOrderTimeApprovalEmailParams {
 	supabase: SupabaseClient;
 	workOrderId: string;
 	orgId: string;
+	baseUrl?: string; // Optional: if provided, use this instead of env vars
 }
 
 /**
@@ -17,6 +18,7 @@ export async function sendWorkOrderTimeApprovalEmail({
 	supabase,
 	workOrderId,
 	orgId,
+	baseUrl: providedBaseUrl,
 }: SendWorkOrderTimeApprovalEmailParams) {
 	try {
 		// Fetch work order with all necessary data
@@ -169,8 +171,9 @@ export async function sendWorkOrderTimeApprovalEmail({
 		}
 
 		// Send email to each assigned worker
-		// Use NEXT_PUBLIC_SITE_URL for production, fallback to VERCEL_URL or localhost
-		const baseUrl = process.env.NEXT_PUBLIC_SITE_URL 
+		// Use provided baseUrl, or NEXT_PUBLIC_SITE_URL, or VERCEL_URL, or localhost
+		const baseUrl = providedBaseUrl 
+			|| process.env.NEXT_PUBLIC_SITE_URL 
 			|| (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
 			|| 'http://localhost:3000';
 		const approveUrl = `${baseUrl}/dashboard/work-orders/${workOrderId}/approve-time?token=${approvalToken}`;

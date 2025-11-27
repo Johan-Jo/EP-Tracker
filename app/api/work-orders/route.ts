@@ -209,9 +209,16 @@ export async function POST(request: NextRequest) {
 
 		// Skicka tilldelnings-mail till arbetare (fire-and-forget)
 		if (workOrderWithRelations) {
+			// Get base URL from request or environment
+			const requestUrl = new URL(request.url);
+			const baseUrl = process.env.NEXT_PUBLIC_SITE_URL 
+				|| (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+				|| requestUrl.origin;
+			
 			sendWorkOrderAssignmentEmails({
 				workOrder: workOrderWithRelations as any,
 				orgId: membership.org_id,
+				baseUrl,
 			}).catch((err) => {
 				console.error('[Work Orders] Failed to send assignment emails:', err);
 			});

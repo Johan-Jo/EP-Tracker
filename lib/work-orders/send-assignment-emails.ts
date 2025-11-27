@@ -21,6 +21,7 @@ interface SendWorkOrderAssignmentEmailsParams {
 		}> | null;
 	};
 	orgId: string;
+	baseUrl?: string; // Optional: if provided, use this instead of env vars
 }
 
 function formatCustomerName(customer: SendWorkOrderAssignmentEmailsParams['workOrder']['customer']): string | null {
@@ -47,15 +48,16 @@ function formatDateTimeRange(start?: string | null, end?: string | null): { star
 	};
 }
 
-export async function sendWorkOrderAssignmentEmails({ workOrder, orgId }: SendWorkOrderAssignmentEmailsParams) {
+export async function sendWorkOrderAssignmentEmails({ workOrder, orgId, baseUrl: providedBaseUrl }: SendWorkOrderAssignmentEmailsParams) {
 	try {
 		const assignments = workOrder.assignments || [];
 		if (!assignments.length) {
 			return;
 		}
 
-		// Use NEXT_PUBLIC_SITE_URL for production, fallback to VERCEL_URL or localhost
-		const baseUrl = process.env.NEXT_PUBLIC_SITE_URL 
+		// Use provided baseUrl, or NEXT_PUBLIC_SITE_URL, or VERCEL_URL, or localhost
+		const baseUrl = providedBaseUrl 
+			|| process.env.NEXT_PUBLIC_SITE_URL 
 			|| (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
 			|| 'http://localhost:3000';
 		const workOrderUrl = `${baseUrl}/dashboard/work-orders/${workOrder.id}`;

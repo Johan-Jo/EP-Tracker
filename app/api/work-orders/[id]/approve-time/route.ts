@@ -63,10 +63,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		}
 
 		// Trigger manager approval email (fire and forget)
+		// Get base URL from request or environment
+		const requestUrl = new URL(request.url);
+		const baseUrl = process.env.NEXT_PUBLIC_SITE_URL 
+			|| (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+			|| requestUrl.origin;
+		
 		sendWorkOrderManagerApprovalEmail({
 			supabase,
 			workOrderId: id,
 			orgId: membership.org_id,
+			baseUrl,
 		}).catch((err) => {
 			console.error('[Approve Time] Failed to send manager approval email:', err);
 		});
