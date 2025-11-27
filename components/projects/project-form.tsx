@@ -21,9 +21,8 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, QrCode, Navigation, Building2, User2 } from 'lucide-react';
+import { Loader2, QrCode, Building2, User2 } from 'lucide-react';
 import { AddressAutocomplete } from '@/components/address/address-autocomplete';
-import { AddressMap } from '@/components/address/address-map';
 import { ProjectAlertSettings } from './project-alert-settings';
 import { QRDialog } from '@/components/worksites/qr-dialog';
 import { CustomerSelect } from '@/components/customers/customer-select';
@@ -117,8 +116,6 @@ const [error, setError] = useState<string | null>(null);
 const budgetMode = watch('budget_mode');
 const status = watch('status');
 const siteAddress = watch('site_address');
-const siteLat = watch('site_lat');
-const siteLon = watch('site_lon');
 const customerId = watch('customer_id');
 const addr1 = watch('address_line1');
 const postal = watch('postal_code');
@@ -429,13 +426,16 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 								
 								console.log('[ProjectForm] Setting values:', { formattedAddress, latNum, lonNum });
 								
-								// Set all values and trigger validation/update
+								// Set address (coordinates are optional, no longer required)
 								setValue('site_address', formattedAddress, { shouldDirty: true, shouldValidate: true });
-								setValue('site_lat', latNum, { shouldDirty: true, shouldValidate: true });
-								setValue('site_lon', lonNum, { shouldDirty: true, shouldValidate: true });
+								// Optionally set coordinates if available, but not required
+								if (!isNaN(latNum) && !isNaN(lonNum)) {
+									setValue('site_lat', latNum, { shouldDirty: true, shouldValidate: false });
+									setValue('site_lon', lonNum, { shouldDirty: true, shouldValidate: false });
+								}
 								
-								// Trigger validation to ensure watch() picks up the changes
-								trigger(['site_address', 'site_lat', 'site_lon']);
+								// Trigger validation for address
+								trigger('site_address');
 							}}
 							placeholder='Ex: Observatoriegatan 13, 113 29 Stockholm'
 						/>
@@ -640,55 +640,6 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 				</CardContent>
 			</Card>
 
-			<Card>
-				<CardHeader className='relative pb-3'>
-					<CardTitle className='text-xl text-foreground dark:text-white'>Platsinställningar</CardTitle>
-					{siteLat != null && siteLon != null && !isNaN(Number(siteLat)) && !isNaN(Number(siteLon)) && (
-						<a
-							href={`https://www.waze.com/ul?ll=${Number(siteLat)},${Number(siteLon)}&navigate=yes`}
-							target='_blank'
-							rel='noopener noreferrer'
-							className='absolute top-6 right-6 inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-300 dark:hover:text-blue-200'
-						>
-							<Navigation className='w-3.5 h-3.5' />
-							Öppna i Waze
-						</a>
-					)}
-				</CardHeader>
-				<CardContent className='space-y-4 pt-3'>
-					<div className='space-y-1.5'>
-						<Label>Karta</Label>
-						<AddressMap
-							lat={siteLat != null && !isNaN(Number(siteLat)) ? Number(siteLat) : null}
-							lon={siteLon != null && !isNaN(Number(siteLon)) ? Number(siteLon) : null}
-						/>
-					</div>
-					<div className='grid gap-4 md:grid-cols-2'>
-						<div className='space-y-2'>
-							<Label htmlFor='site_lat'>Latitud</Label>
-							<Input
-								id='site_lat'
-								type='number'
-								step='any'
-								{...register('site_lat', { valueAsNumber: true })}
-								placeholder='57.491'
-								className='text-xs'
-							/>
-						</div>
-						<div className='space-y-2'>
-							<Label htmlFor='site_lon'>Longitud</Label>
-							<Input
-								id='site_lon'
-								type='number'
-								step='any'
-								{...register('site_lon', { valueAsNumber: true })}
-								placeholder='12.068'
-								className='text-xs'
-							/>
-						</div>
-					</div>
-				</CardContent>
-			</Card>
 
 			<Card>
 				<CardHeader>
