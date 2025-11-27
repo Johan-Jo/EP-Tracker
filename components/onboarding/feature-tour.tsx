@@ -191,29 +191,6 @@ export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourPro
 			}
 		};
 
-			// Calculate tooltip position
-			const rect = element.getBoundingClientRect();
-			const tooltipPosition = calculatePosition(rect, step.position || 'bottom');
-			setPosition(tooltipPosition);
-
-			// Scroll element into view
-			element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-			// Highlight the element
-			element.style.position = 'relative';
-			element.style.zIndex = '1001';
-			element.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.5)';
-			element.style.borderRadius = '8px';
-		} else {
-			// Element not found - center the tooltip as fallback
-			console.warn('[FeatureTour] Target element not found:', step.target);
-			setTargetElement(null);
-			setPosition({
-				top: window.innerHeight / 2,
-				left: window.innerWidth / 2,
-			});
-		}
-
 		return () => {
 			// Remove highlight
 			if (element) {
