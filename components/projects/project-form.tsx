@@ -87,6 +87,7 @@ const [error, setError] = useState<string | null>(null);
 		formState: { errors },
 		setValue,
 		watch,
+		trigger,
 	} = useForm<ProjectFormData>({
 		resolver: zodResolver(projectSchema) as any,
 		defaultValues: project ?? {
@@ -427,9 +428,14 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 								const formattedAddress = `${addr.address_line1}, ${addr.postal_code} ${addr.city}`.trim();
 								
 								console.log('[ProjectForm] Setting values:', { formattedAddress, latNum, lonNum });
-								setValue('site_address', formattedAddress, { shouldDirty: true });
+								
+								// Set all values and trigger validation/update
+								setValue('site_address', formattedAddress, { shouldDirty: true, shouldValidate: true });
 								setValue('site_lat', latNum, { shouldDirty: true, shouldValidate: true });
 								setValue('site_lon', lonNum, { shouldDirty: true, shouldValidate: true });
+								
+								// Trigger validation to ensure watch() picks up the changes
+								trigger(['site_address', 'site_lat', 'site_lon']);
 							}}
 							placeholder='Ex: Observatoriegatan 13, 113 29 Stockholm'
 						/>

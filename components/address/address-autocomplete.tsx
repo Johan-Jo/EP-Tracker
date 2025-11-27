@@ -262,7 +262,7 @@ export function AddressAutocomplete({
 				)}
 			</div>
 			{((showSuggestions && suggestions.length > 0) || (isFocusedRef.current && suggestionsRef.current.length > 0)) && (
-				<ul className='absolute z-[10000] mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border/60 bg-[var(--color-card)] shadow-lg dark:border-[#3a251d] dark:bg-[#1f140d]'>
+				<ul className='absolute z-[10001] mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border/60 bg-[var(--color-card)] shadow-lg dark:border-[#3a251d] dark:bg-[#1f140d]' style={{ position: 'absolute' }}>
 					{(suggestions.length > 0 ? suggestions : suggestionsRef.current).map((result, idx) => (
 						<li
 							key={idx}
