@@ -814,6 +814,111 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			],
 		},
 		{
+			title: 'Arbetsorder',
+			description: 'Skapa, tilldela och följa upp arbetsorder kopplade till projekt',
+			icon: ClipboardList,
+			roles: ['admin', 'foreman', 'worker'],
+			sections: [
+				{
+					title: 'Skapa ny arbetsorder',
+					items: [
+						'Gå till "Arbetsorder" i menyn',
+						'Klicka på "Skapa arbetsorder"',
+						'Välj först kund (eller skapa ny kund)',
+						'Välj projekt (eller skapa nytt projekt)',
+						'Fyll i titel, beskrivning, planerad start- och sluttid',
+						'Ange plats (använd projektets adress eller ange egen)',
+						'Tilldela en eller flera personer',
+						'Välj om e-post ska skickas till arbetare (standard: ja)',
+						'Spara arbetsordern',
+					],
+				},
+				{
+					title: 'Registrera tid på arbetsorder',
+					items: [
+						'Öppna arbetsordern och gå till fliken "Tid"',
+						'Klicka på "Lägg till tid"',
+						'Eller gå till "Tid"-sidan och välj projekt + arbetsorder',
+						'All registrerad tid kopplas automatiskt till arbetsordern',
+						'Systemet beräknar faktisk start- och sluttid från tidrapporterna',
+					],
+				},
+				{
+					title: 'Tvåstegsgodkännande av tid',
+					items: [
+						'Efter att planerad sluttid har passerat och tid är registrerad:',
+						'  • Arbetaren får ett e-post för att bekräfta sin registrerade tid',
+						'  • Arbetaren klickar "Bekräfta" om tiden stämmer, eller "Justera tid" för att ändra',
+						'Efter arbetarens bekräftelse:',
+						'  • Forman/administratör får ett e-post för att godkänna tiden',
+						'  • Forman granskar planerad vs faktisk tid och godkänner',
+						'Processen är klar när forman har godkänt',
+					],
+				},
+				{
+					title: 'Jämföra planerad vs faktisk tid',
+					items: [
+						'På arbetsorderns detaljsida, fliken "Tid":',
+						'  • Se total planerad tid och faktisk registrerad tid',
+						'  • Se avvikelse (över/under planerad tid)',
+						'  • Se tid per person',
+						'  • Se alla individuella tidrapporter',
+						'Använd detta för att justera planering eller debitering',
+					],
+				},
+				{
+					title: 'Redigera arbetsorder',
+					items: [
+						'Öppna arbetsordern',
+						'Klicka på "Redigera"',
+						'Ändra titel, beskrivning, datum, tid, plats eller tilldelningar',
+						'Spara ändringar',
+						'Alla ändringar synkroniseras automatiskt',
+					],
+				},
+				{
+					title: 'Markera arbetsorder som klar',
+					items: [
+						'Öppna arbetsordern',
+						'Gå till fliken "Genomförande"',
+						'Fyll i "Extern sammanfattning" (beskrivning för kunden)',
+						'Klicka "Markera som klar"',
+						'Status ändras till "Klar" och stängningsdatum registreras',
+					],
+				},
+				{
+					title: 'Arbetsorder i planeringskalendern',
+					items: [
+						'Gå till "Planering" i menyn',
+						'Arbetsorder visas automatiskt i kalendern för tilldelade personer',
+						'Dra och släpp arbetsorder för att ändra datum eller tilldelning',
+						'Klicka på arbetsordern i kalendern för att öppna detaljsidan',
+						'Skapa ny arbetsorder direkt från kalendern med "Skapa arbetsorder"-knappen',
+					],
+				},
+				{
+					title: 'Mobilvy: Mina arbetsorder idag',
+					items: [
+						'Gå till "Arbetsorder → Idag" (eller direkt till /dashboard/work-orders/today)',
+						'Se alla arbetsorder som är tilldelade till dig för idag',
+						'Klicka "Starta arbete" när du börjar jobbet (sätter faktisk starttid)',
+						'Klicka "Avsluta arbete" när du är klar (sätter faktisk sluttid)',
+						'Använd "Navigera"-knappen för att öppna Google Maps till arbetsplatsen',
+						'Klicka "Öppna" för att se fullständig detaljsida',
+					],
+				},
+				{
+					title: 'Arbetsorder i fakturering',
+					items: [
+						'När du skapar fakturaunderlag inkluderas arbetsorderinformation automatiskt',
+						'Tidrapporter kopplade till arbetsorder visar arbetsorderns externa sammanfattning',
+						'Beskrivningen i fakturaraderna prioriterar arbetsorderns externa sammanfattning',
+						'Detta gör det enklare att fakturera specifika jobb och uppdrag',
+					],
+				},
+			],
+		},
+		{
 			title: 'Fakturaunderlag',
 			description: 'Granska, låsa och exportera faktureringsdata',
 			icon: FileText,
@@ -1208,6 +1313,14 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			roles: ['admin', 'foreman', 'worker', 'ue'],
 		},
 		{
+			id: 'work-orders',
+			title: 'Arbetsorder',
+			description: 'Skapa, tilldela och följa upp arbetsorder kopplade till projekt',
+			icon: ClipboardList,
+			page: '/dashboard/work-orders?tour=work-orders',
+			roles: ['admin', 'foreman', 'worker'],
+		},
+		{
 			id: 'checklists',
 			title: 'Checklista',
 			description: 'Skapa och använda checklistor för projektspecifika kontroller',
@@ -1393,6 +1506,76 @@ export function HelpPageNew({ userRole }: HelpPageNewProps) {
 			answer:
 				'Du kan få notiser om: godkännanden av tid, veckosammanfattningar, påminnelser om utcheckning, och projektspecifika alerts om check-in/out. Alla notiser kan aktiveras/avaktiveras individuellt i notis-inställningarna.',
 			roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
+		},
+		{
+			id: 'faq-work-orders-1',
+			question: 'Vad är en arbetsorder i EP Tracker?',
+			answer:
+				'En arbetsorder är ett konkret jobbkort kopplat till ett projekt. Den beskriver vad som ska göras, för vilken kund, var jobbet ska utföras, när det är planerat och vem som är ansvarig. All tid som rapporteras mot arbetsordern kan sedan följas upp och användas som underlag för fakturering.',
+			roles: ['admin', 'foreman', 'worker', 'ue'],
+		},
+		{
+			id: 'faq-work-orders-2',
+			question: 'Hur skapar jag en ny arbetsorder?',
+			answer:
+				'Gå till "Arbetsorder" i menyn och klicka på "Skapa arbetsorder". Välj först kund och projekt, fyll sedan i titel, beskrivning, datum/tid och plats. Till sist tilldelar du en eller flera personer och sparar. Arbetsordern dyker då upp i listan och i planeringen.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-work-orders-3',
+			question: 'Hur registrerar jag tid på en arbetsorder?',
+			answer:
+				'Du kan antingen öppna arbetsordern och klicka på "Lägg till tid", eller gå till sidan "Tid" och välja samma projekt och arbetsorder i formuläret. All registrerad tid kopplas då till arbetsordern och syns i fliken "Tid" på detaljsidan.',
+			roles: ['admin', 'foreman', 'worker', 'ue'],
+		},
+		{
+			id: 'faq-work-orders-4',
+			question: 'Vad är skillnaden mellan planerad och faktisk tid på en arbetsorder?',
+			answer:
+				'I arbetsordern anger du planerad start- och sluttid. När arbetet genomförs registreras verklig arbetstid via tidrapporteringen. Systemet kan jämföra planerad och faktisk tid så att du ser avvikelse och kan justera planering eller debitering vid behov.',
+			roles: ['admin', 'foreman', 'finance'],
+		},
+		{
+			id: 'faq-work-orders-5',
+			question: 'Hur fungerar tidsgodkännandet för arbetsorder?',
+			answer:
+				'Efter att planerad sluttid har passerat och det finns registrerad tid, får arbetaren ett e-post för att bekräfta sin registrerade tid. När arbetaren bekräftat, får forman/administratör ett e-post för att godkänna tiden. Detta säkerställer att både arbetaren och forman granskar tiden innan den godkänns.',
+			roles: ['admin', 'foreman', 'worker'],
+		},
+		{
+			id: 'faq-work-orders-6',
+			question: 'När får jag e-post om tidsgodkännande?',
+			answer:
+				'Arbetare får e-post för bekräftelse när: (1) planerad sluttid har passerat, (2) det finns registrerad tid på arbetsordern, och (3) e-postinställningen är aktiverad. Forman får e-post för godkännande när arbetaren har bekräftat sin tid.',
+			roles: ['admin', 'foreman', 'worker'],
+		},
+		{
+			id: 'faq-work-orders-7',
+			question: 'Kan jag stänga av e-post för tidsgodkännande?',
+			answer:
+				'Ja, när du skapar en arbetsorder kan du avmarkera kryssrutan "Skicka e-post för tidsgodkännande". Om detta är avmarkerat skickas inga e-post för bekräftelse eller godkännande, men tiden kan fortfarande granskas manuellt på arbetsorderns detaljsida.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-work-orders-8',
+			question: 'Hur fungerar arbetsorder i planeringskalendern?',
+			answer:
+				'Arbetsorder visas automatiskt i planeringskalendern för de personer som är tilldelade. Du kan dra och släpp arbetsorder för att ändra datum eller flytta dem mellan olika personer. Du kan också skapa nya arbetsorder direkt från kalendern med "Skapa arbetsorder"-knappen.',
+			roles: ['admin', 'foreman'],
+		},
+		{
+			id: 'faq-work-orders-9',
+			question: 'Hur använder jag mobilvyn för dagens arbetsorder?',
+			answer:
+				'Gå till "Arbetsorder → Idag" för att se alla arbetsorder som är tilldelade till dig för idag. Klicka "Starta arbete" när du börjar jobbet och "Avsluta arbete" när du är klar. Använd "Navigera"-knappen för att öppna Google Maps till arbetsplatsen.',
+			roles: ['admin', 'foreman', 'worker', 'ue'],
+		},
+		{
+			id: 'faq-work-orders-10',
+			question: 'Hur visas arbetsorder i fakturering?',
+			answer:
+				'När du skapar fakturaunderlag inkluderas arbetsorderinformation automatiskt. Tidrapporter kopplade till arbetsorder visar arbetsorderns externa sammanfattning i beskrivningen, vilket gör det enklare att fakturera specifika jobb och uppdrag.',
+			roles: ['admin', 'foreman', 'finance'],
 		},
 		{
 			id: 'faq-19',

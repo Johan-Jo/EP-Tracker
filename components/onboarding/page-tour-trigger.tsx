@@ -3,15 +3,17 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FeatureTour } from './feature-tour';
-import { 
-	dashboardTourSteps, 
-	projectsTourSteps, 
-	timeTourSteps, 
-	materialsTourSteps, 
+import {
+	dashboardTourSteps,
+	projectsTourSteps,
+	timeTourSteps,
+	materialsTourSteps,
 	approvalsTourSteps,
 	planningTourSteps,
 	planningTodayTourSteps,
-	notificationsTourSteps
+	notificationsTourSteps,
+	workOrdersTourSteps,
+	workOrdersTodayTourSteps,
 } from '@/lib/onboarding/tour-steps';
 
 const tourMap = {
@@ -23,6 +25,8 @@ const tourMap = {
 	'planning': planningTourSteps,
 	'planning-today': planningTodayTourSteps,
 	'notifications': notificationsTourSteps,
+	'work-orders': workOrdersTourSteps,
+	'work-orders-today': workOrdersTodayTourSteps,
 };
 
 interface PageTourTriggerProps {

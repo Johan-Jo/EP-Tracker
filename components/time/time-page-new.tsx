@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Calendar, Clock, Save, Filter, Loader2, Trash2, BookOpen, CheckCircle2, Pencil } from 'lucide-react';
+import { Calendar, Clock, Save, Filter, Loader2, Trash2, BookOpen, CheckCircle2, Pencil, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 // Removed textarea for description; diary prompt will be used instead
@@ -40,6 +40,8 @@ interface TimePageNewProps {
 	userRole: string;
 	projectId?: string;
 	workOrderId?: string;
+	startAt?: string;
+	stopAt?: string;
 }
 
 interface ProjectOption {
@@ -47,6 +49,12 @@ interface ProjectOption {
 	name: string;
 	billing_mode: 'FAST_ONLY' | 'LOPANDE_ONLY' | 'BOTH';
 	default_time_billing_type: BillingType;
+}
+
+interface WorkOrderOption {
+	id: string;
+	work_order_number: string;
+	title: string;
 }
 
 interface FixedBlockOption {
@@ -84,7 +92,7 @@ function getDefaultWorkTimes(orgBreakSettings?: {
 	return { start: '07:00', end: '16:00' };
 }
 
-export function TimePageNew({ orgId, userId, userRole, projectId, workOrderId }: TimePageNewProps) {
+export function TimePageNew({ orgId, userId, userRole, projectId, workOrderId, startAt, stopAt }: TimePageNewProps) {
 	// FORCE LOG on component mount - Always show
 	useEffect(() => {
 		console.warn('🚀 [TimePageNew] COMPONENT MOUNTED', { orgId, userId, userRole, projectId });
@@ -255,6 +263,35 @@ export function TimePageNew({ orgId, userId, userRole, projectId, workOrderId }:
 		}
 	}, [workOrderId, setValue]);
 
+	// Set start_at and stop_at from URL params if provided (from work order email link)
+	useEffect(() => {
+		if (startAt) {
+			try {
+				const startDate = new Date(startAt);
+				const date = startDate.toISOString().split('T')[0];
+				const time = startDate.toTimeString().slice(0, 5);
+				setCurrentDate(date);
+				setStartTime(time);
+				setValue('start_at', startAt, { shouldDirty: true });
+			} catch (error) {
+				console.error('[TimePageNew] Error parsing start_at:', error);
+			}
+		}
+	}, [startAt, setValue]);
+
+	useEffect(() => {
+		if (stopAt) {
+			try {
+				const stopDate = new Date(stopAt);
+				const time = stopDate.toTimeString().slice(0, 5);
+				setEndTime(time);
+				setValue('stop_at', stopAt, { shouldDirty: true });
+			} catch (error) {
+				console.error('[TimePageNew] Error parsing stop_at:', error);
+			}
+		}
+	}, [stopAt, setValue]);
+
 	// Set default start and end times from organization settings when loaded
 	useEffect(() => {
 		if (orgBreakSettings && !editingEntry) {
@@ -309,6 +346,7 @@ export function TimePageNew({ orgId, userId, userRole, projectId, workOrderId }:
 
 	const watchedProjectId = watch('project_id');
 	const selectedProjectId = watchedProjectId ? String(watchedProjectId) : '';
+	const watchedWorkOrderId = watch('work_order_id') as string | null;
 	const billingType = watch('billing_type') as TimeEntryFormValues['billing_type'];
 	const fixedBlockId = watch('fixed_block_id') as TimeEntryFormValues['fixed_block_id'];
 const selectedAtaId = watch('ata_id') as string | null;
@@ -419,6 +457,24 @@ const previousProjectIdRef = useRef<string | null>(null);
 	const hasFixedBlocks = fixedBlocks.length > 0;
 	const fixedBlocksErrorMessage =
 		fixedBlocksError instanceof Error ? fixedBlocksError.message : undefined;
+	
+	const { data: workOrders = [], isLoading: workOrdersLoading } = useQuery<WorkOrderOption[]>({
+		queryKey: ['work-orders-by-project', orgId, selectedProjectId],
+		queryFn: async () => {
+			if (!selectedProjectId) return [];
+			const { data, error } = await supabase
+				.from('work_orders')
+				.select('id, work_order_number, title')
+				.eq('organization_id', orgId)
+				.eq('project_id', selectedProjectId)
+				.order('created_at', { ascending: false });
+
+			if (error) throw error;
+			return data || [];
+		},
+		enabled: !!selectedProjectId,
+		staleTime: 60 * 1000,
+	});
 
 const { data: ataOptions = [], isLoading: ataLoading } = useQuery<AtaOption[]>({
 	queryKey: ['project-ata-options', selectedProjectId],
@@ -1376,43 +1432,76 @@ useEffect(() => {
 							)}
 						</div>
 
-						{/* Billing Type */}
-						{selectedProjectId && (
+						{/* Work Order (optional) - only show if there are work orders for the project (or while loading) */}
+						{selectedProjectId && (workOrdersLoading || workOrders.length > 0) && (
 							<div>
 								<label className='block text-sm font-medium mb-2'>
-									Debitering {effectiveBillingMode === 'BOTH' && <span className='text-destructive'>*</span>}
+									Arbetsorder (valfritt)
 								</label>
-								{effectiveBillingMode === 'BOTH' ? (
+								{workOrdersLoading ? (
+									<div className='flex items-center gap-2 text-sm text-muted-foreground'>
+										<Loader2 className='w-4 h-4 animate-spin' />
+										Laddar arbetsorder...
+									</div>
+								) : workOrders.length === 0 ? null : (
 									<Select
-										value={billingType || ''}
+										value={watchedWorkOrderId ?? 'none'}
 										onValueChange={(value) => {
-											const normalized = value as BillingType;
-											setValue('billing_type', normalized, { shouldDirty: true });
-											if (normalized !== 'FAST') {
-												setValue('fixed_block_id', null, { shouldDirty: true });
+											if (value === 'none') {
+												setValue('work_order_id', null, { shouldDirty: true });
+											} else {
+												setValue('work_order_id', value, { shouldDirty: true });
 											}
 										}}
 									>
-										<SelectTrigger className={!billingType ? 'h-11 border-destructive' : 'h-11'}>
-											<SelectValue placeholder='Välj debitering' />
+										<SelectTrigger className='h-11 justify-between text-left'>
+											<SelectValue placeholder='Välj arbetsorder (eller lämna tomt)' />
 										</SelectTrigger>
-										<SelectContent>
-											{billingTypeOptions.map((option) => (
-												<SelectItem key={option.value} value={option.value}>
-													{option.label}
+										<SelectContent className='border border-border/60 bg-[var(--color-card)] text-[var(--color-gray-900)] dark:border-[#3b291d] dark:bg-[#1a120d] dark:text-white'>
+											<SelectItem value='none'>Ingen arbetsorder</SelectItem>
+											{workOrders.map((wo) => (
+												<SelectItem
+													key={wo.id}
+													value={wo.id}
+													className='text-sm data-[state=checked]:bg-emerald-500/15 data-[state=checked]:text-emerald-700 dark:data-[state=checked]:bg-emerald-500/20 dark:data-[state=checked]:text-emerald-200'
+												>
+													{wo.work_order_number ? `${wo.work_order_number} – ` : ''}
+													{wo.title}
 												</SelectItem>
 											))}
 										</SelectContent>
 									</Select>
-								) : effectiveBillingMode === 'FAST_ONLY' ? (
-									<div className='rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground'>
-										Debitering: Fast
-									</div>
-								) : (
-									<div className='rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground'>
-										Debitering: Löpande
-									</div>
 								)}
+							</div>
+						)}
+
+						{/* Billing Type - only visible when project supports both Fast and Löpande */}
+						{selectedProjectId && effectiveBillingMode === 'BOTH' && (
+							<div>
+								<label className='block text-sm font-medium mb-2'>
+									Debitering <span className='text-destructive'>*</span>
+								</label>
+								<Select
+									value={billingType || ''}
+									onValueChange={(value) => {
+										const normalized = value as BillingType;
+										setValue('billing_type', normalized, { shouldDirty: true });
+										if (normalized !== 'FAST') {
+											setValue('fixed_block_id', null, { shouldDirty: true });
+										}
+									}}
+								>
+									<SelectTrigger className={!billingType ? 'h-11 border-destructive' : 'h-11'}>
+										<SelectValue placeholder='Välj debitering' />
+									</SelectTrigger>
+									<SelectContent>
+										{billingTypeOptions.map((option) => (
+											<SelectItem key={option.value} value={option.value}>
+												{option.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 								{billingInteractionRequired && !billingType && (
 									<p className='text-sm text-destructive mt-1'>Välj debitering innan du sparar.</p>
 								)}
@@ -1463,8 +1552,8 @@ useEffect(() => {
 								</div>
 							)}
 
-						{/* ÄTA selection */}
-						{selectedProjectId && (
+						{/* ÄTA selection - only show if project has at least one ÄTA (or while loading) */}
+						{selectedProjectId && (ataLoading || ataOptions.length > 0) && (
 							<div>
 								<label className='block text-sm font-medium mb-2'>ÄTA (valfritt)</label>
 								{ataLoading ? (
@@ -1480,7 +1569,7 @@ useEffect(() => {
 										}
 									>
 										<SelectTrigger className='h-11 justify-between text-left'>
-										<SelectValue placeholder='Koppla till ÄTA (valfritt)' />
+											<SelectValue placeholder='Koppla till ÄTA (valfritt)' />
 										</SelectTrigger>
 										<SelectContent className='border border-border/60 bg-[var(--color-card)] text-[var(--color-gray-900)] dark:border-[#3b291d] dark:bg-[#1a120d] dark:text-white'>
 											<SelectItem value='none'>Ingen ÄTA</SelectItem>
@@ -1509,19 +1598,7 @@ useEffect(() => {
 											))}
 										</SelectContent>
 									</Select>
-								) : (
-									<div className='rounded-lg border border-dashed border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground'>
-										Inga ÄTA kopplade till projektet ännu.
-										<div className='mt-2'>
-											<Button variant='outline' size='sm' asChild>
-												<Link href={`/dashboard/ata/new?project_id=${selectedProjectId}`}>
-													Skapa ÄTA
-												</Link>
-											</Button>
-										</div>
-									</div>
-								)}
-								
+								) : null}
 							</div>
 						)}
 
@@ -1764,6 +1841,12 @@ useEffect(() => {
 															>
 																{billingTypeLabel}
 															</span>
+															{entry.work_order_id && (
+																<span className='inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium bg-emerald-500/10 border-emerald-400 text-emerald-700 dark:bg-emerald-500/15 dark:border-emerald-500 dark:text-emerald-200'>
+																	<ClipboardList className='w-3 h-3' />
+																	<span>Arbetsorder</span>
+																</span>
+															)}
 														</div>
 														{entry.user?.full_name && (
 															<p className='text-sm font-medium text-muted-foreground mb-1'>

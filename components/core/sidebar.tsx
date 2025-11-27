@@ -67,6 +67,14 @@ const navItems: NavItem[] = [
 		href: '/dashboard/work-orders',
 		icon: ClipboardList,
 		roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
+		subItems: [
+			{
+				label: 'Dagens arbeten',
+				href: '/dashboard/work-orders/today',
+				icon: Calendar,
+				roles: ['admin', 'foreman', 'worker'],
+			},
+		],
 	},
 	{
 		label: 'Personalliggare',

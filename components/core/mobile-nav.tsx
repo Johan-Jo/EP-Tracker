@@ -101,6 +101,12 @@ const menuItems: NavItem[] = [
 		roles: ['admin', 'foreman', 'worker', 'finance', 'ue'],
 	},
 	{
+		label: 'Dagens arbeten',
+		href: '/dashboard/work-orders/today',
+		icon: Calendar,
+		roles: ['admin', 'foreman', 'worker'],
+	},
+	{
 		label: 'ÄTA',
 		href: '/dashboard/ata',
 		icon: FileEdit,

@@ -55,10 +55,17 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trigger_update_work_order_actual_times ON time_entries;
 
-CREATE TRIGGER trigger_update_work_order_actual_times
-AFTER INSERT OR UPDATE OR DELETE ON time_entries
+-- Create separate triggers for INSERT/UPDATE and DELETE to avoid WHEN condition issues
+CREATE TRIGGER trigger_update_work_order_actual_times_insert_update
+AFTER INSERT OR UPDATE ON time_entries
 FOR EACH ROW
-WHEN (COALESCE(NEW.work_order_id, OLD.work_order_id) IS NOT NULL)
+WHEN (NEW.work_order_id IS NOT NULL)
+EXECUTE FUNCTION update_work_order_actual_times();
+
+CREATE TRIGGER trigger_update_work_order_actual_times_delete
+AFTER DELETE ON time_entries
+FOR EACH ROW
+WHEN (OLD.work_order_id IS NOT NULL)
 EXECUTE FUNCTION update_work_order_actual_times();
 
 -- ============================================================================

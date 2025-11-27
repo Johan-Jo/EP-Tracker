@@ -48,6 +48,7 @@ export function WorkOrderFilters({
 	users,
 	onClose,
 }: WorkOrderFiltersProps) {
+	const ALL_VALUE = 'all';
 	const router = useRouter();
 	const searchParams = useSearchParams();
 
@@ -104,12 +105,15 @@ export function WorkOrderFilters({
 				<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
 					<div className='space-y-2'>
 						<Label htmlFor='status'>Status</Label>
-						<Select value={status} onValueChange={setStatus}>
+						<Select
+							value={status || ALL_VALUE}
+							onValueChange={(value) => setStatus(value === ALL_VALUE ? '' : value)}
+						>
 							<SelectTrigger id='status'>
 								<SelectValue placeholder='Alla status' />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value=''>Alla status</SelectItem>
+								<SelectItem value={ALL_VALUE}>Alla status</SelectItem>
 								<SelectItem value='PLANERAD'>Planerad</SelectItem>
 								<SelectItem value='PÅGÅENDE'>Pågående</SelectItem>
 								<SelectItem value='KLAR'>Klar</SelectItem>
@@ -121,12 +125,15 @@ export function WorkOrderFilters({
 
 					<div className='space-y-2'>
 						<Label htmlFor='project'>Projekt</Label>
-						<Select value={projectId} onValueChange={setProjectId}>
+						<Select
+							value={projectId || ALL_VALUE}
+							onValueChange={(value) => setProjectId(value === ALL_VALUE ? '' : value)}
+						>
 							<SelectTrigger id='project'>
 								<SelectValue placeholder='Alla projekt' />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value=''>Alla projekt</SelectItem>
+								<SelectItem value={ALL_VALUE}>Alla projekt</SelectItem>
 								{projects.map((project) => (
 									<SelectItem key={project.id} value={project.id}>
 										{project.name}
@@ -138,12 +145,15 @@ export function WorkOrderFilters({
 
 					<div className='space-y-2'>
 						<Label htmlFor='customer'>Kund</Label>
-						<Select value={customerId} onValueChange={setCustomerId}>
+						<Select
+							value={customerId || ALL_VALUE}
+							onValueChange={(value) => setCustomerId(value === ALL_VALUE ? '' : value)}
+						>
 							<SelectTrigger id='customer'>
 								<SelectValue placeholder='Alla kunder' />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value=''>Alla kunder</SelectItem>
+								<SelectItem value={ALL_VALUE}>Alla kunder</SelectItem>
 								{customers.map((customer) => (
 									<SelectItem key={customer.id} value={customer.id}>
 										{getCustomerName(customer)}
@@ -155,12 +165,15 @@ export function WorkOrderFilters({
 
 					<div className='space-y-2'>
 						<Label htmlFor='user'>Tilldelad användare</Label>
-						<Select value={userId} onValueChange={setUserId}>
+						<Select
+							value={userId || ALL_VALUE}
+							onValueChange={(value) => setUserId(value === ALL_VALUE ? '' : value)}
+						>
 							<SelectTrigger id='user'>
 								<SelectValue placeholder='Alla användare' />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value=''>Alla användare</SelectItem>
+								<SelectItem value={ALL_VALUE}>Alla användare</SelectItem>
 								{users.map((user) => (
 									<SelectItem key={user.id} value={user.id}>
 										{user.full_name || user.email}

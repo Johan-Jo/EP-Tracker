@@ -6,9 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PersonRow } from './person-row';
 import { AssignmentCard } from './assignment-card';
+import { WorkOrderCard } from './work-order-card';
 import { CapacityIndicator } from './capacity-indicator';
 import { ProjectChips } from './project-chips';
 import { AddAssignmentDialog } from './add-assignment-dialog';
+import { CreateWorkOrderModal } from '@/components/work-orders/create-work-order-modal';
+import type { WorkOrderWithRelations } from '@/lib/schemas/work-order';
 import { DroppableCell } from './droppable-cell';
 import { AddToProjectDialog } from './add-to-project-dialog';
 import type { WeekPlanningData, PersonStatus } from '@/lib/schemas/planning';
@@ -23,10 +26,13 @@ interface WeekScheduleViewProps {
 	onAddAssignment: (data: any) => Promise<void>;
 	onDragDropUpdate: (params: { assignmentId: string; payload: any }) => void;
 	onRefresh: () => Promise<void>;
+	orgId: string;
+	users: Array<{ id: string; full_name: string | null; email: string }>;
 }
 
-export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRefresh }: WeekScheduleViewProps) {
+export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRefresh, orgId, users }: WeekScheduleViewProps) {
 	const [showAddDialog, setShowAddDialog] = useState(false);
+	const [showCreateWorkOrderDialog, setShowCreateWorkOrderDialog] = useState(false);
 	const [selectedDate, setSelectedDate] = useState('');
 	const [selectedPerson, setSelectedPerson] = useState('');
 	const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
@@ -116,6 +122,40 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 				address: assignment.address || project.client_name,
 			});
 		}
+	});
+
+	// EPIC 52: Group work orders by user and day
+	const workOrdersByUserDay: { [key: string]: { [day: number]: any[] } } = {};
+	data.work_orders?.forEach(workOrder => {
+		const workOrderDate = new Date(workOrder.planned_start_at);
+		const dayIndex = Math.floor((workOrderDate.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24));
+		
+		const project = projectsMap.get(workOrder.project_id);
+		if (!project) return; // Skip if project not found
+		
+		// For each assigned user, add work order to their day
+		workOrder.assignments?.forEach((assignment: any) => {
+			if (dayIndex >= 0 && dayIndex < 7) {
+				if (!workOrdersByUserDay[assignment.user_id]) {
+					workOrdersByUserDay[assignment.user_id] = {};
+				}
+				if (!workOrdersByUserDay[assignment.user_id][dayIndex]) {
+					workOrdersByUserDay[assignment.user_id][dayIndex] = [];
+				}
+				workOrdersByUserDay[assignment.user_id][dayIndex].push({
+					id: workOrder.id,
+					workOrderNumber: workOrder.work_order_number,
+					title: workOrder.title,
+					projectName: project.name,
+					projectColor: project.color,
+					startTime: workOrder.all_day ? 'Heldag' : format(new Date(workOrder.planned_start_at), 'HH:mm'),
+					endTime: workOrder.all_day ? null : (workOrder.planned_end_at ? format(new Date(workOrder.planned_end_at), 'HH:mm') : null),
+					address: workOrder.location_address || project.site_address,
+					status: workOrder.status,
+					priority: workOrder.priority,
+				});
+			}
+		});
 	});
 
 	// Calculate capacity per day
@@ -216,9 +256,11 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 			return;
 		}
 
-		// Find the assignment being dragged
+		// Find the assignment or work order being dragged
 		const assignment = data.assignments.find(a => a.id === active.id);
-		if (!assignment) return;
+		const workOrder = data.work_orders?.find(wo => wo.id === active.id);
+		
+		if (!assignment && !workOrder) return;
 
 		// Calculate new date - use weekDays array for reliable date
 		const newDateStr = weekDays[dayIndex].isoDate;
@@ -227,71 +269,153 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 			return;
 		}
 
-		// If same date and user, do nothing
-		const oldDate = format(new Date(assignment.start_ts), 'yyyy-MM-dd');
-		if (assignment.user_id === userId && oldDate === newDateStr) {
-			return;
-		}
+		// Handle assignment drag
+		if (assignment) {
+			// If same date and user, do nothing
+			const oldDate = format(new Date(assignment.start_ts), 'yyyy-MM-dd');
+			if (assignment.user_id === userId && oldDate === newDateStr) {
+				return;
+			}
 
-		// Update assignment - parse date in local timezone
-		const [year, month, day] = newDateStr.split('-').map(Number);
-		const startDate = new Date(year, month - 1, day); // month is 0-indexed
-		const endDate = new Date(year, month - 1, day);
-		
-		if (assignment.all_day) {
-			startDate.setHours(0, 0, 0, 0);
-			endDate.setHours(23, 59, 59, 999);
-		} else {
-			// Keep same time of day
-			const oldStart = new Date(assignment.start_ts);
-			const oldEnd = new Date(assignment.end_ts);
-			startDate.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0);
-			endDate.setHours(oldEnd.getHours(), oldEnd.getMinutes(), 0, 0);
-		}
+			// Update assignment - parse date in local timezone
+			const [year, month, day] = newDateStr.split('-').map(Number);
+			const startDate = new Date(year, month - 1, day); // month is 0-indexed
+			const endDate = new Date(year, month - 1, day);
+			
+			if (assignment.all_day) {
+				startDate.setHours(0, 0, 0, 0);
+				endDate.setHours(23, 59, 59, 999);
+			} else {
+				// Keep same time of day
+				const oldStart = new Date(assignment.start_ts);
+				const oldEnd = new Date(assignment.end_ts);
+				startDate.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0);
+				endDate.setHours(oldEnd.getHours(), oldEnd.getMinutes(), 0, 0);
+			}
 
-		const payload = {
-			user_id: userId,
-			start_ts: startDate.toISOString(),
-			end_ts: endDate.toISOString(),
-		};
+			const payload = {
+				user_id: userId,
+				start_ts: startDate.toISOString(),
+				end_ts: endDate.toISOString(),
+			};
 
-		// Check if user is being assigned to a different person
-		if (assignment.user_id !== userId) {
-			// Check if the new user is a member of the project
-			try {
-				const response = await fetch(`/api/projects/${assignment.project_id}/members`);
-				if (response.ok) {
-					const { members } = await response.json();
-					const isMember = members.some((m: any) => m.user_id === userId);
-					
-					if (!isMember) {
-						// User is not a member - show confirmation dialog
-						const targetUser = data.resources.find(r => r.id === userId);
-						if (targetUser) {
-							setPendingDrop({
-								assignmentId: assignment.id,
-								projectId: assignment.project_id,
-								projectName: assignment.project.name,
-								userId: userId,
-								userName: targetUser.full_name || targetUser.email,
-								payload,
-							});
-							setShowAddToProjectDialog(true);
-							return; // Don't proceed with update yet
+			// Check if user is being assigned to a different person
+			if (assignment.user_id !== userId) {
+				// Check if the new user is a member of the project
+				try {
+					const response = await fetch(`/api/projects/${assignment.project_id}/members`);
+					if (response.ok) {
+						const { members } = await response.json();
+						const isMember = members.some((m: any) => m.user_id === userId);
+						
+						if (!isMember) {
+							// User is not a member - show confirmation dialog
+							const targetUser = data.resources.find(r => r.id === userId);
+							if (targetUser) {
+								setPendingDrop({
+									assignmentId: assignment.id,
+									projectId: assignment.project_id,
+									projectName: assignment.project.name,
+									userId: userId,
+									userName: targetUser.full_name || targetUser.email,
+									payload,
+								});
+								setShowAddToProjectDialog(true);
+								return; // Don't proceed with update yet
+							}
 						}
 					}
+				} catch (error) {
+					console.error('Error checking project membership:', error);
+					// Continue with assignment update even if check fails
 				}
-			} catch (error) {
-				console.error('Error checking project membership:', error);
-				// Continue with assignment update even if check fails
 			}
+			
+			// Use optimistic mutation - UI updates instantly!
+			onDragDropUpdate({
+				assignmentId: assignment.id,
+				payload,
+			});
 		}
 		
-		// Use optimistic mutation - UI updates instantly!
-		onDragDropUpdate({
-			assignmentId: assignment.id,
-			payload,
-		});
+		// Handle work order drag
+		if (workOrder) {
+			// Check if work order is assigned to this user
+			const isAssignedToUser = workOrder.assignments?.some((a: any) => a.user_id === userId);
+			const oldDate = format(new Date(workOrder.planned_start_at), 'yyyy-MM-dd');
+			
+			// If same date and already assigned to user, do nothing
+			if (isAssignedToUser && oldDate === newDateStr) {
+				return;
+			}
+
+			// Update work order date - parse date in local timezone
+			const [year, month, day] = newDateStr.split('-').map(Number);
+			const startDate = new Date(year, month - 1, day);
+			const endDate = workOrder.planned_end_at ? new Date(workOrder.planned_end_at) : new Date(startDate);
+			
+			if (workOrder.all_day) {
+				startDate.setHours(0, 0, 0, 0);
+				endDate.setHours(23, 59, 59, 999);
+			} else {
+				// Keep same time of day
+				const oldStart = new Date(workOrder.planned_start_at);
+				startDate.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0);
+				if (workOrder.planned_end_at) {
+					const oldEnd = new Date(workOrder.planned_end_at);
+					endDate.setHours(oldEnd.getHours(), oldEnd.getMinutes(), 0, 0);
+				} else {
+					endDate.setHours(startDate.getHours() + 8, startDate.getMinutes(), 0, 0); // Default 8 hours
+				}
+			}
+
+			// Update work order via API
+			try {
+				const response = await fetch(`/api/work-orders/${workOrder.id}`, {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						planned_start_at: startDate.toISOString(),
+						planned_end_at: endDate.toISOString(),
+					}),
+				});
+
+				if (!response.ok) {
+					const error = await response.json();
+					throw new Error(error.error || 'Failed to update work order');
+				}
+
+				toast.success('Arbetsorder uppdaterad');
+				onRefresh();
+			} catch (error) {
+				console.error('Error updating work order:', error);
+				toast.error('Kunde inte uppdatera arbetsorder');
+			}
+			
+			// If user is not assigned, add them
+			if (!isAssignedToUser) {
+				try {
+					const response = await fetch(`/api/work-orders/${workOrder.id}/assignments`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							user_id: userId,
+						}),
+					});
+
+					if (!response.ok) {
+						const error = await response.json();
+						throw new Error(error.error || 'Failed to assign user');
+					}
+
+					toast.success('Användare tilldelad till arbetsorder');
+					onRefresh();
+				} catch (error) {
+					console.error('Error assigning user to work order:', error);
+					toast.error('Kunde inte tilldela användare');
+				}
+			}
+		}
 	};
 
 	const handleDragCancel = () => {
@@ -358,13 +482,24 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 							<h1 className="text-2xl font-bold text-foreground dark:text-white">Veckoplanering</h1>
 							<p className="text-sm text-muted-foreground dark:text-white/60">Vecka {weekNumber} • {year}</p>
 						</div>
-						<Button
-							onClick={() => setShowAddDialog(true)}
-							className="rounded-full bg-orange-500 px-5 py-2 text-white shadow-lg shadow-orange-500/30 transition-colors hover:bg-orange-600 hover:shadow-orange-500/40"
-						>
-							<Plus className="mr-2 h-4 w-4" />
-							Lägg till uppdrag
-						</Button>
+						<div className="flex gap-2">
+							<Button
+								onClick={() => setShowAddDialog(true)}
+								className="rounded-full bg-orange-500 px-5 py-2 text-white shadow-lg shadow-orange-500/30 transition-colors hover:bg-orange-600 hover:shadow-orange-500/40"
+							>
+								<Plus className="mr-2 h-4 w-4" />
+								Lägg till uppdrag
+							</Button>
+							<Button
+								onClick={() => setShowCreateWorkOrderDialog(true)}
+								variant="outline"
+								className="rounded-full px-5 py-2"
+								data-tour="create-work-order"
+							>
+								<Plus className="mr-2 h-4 w-4" />
+								Skapa arbetsorder
+							</Button>
+						</div>
 					</div>
 
 					<div className="flex flex-wrap gap-2" data-tour="project-chips">
@@ -470,6 +605,7 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 										id={`cell-${person.id}-${dayIndex}`}
 										onClick={() => handleCellClick(person.id, dayIndex)}
 									>
+										{/* Render assignments */}
 										{assignmentsByUserDay[person.id]?.[dayIndex]?.map((assignment) => (
 											<AssignmentCard
 												key={assignment.id}
@@ -479,6 +615,16 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 													const fullAssignment = data.assignments.find(a => a.id === assignment.id);
 													setSelectedAssignment(fullAssignment);
 													setShowAddDialog(true);
+												}}
+											/>
+										))}
+										{/* Render work orders */}
+										{workOrdersByUserDay[person.id]?.[dayIndex]?.map((workOrder) => (
+											<WorkOrderCard
+												key={workOrder.id}
+												{...workOrder}
+												onClick={(e) => {
+													e.stopPropagation();
 												}}
 											/>
 										))}
@@ -505,6 +651,40 @@ export function WeekScheduleView({ data, onAddAssignment, onDragDropUpdate, onRe
 				onSubmit={onAddAssignment}
 				projects={data.projects.map(p => ({ ...p, site_address: p.site_address || undefined }))}
 				users={data.resources.map(r => ({ id: r.id, name: r.full_name || r.email }))}
+			/>
+
+			{/* Create Work Order Modal */}
+			<CreateWorkOrderModal
+				source={{
+					source: 'calendar',
+					slotStart: selectedDate ? (selectedPerson ? `${selectedDate}T07:00:00` : `${selectedDate}T00:00:00`) : undefined,
+					slotEnd: selectedDate ? (selectedPerson ? `${selectedDate}T16:00:00` : `${selectedDate}T23:59:59`) : undefined,
+					defaultAssigneeId: selectedPerson || undefined,
+				}}
+				open={showCreateWorkOrderDialog}
+				onOpenChange={(open) => {
+					setShowCreateWorkOrderDialog(open);
+					if (!open) {
+						setSelectedDate('');
+						setSelectedPerson('');
+					}
+				}}
+				onSuccess={async (workOrder: WorkOrderWithRelations) => {
+					console.log('Work order created:', workOrder);
+					try {
+						await onRefresh();
+						// Close modal after refresh
+						setShowCreateWorkOrderDialog(false);
+						setSelectedDate('');
+						setSelectedPerson('');
+						toast.success('Arbetsorder skapad och kalendern uppdaterad');
+					} catch (error) {
+						console.error('Error refreshing calendar:', error);
+						toast.error('Arbetsorder skapad men kunde inte uppdatera kalendern');
+					}
+				}}
+				users={users}
+				orgId={orgId}
 			/>
 
 			{/* Add to Project Confirmation Dialog */}

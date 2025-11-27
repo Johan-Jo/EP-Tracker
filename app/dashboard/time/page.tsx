@@ -3,7 +3,7 @@ import { getSession } from '@/lib/auth/get-session';
 import { TimePageNew } from '@/components/time/time-page-new';
 
 interface PageProps {
-	searchParams: Promise<{ project_id?: string; work_order_id?: string }>;
+	searchParams: Promise<{ project_id?: string; work_order_id?: string; start_at?: string; stop_at?: string }>;
 }
 
 export default async function TimePage(props: PageProps) {
@@ -11,6 +11,8 @@ export default async function TimePage(props: PageProps) {
 		const searchParams = await props.searchParams;
 		const projectId = searchParams.project_id;
 		const workOrderId = searchParams.work_order_id;
+		const startAt = searchParams.start_at;
+		const stopAt = searchParams.stop_at;
 		
 		// Server-side: Only fetch session with error handling
 		let session;
@@ -40,7 +42,7 @@ export default async function TimePage(props: PageProps) {
 			);
 		}
 
-		return <TimePageNew orgId={membership.org_id} userId={user.id} userRole={membership.role} projectId={projectId} workOrderId={workOrderId} />;
+		return <TimePageNew orgId={membership.org_id} userId={user.id} userRole={membership.role} projectId={projectId} workOrderId={workOrderId} startAt={startAt} stopAt={stopAt} />;
 	} catch (error) {
 		console.error('[TimePage] SSR render error', error);
 		console.error('[TimePage] Error details:', {

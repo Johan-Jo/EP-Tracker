@@ -24,6 +24,8 @@ import { WorkOrderWithRelations } from '@/lib/schemas/work-order';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WorkOrderTimeTab } from './work-order-time-tab';
 import { WorkOrderCompletionTab } from './work-order-completion-tab';
+import { WorkOrderDiaryTab } from './work-order-diary-tab';
+import { getWorkOrderMapUrl } from '@/lib/work-orders/map';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,6 +40,7 @@ import { DatePickerInput } from '@/components/ui/date-picker-input';
 import { TimePickerInput } from '@/components/ui/time-picker-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { AddressAutocomplete } from '@/components/address/address-autocomplete';
 
 interface WorkOrderDetailClientProps {
 	workOrderId: string;
@@ -279,6 +282,7 @@ export function WorkOrderDetailClient({
 				<TabsList>
 					<TabsTrigger value='overview'>Översikt</TabsTrigger>
 					<TabsTrigger value='time'>Tid</TabsTrigger>
+					<TabsTrigger value='diary'>Dagbok</TabsTrigger>
 					<TabsTrigger value='completion'>Genomförande</TabsTrigger>
 				</TabsList>
 
@@ -520,32 +524,32 @@ export function WorkOrderDetailClient({
 									<>
 										<div className="space-y-2">
 											<Label htmlFor="location_address">Adress</Label>
-											<Input
+											<AddressAutocomplete
 												id="location_address"
-												value={formData.location_address || ''}
-												onChange={(e) => setFormData({ ...formData, location_address: e.target.value })}
-												placeholder="Gatunamn och nummer"
+												name="location_address"
+												autoComplete="street-address"
+												value={
+													formData.location_address ||
+													(formData.location_city && formData.location_zip
+														? `${formData.location_address || ''}, ${formData.location_zip} ${formData.location_city}`.trim()
+														: '')
+												}
+												onChange={(val) => {
+													setFormData({ ...formData, location_address: val || null });
+												}}
+												onSelect={(addr) => {
+													const formatted = `${addr.address_line1}, ${addr.postal_code} ${addr.city}`.trim();
+													setFormData({
+														...formData,
+														location_address: formatted,
+														location_city: addr.city || null,
+														location_zip: addr.postal_code || null,
+														location_lat: addr.lat || null,
+														location_lng: addr.lon || null,
+													});
+												}}
+												placeholder="Ex: Observatoriegatan 13, 113 29 Stockholm"
 											/>
-										</div>
-										<div className="grid grid-cols-2 gap-4">
-											<div className="space-y-2">
-												<Label htmlFor="location_city">Stad</Label>
-												<Input
-													id="location_city"
-													value={formData.location_city || ''}
-													onChange={(e) => setFormData({ ...formData, location_city: e.target.value })}
-													placeholder="Stad"
-												/>
-											</div>
-											<div className="space-y-2">
-												<Label htmlFor="location_zip">Postnummer</Label>
-												<Input
-													id="location_zip"
-													value={formData.location_zip || ''}
-													onChange={(e) => setFormData({ ...formData, location_zip: e.target.value })}
-													placeholder="123 45"
-												/>
-											</div>
 										</div>
 										<div className="space-y-2">
 											<Label htmlFor="door_code">Portkod</Label>
@@ -570,21 +574,44 @@ export function WorkOrderDetailClient({
 								) : (
 									<>
 										{workOrder.location_address && (
-											<div>
-												<Label className='text-muted-foreground flex items-center gap-2'>
-													<MapPin className='w-4 h-4' />
-													Adress
-												</Label>
-												<p className='mt-1'>{workOrder.location_address}</p>
-											</div>
-										)}
-										{workOrder.location_city && (
-											<div>
-												<Label className='text-muted-foreground'>Stad</Label>
-												<p className='mt-1'>
-													{workOrder.location_city}
-													{workOrder.location_zip && ` ${workOrder.location_zip}`}
-												</p>
+											<div className='space-y-2'>
+												<div>
+													<Label className='text-muted-foreground flex items-center gap-2'>
+														<MapPin className='w-4 h-4' />
+														Adress
+													</Label>
+													<p className='mt-1'>{workOrder.location_address}</p>
+												</div>
+												{(() => {
+													const mapUrl = getWorkOrderMapUrl({
+														location_address: workOrder.location_address,
+														location_city: workOrder.location_city,
+														location_zip: workOrder.location_zip,
+														location_lat: workOrder.location_lat,
+														location_lng: workOrder.location_lng,
+													});
+													return mapUrl ? (
+														<div className='mt-2 rounded-lg overflow-hidden border border-border/50'>
+															<img
+																src={mapUrl}
+																alt='Karta över arbetsplatsen'
+																className='w-full h-auto'
+																loading='lazy'
+																onError={(e) => {
+																	console.error('[WorkOrderMap] Failed to load map image:', mapUrl);
+																	// Hide image if it fails to load
+																	const img = e.target as HTMLImageElement;
+																	img.style.display = 'none';
+																	// Optionally show error message
+																	const container = img.parentElement;
+																	if (container) {
+																		container.innerHTML = '<p class="text-sm text-muted-foreground p-4 text-center">Kartan kunde inte laddas</p>';
+																	}
+																}}
+															/>
+														</div>
+													) : null;
+												})()}
 											</div>
 										)}
 										{workOrder.door_code && (
@@ -689,7 +716,25 @@ export function WorkOrderDetailClient({
 				</TabsContent>
 
 				<TabsContent value='time'>
-					{workOrder && <WorkOrderTimeTab workOrderId={workOrder.id} projectId={workOrder.project_id} orgId={workOrder.organization_id} />}
+					{workOrder && (
+						<WorkOrderTimeTab
+							workOrderId={workOrder.id}
+							projectId={workOrder.project_id}
+							orgId={workOrder.organization_id}
+							plannedStartAt={workOrder.planned_start_at}
+							plannedEndAt={workOrder.planned_end_at}
+						/>
+					)}
+				</TabsContent>
+
+				<TabsContent value='diary'>
+					{workOrder && (
+						<WorkOrderDiaryTab
+							workOrderId={workOrder.id}
+							projectId={workOrder.project_id}
+							orgId={workOrder.organization_id}
+						/>
+					)}
 				</TabsContent>
 
 				<TabsContent value='completion'>

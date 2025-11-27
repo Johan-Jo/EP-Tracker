@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,17 @@ interface WorkOrderTimeTabProps {
 	workOrderId: string;
 	projectId: string;
 	orgId: string;
+	plannedStartAt?: string | null;
+	plannedEndAt?: string | null;
 }
 
-export function WorkOrderTimeTab({ workOrderId, projectId, orgId }: WorkOrderTimeTabProps) {
+export function WorkOrderTimeTab({
+	workOrderId,
+	projectId,
+	orgId,
+	plannedStartAt,
+	plannedEndAt,
+}: WorkOrderTimeTabProps) {
 	const queryClient = useQueryClient();
 	const [isAddTimeModalOpen, setIsAddTimeModalOpen] = useState(false);
 
@@ -52,6 +60,21 @@ export function WorkOrderTimeTab({ workOrderId, projectId, orgId }: WorkOrderTim
 				{ totalMinutes: 0, byUser: {} as Record<string, { user: any; minutes: number }> }
 			)
 		: { totalMinutes: 0, byUser: {} };
+
+	const plannedMinutes = useMemo(() => {
+		if (!plannedStartAt || !plannedEndAt) return null;
+		try {
+			const start = new Date(plannedStartAt);
+			const end = new Date(plannedEndAt);
+			const diff = (end.getTime() - start.getTime()) / (1000 * 60);
+			return diff > 0 ? diff : null;
+		} catch {
+			return null;
+		}
+	}, [plannedStartAt, plannedEndAt]);
+
+	const differenceMinutes =
+		plannedMinutes !== null && plannedMinutes !== undefined ? summary.totalMinutes - plannedMinutes : null;
 
 	const formatDuration = (minutes: number): string => {
 		const hours = Math.floor(minutes / 60);
@@ -91,7 +114,7 @@ export function WorkOrderTimeTab({ workOrderId, projectId, orgId }: WorkOrderTim
 					</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 						<div>
 							<p className="text-sm text-muted-foreground">Total tid</p>
 							<p className="text-2xl font-bold">
@@ -102,6 +125,23 @@ export function WorkOrderTimeTab({ workOrderId, projectId, orgId }: WorkOrderTim
 							<p className="text-sm text-muted-foreground">Antal tidrapporter</p>
 							<p className="text-2xl font-bold">{timeEntries?.length || 0}</p>
 						</div>
+						{plannedMinutes !== null && plannedMinutes !== undefined && (
+							<div>
+								<p className="text-sm text-muted-foreground">Avvikelse mot plan</p>
+								<p className="text-2xl font-bold">
+									{differenceMinutes !== null ? formatDuration(Math.abs(differenceMinutes)) : '-'}
+								</p>
+								<p className="text-xs text-muted-foreground mt-1">
+									{differenceMinutes !== null
+										? differenceMinutes > 0
+											? 'Mer tid än planerat'
+											: differenceMinutes < 0
+												? 'Mindre tid än planerat'
+												: 'Exakt enligt plan'
+										: ''}
+								</p>
+							</div>
+						)}
 					</div>
 
 					{Object.keys(summary.byUser).length > 0 && (

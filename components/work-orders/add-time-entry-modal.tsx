@@ -235,7 +235,7 @@ export function AddTimeEntryModal({
 			project_id: String(data.project_id),
 			billing_type: normalizedBillingType as BillingType,
 			fixed_block_id: data.fixed_block_id ?? null,
-			ata_id: data.ata_id ?? null,
+			ata_id: null, // ÄTA should not be used with work orders
 			work_order_id: data.work_order_id ?? null,
 		};
 

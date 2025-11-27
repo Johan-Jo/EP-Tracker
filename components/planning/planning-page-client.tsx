@@ -8,12 +8,57 @@ import { toast } from 'sonner';
 import type { WeekPlanningData } from '@/lib/schemas/planning';
 import { format, startOfWeek } from 'date-fns';
 import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
+import { createClient } from '@/lib/supabase/client';
 
 export function PlanningPageClient() {
+	const supabase = createClient();
 	const queryClient = useQueryClient();
 	const [currentWeek, setCurrentWeek] = useState(() => {
 		const now = new Date();
 		return startOfWeek(now, { weekStartsOn: 1 });
+	});
+
+	// Fetch orgId and users
+	const { data: orgData } = useQuery({
+		queryKey: ['planning-org-data'],
+		queryFn: async () => {
+			const { data: { user } } = await supabase.auth.getUser();
+			if (!user) throw new Error('Not authenticated');
+
+			const { data: membership } = await supabase
+				.from('memberships')
+				.select('org_id')
+				.eq('user_id', user.id)
+				.eq('is_active', true)
+				.single();
+
+			if (!membership) throw new Error('No active membership');
+
+			// Get all active members for users list
+			const { data: memberships } = await supabase
+				.from('memberships')
+				.select(`
+					user_id,
+					user:profiles(id, full_name, email)
+				`)
+				.eq('org_id', membership.org_id)
+				.eq('is_active', true);
+
+			const users = (memberships || [])
+				.map((m: any) => m.user)
+				.filter(Boolean)
+				.map((u: any) => ({
+					id: u.id,
+					full_name: u.full_name,
+					email: u.email,
+				}));
+
+			return {
+				orgId: membership.org_id,
+				users,
+			};
+		},
+		staleTime: 5 * 60 * 1000, // 5 minutes
 	});
 
 	// Fetch planning data - EPIC 26.6: Enable caching!
@@ -33,6 +78,7 @@ export function PlanningPageClient() {
 				projects: json.projects || [],
 				assignments: json.assignments || [],
 				absences: json.absences || [],
+				work_orders: json.work_orders || [],
 			};
 		},
 		// ✅ PERFORMANCE: Improved caching for planning data
@@ -204,7 +250,7 @@ export function PlanningPageClient() {
 		);
 	}
 
-	if (!data) {
+	if (!data || !orgData) {
 		return null;
 	}
 
@@ -220,6 +266,8 @@ export function PlanningPageClient() {
 					await new Promise(resolve => setTimeout(resolve, 100));
 					await refetch();
 				}}
+				orgId={orgData.orgId}
+				users={orgData.users}
 			/>
 		</>
 	);

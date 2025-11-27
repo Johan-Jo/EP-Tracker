@@ -126,7 +126,7 @@ const projNumber = watch('project_number');
 const projName = watch('name');
 const billingMode = watch('billing_mode');
 const defaultTimeBilling = watch('default_time_billing_type');
-	const { data: selectedCustomer } = useCustomer(customerId || null);
+const { data: selectedCustomer } = useCustomer(customerId || null);
 
 	// Set customer_id when project prop changes (e.g., when opened from work order modal)
 	useEffect(() => {
@@ -282,7 +282,7 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 			if (result && result.success && result.project?.id) {
 				// Only redirect if we're editing an existing project (not creating in a modal)
 				if (project?.id) {
-					router.push(`/dashboard/projects/${result.project.id}`);
+				router.push(`/dashboard/projects/${result.project.id}`);
 				}
 				// If creating (no project.id), let the parent component handle the result
 				// This allows modals to close themselves

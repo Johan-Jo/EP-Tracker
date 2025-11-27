@@ -241,7 +241,7 @@ export function CustomerForm({
 						if (errorLines.length > 1) {
 							setFormError(errorLines.join('\n'));
 						} else {
-							setFormError('Kontrollera att alla obligatoriska fält är ifyllda korrekt.');
+						setFormError('Kontrollera att alla obligatoriska fält är ifyllda korrekt.');
 						}
 					} else {
 						// Show the error message, but limit length for UI

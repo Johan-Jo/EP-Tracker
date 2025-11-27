@@ -76,6 +76,7 @@ export async function GET(request: NextRequest) {
 		projects: planningData?.projects || [],
 		assignments: planningData?.assignments || [],
 		absences: planningData?.absences || [],
+		work_orders: planningData?.work_orders || [],
 		week: {
 			start: weekStart.toISOString(),
 			end: weekEnd.toISOString(),

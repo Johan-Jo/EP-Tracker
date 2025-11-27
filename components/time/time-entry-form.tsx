@@ -20,6 +20,7 @@ import { billingTypeOptions, type BillingType } from '@/lib/schemas/billing-type
 
 const NO_ATA_SELECT_VALUE = '__no_ata__';
 const NO_PHASE_SELECT_VALUE = '__no_phase__';
+const NO_WORK_ORDER_SELECT_VALUE = '__no_work_order__';
 
 type ProjectOption = {
 	id: string;
@@ -41,6 +42,12 @@ type AtaOption = {
 	title: string;
 	ata_number: string | null;
 	billing_type: BillingType;
+};
+
+type WorkOrderOption = {
+	id: string;
+	work_order_number: string;
+	title: string;
 };
 
 type TimeEntryFormValues = Omit<CreateTimeEntryInput, 'billing_type' | 'fixed_block_id'> & {
@@ -159,6 +166,28 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData, hideAta
 	});
 
 	// Work orders feature removed - moved to feature/work-orders branch
+	// Reintroduced in M1: allow linking time entries to work orders for a project
+	const {
+		data: workOrders = [],
+		isLoading: workOrdersLoading,
+		error: workOrdersError,
+	} = useQuery<WorkOrderOption[]>({
+		queryKey: ['work-orders-by-project', orgId, selectedProjectId],
+		queryFn: async () => {
+			if (!selectedProjectId) return [];
+			const { data, error } = await supabase
+				.from('work_orders')
+				.select('id, work_order_number, title')
+				.eq('organization_id', orgId)
+				.eq('project_id', selectedProjectId)
+				.order('created_at', { ascending: false });
+
+			if (error) throw error;
+			return data || [];
+		},
+		enabled: !!selectedProjectId,
+		staleTime: 60 * 1000,
+	});
 
 	const selectedProjectDetails = useMemo(() => {
 		if (!selectedProjectId) return null;
@@ -233,6 +262,7 @@ export function TimeEntryForm({ orgId, onSuccess, onCancel, initialData, hideAta
 	const billingType = watch('billing_type') as TimeEntryFormValues['billing_type'];
 	const fixedBlockId = watch('fixed_block_id') as string | null | undefined;
 	const ataId = useWatch({ control, name: 'ata_id' }) as string | null | undefined;
+	const watchedWorkOrderId = useWatch({ control, name: 'work_order_id' }) as string | null | undefined;
 	const hasFixedBlocks = fixedBlocks.length > 0;
 	
 	// Debug: Log when ÄTA changes
@@ -560,6 +590,51 @@ useEffect(() => {
 						<p className="text-sm text-destructive">{errors.project_id.message}</p>
 					)}
 				</div>
+
+				{/* Work Order Selection (optional) */}
+				{selectedProjectId && (
+					<div className="space-y-2">
+						<Label htmlFor="work_order_id">Arbetsorder (valfritt)</Label>
+						{workOrdersLoading ? (
+							<div className="flex items-center gap-2 text-sm text-muted-foreground">
+								<Loader2 className="w-4 h-4 animate-spin" />
+								Laddar arbetsorder...
+							</div>
+						) : workOrdersError ? (
+							<p className="text-sm text-destructive">
+								Kunde inte hämta arbetsorder. {workOrdersError instanceof Error ? workOrdersError.message : ''}
+							</p>
+						) : workOrders.length === 0 ? (
+							<p className="text-sm text-muted-foreground">
+								Inga arbetsorder kopplade till detta projekt ännu.
+							</p>
+						) : (
+							<Select
+								value={watchedWorkOrderId ?? NO_WORK_ORDER_SELECT_VALUE}
+								onValueChange={(value) => {
+									if (value === NO_WORK_ORDER_SELECT_VALUE) {
+										setValue('work_order_id', null, { shouldDirty: true });
+									} else {
+										setValue('work_order_id', value, { shouldDirty: true });
+									}
+								}}
+							>
+								<SelectTrigger id="work_order_id">
+									<SelectValue placeholder="Välj arbetsorder (eller lämna tomt)" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value={NO_WORK_ORDER_SELECT_VALUE}>Ingen arbetsorder</SelectItem>
+									{workOrders.map((wo) => (
+										<SelectItem key={wo.id} value={wo.id}>
+											{wo.work_order_number ? `${wo.work_order_number} – ` : ''}
+											{wo.title}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						)}
+					</div>
+				)}
 
 				{/* Billing Type */}
 				{selectedProjectId && (

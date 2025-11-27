@@ -241,7 +241,59 @@
 
 ---
 
-#### 9. **Approvals & Exports**
+#### 9. **Work Orders**
+- Work order creation and management
+- Assignment to one or multiple users
+- Planned vs actual time tracking
+- Location tracking with maps
+- Integration with time entries, diary, and invoices
+- Two-step time approval workflow (worker → manager)
+- Email notifications for assignments and approvals
+- Mobile-optimized "Today" view for field workers
+- Planning calendar integration with drag-and-drop
+
+**Routes:**
+- `/dashboard/work-orders` (list)
+- `/dashboard/work-orders/[id]` (detail)
+- `/dashboard/work-orders/today` (mobile view)
+- `/dashboard/work-orders/[id]/approve-time` (worker confirmation)
+- `/dashboard/work-orders/[id]/approve-time-manager` (manager approval)
+
+**Components:**
+- `CreateWorkOrderModal`, `WorkOrderDetailClient`, `WorkOrderTimeTab`
+- `WorkOrderCompletionTab`, `WorkOrderDiaryTab`, `WorkOrderFilters`
+- `WorkOrderTodayScreen`, `WorkOrderTodayCard`
+- `WorkOrderCard` (for planning calendar)
+
+**API:**
+- `GET /api/work-orders` (list, filter)
+- `POST /api/work-orders` (create)
+- `GET /api/work-orders/[id]` (get single)
+- `PUT /api/work-orders/[id]` (update)
+- `DELETE /api/work-orders/[id]` (delete)
+- `POST /api/work-orders/[id]/assignments` (add assignment)
+- `POST /api/work-orders/[id]/approve-time` (worker confirmation)
+- `POST /api/work-orders/[id]/approve-time-manager` (manager approval)
+- `GET /api/mobile/work-orders/today` (today's work orders)
+
+**Database:**
+- `work_orders` table (project, title, description, planned/actual times, location, status, priority)
+- `work_order_assignments` table (user, role, status)
+- `work_order_id` in `time_entries` and `diary_entries`
+
+**Features:**
+- ✅ Unique work order numbers (WO-YYYY-NNNN)
+- ✅ Drag-and-drop in planning calendar
+- ✅ Mobile "Start/End work" functionality
+- ✅ Google Maps navigation
+- ✅ Two-step time approval with email notifications
+- ✅ Work order information in invoice lines
+- ✅ Voice-to-text for descriptions
+- ✅ Address autocomplete with Geoapify
+
+---
+
+#### 10. **Approvals & Exports**
 - Weekly approval workflow
 - Period lock (prevent edits after approval)
 - CSV exports (salary, invoice, attachments)
@@ -422,6 +474,11 @@
 - ✅ Rollback on API errors
 - ✅ Visual conflict warnings
 - ✅ Multi-assign to same project/day
+- ✅ **Work Orders Integration**
+  - Work orders displayed in calendar for assigned users
+  - Drag-and-drop to change date or assignment
+  - Create work order directly from calendar
+  - Click work order to open detail page
 
 ---
 
@@ -452,6 +509,37 @@
 - ✅ Navigation integration (opens Google Maps)
 - ✅ Status badges with colors
 - ✅ Notes display
+
+---
+
+#### 18. **Work Orders Mobile Today View**
+- Daily work order list for assigned workers
+- "Start work" and "End work" functionality
+- Navigation to work site (Google Maps)
+- Status tracking (assigned → in_progress → completed)
+- Work order details (title, project, customer, address, time)
+- Optimistic updates
+- Refresh functionality
+
+**Routes:**
+- `/dashboard/work-orders/today` (mobile-optimized)
+
+**Components:**
+- `WorkOrderTodayScreen` (main screen)
+- `WorkOrderTodayCard` (work order card with actions)
+
+**API:**
+- `GET /api/mobile/work-orders/today` (today's work orders for user)
+- `PUT /api/work-orders/[id]` (update actual_start_at/actual_end_at)
+
+**Features:**
+- ✅ Mobile-optimized UI
+- ✅ Touch-friendly buttons
+- ✅ Instant start/end work feedback
+- ✅ Navigation integration (opens Google Maps with coordinates or address)
+- ✅ Status badges with colors
+- ✅ Priority indicators
+- ✅ Link to full work order detail page
 
 ---
 
@@ -502,6 +590,9 @@
 - `/dashboard/ata`
 - `/dashboard/diary`
 - `/dashboard/checklists`
+- `/dashboard/work-orders` (work orders list)
+- `/dashboard/work-orders/[id]` (work order detail)
+- `/dashboard/work-orders/today` (mobile today view)
 - `/dashboard/approvals` (foreman+)
 - `/dashboard/planning` (foreman+, desktop)
 - `/dashboard/planning/today` (field workers, mobile)
@@ -554,7 +645,15 @@
 - Project subdivisions
 
 #### `work_orders`
-- Specific jobs
+- Specific jobs within projects
+- Work order number (WO-YYYY-NNNN format)
+- Planned and actual start/end times
+- Location information (address, coordinates)
+- Status tracking (draft, assigned, in_progress, completed, cancelled)
+- Priority levels (low, medium, high, urgent)
+- Two-step time approval workflow
+- External summary for customer-facing descriptions
+- Integration with time entries, diary entries, and invoices
 
 #### `time_entries`
 - Time tracking records

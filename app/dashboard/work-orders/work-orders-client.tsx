@@ -121,6 +121,26 @@ export function WorkOrdersClient({
 		return responsible?.user?.full_name || '-';
 	};
 
+	const getStreetAddress = (address: string | null | undefined) => {
+		if (!address) return null;
+		// Formatera adress: "Gata Gatunummer, Stad" (utan postnummer)
+		// Adressformat är vanligtvis: "Gata Gatunummer, Postnummer Stad"
+		const parts = address.split(',');
+		if (parts.length >= 2) {
+			const streetPart = parts[0]?.trim(); // "Gata Gatunummer"
+			// Ta bort postnummer från stad-delen (postnummer är vanligtvis 5 siffror)
+			const cityPart = parts.slice(1).join(',').trim(); // "Postnummer Stad"
+			// Ta bort postnummer (5 siffror, eventuellt med mellanslag)
+			const cityWithoutPostcode = cityPart.replace(/^\d{3}\s?\d{2}\s+/, '').trim();
+			if (cityWithoutPostcode) {
+				return `${streetPart}, ${cityWithoutPostcode}`;
+			}
+			return streetPart;
+		}
+		// Om det inte finns komma, returnera hela adressen
+		return address.trim();
+	};
+
 	const formatDateTime = (dateString: string | null | undefined) => {
 		if (!dateString) return '-';
 		try {
@@ -142,7 +162,10 @@ export function WorkOrdersClient({
 
 	return (
 		<div className='p-4 md:p-8 space-y-4 md:space-y-6 bg-black min-h-screen'>
-			<div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
+			<div
+				className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'
+				data-tour='work-orders-header'
+			>
 				<div>
 					<h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>Arbetsorder</h1>
 					<p className='text-sm sm:text-base text-muted-foreground mt-1'>
@@ -160,14 +183,14 @@ export function WorkOrdersClient({
 						<span className='hidden sm:inline'>Filter</span>
 					</Button>
 					{canEdit && (
-						<Button 
+						<Button
 							size='sm'
 							className='flex-1 sm:flex-initial'
+							data-tour='work-orders-create'
 							onClick={() => setShowCreateModal(true)}
 							onMouseEnter={() => {
-								// Prefetch data when hovering over button
+								// Prefetch data när användaren hovrar över knappen
 								if (!showCreateModal) {
-									// Prefetch projects and customers
 									fetch('/api/projects').catch(() => {});
 									fetch('/api/customers?pageSize=1000').catch(() => {});
 								}
@@ -190,7 +213,7 @@ export function WorkOrdersClient({
 				/>
 			)}
 
-			<Card className="bg-gray-800/50 border-gray-700">
+			<Card className='bg-gray-800/50 border-gray-700' data-tour='work-orders-table'>
 				<CardHeader>
 					<CardTitle>Arbetsorder ({workOrders.length})</CardTitle>
 				</CardHeader>
@@ -392,7 +415,7 @@ export function WorkOrdersClient({
 												</TableCell>
 												<TableCell>{getCustomerName(workOrder.customer)}</TableCell>
 												<TableCell>
-													{workOrder.location_city || '-'}
+													{getStreetAddress(workOrder.location_address) || getStreetAddress(workOrder.project?.site_address) || '-'}
 												</TableCell>
 												<TableCell>
 													{workOrder.project?.name || '-'}
@@ -450,10 +473,10 @@ export function WorkOrdersClient({
 														<span className='truncate'>{getCustomerName(workOrder.customer)}</span>
 													</div>
 												)}
-												{workOrder.location_city && (
+												{(getStreetAddress(workOrder.location_address) || getStreetAddress(workOrder.project?.site_address)) && (
 													<div className='flex items-center gap-2'>
 														<span className='text-muted-foreground min-w-[60px]'>Plats:</span>
-														<span className='truncate'>{workOrder.location_city}</span>
+														<span className='truncate'>{getStreetAddress(workOrder.location_address) || getStreetAddress(workOrder.project?.site_address)}</span>
 													</div>
 												)}
 												{getResponsibleUser(workOrder) !== '-' && (

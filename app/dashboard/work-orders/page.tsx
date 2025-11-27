@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
 import { WorkOrdersClient } from './work-orders-client';
+import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 // Force dynamic rendering
@@ -139,14 +140,17 @@ export default async function WorkOrdersPage(props: PageProps) {
 	const canEdit = membership.role === 'admin' || membership.role === 'foreman';
 
 	return (
-		<WorkOrdersClient
-			initialWorkOrders={filteredWorkOrders as any}
-			projects={(projects || []) as any}
-			customers={(customers || []) as any}
-			users={users}
-			canEdit={canEdit}
-			orgId={membership.org_id}
-		/>
+		<>
+			<WorkOrdersClient
+				initialWorkOrders={filteredWorkOrders as any}
+				projects={(projects || []) as any}
+				customers={(customers || []) as any}
+				users={users}
+				canEdit={canEdit}
+				orgId={membership.org_id}
+			/>
+			<PageTourTrigger tourId='work-orders' />
+		</>
 	);
 }
 

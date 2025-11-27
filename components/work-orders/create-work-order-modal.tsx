@@ -85,6 +85,7 @@ import { useCreateCustomer } from '@/lib/hooks/use-customers';
 import type { CustomerPayload } from '@/lib/schemas/customer';
 import { ProjectForm } from '@/components/projects/project-form';
 import { createProject } from '@/app/actions/create-project';
+import { AddressAutocomplete } from '@/components/address/address-autocomplete';
 
 // Discriminated union type for source
 type CreateWorkOrderSource =
@@ -111,6 +112,7 @@ interface Project {
 	name: string;
 	project_number: string | null;
 	customer_id: string | null;
+	site_address?: string | null;
 }
 
 interface Customer {
@@ -126,8 +128,10 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [isLoadingData, setIsLoadingData] = useState(false);
+	const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
 	const [showConfirmClose, setShowConfirmClose] = useState(false);
 	const [pendingClose, setPendingClose] = useState(false);
+	const [justSaved, setJustSaved] = useState(false);
 
 	// Data fetching states
 	const [projects, setProjects] = useState<Project[]>([]);
@@ -150,6 +154,7 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 	const [isListening, setIsListening] = useState(false);
 	const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
 	const [hasSpeechRecognition, setHasSpeechRecognition] = useState(false);
+	const [useProjectAddress, setUseProjectAddress] = useState(true);
 
 	const {
 		register,
@@ -194,13 +199,27 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 			recognitionInstance.lang = 'sv-SE'; // Swedish
 
 			recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
-				let transcript = '';
-				for (let i = event.resultIndex; i < event.results.length; i++) {
-					transcript += event.results[i][0].transcript;
-				}
-				// Get current description value directly from form
+				// Ta bara "final" resultat (mindre brus)
+				const result = event.results[event.resultIndex];
+				if (!result || !result.isFinal) return;
+
+				const transcript = (result[0].transcript || '').trim();
+				if (!transcript) return;
+
 				const currentDescription = watch('description') || '';
-				setValue('description', currentDescription + (currentDescription ? ' ' : '') + transcript, { shouldValidate: false });
+
+				// Om det senaste transkriptet redan finns i slutet av texten – lägg inte till igen
+				if (
+					currentDescription.endsWith(transcript) ||
+					(transcript.length > 10 && currentDescription.includes(transcript))
+				) {
+					return;
+				}
+
+				const separator = currentDescription ? ' ' : '';
+				setValue('description', `${currentDescription}${separator}${transcript}`, {
+					shouldValidate: false,
+				});
 			};
 
 			recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -233,9 +252,27 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 
 	// Fetch projects and customers in parallel when modal opens
 	useEffect(() => {
-		if (!open) return;
+		if (!open) {
+			// Reset loading state when modal closes
+			setIsLoadingData(false);
+			return;
+		}
 
-		// Set loading state only initially
+		console.log('[CreateWorkOrderModal] Modal opened, checking data state');
+		console.log('[CreateWorkOrderModal] hasLoadedInitialData:', hasLoadedInitialData);
+		console.log('[CreateWorkOrderModal] projects.length:', projects.length);
+		console.log('[CreateWorkOrderModal] customers.length:', customers.length);
+
+		// Om vi redan har laddat grunddatan en gång, återanvänd den direkt
+		// så att formuläret visas omedelbart och vi slipper lång skeleton varje öppning.
+		if (hasLoadedInitialData && projects.length > 0 && customers.length > 0) {
+			console.log('[CreateWorkOrderModal] Using cached data, showing form immediately');
+			setIsLoadingData(false);
+			return;
+		}
+
+		// Första gången (eller om listorna är tomma) visar vi skeleton medan vi hämtar.
+		console.log('[CreateWorkOrderModal] Loading data...');
 		setIsLoadingData(true);
 
 		// Fetch both projects and customers in parallel
@@ -283,6 +320,9 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 				} else if (!customersResponse) {
 					console.error('Failed to fetch customers - no response');
 				}
+
+				// Markera att vi har grunddata laddad så vi kan återanvända den nästa gång.
+				setHasLoadedInitialData(true);
 			} catch (err) {
 				console.error('Error fetching data:', err);
 				const error = err as Error;
@@ -293,7 +333,7 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 		};
 
 		fetchData();
-	}, [open, source, setValue]);
+	}, [open, source, setValue, hasLoadedInitialData, projects.length, customers.length]);
 
 	// Set default date/time from calendar source or today's date
 	useEffect(() => {
@@ -371,23 +411,37 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 		const project = projects.find((p) => p.id === projectId);
 		setSelectedProject(project || null);
 		setValue('project_id', projectId, { shouldValidate: true });
+
+		// Om användaren valt "Huvudprojektets adress" och projektet har en platsadress – fyll i den.
+		if (useProjectAddress && project?.site_address) {
+			setValue('location_address', project.site_address, { shouldValidate: false });
+		}
 	};
 
 	// Handle form submission
 	const onSubmit = async (data: CreateWorkOrder) => {
+		console.log('[CreateWorkOrderModal] onSubmit called with data:', data);
 		setIsSubmitting(true);
 		setError(null);
 
 		try {
-			console.log('Submitting work order with data:', data);
-			console.log('plannedDate state:', plannedDate);
+			console.log('[CreateWorkOrderModal] Submitting work order with data:', data);
+			console.log('[CreateWorkOrderModal] plannedDate state:', plannedDate);
+			console.log('[CreateWorkOrderModal] selectedCustomerId:', selectedCustomerId);
+			console.log('[CreateWorkOrderModal] watchedProjectId:', watchedProjectId);
+			console.log('[CreateWorkOrderModal] selectedAssignments:', selectedAssignments);
 			
 			// Validate project_id - must be set if customer is selected
 			if (selectedCustomerId && !data.project_id) {
+				console.error('[CreateWorkOrderModal] Validation failed: project_id missing');
 				if (projects.length === 0) {
-					setError('Du måste skapa ett projekt först. Klicka på "Skapa nytt projekt".');
+					const errorMsg = 'Du måste skapa ett projekt först. Klicka på "Skapa nytt projekt".';
+					setError(errorMsg);
+					toast.error(errorMsg);
 				} else {
-					setError('Projekt är obligatoriskt');
+					const errorMsg = 'Projekt är obligatoriskt';
+					setError(errorMsg);
+					toast.error(errorMsg);
 				}
 				setIsSubmitting(false);
 				return;
@@ -395,7 +449,10 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 
 			// Validate project_id is a valid UUID
 			if (data.project_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.project_id)) {
-				setError('Ogiltigt projekt-ID. Välj eller skapa ett projekt.');
+				const errorMsg = 'Ogiltigt projekt-ID. Välj eller skapa ett projekt.';
+				console.error('[CreateWorkOrderModal] Validation failed: invalid project_id:', data.project_id);
+				setError(errorMsg);
+				toast.error(errorMsg);
 				setIsSubmitting(false);
 				return;
 			}
@@ -406,7 +463,10 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 			// Also validate that the date string is in the correct format (YYYY-MM-DD)
 			const isValidDate = hasDate && /^\d{4}-\d{2}-\d{2}$/.test(plannedDate.trim());
 			if (!hasDate || !isValidDate) {
-				setError('Datum är obligatoriskt. Välj ett datum från kalendern.');
+				const errorMsg = 'Datum är obligatoriskt. Välj ett datum från kalendern.';
+				console.error('[CreateWorkOrderModal] Validation failed: invalid date:', plannedDate);
+				setError(errorMsg);
+				toast.error(errorMsg);
 				setIsSubmitting(false);
 				return;
 			}
@@ -464,9 +524,19 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 			}
 
 			const result = await response.json();
+			console.log('[CreateWorkOrderModal] Work order created successfully:', result);
 			toast.success('Arbetsorder skapad');
 			// API returns work order directly, not wrapped in work_order property
-			onSuccess(result);
+			try {
+				await onSuccess(result);
+				console.log('[CreateWorkOrderModal] onSuccess callback completed');
+			} catch (onSuccessError) {
+				console.error('[CreateWorkOrderModal] Error in onSuccess callback:', onSuccessError);
+				// Don't throw - work order was created successfully
+			}
+			
+			// Mark as just saved to avoid "unsaved changes" dialog
+			setJustSaved(true);
 			
 			// Reset form before closing to avoid "unsaved changes" dialog
 			reset();
@@ -479,11 +549,15 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 			setSelectedProject(null);
 			setSelectedCustomerId('');
 			setError(null);
+			
+			// Close modal - handleClose will see justSaved flag and skip the dialog
 			onOpenChange(false);
 		} catch (err) {
-			console.error('Error creating work order:', err);
+			console.error('[CreateWorkOrderModal] Error creating work order:', err);
 			const error = err as Error;
-			setError(error.message || 'Kunde inte skapa arbetsorder');
+			const errorMessage = error.message || 'Kunde inte skapa arbetsorder';
+			setError(errorMessage);
+			toast.error(errorMessage);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -491,6 +565,23 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 
 	// Handle close with unsaved changes check
 	const handleClose = useCallback(() => {
+		// If we just saved successfully, don't show unsaved changes dialog
+		if (justSaved) {
+			setJustSaved(false);
+			reset();
+			setPlannedDate('');
+			setPlannedStartTime('');
+			setPlannedEndTime('');
+			setAllDay(false);
+			setSendTimeApprovalEmail(true);
+			setSelectedAssignments([]);
+			setSelectedProject(null);
+			setSelectedCustomerId('');
+			setError(null);
+			onOpenChange(false);
+			return;
+		}
+
 		const hasChanges = plannedDate || plannedStartTime || plannedEndTime || watchedProjectId || watch('title');
 		if (hasChanges && !isSubmitting) {
 			setPendingClose(true);
@@ -508,7 +599,7 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 			setError(null);
 			onOpenChange(false);
 		}
-	}, [plannedDate, plannedStartTime, plannedEndTime, watchedProjectId, watch, isSubmitting, reset, onOpenChange]);
+	}, [plannedDate, plannedStartTime, plannedEndTime, watchedProjectId, watch, isSubmitting, reset, onOpenChange, justSaved]);
 
 	const handleConfirmClose = () => {
 		reset();
@@ -558,12 +649,47 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 								<span className="ml-2 text-sm text-muted-foreground">Laddar data...</span>
 							</div>
 						</div>
+					) : error && !isLoadingData ? (
+						<div className="space-y-4">
+							<div className="rounded-lg bg-destructive/10 border border-destructive p-4 text-sm text-destructive">
+								<p className="font-medium">Kunde inte ladda data</p>
+								<p className="mt-2">{error}</p>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="mt-4"
+									onClick={() => {
+										setError(null);
+										setIsLoadingData(true);
+										setHasLoadedInitialData(false);
+									}}
+								>
+									Försök igen
+								</Button>
+							</div>
+						</div>
 					) : (
 						<form 
 							onSubmit={(e) => {
+								console.log('[CreateWorkOrderModal] Form onSubmit event fired');
 								e.preventDefault();
-								console.log('Form submitted, calling handleSubmit');
-								handleSubmit(onSubmit)(e);
+								console.log('[CreateWorkOrderModal] Calling handleSubmit');
+								handleSubmit(
+									(data) => {
+										console.log('[CreateWorkOrderModal] Validation passed, calling onSubmit with data:', data);
+										onSubmit(data);
+									},
+									(errors) => {
+										console.error('[CreateWorkOrderModal] Validation failed:', errors);
+										console.error('[CreateWorkOrderModal] Error details:', JSON.stringify(errors, null, 2));
+										// Show specific validation errors
+										const errorMessages = Object.entries(errors).map(([key, error]: [string, any]) => {
+											return `${key}: ${error?.message || 'Ogiltigt värde'}`;
+										});
+										toast.error(`Valideringsfel: ${errorMessages.join(', ')}`);
+									}
+								)(e);
 							}} 
 							className="space-y-4"
 						>
@@ -661,6 +787,10 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 										<Select
 											value={watchedProjectId || ''}
 											onValueChange={(value) => {
+												if (value === '__create_project__') {
+													setShowCreateProject(true);
+													return;
+												}
 												handleProjectChange(value);
 											}}
 										>
@@ -673,12 +803,28 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 														{project.project_number ? `${project.project_number} - ` : ''}{project.name}
 													</SelectItem>
 												))}
+												<SelectItem value="__create_project__" className="text-orange-600 dark:text-orange-400">
+													<div className="flex items-center gap-2">
+														<Plus className="w-4 h-4" />
+														<span className="font-medium">Skapa nytt projekt</span>
+													</div>
+												</SelectItem>
 											</SelectContent>
 										</Select>
 										<input type="hidden" {...register('project_id')} value={watchedProjectId || ''} />
 										{errors.project_id && (
 											<p className="text-sm text-destructive">{errors.project_id.message}</p>
 										)}
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											className="w-full mt-2"
+											onClick={() => setShowCreateProject(true)}
+										>
+											<Plus className="w-4 h-4 mr-2" />
+											Skapa nytt projekt
+										</Button>
 									</div>
 								) : (
 									<div className="space-y-2">
@@ -844,6 +990,66 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 									<p className="text-xs text-muted-foreground ml-1">
 										Arbetare får ett e-post med registrerad tid att godkänna eller justera
 									</p>
+								</div>
+							</div>
+
+							{/* Location */}
+							<div className="space-y-3">
+								<Label>Plats</Label>
+								<p className="text-xs text-muted-foreground">
+									Välj om arbetet ska utföras på projektets adress eller ange en annan adress.
+								</p>
+								<div className="space-y-2">
+									<div className="flex flex-col sm:flex-row gap-2">
+										<Button
+											type="button"
+											variant={useProjectAddress ? 'default' : 'outline'}
+											className="flex-1"
+											onClick={() => {
+												setUseProjectAddress(true);
+												// Nollställ egna adressfält
+												setValue('location_address', null as any);
+											}}
+										>
+											Huvudprojektets adress
+										</Button>
+										<Button
+											type="button"
+											variant={!useProjectAddress ? 'default' : 'outline'}
+											className="flex-1"
+											onClick={() => {
+												setUseProjectAddress(false);
+											}}
+										>
+											Annan adress
+										</Button>
+									</div>
+
+									{/* Egna adressfält med Geoapify-autocomplete - bara visa när "Annan adress" är valt */}
+									{!useProjectAddress && (
+										<div className="space-y-1 mt-2">
+											<Label htmlFor="location_address">Adress</Label>
+											<AddressAutocomplete
+												id="location_address"
+												name="location_address"
+												autoComplete="street-address"
+												value={watch('location_address') || ''}
+												onChange={(val) => {
+													setValue('location_address', val || null, { shouldValidate: false });
+												}}
+												onSelect={(addr) => {
+													const formatted = `${addr.address_line1}, ${addr.postal_code} ${addr.city}`.trim();
+													setValue('location_address', formatted, { shouldValidate: true });
+													// Spara koordinater för bättre kartvisning
+													if (addr.lat && addr.lon) {
+														setValue('location_lat', addr.lat, { shouldValidate: false });
+														setValue('location_lng', addr.lon, { shouldValidate: false });
+													}
+												}}
+												placeholder="Ex: Observatoriegatan 13, 113 29 Stockholm"
+											/>
+										</div>
+									)}
 								</div>
 							</div>
 

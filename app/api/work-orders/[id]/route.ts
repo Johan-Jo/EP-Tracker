@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
 import { updateWorkOrderSchema } from '@/lib/schemas/work-order';
 
@@ -127,7 +127,10 @@ export async function PUT(
 			}
 		}
 
-		const { data: workOrder, error: updateError } = await supabase
+		// Use admin client to bypass RLS for UPDATE (we've already verified permissions above)
+		const adminClient = createAdminClient();
+
+		const { data: workOrder, error: updateError } = await adminClient
 			.from('work_orders')
 			.update(updateData)
 			.eq('id', id)
@@ -151,7 +154,7 @@ export async function PUT(
 		// Update assignments if provided (only admin/foreman can do this)
 		if (assignments && isAdminOrForeman) {
 			// Delete existing assignments
-			await supabase
+			await adminClient
 				.from('work_order_assignments')
 				.delete()
 				.eq('work_order_id', id);
@@ -166,7 +169,7 @@ export async function PUT(
 					assignment_status: assignment.assignment_status ?? 'TILLDELAD',
 				}));
 
-				const { error: assignmentError } = await supabase
+				const { error: assignmentError } = await adminClient
 					.from('work_order_assignments')
 					.insert(assignmentData);
 
@@ -177,7 +180,7 @@ export async function PUT(
 			}
 		}
 
-		// Fetch work order with all relations
+		// Fetch work order with all relations (use regular client for SELECT to respect RLS)
 		const { data: workOrderWithRelations, error: fetchError } = await supabase
 			.from('work_orders')
 			.select(`

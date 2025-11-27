@@ -3,13 +3,14 @@ import { getSession } from '@/lib/auth/get-session';
 import { DiaryFormNew } from '@/components/diary/diary-form-new';
 
 interface PageProps {
-	searchParams: Promise<{ project_id?: string; date?: string }>;
+	searchParams: Promise<{ project_id?: string; date?: string; work_order_id?: string }>;
 }
 
 export default async function NewDiaryPage(props: PageProps) {
 	const searchParams = await props.searchParams;
 	const projectId = searchParams.project_id;
 	const date = searchParams.date;
+	const workOrderId = searchParams.work_order_id;
 	
 	const { user, membership } = await getSession();
 
@@ -30,6 +31,6 @@ export default async function NewDiaryPage(props: PageProps) {
 		redirect('/dashboard/diary');
 	}
 
-	return <DiaryFormNew orgId={membership.org_id} userId={user.id} projectId={projectId} defaultDate={date} />;
+	return <DiaryFormNew orgId={membership.org_id} userId={user.id} projectId={projectId} workOrderId={workOrderId} defaultDate={date} />;
 }
 

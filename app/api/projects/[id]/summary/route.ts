@@ -61,7 +61,7 @@ export async function GET(
 			.eq('org_id', membership.org_id)
 			.single(),
 		
-		// 2. Fetch time entries with date filtering
+		// 2. Fetch time entries with date filtering (all statuses)
 		(() => {
 			let query = supabase
 				.from('time_entries')
@@ -72,6 +72,7 @@ export async function GET(
 					start_at,
 					duration_min,
 					task_label,
+					status,
 					profiles:user_id (
 						id,
 						full_name
@@ -81,8 +82,7 @@ export async function GET(
 						name
 					)
 				`)
-				.eq('project_id', projectId)
-				.eq('status', 'approved'); // Only approved entries
+				.eq('project_id', projectId);
 			
 			if (startDate) {
 				query = query.gte('start_at', startDate);

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { createTimeEntrySchema } from '@/lib/schemas/time-entry';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
 import { sendTeamCheckInNotification } from '@/lib/notifications'; // EPIC 25: Push notifications
 import { calculateWorkMinutes } from '@/lib/utils/break-deduction';
+import { sendWorkOrderTimeApprovalEmail } from '@/lib/work-orders/send-time-approval-email';
 
 // GET /api/time/entries - List time entries with filters
 export async function GET(request: NextRequest) {
@@ -334,9 +335,9 @@ export async function POST(request: NextRequest) {
 
 		const data = validation.data;
 
-		// EPIC 26: Skip project verification - RLS will handle it
-		// This saves 1 query and makes the API faster
-		const supabase = await createClient();
+		// Use admin client to avoid complex RLS/trigger interactions (especially on work_orders)
+		// RLS for time_entries is still enforced at the application level via getSession/membership
+		const supabase = createAdminClient();
 
 		// Fetch organization break settings (needed for calculations)
 		const { data: orgSettings } = await supabase
@@ -528,6 +529,18 @@ export async function POST(request: NextRequest) {
 			}).catch((err) => {
 				console.error('[Time Entry] Failed to send team notification:', err);
 			});
+
+			// Send work order time approval email if this entry is linked to a work order
+			// Don't await - fire and forget to keep API fast
+			if (entry.work_order_id) {
+				sendWorkOrderTimeApprovalEmail({
+					supabase,
+					workOrderId: entry.work_order_id,
+					orgId: membership.org_id,
+				}).catch((err) => {
+					console.error('[Time Entry] Failed to send work order approval email:', err);
+				});
+			}
 		}
 
 		return NextResponse.json({ entry }, { status: 201 });

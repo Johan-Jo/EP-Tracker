@@ -26,6 +26,7 @@ interface WorkOrderTimeApprovalEmailProps {
   timeDifferenceMinutes: number;
   approveUrl: string;
   adjustUrl: string;
+  mapImageUrl?: string | null;
 }
 
 export const WorkOrderTimeApprovalEmail = ({
@@ -43,6 +44,7 @@ export const WorkOrderTimeApprovalEmail = ({
   timeDifferenceMinutes,
   approveUrl,
   adjustUrl,
+  mapImageUrl,
 }: WorkOrderTimeApprovalEmailProps) => {
   const isOverTime = timeDifferenceMinutes > 0;
   const isUnderTime = timeDifferenceMinutes < 0;
@@ -54,7 +56,7 @@ export const WorkOrderTimeApprovalEmail = ({
       <Body style={styles.body}>
         <Container style={styles.container}>
           <Heading style={styles.logo}>EP Tracker</Heading>
-          <Heading style={styles.heading}>Godkänn registrerad tid</Heading>
+          <Heading style={styles.heading}>Bekräfta registrerad tid</Heading>
 
           <Text style={styles.paragraph}>
             Hej {workerName},
@@ -62,7 +64,8 @@ export const WorkOrderTimeApprovalEmail = ({
 
           <Text style={styles.paragraph}>
             Du har registrerat tid för arbetsordern <strong>{workOrderTitle}</strong> ({workOrderNumber}).
-            Vänligen granska och godkänn den registrerade tiden nedan.
+            Den planerade tiden har nu passerat. Vänligen granska och bekräfta att den registrerade tiden stämmer nedan.
+            Efter din bekräftelse kommer en forman/administratör att få ett mail för att godkänna tiden.
           </Text>
 
           <Section style={styles.summaryBox}>
@@ -114,9 +117,19 @@ export const WorkOrderTimeApprovalEmail = ({
 
           <Section style={styles.buttonSection}>
             <Button href={approveUrl} style={styles.primaryButton}>
-              ✓ Godkänn registrerad tid
+              ✓ Bekräfta registrerad tid
             </Button>
           </Section>
+
+          {mapImageUrl && (
+            <Section style={{ marginTop: '16px', textAlign: 'center' as const }}>
+              <img
+                src={mapImageUrl}
+                alt="Arbetsplats"
+                style={{ maxWidth: '100%', borderRadius: '12px' }}
+              />
+            </Section>
+          )}
 
           <Section style={styles.buttonSection}>
             <Button href={adjustUrl} style={styles.secondaryButton}>
@@ -127,7 +140,7 @@ export const WorkOrderTimeApprovalEmail = ({
           <Hr style={styles.divider} />
 
           <Text style={styles.helperText}>
-            Om den registrerade tiden stämmer, klicka på "Godkänn". Om det finns en avvikelse som behöver justeras, klicka på "Justera tid" för att uppdatera.
+            Om den registrerade tiden stämmer, klicka på "Bekräfta". Om det finns en avvikelse som behöver justeras, klicka på "Justera tid" för att uppdatera.
           </Text>
 
           <Text style={styles.footer}>

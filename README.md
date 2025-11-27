@@ -89,6 +89,12 @@ ep-tracker/
 
 ### Core Time Tracking & Project Management
 - ✅ Projects & Work Orders management
+  - ✅ Work orders med fullständig hantering (skapa, redigera, tilldela, följa upp)
+  - ✅ Work orders i planeringskalendern med drag-and-drop
+  - ✅ Mobilvy för dagens arbetsorder med "Starta/Avsluta arbete"
+  - ✅ Integration med tidrapportering, dagbok och fakturering
+  - ✅ Tvåstegsgodkännande av tid (arbetare → forman)
+  - ✅ E-postflöden för tilldelning och tidsgodkännande
 - ✅ Time tracking (start/stop/switch/crew clock-ins) med debitering per projekt, fas, arbetsorder eller ÄTA-delprojekt
 - ✅ Förbättrad tidsregistrering med:
   - Anpassad datumväljare med korrekt datumhantering (timezone-safe)
@@ -112,12 +118,20 @@ ep-tracker/
   - Capacity indicators (needed vs. assigned)
   - Conflict detection (overlaps, absences)
   - Edit/delete assignments in-place
+  - ✅ **Work Orders Integration**
+    - Work orders visas i kalendern för tilldelade personer
+    - Drag-and-drop för att ändra datum eller tilldelning
+    - Skapa arbetsorder direkt från kalendern
 - ✅ **Mobile Today List** (field workers, `/dashboard/planning/today`)
   - Daily job list with details
   - Check-in/check-out functionality
   - Navigation to job sites
   - Status tracking (planned → in progress → done)
   - Optimistic updates for instant UX
+  - ✅ **Work Orders Mobile View** (`/dashboard/work-orders/today`)
+    - Mobile-optimerad vy för dagens arbetsorder
+    - "Starta arbete" och "Avsluta arbete" funktionalitet
+    - Google Maps-navigation till arbetsplatsen
 
 ### Super Admin Panel
 - ✅ User management (invite, roles, permissions)

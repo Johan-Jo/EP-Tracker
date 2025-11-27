@@ -273,6 +273,28 @@ export type WeekPlanningData = {
 	}>;
 	assignments: AssignmentWithRelations[];
 	absences: AbsenceWithUser[];
+	work_orders: Array<{
+		id: string;
+		work_order_number: string;
+		title: string;
+		project_id: string;
+		organization_id: string;
+		planned_start_at: string;
+		planned_end_at: string | null;
+		all_day: boolean;
+		status: string;
+		priority: string | null;
+		location_address: string | null;
+		location_city: string | null;
+		location_zip: string | null;
+		created_at: string;
+		updated_at: string;
+		assignments: Array<{
+			id: string;
+			user_id: string;
+			role: string | null;
+		}>;
+	}>;
 };
 
 // Person status calculation

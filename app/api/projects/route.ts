@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 		// Build query
 		let query = supabase
 			.from('projects')
-			.select('id, name, project_number, customer_id, status, created_at')
+			.select('id, name, project_number, customer_id, status, created_at, site_address')
 			.eq('org_id', membership.org_id)
 			.order('name');
 

@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
 	const supabase = await createClient();
 	const searchParams = request.nextUrl.searchParams;
 	const projectId = searchParams.get('project_id');
+	const workOrderId = searchParams.get('work_order_id');
 
     // ✅ PERFORMANCE: Select only needed columns instead of *
     // Reduces payload size by ~30-40% for better network transfer
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
             id,
             org_id,
             project_id,
+            work_order_id,
             created_by,
             date,
             weather,
@@ -35,13 +37,18 @@ export async function GET(request: NextRequest) {
             signature_timestamp,
             created_at,
             updated_at,
-            project:projects(name, project_number)
+            project:projects(name, project_number),
+            work_order:work_orders(id, work_order_number, title)
         `)
 		.eq('org_id', membership.org_id)
 		.order('date', { ascending: false });
 
 	if (projectId) {
 		query = query.eq('project_id', projectId);
+	}
+	
+	if (workOrderId) {
+		query = query.eq('work_order_id', workOrderId);
 	}
 
 	const { data, error } = await query;
@@ -98,6 +105,7 @@ export async function POST(request: NextRequest) {
 			p_visitors: body.visitors || null,
 			p_signature_name: body.signature_name || null,
 			p_signature_timestamp: body.signature_timestamp || null,
+			p_work_order_id: body.work_order_id || null,
 		})
 		.single();
 

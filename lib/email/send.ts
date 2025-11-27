@@ -7,6 +7,8 @@ import { PaymentFailedEmail } from './templates/payment-failed';
 import { PaymentSuccessfulEmail } from './templates/payment-successful';
 import { TimeApprovalInviteEmail } from './templates/time-approval-invite';
 import { WorkOrderTimeApprovalEmail } from './templates/work-order-time-approval';
+import { WorkOrderTimeManagerApprovalEmail } from './templates/work-order-time-manager-approval';
+import { WorkOrderAssignmentEmail } from './templates/work-order-assignment';
 import { AccountSuspendedEmail } from './templates/account-suspended';
 import { WelcomeEmail } from './templates/welcome';
 import { PasswordResetEmail } from './templates/password-reset';
@@ -15,7 +17,19 @@ interface SendEmailOptions {
   to: string;
   toName?: string;
   subject: string;
-  template: 'announcement' | 'trial-ending' | 'payment-failed' | 'payment-successful' | 'account-suspended' | 'welcome' | 'password-reset' | 'time-approval-invite' | 'work-order-time-approval' | 'custom';
+  template:
+    | 'announcement'
+    | 'trial-ending'
+    | 'payment-failed'
+    | 'payment-successful'
+    | 'account-suspended'
+    | 'welcome'
+    | 'password-reset'
+    | 'time-approval-invite'
+    | 'work-order-time-approval'
+    | 'work-order-time-manager-approval'
+    | 'work-order-assignment'
+    | 'custom';
   templateData: Record<string, any>;
   organizationId?: string;
   emailType?: 'announcement' | 'notification' | 'transactional' | 'marketing';
@@ -66,6 +80,12 @@ export async function sendEmail(options: SendEmailOptions) {
         break;
       case 'work-order-time-approval':
         html = await render(WorkOrderTimeApprovalEmail(templateData as any));
+        break;
+      case 'work-order-time-manager-approval':
+        html = await render(WorkOrderTimeManagerApprovalEmail(templateData as any));
+        break;
+      case 'work-order-assignment':
+        html = await render(WorkOrderAssignmentEmail(templateData as any));
         break;
       case 'welcome':
         html = await render(WelcomeEmail(templateData as any));

@@ -127,17 +127,30 @@ AS $$
 DECLARE
     v_next_num INTEGER;
     v_number TEXT;
+    v_lock_key BIGINT;
+    v_retry_count INTEGER := 0;
+    v_max_retries INTEGER := 10;
 BEGIN
+    -- Use advisory lock based on org_id and year to prevent race conditions
+    -- Convert UUID to bigint for lock (using hash)
+    v_lock_key := ('x' || substr(md5(p_org_id::TEXT || p_year::TEXT), 1, 16))::bit(64)::bigint;
+    
+    -- Acquire lock (wait up to 5 seconds)
+    PERFORM pg_advisory_xact_lock(v_lock_key);
+    
     -- Get the next sequential number for this org and year
+    -- Use FOR UPDATE to lock the rows during the transaction
     SELECT COALESCE(MAX(CAST(SUBSTRING(work_order_number FROM 8) AS INTEGER)), 0) + 1
     INTO v_next_num
     FROM work_orders
     WHERE organization_id = p_org_id
-      AND work_order_number LIKE 'WO-' || p_year || '-%';
+      AND work_order_number LIKE 'WO-' || p_year || '-%'
+    FOR UPDATE;
     
     -- Format: WO-YYYY-NNN
     v_number := 'WO-' || p_year || '-' || LPAD(v_next_num::TEXT, 3, '0');
     
+    -- Lock is automatically released when transaction commits/rolls back
     RETURN v_number;
 END;
 $$;
@@ -153,11 +166,28 @@ AS $$
 DECLARE
     v_year INTEGER;
     v_number TEXT;
+    v_retry_count INTEGER := 0;
+    v_max_retries INTEGER := 10;
+    v_next_num INTEGER;
+    v_lock_key BIGINT;
 BEGIN
     -- Only generate if not already set
     IF NEW.work_order_number IS NULL OR NEW.work_order_number = '' THEN
         v_year := EXTRACT(YEAR FROM NOW());
-        v_number := generate_work_order_number(NEW.organization_id, v_year);
+        
+        -- Use advisory lock to prevent race conditions
+        v_lock_key := ('x' || substr(md5(NEW.organization_id::TEXT || v_year::TEXT), 1, 16))::bit(64)::bigint;
+        PERFORM pg_advisory_xact_lock(v_lock_key);
+        
+        -- Get the next sequential number for this org and year
+        SELECT COALESCE(MAX(CAST(SUBSTRING(work_order_number FROM 8) AS INTEGER)), 0) + 1
+        INTO v_next_num
+        FROM work_orders
+        WHERE organization_id = NEW.organization_id
+          AND work_order_number LIKE 'WO-' || v_year || '-%';
+        
+        -- Format: WO-YYYY-NNN
+        v_number := 'WO-' || v_year || '-' || LPAD(v_next_num::TEXT, 3, '0');
         NEW.work_order_number := v_number;
     END IF;
     RETURN NEW;

@@ -113,6 +113,15 @@ describe('workOrderSchema', () => {
 		closed_at: null,
 		signature_blob_url: null,
 		billing_type_override: null,
+		send_time_approval_email: true,
+		actual_time_approval_token: null,
+		actual_time_approval_sent_at: null,
+		actual_time_worker_confirmed_by_id: null,
+		actual_time_worker_confirmed_at: null,
+		actual_time_manager_approval_token: null,
+		actual_time_manager_approval_sent_at: null,
+		actual_time_manager_approved_by_id: null,
+		actual_time_manager_approved_at: null,
 		created_at: '2025-01-01T00:00:00Z',
 		updated_at: '2025-01-01T00:00:00Z',
 	};
@@ -341,11 +350,12 @@ describe('createWorkOrderSchema', () => {
 		}
 	});
 
-	it('should require project_id', () => {
+	it('should allow project_id to be optional (will be validated manually)', () => {
 		const invalid = { ...validCreateData };
 		delete (invalid as any).project_id;
 		const result = createWorkOrderSchema.safeParse(invalid);
-		expect(result.success).toBe(false);
+		// project_id is optional in the schema (made .partial()) but will be validated manually in the API
+		expect(result.success).toBe(true);
 	});
 
 	it('should allow null customer_id', () => {

@@ -25,6 +25,7 @@ export interface InvoiceBasisLine {
 	dimensions: Record<string, string | null>;
 	attachments: string[];
 	ata_info?: { title: string; ata_number: string | null } | null;
+	work_order_info?: { id: string; work_order_number: string; title: string; external_summary: string | null } | null;
 	// Additional fields for time entries
 	date?: string; // YYYY-MM-DD format
 	time?: string; // Time range like "08:00-17:00"
@@ -240,7 +241,7 @@ export async function refreshInvoiceBasis({
 		supabase
 			.from('time_entries')
 			.select(
-				'id, project_id, user_id, task_label, start_at, stop_at, duration_min, status, employee_id, subcontractor_id, phase:phases(name), user:profiles!time_entries_user_id_fkey(full_name)'
+				'id, project_id, user_id, task_label, start_at, stop_at, duration_min, status, employee_id, subcontractor_id, work_order_id, phase:phases(name), user:profiles!time_entries_user_id_fkey(full_name), work_order:work_orders(id, work_order_number, title, external_summary)'
 			)
 			.eq('org_id', orgId)
 			.eq('project_id', projectId)
@@ -607,11 +608,26 @@ export async function refreshInvoiceBasis({
 		const day = String(entryDate.getDate()).padStart(2, '0');
 		const dateStr = `${year}-${month}-${day}`;
 		
-		// Format description as "Arbete [datum]" first, then optional task_label/phase
+		// Format description as "Arbete [datum]" first, then optional task_label/phase/work order
 		const formattedDate = entryDate.toLocaleDateString('sv-SE');
 		const taskLabel = sanitizeText(entry.task_label);
 		const phaseName = entry.phase?.name ? sanitizeText(entry.phase.name) : '';
-		const description = `Arbete ${formattedDate}${taskLabel ? ` - ${taskLabel}` : ''}${phaseName ? ` (${phaseName})` : ''}`;
+		const workOrderSummary = entry.work_order?.external_summary ? sanitizeText(entry.work_order.external_summary) : '';
+		const workOrderTitle = entry.work_order?.title ? sanitizeText(entry.work_order.title) : '';
+		const workOrderNumber = entry.work_order?.work_order_number || '';
+		
+		// Build description with work order info if available
+		let description = `Arbete ${formattedDate}`;
+		if (workOrderSummary) {
+			description += ` - ${workOrderSummary}`;
+		} else if (workOrderTitle) {
+			description += ` - ${workOrderTitle}${workOrderNumber ? ` (${workOrderNumber})` : ''}`;
+		} else if (taskLabel) {
+			description += ` - ${taskLabel}`;
+		}
+		if (phaseName) {
+			description += ` (${phaseName})`;
+		}
 		
 		// Format time range
 		const startTime = entryDate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
@@ -645,6 +661,12 @@ export async function refreshInvoiceBasis({
 				account: config.account,
 				dimensions: { project: projectDimension, cost_center: null },
 				attachments: [],
+				work_order_info: entry.work_order ? {
+					id: entry.work_order.id,
+					work_order_number: entry.work_order.work_order_number || '',
+					title: entry.work_order.title || '',
+					external_summary: entry.work_order.external_summary || null,
+				} : null,
 				date: dateStr,
 				time: timeStr,
 				person: personName,

@@ -134,7 +134,7 @@ export const planningTourSteps = [
 		id: 'planning-welcome',
 		title: 'Välkommen till planeringen!',
 		description:
-			'Här kan du schemalägga uppdrag för hela veckan. Dra och släpp uppdrag mellan datum, eller klicka på ett datum för att skapa nytt uppdrag.',
+			'Här kan du schemalägga uppdrag och arbetsorder för hela veckan. Dra och släpp mellan datum, eller klicka på ett datum för att skapa nytt uppdrag eller arbetsorder.',
 		target: 'body',
 		position: 'center' as const,
 	},
@@ -142,7 +142,7 @@ export const planningTourSteps = [
 		id: 'planning-week',
 		title: 'Veckonavigering',
 		description:
-			'Byt vecka med pilknapparna. Kalendern visar måndag till söndag med alla resurser och deras uppdrag.',
+			'Byt vecka med pilknapparna. Kalendern visar måndag till söndag med alla resurser och deras uppdrag och arbetsorder.',
 		target: '[data-tour="week-navigation"]',
 		position: 'bottom' as const,
 	},
@@ -156,11 +156,19 @@ export const planningTourSteps = [
 	},
 	{
 		id: 'planning-grid',
-		title: 'Schemalägg uppdrag',
+		title: 'Schemalägg uppdrag och arbetsorder',
 		description:
-			'Dra ett uppdrag till ett nytt datum för att flytta det. Dubbel-klicka på ett uppdrag för att redigera detaljer.',
+			'Dra ett uppdrag eller arbetsorder till ett nytt datum för att flytta det. Dra mellan personer för att ändra tilldelning. Klicka på en arbetsorder för att öppna detaljsidan.',
 		target: '[data-tour="schedule-grid"]',
 		position: 'top' as const,
+	},
+	{
+		id: 'planning-create-work-order',
+		title: 'Skapa arbetsorder från kalendern',
+		description:
+			'Klicka på "Skapa arbetsorder" för att skapa en ny arbetsorder direkt från kalendern. Den visas automatiskt i kalendern för tilldelade personer.',
+		target: '[data-tour="create-work-order"]',
+		position: 'bottom' as const,
 	},
 ];
 
@@ -187,6 +195,33 @@ export const planningTodayTourSteps = [
 		description:
 			'Klicka "Navigera" för att öppna Google Maps med adressen. Perfekt för att hitta till nya arbetsplatser!',
 		target: '[data-tour="job-cards"]',
+		position: 'top' as const,
+	},
+];
+
+export const workOrdersTodayTourSteps = [
+	{
+		id: 'work-orders-today-welcome',
+		title: 'Mina arbetsorder idag',
+		description:
+			'Här ser du alla arbetsorder som är tilldelade till dig för idag. Använd "Starta arbete" när du börjar och "Avsluta arbete" när du är klar.',
+		target: 'body',
+		position: 'center' as const,
+	},
+	{
+		id: 'work-orders-today-start',
+		title: 'Starta arbete',
+		description:
+			'Klicka "Starta arbete" när du börjar jobbet. Detta sätter faktisk starttid och uppdaterar status till "Pågår".',
+		target: '[data-tour="work-order-cards"]',
+		position: 'top' as const,
+	},
+	{
+		id: 'work-orders-today-navigate',
+		title: 'Navigera till arbetsplatsen',
+		description:
+			'Klicka "Navigera" för att öppna Google Maps med arbetsplatsens adress eller koordinater. Perfekt för att hitta till nya platser!',
+		target: '[data-tour="work-order-cards"]',
 		position: 'top' as const,
 	},
 ];
@@ -230,6 +265,33 @@ export const notificationsTourSteps = [
 		description:
 			'Skicka en testnotis för att verifiera att allt fungerar. Du kan också se historik över alla notiser du fått.',
 		target: '[data-tour="test-notification"]',
+		position: 'top' as const,
+	},
+];
+
+export const workOrdersTourSteps = [
+	{
+		id: 'work-orders-header',
+		title: 'Arbetsorder – din jobböversikt',
+		description:
+			'Här ser du alla arbetsorder i organisationen. Använd filtren för att snabbt hitta rätt jobb per projekt, kund, status eller person.',
+		target: '[data-tour="work-orders-header"]',
+		position: 'bottom' as const,
+	},
+	{
+		id: 'work-orders-create',
+		title: 'Skapa ny arbetsorder',
+		description:
+			'Klicka här för att skapa en ny arbetsorder. Du väljer kund och projekt, fyller i beskrivning, tid och plats samt tilldelar vem som ska utföra jobbet.',
+		target: '[data-tour="work-orders-create"]',
+		position: 'bottom' as const,
+	},
+	{
+		id: 'work-orders-table',
+		title: 'Status och uppföljning',
+		description:
+			'I listan ser du status, prioritet, planerad tid och ansvarig. Klicka på en rad för att öppna detaljsidan, registrera tid och följa upp genomförandet.',
+		target: '[data-tour="work-orders-table"]',
 		position: 'top' as const,
 	},
 ];

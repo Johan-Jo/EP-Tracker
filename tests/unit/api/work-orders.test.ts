@@ -2,13 +2,14 @@ import { NextRequest } from 'next/server';
 import { GET as getWorkOrders, POST as createWorkOrder } from '@/app/api/work-orders/route';
 import { GET as getWorkOrder, PUT as updateWorkOrder, DELETE as deleteWorkOrder } from '@/app/api/work-orders/[id]/route';
 import { getSession } from '@/lib/auth/get-session';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 jest.mock('@/lib/auth/get-session');
 jest.mock('@/lib/supabase/server');
 
 const mockedGetSession = getSession as jest.MockedFunction<typeof getSession>;
 const mockedCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const mockedCreateAdminClient = createAdminClient as jest.MockedFunction<typeof createAdminClient>;
 
 type SupabaseBuilder = {
 	select: jest.MockedFunction<any>;
@@ -547,22 +548,27 @@ describe('/api/work-orders', () => {
 				}),
 			};
 
-			const updateBuilder: any = {
+			const assignmentCheckBuilder: any = {
+				select: jest.fn().mockReturnThis(),
+				eq: jest.fn().mockReturnThis(),
+				single: jest.fn().mockResolvedValue({
+					data: null,
+					error: { code: 'PGRST116' },
+				}),
+			};
+
+			// Admin client for UPDATE
+			const adminUpdateBuilder: any = {
 				select: jest.fn().mockReturnThis(),
 				update: jest.fn().mockReturnThis(),
 				eq: jest.fn().mockReturnThis(),
-				single: jest.fn()
-					.mockResolvedValueOnce({
-						data: updatedWorkOrder,
-						error: null,
-					})
-					.mockResolvedValueOnce({
-						data: { ...updatedWorkOrder, assignments: [] },
-						error: null,
-					}),
+				single: jest.fn().mockResolvedValue({
+					data: updatedWorkOrder,
+					error: null,
+				}),
 			};
 
-			// Create a separate builder for the final fetch after update
+			// Regular client for final fetch
 			const finalFetchBuilder: any = {
 				select: jest.fn().mockReturnThis(),
 				eq: jest.fn().mockReturnThis(),
@@ -572,28 +578,44 @@ describe('/api/work-orders', () => {
 				}),
 			};
 
-			// Create a workOrders table object that handles all operations
-			const workOrdersTable: any = {
-				select: jest.fn((query?: string) => {
-					// If query is provided, it's the final fetch with relations
-					if (query) {
-						return finalFetchBuilder;
-					}
-					// Otherwise it's the initial check
-					return checkBuilder;
-				}),
-				update: jest.fn(() => updateBuilder),
-			};
-
 			mockedCreateClient.mockResolvedValue({
 				from: (table: string) => {
 					if (table === 'work_orders') {
-						return workOrdersTable;
+						return {
+							select: () => checkBuilder,
+						};
 					}
-					return {
-						select: () => finalFetchBuilder,
-					};
+					if (table === 'work_order_assignments') {
+						return {
+							select: () => assignmentCheckBuilder,
+						};
+					}
+					return {};
 				},
+			} as any);
+
+			mockedCreateAdminClient.mockReturnValue({
+				from: (table: string) => {
+					if (table === 'work_orders') {
+						return {
+							update: () => adminUpdateBuilder,
+						};
+					}
+					if (table === 'work_order_assignments') {
+						return {
+							delete: jest.fn().mockResolvedValue({ data: null, error: null }),
+							insert: jest.fn().mockResolvedValue({ data: null, error: null }),
+						};
+					}
+					return {};
+				},
+			} as any);
+
+			// Also mock final fetch with regular client
+			mockedCreateClient.mockResolvedValueOnce({
+				from: () => ({
+					select: () => finalFetchBuilder,
+				}),
 			} as any);
 
 			const request = new NextRequest('http://localhost/api/work-orders/123e4567-e89b-12d3-a456-426614174020', {

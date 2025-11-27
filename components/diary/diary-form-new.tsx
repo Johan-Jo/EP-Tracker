@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, X, ArrowLeft, Sun, Cloud, CloudRain, CloudSnow, Wind, Mic } from 'lucide-react';
+import { Upload, X, ArrowLeft, Sun, Cloud, CloudRain, CloudSnow, Wind, Mic, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -21,10 +21,11 @@ interface DiaryFormNewProps {
 	orgId: string;
 	userId: string;
 	projectId?: string;
+	workOrderId?: string;
 	defaultDate?: string;
 }
 
-export function DiaryFormNew({ orgId, userId, projectId, defaultDate }: DiaryFormNewProps) {
+export function DiaryFormNew({ orgId, userId, projectId, workOrderId, defaultDate }: DiaryFormNewProps) {
 	const router = useRouter();
 	const supabase = createClient();
 	const queryClient = useQueryClient();
@@ -68,6 +69,31 @@ export function DiaryFormNew({ orgId, userId, projectId, defaultDate }: DiaryFor
 			return data;
 		},
 	});
+
+	// Fetch work orders for selected project
+	const { data: workOrders = [], isLoading: workOrdersLoading } = useQuery({
+		queryKey: ['work-orders-by-project', orgId, project],
+		queryFn: async () => {
+			if (!project) return [];
+			const { data, error } = await supabase
+				.from('work_orders')
+				.select('id, work_order_number, title')
+				.eq('organization_id', orgId)
+				.eq('project_id', project)
+				.order('created_at', { ascending: false });
+
+			if (error) throw error;
+			return data || [];
+		},
+		enabled: !!project,
+		staleTime: 60 * 1000,
+	});
+
+	// Reset work order when project changes
+	const handleProjectChange = (newProjectId: string) => {
+		setProject(newProjectId);
+		setSelectedWorkOrderId('');
+	};
 
 	const weatherOptions = [
 		{ value: 'sunny', label: '☀️ Soligt', icon: Sun },
@@ -124,6 +150,7 @@ export function DiaryFormNew({ orgId, userId, projectId, defaultDate }: DiaryFor
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					project_id: project,
+					work_order_id: selectedWorkOrderId || null,
 					date: dateString, // Pure YYYY-MM-DD string, PostgreSQL will treat as DATE
 					crew_count: staffCount ? parseInt(staffCount) : null,
 					weather: weather || null,
@@ -250,7 +277,7 @@ export function DiaryFormNew({ orgId, userId, projectId, defaultDate }: DiaryFor
 						<Label htmlFor='project' className='flex items-center gap-1'>
 							Projekt <span className='text-destructive'>*</span>
 						</Label>
-						<Select value={project} onValueChange={setProject}>
+						<Select value={project} onValueChange={handleProjectChange}>
 							<SelectTrigger id='project' className='h-11'>
 								<SelectValue placeholder='Välj projekt' />
 							</SelectTrigger>
@@ -263,6 +290,38 @@ export function DiaryFormNew({ orgId, userId, projectId, defaultDate }: DiaryFor
 							</SelectContent>
 						</Select>
 					</div>
+
+					{/* Work Order - only show if project is selected and has work orders */}
+					{project && (workOrdersLoading || workOrders.length > 0) && (
+						<div className='space-y-2'>
+							<Label htmlFor='workOrder'>Arbetsorder (valfritt)</Label>
+							{workOrdersLoading ? (
+								<div className='flex items-center gap-2 text-sm text-muted-foreground'>
+									<Loader2 className='w-4 h-4 animate-spin' />
+									Laddar arbetsorder...
+								</div>
+							) : workOrders.length === 0 ? (
+								<p className='text-sm text-muted-foreground'>
+									Inga arbetsorder kopplade till detta projekt ännu.
+								</p>
+							) : (
+								<Select value={selectedWorkOrderId || 'none'} onValueChange={(value) => setSelectedWorkOrderId(value === 'none' ? '' : value)}>
+									<SelectTrigger id='workOrder' className='h-11'>
+										<SelectValue placeholder='Välj arbetsorder (eller lämna tomt)' />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value='none'>Ingen arbetsorder</SelectItem>
+										{workOrders.map((wo) => (
+											<SelectItem key={wo.id} value={wo.id}>
+												{wo.work_order_number ? `${wo.work_order_number} – ` : ''}
+												{wo.title}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							)}
+						</div>
+					)}
 
 					{/* Date and Staff Count */}
 					<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>

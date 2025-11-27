@@ -79,10 +79,16 @@ export const workOrderSchema = z.object({
 	signature_blob_url: z.string().nullable(),
 	billing_type_override: z.string().nullable(),
 	send_time_approval_email: z.boolean(),
-	actual_time_approved_by_id: z.string().uuid().nullable(),
-	actual_time_approved_at: z.string().nullable(),
-	actual_time_approval_token: z.string().nullable(),
-	actual_time_approval_sent_at: z.string().nullable(),
+	// Two-step approval: worker confirmation (step 1)
+	actual_time_approval_token: z.string().nullable(), // Token for worker confirmation link
+	actual_time_approval_sent_at: z.string().nullable(), // When worker confirmation email was sent
+	actual_time_worker_confirmed_by_id: z.string().uuid().nullable(),
+	actual_time_worker_confirmed_at: z.string().nullable(),
+	// Two-step approval: manager approval (step 2)
+	actual_time_manager_approval_token: z.string().nullable(),
+	actual_time_manager_approval_sent_at: z.string().nullable(),
+	actual_time_manager_approved_by_id: z.string().uuid().nullable(),
+	actual_time_manager_approved_at: z.string().nullable(),
 	created_at: z.string(),
 	updated_at: z.string(),
 }).refine(
@@ -124,6 +130,8 @@ export const createWorkOrderSchema = workOrderSchema.omit({
 	// Make fields that are not provided by the form optional
 	// These fields are set by the server or are optional
 	organization_id: true,
+	customer_id: true, // Can be set from project
+	project_id: true, // Will be validated in onSubmit
 	planned_start_at: true,
 	planned_end_at: true,
 	actual_start_at: true,
@@ -143,10 +151,14 @@ export const createWorkOrderSchema = workOrderSchema.omit({
 	signature_blob_url: true,
 	billing_type_override: true,
 	send_time_approval_email: true,
-	actual_time_approved_by_id: true,
-	actual_time_approved_at: true,
 	actual_time_approval_token: true,
 	actual_time_approval_sent_at: true,
+	actual_time_worker_confirmed_by_id: true,
+	actual_time_worker_confirmed_at: true,
+	actual_time_manager_approval_token: true,
+	actual_time_manager_approval_sent_at: true,
+	actual_time_manager_approved_by_id: true,
+	actual_time_manager_approved_at: true,
 }).refine(
 	(data) => data.work_order_type === 'PROJEKTBUNDEN',
 	{

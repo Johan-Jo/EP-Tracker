@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
 import { createWorkOrderSchema } from '@/lib/schemas/work-order';
+import { sendWorkOrderAssignmentEmails } from '@/lib/work-orders/send-assignment-emails';
 
 // GET /api/work-orders - List work orders with filters
 export async function GET(request: NextRequest) {
@@ -192,6 +193,16 @@ export async function POST(request: NextRequest) {
 				{ error: 'Work order created but failed to fetch' },
 				{ status: 500 }
 			);
+		}
+
+		// Skicka tilldelnings-mail till arbetare (fire-and-forget)
+		if (workOrderWithRelations) {
+			sendWorkOrderAssignmentEmails({
+				workOrder: workOrderWithRelations as any,
+				orgId: membership.org_id,
+			}).catch((err) => {
+				console.error('[Work Orders] Failed to send assignment emails:', err);
+			});
 		}
 
 		return NextResponse.json(workOrderWithRelations, { status: 201 });

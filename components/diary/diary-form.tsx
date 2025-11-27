@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,6 +19,7 @@ import { PhotoUploadButtons } from '@/components/shared/photo-upload-buttons';
 
 const diarySchema = z.object({
 	project_id: z.string().uuid('Välj ett projekt'),
+	work_order_id: z.string().uuid().nullable().optional(),
 	date: z.string().min(1, 'Datum krävs'),
 	weather: z.string().optional().nullable(),
 	temperature_c: z.string().optional().nullable(),
@@ -34,8 +35,15 @@ type DiaryFormData = z.infer<typeof diarySchema>;
 
 interface DiaryFormProps {
 	projectId?: string;
+	workOrderId?: string;
 	onSuccess?: () => void;
 	onCancel?: () => void;
+}
+
+interface WorkOrderOption {
+	id: string;
+	work_order_number: string;
+	title: string;
 }
 
 const weatherOptions = [
@@ -47,7 +55,7 @@ const weatherOptions = [
 	{ value: 'windy', label: '💨 Blåsigt' },
 ];
 
-export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
+export function DiaryForm({ projectId, workOrderId, onSuccess, onCancel }: DiaryFormProps) {
 	const [photos, setPhotos] = useState<File[]>([]);
 	const [photosPreviews, setPhotosPreviews] = useState<string[]>([]);
 	const [signature, setSignature] = useState<{ name: string; timestamp: string } | null>(null);
@@ -68,6 +76,36 @@ export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 		},
 	});
 
+	const selectedProjectId = watch('project_id');
+
+	// Fetch work orders for selected project
+	const { data: workOrders = [], isLoading: workOrdersLoading } = useQuery<WorkOrderOption[]>({
+		queryKey: ['work-orders-by-project', selectedProjectId],
+		queryFn: async () => {
+			if (!selectedProjectId) return [];
+			// Get org_id from projects
+			const { data: project } = await supabase
+				.from('projects')
+				.select('org_id')
+				.eq('id', selectedProjectId)
+				.single();
+			
+			if (!project) return [];
+			
+			const { data, error } = await supabase
+				.from('work_orders')
+				.select('id, work_order_number, title')
+				.eq('organization_id', project.org_id)
+				.eq('project_id', selectedProjectId)
+				.order('created_at', { ascending: false });
+
+			if (error) throw error;
+			return data || [];
+		},
+		enabled: !!selectedProjectId,
+		staleTime: 60 * 1000,
+	});
+
 	const {
 		register,
 		handleSubmit,
@@ -78,9 +116,17 @@ export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 		resolver: zodResolver(diarySchema),
 		defaultValues: {
 			project_id: projectId || '',
+			work_order_id: workOrderId || null,
 			date: new Date().toISOString().split('T')[0],
 		},
 	});
+
+	// Set work_order_id when workOrderId prop changes
+	useEffect(() => {
+		if (workOrderId) {
+			setValue('work_order_id', workOrderId);
+		}
+	}, [workOrderId, setValue]);
 
 	const createDiaryMutation = useMutation({
 		mutationFn: async (data: DiaryFormData) => {
@@ -223,7 +269,11 @@ export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 						<Label htmlFor="project_id">Projekt *</Label>
 						<Select
 							value={selectedProject || ''}
-							onValueChange={(value) => setValue('project_id', value)}
+							onValueChange={(value) => {
+								setValue('project_id', value);
+								// Clear work_order_id when project changes
+								setValue('work_order_id', null);
+							}}
 						>
 							<SelectTrigger>
 								<SelectValue placeholder="Välj projekt" />
@@ -238,6 +288,47 @@ export function DiaryForm({ projectId, onSuccess, onCancel }: DiaryFormProps) {
 						</Select>
 						{errors.project_id && (
 							<p className="text-sm text-destructive mt-1">{errors.project_id.message}</p>
+						)}
+					</div>
+				)}
+
+				{/* Work Order Dropdown - only show if project is selected and has work orders */}
+				{selectedProject && (workOrdersLoading || workOrders.length > 0) && (
+					<div>
+						<Label htmlFor="work_order_id">Arbetsorder (valfritt)</Label>
+						{workOrdersLoading ? (
+							<div className="flex items-center gap-2 text-sm text-muted-foreground">
+								<Loader2 className="w-4 h-4 animate-spin" />
+								Laddar arbetsorder...
+							</div>
+						) : workOrders.length === 0 ? (
+							<p className="text-sm text-muted-foreground">
+								Inga arbetsorder kopplade till detta projekt ännu.
+							</p>
+						) : (
+							<Select
+								value={watch('work_order_id') || 'none'}
+								onValueChange={(value) => {
+									if (value === 'none') {
+										setValue('work_order_id', null);
+									} else {
+										setValue('work_order_id', value);
+									}
+								}}
+							>
+								<SelectTrigger>
+									<SelectValue placeholder="Välj arbetsorder (eller lämna tomt)" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="none">Ingen arbetsorder</SelectItem>
+									{workOrders.map((wo) => (
+										<SelectItem key={wo.id} value={wo.id}>
+											{wo.work_order_number ? `${wo.work_order_number} – ` : ''}
+											{wo.title}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 						)}
 					</div>
 				)}
