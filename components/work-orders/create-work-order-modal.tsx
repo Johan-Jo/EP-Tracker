@@ -1251,35 +1251,10 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 											return `${fieldName}: ${i.message}`;
 										});
 										errorMessage = `${error.message}\n\n${fieldErrors.join('\n')}`;
-									} else {
-										errorMessage = error.message || errorMessage;
-									}
+								} else {
+									errorMessage = error.message || errorMessage;
 								}
-									const errorWithIssues = error as Error & {
-										issues?: Array<{ path: string; message: string }>;
-									};
-									
-									if (errorWithIssues.issues && errorWithIssues.issues.length > 0) {
-										// Format validation errors
-										const fieldErrors = errorWithIssues.issues.map(issue => {
-											const fieldName = issue.path.split('.').pop() || issue.path;
-											const fieldLabels: Record<string, string> = {
-												'company_name': 'Företagsnamn',
-												'org_no': 'Organisationsnummer',
-												'invoice_email': 'Fakturamejl',
-												'invoice_address_street': 'Fakturaadress',
-												'first_name': 'Förnamn',
-												'last_name': 'Efternamn',
-												'personal_identity_no': 'Personnummer',
-											};
-											const label = fieldLabels[fieldName] || fieldName;
-											return `${label}: ${issue.message}`;
-										});
-										errorMessage = `Valideringsfel:\n${fieldErrors.join('\n')}`;
-									} else {
-										errorMessage = error.message;
-									}
-								}
+							}
 								
 								// Show error in toast with better formatting
 								if (errorMessage.includes('\n')) {
