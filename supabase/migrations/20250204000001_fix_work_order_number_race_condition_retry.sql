@@ -31,11 +31,17 @@ BEGIN
         LOOP
             -- Get the next sequential number for this org and year
             -- Advisory lock already prevents race conditions, no need for FOR UPDATE with aggregates
-            SELECT COALESCE(MAX(CAST(SUBSTRING(work_order_number FROM 8) AS INTEGER)), 0) + 1
-            INTO v_next_num
-            FROM work_orders
-            WHERE organization_id = NEW.organization_id
-              AND work_order_number LIKE 'WO-' || v_year || '-%';
+            -- Only query MAX on first iteration, then increment manually on retries
+            IF v_retry_count = 0 THEN
+                SELECT COALESCE(MAX(CAST(SUBSTRING(work_order_number FROM 8) AS INTEGER)), 0) + 1
+                INTO v_next_num
+                FROM work_orders
+                WHERE organization_id = NEW.organization_id
+                  AND work_order_number LIKE 'WO-' || v_year || '-%';
+            ELSE
+                -- On retry, just increment the number we already have
+                v_next_num := v_next_num + 1;
+            END IF;
             
             -- Format: WO-YYYY-NNN
             v_number := 'WO-' || v_year || '-' || LPAD(v_next_num::TEXT, 3, '0');
@@ -53,8 +59,9 @@ BEGIN
                 EXIT;
             END IF;
             
-            -- If found, increment and retry
+            -- If found, increment retry count and try next number
             v_retry_count := v_retry_count + 1;
+            
             IF v_retry_count >= v_max_retries THEN
                 -- Fallback: use timestamp-based number to ensure uniqueness
                 v_number := 'WO-' || v_year || '-' || LPAD(EXTRACT(EPOCH FROM NOW())::BIGINT::TEXT, 10, '0');
