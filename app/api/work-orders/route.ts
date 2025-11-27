@@ -141,6 +141,18 @@ export async function POST(request: NextRequest) {
 
 		if (workOrderError) {
 			console.error('Error creating work order:', workOrderError);
+			
+			// Handle duplicate work_order_number constraint violation
+			if (workOrderError.code === '23505' && workOrderError.message?.includes('work_order_number')) {
+				return NextResponse.json(
+					{ 
+						error: 'Ett arbetsordernummer med detta nummer finns redan. Försök igen.',
+						details: 'duplicate key value violates unique constraint "work_orders_work_order_number_key"'
+					},
+					{ status: 409 }
+				);
+			}
+			
 			return NextResponse.json(
 				{ error: workOrderError.message },
 				{ status: 500 }
