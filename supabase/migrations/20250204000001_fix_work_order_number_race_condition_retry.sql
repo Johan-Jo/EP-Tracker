@@ -30,13 +30,12 @@ BEGIN
         -- Retry loop to handle any remaining race conditions
         LOOP
             -- Get the next sequential number for this org and year
-            -- Use FOR UPDATE to lock rows during transaction
+            -- Advisory lock already prevents race conditions, no need for FOR UPDATE with aggregates
             SELECT COALESCE(MAX(CAST(SUBSTRING(work_order_number FROM 8) AS INTEGER)), 0) + 1
             INTO v_next_num
             FROM work_orders
             WHERE organization_id = NEW.organization_id
-              AND work_order_number LIKE 'WO-' || v_year || '-%'
-            FOR UPDATE;
+              AND work_order_number LIKE 'WO-' || v_year || '-%';
             
             -- Format: WO-YYYY-NNN
             v_number := 'WO-' || v_year || '-' || LPAD(v_next_num::TEXT, 3, '0');
