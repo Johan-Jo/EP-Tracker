@@ -83,8 +83,8 @@ Detta dokument beskriver hur man manuellt testar work order-funktionaliteten. Fo
 ### 1.5 Skapa nytt projekt från modal
 **Steg:**
 1. Öppna "Skapa arbetsorder"
-2. Välj kund
-3. Om kunden saknar projekt, klicka "Skapa nytt projekt"
+2. Välj kund (obligatoriskt)
+3. Om kunden saknar projekt, klicka "Skapa nytt projekt" (eller välj från dropdown)
 4. Fyll i projektinformation (kund är förvald)
 5. Spara projekt
 6. Fortsätt skapa arbetsordern
@@ -92,7 +92,19 @@ Detta dokument beskriver hur man manuellt testar work order-funktionaliteten. Fo
 **Förväntat resultat:**
 - Nytt projekt skapas
 - Projekt väljs automatiskt
+- Projektet visas i dropdown (bara projekt för vald kund visas)
 - Arbetsordern kan skapas
+
+### 1.6 Projektfiltrering
+**Steg:**
+1. Öppna "Skapa arbetsorder"
+2. Välj en kund
+3. Kontrollera projekt-dropdown
+
+**Förväntat resultat:**
+- Bara projekt för vald kund visas i dropdown
+- Alternativet "Skapa nytt projekt" finns alltid
+- Om kunden saknar projekt, visas meddelande och knapp för att skapa nytt projekt
 
 ---
 
@@ -161,15 +173,17 @@ Detta dokument beskriver hur man manuellt testar work order-funktionaliteten. Fo
 **Steg:**
 1. Öppna en arbetsorder
 2. Klicka "Redigera"
-3. I "Plats"-sektionen, klicka i adressfältet
+3. I "Plats"-sektionen, klicka i adressfältet (ett enda fält, inte separata fält för stad/postnummer)
 4. Börja skriva en ny adress (t.ex. "Storgatan")
 5. Välj ett förslag från Geoapify
 6. Spara
 
 **Förväntat resultat:**
-- Geoapify-förslag visas när du skriver
-- Adress, postnummer, stad och koordinater uppdateras automatiskt
+- Geoapify-förslag visas när du skriver (efter ~200ms debounce)
+- Adress fylls i automatiskt i formatet "Gata Gatunummer, Postnummer Stad"
+- Koordinater (lat/lng) uppdateras automatiskt
 - Karta uppdateras med ny position
+- I översikten visas platsen som "Gata Gatunummer, Stad" (utan postnummer)
 
 ---
 
@@ -391,13 +405,15 @@ Detta dokument beskriver hur man manuellt testar work order-funktionaliteten. Fo
 **Steg:**
 1. Öppna en arbetsorder
 2. Klicka "Redigera"
-3. I "Plats"-sektionen, klicka i adressfältet
+3. I "Plats"-sektionen, klicka i adressfältet (ett enda fält med Geoapify, inte separata fält)
 4. Skriv en ny adress
-5. Välj ett förslag
+5. Välj ett förslag från Geoapify
 
 **Förväntat resultat:**
-- Samma beteende som i 11.1
+- Geoapify-förslag visas när du skriver (efter ~200ms debounce)
+- Adress fylls i automatiskt i formatet "Gata Gatunummer, Postnummer Stad"
 - Befintlig adress kan ändras
+- Koordinater (lat/lng) uppdateras automatiskt
 - Karta uppdateras efter sparning
 
 ### 11.3 Statisk karta på detaljsida

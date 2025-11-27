@@ -280,9 +280,11 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 			// Only redirect if we're not in a modal (i.e., if project prop has an id, we're editing)
 			// If project prop is undefined or doesn't have an id, we're creating and might be in a modal
 			if (result && result.success && result.project?.id) {
+				// Reset submitting state when project is created successfully
+				setIsSubmitting(false);
 				// Only redirect if we're editing an existing project (not creating in a modal)
 				if (project?.id) {
-				router.push(`/dashboard/projects/${result.project.id}`);
+					router.push(`/dashboard/projects/${result.project.id}`);
 				}
 				// If creating (no project.id), let the parent component handle the result
 				// This allows modals to close themselves

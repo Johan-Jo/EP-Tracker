@@ -54,9 +54,13 @@ export function AddressAutocomplete({
 	name,
 	autoComplete,
 }: AddressAutocompleteProps) {
+	// Normalize value to always be a string
+	const normalizedValue = typeof value === 'string' ? value : (value ?? '');
+	
 	const [suggestions, setSuggestions] = useState<GeoapifyResult[]>([]);
 	const [showSuggestions, setShowSuggestions] = useState(false);
 	const [loading, setLoading] = useState(false);
+	const [apiKeyError, setApiKeyError] = useState(false);
 	const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const suggestionsRef = useRef<GeoapifyResult[]>([]);
@@ -89,20 +93,43 @@ export function AddressAutocomplete({
 		const apiKey = getGeoapifyKey();
 		if (!apiKey) {
 			console.error('Geoapify API key is missing. Make sure NEXT_PUBLIC_GEOAPIFY_API_KEY is set in .env.local');
+			setApiKeyError(true);
+			setSuggestions([]);
+			suggestionsRef.current = [];
+			setShowSuggestions(false);
+			setLoading(false);
 			return;
 		}
-
+		
+		setApiKeyError(false);
 		setLoading(true);
 		// Keep suggestions visible while loading new ones
 		const hadSuggestions = suggestionsRef.current.length > 0;
 		try {
 			const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(query)}&apiKey=${apiKey}&limit=5&countrycodes=se,no,dk,fi&lang=sv`;
 			const response = await fetch(url);
+			
+			if (!response.ok) {
+				throw new Error(`Geoapify API error: ${response.status} ${response.statusText}`);
+			}
+			
 			const data = await response.json();
+			
+			// Check if API returned an error
+			if (data.error) {
+				console.error('Geoapify API error:', data.error);
+				setApiKeyError(true);
+				setShowSuggestions(false);
+				setSuggestions([]);
+				suggestionsRef.current = [];
+				return;
+			}
+			
 			if (data.features && Array.isArray(data.features) && data.features.length > 0) {
 				setSuggestions(data.features);
 				suggestionsRef.current = data.features;
 				setShowSuggestions(true);
+				setApiKeyError(false);
 			} else {
 				// If no results, keep previous suggestions visible if they exist and input is focused
 				if (hadSuggestions && isFocusedRef.current) {
@@ -113,6 +140,7 @@ export function AddressAutocomplete({
 			}
 		} catch (error) {
 			console.error('Geoapify error:', error);
+			setApiKeyError(true);
 			// On error, keep previous suggestions visible if they exist and input is focused
 			if (hadSuggestions && isFocusedRef.current) {
 				setShowSuggestions(true);
@@ -175,7 +203,7 @@ export function AddressAutocomplete({
 					id={id}
 					name={name}
 					autoComplete={autoComplete}
-					value={value}
+					value={normalizedValue}
 					onChange={handleInputChange}
 					onFocus={() => {
 						isFocusedRef.current = true;
@@ -200,9 +228,14 @@ export function AddressAutocomplete({
 						<Loader2 className='h-4 w-4 animate-spin text-muted-foreground' />
 					</div>
 				)}
+				{apiKeyError && (
+					<div className='absolute right-3 top-1/2 -translate-y-1/2' title='Geoapify API-nyckel saknas'>
+						<MapPin className='h-4 w-4 text-destructive' />
+					</div>
+				)}
 			</div>
 			{((showSuggestions && suggestions.length > 0) || (isFocusedRef.current && suggestionsRef.current.length > 0)) && (
-				<ul className='absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border/60 bg-[var(--color-card)] shadow-lg dark:border-[#3a251d] dark:bg-[#1f140d]'>
+				<ul className='absolute z-[10000] mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border/60 bg-[var(--color-card)] shadow-lg dark:border-[#3a251d] dark:bg-[#1f140d]'>
 					{(suggestions.length > 0 ? suggestions : suggestionsRef.current).map((result, idx) => (
 						<li
 							key={idx}
