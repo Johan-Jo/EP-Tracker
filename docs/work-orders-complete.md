@@ -142,6 +142,7 @@ Alla EPICs för arbetsorder-funktionaliteten är nu implementerade och fungerar.
 - Innehåller arbetsorderns detaljer
 - Länk till arbetsordern
 - Länk till tidregistrering med förifyllda tider
+- **Länk till "Visa dagens arbeten"** (`/dashboard/work-orders/today`)
 
 ### Tidsgodkännandemail (Arbetare)
 - Skickas efter planerad sluttid när tid är registrerad
@@ -175,12 +176,26 @@ Alla EPICs för arbetsorder-funktionaliteten är nu implementerade och fungerar.
 ### Användardokumentation
 - Guide-sektion i hjälpsidan (`/dashboard/help`)
 - FAQ-frågor om arbetsorder
-- Interaktiv tour för nya användare
+- **Interaktiv tour:** `/dashboard/work-orders?tour=work-orders`
+  - 3 steg: Header, Skapa-knapp, Tabell
+  - Automatisk scroll och highlighting
+  - Retry-logik för element som renderas sent
+- **Manuell testplan:** `docs/work-orders-manual-test-plan.md`
+  - 13 huvudsektioner med detaljerade testfall
+  - Geoapify-testning (adressautocomplete och karta)
+  - Checklista för snabbtest
 
 ### Teknisk dokumentation
 - `docs/work-orders-epic-status.md` - Status för alla EPICs
 - `docs/work-orders-time-approval.md` - Detaljerad dokumentation om tidsgodkännande
+- `docs/work-orders-manual-test-plan.md` - Komplett manuell testplan
 - `docs/WORK-ORDERS-BRANCH-INFO.md` - Branch information
+
+### Testning
+- **80 unit tests** för work orders (förenklade från 112)
+- Tester för API routes, schemas, helper functions
+- Mocking av Supabase client
+- Fokus på huvudfunktioner, inte extremfall
 
 ---
 
