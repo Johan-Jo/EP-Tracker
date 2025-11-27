@@ -421,10 +421,12 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 								setValue('site_address', val || null, { shouldDirty: true });
 							}}
 							onSelect={(addr) => {
+								console.log('[ProjectForm] onSelect called with address:', addr);
 								const latNum = Number(addr.lat);
 								const lonNum = Number(addr.lon);
 								const formattedAddress = `${addr.address_line1}, ${addr.postal_code} ${addr.city}`.trim();
 								
+								console.log('[ProjectForm] Setting values:', { formattedAddress, latNum, lonNum });
 								setValue('site_address', formattedAddress, { shouldDirty: true });
 								setValue('site_lat', latNum, { shouldDirty: true, shouldValidate: true });
 								setValue('site_lon', lonNum, { shouldDirty: true, shouldValidate: true });

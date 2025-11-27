@@ -181,8 +181,10 @@ export function AddressAutocomplete({
 
 	const handleSelect = (result: GeoapifyResult) => {
 		const props = result.properties;
-		onChange(props.formatted);
-		onSelect({
+		console.log('[AddressAutocomplete] handleSelect called with:', props);
+		const formatted = props.formatted;
+		onChange(formatted);
+		const addressData = {
 			address_line1: props.address_line1 || props.formatted.split(',')[0] || '',
 			address_line2: props.address_line2 || undefined,
 			postal_code: props.postcode || '',
@@ -190,10 +192,13 @@ export function AddressAutocomplete({
 			country: props.country || 'Sverige',
 			lat: props.lat,
 			lon: props.lon,
-		});
+		};
+		console.log('[AddressAutocomplete] Calling onSelect with:', addressData);
+		onSelect(addressData);
 		setShowSuggestions(false);
 		setSuggestions([]);
 		suggestionsRef.current = [];
+		isFocusedRef.current = false;
 	};
 
 	return (
@@ -211,12 +216,19 @@ export function AddressAutocomplete({
 							setShowSuggestions(true);
 						}
 					}}
-					onBlur={() => {
+					onBlur={(e) => {
 						// Don't hide immediately on blur - let click handler do it
 						// This allows clicking on suggestions
+						// Check if the blur is caused by clicking on a suggestion
+						const relatedTarget = e.relatedTarget as HTMLElement;
+						if (containerRef.current?.contains(relatedTarget)) {
+							// Blur is caused by clicking inside the container, don't hide
+							return;
+						}
 						setTimeout(() => {
 							if (!containerRef.current?.contains(document.activeElement)) {
 								isFocusedRef.current = false;
+								setShowSuggestions(false);
 							}
 						}, 200);
 					}}
@@ -240,7 +252,15 @@ export function AddressAutocomplete({
 						<li
 							key={idx}
 							className='flex cursor-pointer items-start gap-2 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted dark:text-white dark:hover:bg-white/10'
-							onClick={() => handleSelect(result)}
+							onMouseDown={(e) => {
+								// Prevent blur from firing before click
+								e.preventDefault();
+							}}
+							onClick={(e) => {
+								e.preventDefault();
+								e.stopPropagation();
+								handleSelect(result);
+							}}
 						>
 							<MapPin className='mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground dark:text-white/70' />
 							<span>{result.properties.formatted}</span>
