@@ -32,6 +32,8 @@ const tourSequence = [
 	{ id: 'materials', title: 'Material & Utlägg', page: '/dashboard/materials' },
 	{ id: 'planning', title: 'Planering', page: '/dashboard/planning' },
 	{ id: 'planning-today', title: 'Dagens uppdrag', page: '/dashboard/planning/today' },
+	{ id: 'work-orders', title: 'Arbetsorder', page: '/dashboard/work-orders' },
+	{ id: 'work-orders-today', title: 'Dagens arbeten', page: '/dashboard/work-orders/today' },
 	{ id: 'approvals', title: 'Godkännanden', page: '/dashboard/approvals' },
 ];
 
@@ -65,7 +67,12 @@ export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourPro
 	useEffect(() => {
 		const completed = localStorage.getItem(`tour-${tourId}-completed`);
 		console.log('[FeatureTour] Tour:', tourId, 'Completed:', completed, 'AutoStart:', autoStart);
-		if (!completed && autoStart) {
+		if (autoStart) {
+			// If tour is completed, don't auto-start unless explicitly requested via URL param
+			if (completed) {
+				console.log('[FeatureTour] Tour already completed, skipping auto-start');
+				return;
+			}
 			console.log('[FeatureTour] Starting tour in 1000ms...');
 			// Auto-start after a delay
 			setTimeout(() => {
@@ -93,9 +100,96 @@ export function FeatureTour({ tourId, steps, autoStart = false }: FeatureTourPro
 			return;
 		}
 
-		const element = document.querySelector(step.target) as HTMLElement;
-		if (element) {
-			setTargetElement(element);
+		// Try to find element, with retry logic
+		const findAndSetElement = () => {
+			const element = document.querySelector(step.target!) as HTMLElement;
+			if (element) {
+				setTargetElement(element);
+				
+				// Calculate tooltip position
+				const rect = element.getBoundingClientRect();
+				const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+				const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+				
+				let top = 0;
+				let left = 0;
+				
+				switch (step.position) {
+					case 'top':
+						top = rect.top + scrollTop - 10;
+						left = rect.left + scrollLeft + rect.width / 2;
+						break;
+					case 'bottom':
+						top = rect.bottom + scrollTop + 10;
+						left = rect.left + scrollLeft + rect.width / 2;
+						break;
+					case 'left':
+						top = rect.top + scrollTop + rect.height / 2;
+						left = rect.left + scrollLeft - 10;
+						break;
+					case 'right':
+						top = rect.top + scrollTop + rect.height / 2;
+						left = rect.right + scrollLeft + 10;
+						break;
+					default:
+						top = rect.top + scrollTop + rect.height / 2;
+						left = rect.left + scrollLeft + rect.width / 2;
+				}
+				
+				setPosition({ top, left });
+				
+				// Scroll element into view
+				element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				
+				// Highlight the element
+				element.style.position = 'relative';
+				element.style.zIndex = '1001';
+				element.style.boxShadow = '0 0 0 4px rgba(59, 130, 246, 0.5)';
+				element.style.borderRadius = '8px';
+				
+				return true;
+			}
+			return false;
+		};
+
+		// Try immediately
+		if (findAndSetElement()) {
+			return () => {
+				// Cleanup: remove highlighting when component unmounts or step changes
+				const element = document.querySelector(step.target!) as HTMLElement;
+				if (element) {
+					element.style.position = '';
+					element.style.zIndex = '';
+					element.style.boxShadow = '';
+					element.style.borderRadius = '';
+				}
+			};
+		}
+
+		// Retry after a short delay if element not found
+		const retryTimeout = setTimeout(() => {
+			if (!findAndSetElement()) {
+				console.warn('[FeatureTour] Element not found:', step.target);
+				// Fallback to center position if element not found
+				setTargetElement(null);
+				setPosition({
+					top: window.innerHeight / 2,
+					left: window.innerWidth / 2,
+				});
+			}
+		}, 500);
+
+		return () => {
+			clearTimeout(retryTimeout);
+			// Cleanup: remove highlighting
+			const element = document.querySelector(step.target!) as HTMLElement;
+			if (element) {
+				element.style.position = '';
+				element.style.zIndex = '';
+				element.style.boxShadow = '';
+				element.style.borderRadius = '';
+			}
+		};
 
 			// Calculate tooltip position
 			const rect = element.getBoundingClientRect();

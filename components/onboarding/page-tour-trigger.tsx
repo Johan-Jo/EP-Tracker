@@ -47,7 +47,7 @@ function PageTourTriggerInner({ tourId }: PageTourTriggerProps) {
 			setTimeout(() => {
 				console.log('[PageTourTrigger] Setting shouldShowTour to true');
 				setShouldShowTour(true);
-			}, 500);
+			}, 1000); // Increased delay to ensure all elements are rendered
 		}
 	}, [searchParams, tourId]);
 
