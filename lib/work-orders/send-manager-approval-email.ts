@@ -159,7 +159,10 @@ export async function sendWorkOrderManagerApprovalEmail({
 		}
 
 		// Send email to each manager/admin
-		const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+		// Use NEXT_PUBLIC_SITE_URL for production, fallback to VERCEL_URL or localhost
+		const baseUrl = process.env.NEXT_PUBLIC_SITE_URL 
+			|| (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+			|| 'http://localhost:3000';
 		const approveUrl = `${baseUrl}/dashboard/work-orders/${workOrderId}/approve-time-manager?token=${approvalToken}`;
 		const reviewUrl = `${baseUrl}/dashboard/work-orders/${workOrderId}`;
 

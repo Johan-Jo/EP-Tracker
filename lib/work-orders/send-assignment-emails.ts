@@ -54,7 +54,10 @@ export async function sendWorkOrderAssignmentEmails({ workOrder, orgId }: SendWo
 			return;
 		}
 
-		const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+		// Use NEXT_PUBLIC_SITE_URL for production, fallback to VERCEL_URL or localhost
+		const baseUrl = process.env.NEXT_PUBLIC_SITE_URL 
+			|| (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+			|| 'http://localhost:3000';
 		const workOrderUrl = `${baseUrl}/dashboard/work-orders/${workOrder.id}`;
 		const todayWorkOrdersUrl = `${baseUrl}/dashboard/work-orders/today`;
 		

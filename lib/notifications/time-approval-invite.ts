@@ -95,7 +95,10 @@ export async function sendTimeApprovalInviteForEntry(entryId: string) {
       return;
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    // Use NEXT_PUBLIC_SITE_URL for production, fallback to VERCEL_URL or localhost
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL 
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+      || 'http://localhost:3000';
     const reviewUrl = `${baseUrl}/dashboard/approvals/quick-approve?mode=single&entryId=${encodeURIComponent(entry.id)}`;
     const approveUrl = `${reviewUrl}&action=approve`;
 

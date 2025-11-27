@@ -169,7 +169,10 @@ export async function sendWorkOrderTimeApprovalEmail({
 		}
 
 		// Send email to each assigned worker
-		const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+		// Use NEXT_PUBLIC_SITE_URL for production, fallback to VERCEL_URL or localhost
+		const baseUrl = process.env.NEXT_PUBLIC_SITE_URL 
+			|| (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+			|| 'http://localhost:3000';
 		const approveUrl = `${baseUrl}/dashboard/work-orders/${workOrderId}/approve-time?token=${approvalToken}`;
 		const adjustUrl = `${baseUrl}/dashboard/work-orders/${workOrderId}/adjust-time?token=${approvalToken}`;
 
