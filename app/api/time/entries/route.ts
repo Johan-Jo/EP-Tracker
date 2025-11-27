@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
 			effectiveStartDate,
 			effectiveEndDate,
 			project_id,
-			user_id,
+			work_order_id,
 			status
 		});
 		return NextResponse.json({ 

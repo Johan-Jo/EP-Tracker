@@ -101,7 +101,7 @@ export async function sendWorkOrderAssignmentEmails({ workOrder, orgId, baseUrl:
 					workOrderNumber: workOrder.work_order_number,
 					projectName: (workOrder.project as any)?.name || null,
 					customerName,
-					addressLine: workOrder.location_address,
+					addressLine: (workOrder as any).location_address || null,
 					mapImageUrl,
 					plannedStart: start || null,
 					plannedEnd: end || null,

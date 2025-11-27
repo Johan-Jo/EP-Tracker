@@ -180,9 +180,9 @@ export async function sendWorkOrderTimeApprovalEmail({
 		const adjustUrl = `${baseUrl}/dashboard/work-orders/${workOrderId}/adjust-time?token=${approvalToken}`;
 
 		for (const assignment of assignments) {
-			const worker = assignment.user;
+			const worker = assignment.user as { id: string; full_name?: string | null; email?: string | null } | null;
 			if (!worker || !worker.email) {
-				console.warn('[sendWorkOrderTimeApprovalEmail] Worker missing email:', assignment.user_id);
+				console.warn('[sendWorkOrderTimeApprovalEmail] Worker missing email:', (assignment as any).user_id);
 				continue;
 			}
 
