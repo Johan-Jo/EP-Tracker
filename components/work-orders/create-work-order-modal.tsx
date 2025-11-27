@@ -1002,9 +1002,9 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 
 							{/* Location */}
 							<div className="space-y-3">
-								<Label>Plats</Label>
+								<Label>Plats (valfritt)</Label>
 								<p className="text-xs text-muted-foreground">
-									Välj om arbetet ska utföras på projektets adress eller ange en annan adress.
+									Välj om arbetet ska utföras på projektets adress eller ange en annan adress. Detta fält är valfritt.
 								</p>
 								<div className="space-y-2">
 									<div className="flex flex-col sm:flex-row gap-2">
@@ -1035,7 +1035,7 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 									{/* Egna adressfält med Geoapify-autocomplete - bara visa när "Annan adress" är valt */}
 									{!useProjectAddress && (
 										<div className="space-y-1 mt-2">
-											<Label htmlFor="location_address">Adress</Label>
+											<Label htmlFor="location_address">Adress (valfritt)</Label>
 											<AddressAutocomplete
 												id="location_address"
 												name="location_address"
