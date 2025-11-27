@@ -32,9 +32,10 @@ interface ProjectFormProps {
 	project?: ProjectFormData & { id?: string };
 	orgId: string;
 	onSubmit: (data: ProjectFormData) => Promise<{ success: boolean; project: any }>;
+	onSuccess?: (project: any) => void; // Optional callback for when project is created/updated (used in modals)
 }
 
-export function ProjectForm({ project, orgId, onSubmit }: ProjectFormProps) {
+export function ProjectForm({ project, orgId, onSubmit, onSuccess }: ProjectFormProps) {
 const router = useRouter();
 const [isSubmitting, setIsSubmitting] = useState(false);
 const [error, setError] = useState<string | null>(null);
@@ -195,11 +196,23 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 
 	useEffect(() => {
 		// Suggest worksite_code from project_number or name
-		if (!watch('worksite_code')) {
-			if (projNumber) setValue('worksite_code', String(projNumber).slice(0, 16));
-			else if (projName) setValue('worksite_code', slugify(projName));
+		// Only auto-fill if field is empty and we have a meaningful value
+		const currentCode = watch('worksite_code');
+		if (!currentCode || currentCode.trim() === '') {
+			if (projNumber) {
+				const code = String(projNumber).slice(0, 16);
+				if (code.length > 0) {
+					setValue('worksite_code', code);
+				}
+			} else if (projName && projName.trim().length > 1) {
+				const slugified = slugify(projName);
+				// Only set if slugified result is meaningful (more than 1 character)
+				if (slugified.length > 1) {
+					setValue('worksite_code', slugified);
+				}
+			}
 		}
-	}, [projNumber, projName, setValue]);
+	}, [projNumber, projName, setValue, watch]);
 
 	// QR generation handlers
 	const handleGeneratePlatsQR = () => {
@@ -275,17 +288,20 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 			
 			console.log('Submit result:', result);
 			
-			// Only redirect if we're not in a modal (i.e., if project prop has an id, we're editing)
-			// If project prop is undefined or doesn't have an id, we're creating and might be in a modal
 			if (result && result.success && result.project?.id) {
 				// Reset submitting state when project is created successfully
 				setIsSubmitting(false);
-				// Only redirect if we're editing an existing project (not creating in a modal)
-				if (project?.id) {
-					router.push(`/dashboard/projects/${result.project.id}`);
+				
+				// If onSuccess callback is provided (e.g., in a modal), call it instead of redirecting
+				if (onSuccess) {
+					onSuccess(result.project);
+					return; // Prevent any redirect when onSuccess is provided
 				}
-				// If creating (no project.id), let the parent component handle the result
-				// This allows modals to close themselves
+				
+				// Otherwise, redirect to project detail page
+				// If editing (project?.id exists), redirect to the updated project
+				// If creating (no project?.id), redirect to the newly created project
+				router.push(`/dashboard/projects/${result.project.id}`);
 			} else if (result && !result.success) {
 				setError('Kunde inte skapa projekt');
 				setIsSubmitting(false);

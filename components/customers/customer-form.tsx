@@ -78,8 +78,14 @@ const toPayloadDefaults = (customer?: Partial<Customer>): CustomerPayload => {
 		...customer,
 	};
 
+	const customerType = merged.type ?? 'COMPANY';
+	// Set default invoice method based on customer type:
+	// - PRIVATE customers default to PAPER (no email required)
+	// - COMPANY customers default to EMAIL (email required)
+	const defaultInvoiceMethod = customerType === 'PRIVATE' ? 'PAPER' : 'EMAIL';
+
 	return {
-		type: merged.type ?? 'COMPANY',
+		type: customerType,
 		customer_no: emptyToUndefined(merged.customer_no),
 		company_name: merged.company_name ?? '',
 		org_no: merged.org_no ?? '',
@@ -97,7 +103,7 @@ const toPayloadDefaults = (customer?: Partial<Customer>): CustomerPayload => {
 		ownership_share: merged.ownership_share ?? undefined,
 		rot_consent_at: merged.rot_consent_at ? new Date(merged.rot_consent_at) : undefined,
 		invoice_email: merged.invoice_email ?? '',
-		invoice_method: merged.invoice_method ?? 'EMAIL',
+		invoice_method: merged.invoice_method ?? defaultInvoiceMethod,
 		peppol_id: emptyToUndefined(merged.peppol_id),
 		gln: emptyToUndefined(merged.gln),
 		terms: merged.terms ?? 30,
@@ -167,6 +173,14 @@ export function CustomerForm({
 
 	const handleCustomerTypeChange = (value: 'COMPANY' | 'PRIVATE') => {
 		setValue('type', value, { shouldDirty: true });
+		// Update invoice method when switching customer type:
+		// - PRIVATE: default to PAPER (no email required)
+		// - COMPANY: default to EMAIL (email required)
+		if (value === 'PRIVATE' && invoiceMethod === 'EMAIL' && !customer?.invoice_email) {
+			setValue('invoice_method', 'PAPER', { shouldDirty: true });
+		} else if (value === 'COMPANY' && invoiceMethod === 'PAPER' && !customer?.invoice_method) {
+			setValue('invoice_method', 'EMAIL', { shouldDirty: true });
+		}
 		// Don't reset rot_enabled - it can be enabled for both company and private customers
 	};
 

@@ -480,6 +480,17 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 
 			// Combine date and time for planned_start_at and planned_end_at
 			const submitData: any = { ...data };
+			
+			// Clean up project_id - remove if empty string or invalid UUID
+			if (submitData.project_id) {
+				const projectIdStr = String(submitData.project_id).trim();
+				if (!projectIdStr || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectIdStr)) {
+					console.error('[CreateWorkOrderModal] Invalid project_id in submitData, removing:', submitData.project_id);
+					delete submitData.project_id;
+				} else {
+					submitData.project_id = projectIdStr;
+				}
+			}
 
 			if (plannedDate) {
 				if (allDay) {
@@ -565,6 +576,8 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 			const errorMessage = error.message || 'Kunde inte skapa arbetsorder';
 			setError(errorMessage);
 			toast.error(errorMessage);
+			// Don't close modal on error - let user fix the issue and try again
+			// setIsSubmitting(false) is in finally block, so form will be enabled again
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -1206,9 +1219,18 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 						onSubmit={async (payload: CustomerPayload) => {
 							try {
 								const newCustomer = await createCustomerMutation.mutateAsync(payload);
-								setCustomers([newCustomer, ...customers]);
+								// Update customers list first - use functional update to ensure we have latest state
+								setCustomers((prevCustomers) => [newCustomer, ...prevCustomers]);
 								setSelectedCustomerId(newCustomer.id);
-								setValue('customer_id', newCustomer.id, { shouldValidate: true });
+								// Set customer_id in form - use shouldDirty and shouldValidate to ensure it updates
+								// Use setTimeout to ensure state updates are processed first
+								setTimeout(() => {
+									setValue('customer_id', newCustomer.id, { 
+										shouldValidate: true,
+										shouldDirty: true,
+										shouldTouch: true
+									});
+								}, 0);
 								setShowCreateCustomer(false);
 								toast.success('Kund skapad');
 								// Fetch projects for the new customer
@@ -1219,6 +1241,20 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 								// Extract detailed error message
 								let errorMessage = 'Kunde inte skapa kund';
 								if (error instanceof Error) {
+									// Check if error has a status property (from API)
+									const apiError = error as Error & { status?: number; details?: unknown; issues?: Array<{ path: string; message: string }> };
+									if (apiError.status === 409) {
+										errorMessage = error.message || 'Kundnummer används redan, försök ett annat.';
+									} else if (apiError.issues && apiError.issues.length > 0) {
+										const fieldErrors = apiError.issues.map(i => {
+											const fieldName = i.path.split('.').pop() || i.path;
+											return `${fieldName}: ${i.message}`;
+										});
+										errorMessage = `${error.message}\n\n${fieldErrors.join('\n')}`;
+									} else {
+										errorMessage = error.message || errorMessage;
+									}
+								}
 									const errorWithIssues = error as Error & {
 										issues?: Array<{ path: string; message: string }>;
 									};
@@ -1284,22 +1320,6 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 									customer_id: selectedCustomerId || null,
 								});
 								if (result.success && result.project) {
-									// Add new project to the list
-									const newProject: Project = {
-										id: result.project.id,
-										name: result.project.name,
-										project_number: result.project.project_number,
-										customer_id: result.project.customer_id,
-									};
-									setProjects([newProject, ...projects]);
-									setSelectedProject(newProject);
-									// Set project_id in form - this will trigger validation
-									setValue('project_id', newProject.id, { shouldValidate: true });
-									clearErrors('project_id');
-									setShowCreateProject(false);
-									toast.success('Projekt skapad');
-									// Clear any previous errors
-									setError(null);
 									// Return result so ProjectForm can handle it
 									return result;
 								} else {
@@ -1316,6 +1336,40 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 							} finally {
 								setIsCreatingProject(false);
 							}
+						}}
+						onSuccess={(project) => {
+							// Handle successful project creation in modal
+							// Validate that project.id is a valid UUID
+							if (!project.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(project.id)) {
+								console.error('[CreateWorkOrderModal] Invalid project ID received:', project.id);
+								toast.error('Kunde inte skapa projekt - ogiltigt projekt-ID');
+								return; // Don't proceed if project ID is invalid
+							}
+							
+							// Add new project to the list
+							const newProject: Project = {
+								id: project.id,
+								name: project.name,
+								project_number: project.project_number,
+								customer_id: project.customer_id,
+							};
+							// Update projects list first - use functional update to ensure we have latest state
+							setProjects((prevProjects) => [newProject, ...prevProjects]);
+							setSelectedProject(newProject);
+							// Set project_id in form - use shouldDirty and shouldValidate to ensure it updates
+							// Use setTimeout to ensure state updates are processed first
+							setTimeout(() => {
+								setValue('project_id', newProject.id, { 
+									shouldValidate: true, 
+									shouldDirty: true,
+									shouldTouch: true 
+								});
+								clearErrors('project_id');
+							}, 0);
+							setShowCreateProject(false);
+							toast.success('Projekt skapad');
+							// Clear any previous errors
+							setError(null);
 						}}
 					/>
 				</DialogContent>

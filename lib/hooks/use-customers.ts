@@ -46,13 +46,26 @@ const fetchJson = async <T>(
 		let errorText = '';
 		
 		try {
-			errorText = await response.text();
-			if (errorText) {
-				errorBody = JSON.parse(errorText);
+			// Clone the response before reading it to avoid consuming the body
+			const clonedResponse = response.clone();
+			errorText = await clonedResponse.text();
+			
+			if (errorText && errorText.trim().length > 0) {
+				try {
+					errorBody = JSON.parse(errorText);
+				} catch (parseError) {
+					// If JSON parsing fails, use the raw text as error message
+					console.warn('[use-customers] Failed to parse error JSON:', parseError, 'Raw text:', errorText.substring(0, 200));
+					errorBody = { error: errorText };
+				}
+			} else {
+				// Empty response body - use status text
+				errorBody = { error: `HTTP ${response.status} ${response.statusText}` };
 			}
-		} catch (parseError) {
-			// If JSON parsing fails, use the raw text
-			errorBody = { error: errorText || `HTTP ${response.status} ${response.statusText}` };
+		} catch (readError) {
+			// If reading response fails completely
+			console.error('[use-customers] Failed to read error response:', readError);
+			errorBody = { error: `HTTP ${response.status} ${response.statusText}` };
 		}
 		
 		const errorData = errorBody as { 
@@ -88,8 +101,9 @@ const fetchJson = async <T>(
 		console.error('[use-customers] API error:', { 
 			status: response.status, 
 			statusText: response.statusText,
-			errorBody,
-			errorText: errorText.substring(0, 500), // First 500 chars
+			errorBody: errorBody && typeof errorBody === 'object' && Object.keys(errorBody).length > 0 ? errorBody : { error: message },
+			errorText: errorText ? errorText.substring(0, 500) : '(empty response body)',
+			url: typeof input === 'string' ? input : (input as Request).url,
 		});
 		throw error;
 	}
