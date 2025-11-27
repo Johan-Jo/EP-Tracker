@@ -512,7 +512,7 @@
 
 ---
 
-#### 18. **Work Orders Mobile Today View**
+#### 18. **Work Orders Mobile Today View & Navigation**
 - Daily work order list for assigned workers
 - "Start work" and "End work" functionality
 - Navigation to work site (Google Maps)

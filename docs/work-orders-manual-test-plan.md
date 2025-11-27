@@ -25,7 +25,7 @@ Detta dokument beskriver hur man manuellt testar work order-funktionaliteten. Fo
 2. Klicka på "Skapa arbetsorder"
 3. Fyll i:
    - Välj kund (obligatoriskt)
-   - Välj projekt (obligatoriskt - visas efter kundval)
+   - Välj projekt (obligatoriskt - bara projekt för vald kund visas)
    - Titel: "Test arbetsorder"
    - Beskrivning: "Testbeskrivning"
    - Status: PLANERAD
@@ -62,10 +62,11 @@ Detta dokument beskriver hur man manuellt testar work order-funktionaliteten. Fo
 2. Klicka "Skapa"
 
 **Förväntat resultat:**
-- Geoapify-förslag visas när du skriver (efter ~500ms)
-- Adress, postnummer och stad fylls i automatiskt när du väljer
+- Geoapify-förslag visas när du skriver (efter ~200ms debounce)
+- Adress fylls i automatiskt i formatet "Gata Gatunummer, Postnummer Stad" när du väljer
 - Koordinater (lat/lng) sparas automatiskt
 - Karta visas på detaljsidan med korrekt position
+- I översikten visas platsen som "Gata Gatunummer, Stad" (utan postnummer)
 
 ### 1.4 Skapa ny kund från modal
 **Steg:**

@@ -255,6 +255,10 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 		if (!open) {
 			// Reset loading state when modal closes
 			setIsLoadingData(false);
+			// Rensa projektlistan när modalen stängs
+			setProjects([]);
+			setSelectedCustomerId('');
+			setSelectedProject(null);
 			return;
 		}
 
@@ -265,9 +269,14 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 
 		// Om vi redan har laddat grunddatan en gång, återanvänd den direkt
 		// så att formuläret visas omedelbart och vi slipper lång skeleton varje öppning.
-		if (hasLoadedInitialData && projects.length > 0 && customers.length > 0) {
+		// OBS: Vi laddar inte projekt här - de laddas när kund väljs
+		if (hasLoadedInitialData && customers.length > 0) {
 			console.log('[CreateWorkOrderModal] Using cached data, showing form immediately');
 			setIsLoadingData(false);
+			// Rensa projektlistan när modalen öppnas (om ingen kund är vald)
+			if (!selectedCustomerId) {
+				setProjects([]);
+			}
 			return;
 		}
 
@@ -275,37 +284,10 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 		console.log('[CreateWorkOrderModal] Loading data...');
 		setIsLoadingData(true);
 
-		// Fetch both projects and customers in parallel
+		// Fetch customers (projects will be loaded when customer is selected)
 		const fetchData = async () => {
 			try {
-				const [customersResponse, projectsResponse] = await Promise.all([
-					// Always fetch customers
-					fetch('/api/customers?pageSize=1000').catch(() => null),
-					fetch('/api/projects').catch(() => null),
-				]);
-
-				// Handle projects
-				if (projectsResponse && projectsResponse.ok) {
-					const data = await projectsResponse.json();
-					if (data && data.projects) {
-						setProjects(data.projects || []);
-
-						// If source is 'project', set the project
-						if (source.source === 'project') {
-							const project = data.projects?.find((p: Project) => p.id === source.projectId);
-							if (project) {
-								setSelectedProject(project);
-								setValue('project_id', project.id);
-								if (project.customer_id) {
-									setValue('customer_id', project.customer_id);
-									setSelectedCustomerId(project.customer_id);
-								}
-							}
-						}
-					}
-				} else if (projectsResponse && !projectsResponse.ok) {
-					console.error('Error fetching projects');
-				}
+				const customersResponse = await fetch('/api/customers?pageSize=1000').catch(() => null);
 
 				// Handle customers
 				if (customersResponse && customersResponse.ok) {
@@ -319,6 +301,31 @@ export function CreateWorkOrderModal(props: CreateWorkOrderModalProps) {
 					console.error('Error fetching customers:', customersResponse.status, customersResponse.statusText);
 				} else if (!customersResponse) {
 					console.error('Failed to fetch customers - no response');
+				}
+
+				// If source is 'project', fetch that specific project and its customer
+				if (source.source === 'project') {
+					const projectsResponse = await fetch('/api/projects').catch(() => null);
+					if (projectsResponse && projectsResponse.ok) {
+						const data = await projectsResponse.json();
+						if (data && data.projects) {
+							const project = data.projects?.find((p: Project) => p.id === source.projectId);
+							if (project) {
+								setSelectedProject(project);
+								setValue('project_id', project.id);
+								if (project.customer_id) {
+									setValue('customer_id', project.customer_id);
+									setSelectedCustomerId(project.customer_id);
+									// Fetch projects for this customer
+									const customerProjectsResponse = await fetch(`/api/projects?customer_id=${project.customer_id}`).catch(() => null);
+									if (customerProjectsResponse && customerProjectsResponse.ok) {
+										const customerProjectsData = await customerProjectsResponse.json();
+										setProjects(customerProjectsData.projects || []);
+									}
+								}
+							}
+						}
+					}
 				}
 
 				// Markera att vi har grunddata laddad så vi kan återanvända den nästa gång.

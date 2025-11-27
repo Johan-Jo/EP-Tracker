@@ -63,9 +63,14 @@ Alla EPICs för arbetsorder-funktionaliteten är nu implementerade och fungerar.
 - Onboarding UI för nya användare
 - Mobile-responsive design
 - Voice-to-text för beskrivning
-- AddressAutocomplete för plats
+- AddressAutocomplete för plats (Geoapify integration) - fungerar i både create och edit-lägen
+- Ett enda adressfält med Geoapify autocomplete (gata, postnummer och stad i ett fält)
+- Projektfiltrering - bara projekt för vald kund visas i dropdown
+- Platsvisning i översikten - visar gata, gatunummer och stad (utan postnummer)
 - Drag-and-drop för tilldelningar
 - Jämförelse av planerad vs faktisk tid
+- **Interaktiv tour:** `?tour=work-orders` för att starta guidad tour
+- **Navigation:** Länkar i sidebar och mobile nav till arbetsorder och dagens arbeten
 
 ---
 
@@ -96,6 +101,8 @@ Alla EPICs för arbetsorder-funktionaliteten är nu implementerade och fungerar.
 - "Avsluta arbete" - sätter `actual_end_at`
 - Google Maps-navigation till arbetsplatsen
 - Refresh-funktionalitet
+- **Navigation:** Länk till "Dagens arbeten" i sidebar (sub-item) och mobile navigation
+- **Email:** Knapp "Visa dagens arbeten" i tilldelningsemail
 
 ### API
 - `GET /api/mobile/work-orders/today` - Hämta dagens arbetsorder för användaren
@@ -181,10 +188,12 @@ Alla EPICs för arbetsorder-funktionaliteten är nu implementerade och fungerar.
 
 ### Skapa och tilldela arbetsorder
 1. Admin/foreman skapar arbetsorder
-2. Väljer kund och projekt
-3. Fyller i detaljer (titel, beskrivning, datum, tid, plats)
-4. Tilldelar en eller flera personer
-5. Sparar arbetsordern
+2. Väljer kund (obligatoriskt)
+3. Väljer projekt (bara projekt för vald kund visas)
+4. Fyller i detaljer (titel, beskrivning, datum, tid, plats)
+5. För plats: Väljer "Annan adress" och använder Geoapify autocomplete för att söka och välja adress
+6. Tilldelar en eller flera personer
+7. Sparar arbetsordern
 
 ### Arbetare följer arbetsorder
 1. Arbetare ser arbetsordern i planeringskalendern eller mobilvyn

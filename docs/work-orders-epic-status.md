@@ -204,6 +204,8 @@
 | EPIC 51: UI | ✅ Klar | 100% |
 | EPIC 52: Planning Calendar | ✅ Klar | 100% |
 | EPIC 53: Mobile Today | ✅ Klar | 100% |
+| Navigation & UX | ✅ Klar | 100% |
+| Testning | ✅ Klar | 100% |
 | EPIC 54: Integration | ✅ Klar | 100% |
 
 **Totalt:** 6 av 6 EPICs klara (100%), plus extra funktionalitet
@@ -218,5 +220,10 @@ Alla planerade EPICs för arbetsorder-funktionaliteten är implementerade och fu
 - ✅ Användargränssnitt
 - ✅ Integration med planeringskalendern
 - ✅ Mobilvy för dagens arbetsorder
+- ✅ Navigation: Länkar i sidebar och mobile nav
+- ✅ Email: Länk till "Dagens arbeten" i tilldelningsemail
+- ✅ Interaktiv tour för arbetsorder
+- ✅ Manuell testplan med Geoapify-testning
+- ✅ Förenklade unit tests (80 tester)
 - ✅ Integration med tidrapportering, dagbok och fakturering
 

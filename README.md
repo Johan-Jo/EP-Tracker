@@ -92,6 +92,9 @@ ep-tracker/
   - ✅ Work orders med fullständig hantering (skapa, redigera, tilldela, följa upp)
   - ✅ Work orders i planeringskalendern med drag-and-drop
   - ✅ Mobilvy för dagens arbetsorder med "Starta/Avsluta arbete"
+- ✅ Navigation: Länkar till "Dagens arbeten" i sidebar och mobile nav
+- ✅ Email: Länk till "Dagens arbeten" i tilldelningsemail
+- ✅ Interaktiv tour för arbetsorder (`?tour=work-orders`)
   - ✅ Integration med tidrapportering, dagbok och fakturering
   - ✅ Tvåstegsgodkännande av tid (arbetare → forman)
   - ✅ E-postflöden för tilldelning och tidsgodkännande
