@@ -89,29 +89,40 @@ export async function POST(request: NextRequest) {
 	console.log('[Diary API] Received date (string):', body.date);
 
 	// Call RPC with typed DATE parameter - prevents timezone conversion
+	const rpcParams = {
+		p_org_id: membership.org_id,
+		p_project_id: body.project_id,
+		p_created_by: user.id,
+		p_date: body.date, // String sent to DATE parameter (no tz conversion)
+		p_weather: body.weather || null,
+		p_temperature_c: body.temperature_c || null,
+		p_crew_count: body.crew_count || null,
+		p_work_performed: body.work_performed || null,
+		p_obstacles: body.obstacles || null,
+		p_safety_notes: body.safety_notes || null,
+		p_deliveries: body.deliveries || null,
+		p_visitors: body.visitors || null,
+		p_signature_name: body.signature_name || null,
+		p_signature_timestamp: body.signature_timestamp || null,
+		p_work_order_id: body.work_order_id || null,
+	};
+	
+	console.log('[Diary API] Calling insert_diary_entry with params:', JSON.stringify(rpcParams, null, 2));
+	
 	const { data, error } = await supabase
-		.rpc('insert_diary_entry', {
-			p_org_id: membership.org_id,
-			p_project_id: body.project_id,
-			p_created_by: user.id,
-			p_date: body.date, // String sent to DATE parameter (no tz conversion)
-			p_weather: body.weather || null,
-			p_temperature_c: body.temperature_c || null,
-			p_crew_count: body.crew_count || null,
-			p_work_performed: body.work_performed || null,
-			p_obstacles: body.obstacles || null,
-			p_safety_notes: body.safety_notes || null,
-			p_deliveries: body.deliveries || null,
-			p_visitors: body.visitors || null,
-			p_signature_name: body.signature_name || null,
-			p_signature_timestamp: body.signature_timestamp || null,
-			p_work_order_id: body.work_order_id || null,
-		})
+		.rpc('insert_diary_entry', rpcParams)
 		.single();
 
 	if (error) {
+		console.error('[Diary API] RPC error:', error);
+		console.error('[Diary API] Error details:', JSON.stringify(error, null, 2));
 		// Surface exact error message (includes duplicate constraint message)
-		return NextResponse.json({ error: error.message }, { status: 400 });
+		return NextResponse.json({ 
+			error: error.message,
+			details: error.details || null,
+			hint: error.hint || null,
+			code: error.code || null
+		}, { status: 400 });
 	}
 
 	return NextResponse.json({ diary: data }, { status: 201 });
