@@ -159,9 +159,10 @@ export function WorkOrderFilters({
 						<Select
 							value={customerId || ALL_VALUE}
 							onValueChange={(value) => setCustomerId(value === ALL_VALUE ? '' : value)}
+							disabled={!customers || customers.length === 0}
 						>
 							<SelectTrigger id='customer'>
-								<SelectValue placeholder='Alla kunder' />
+								<SelectValue placeholder={customers && customers.length > 0 ? 'Alla kunder' : 'Inga kunder tillgängliga'} />
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value={ALL_VALUE}>Alla kunder</SelectItem>
@@ -171,13 +172,12 @@ export function WorkOrderFilters({
 											{getCustomerName(customer)}
 										</SelectItem>
 									))
-								) : (
-									<SelectItem value='' disabled>
-										Inga kunder tillgängliga
-									</SelectItem>
-								)}
+								) : null}
 							</SelectContent>
 						</Select>
+						{(!customers || customers.length === 0) && (
+							<p className='text-sm text-muted-foreground'>Inga kunder tillgängliga</p>
+						)}
 					</div>
 
 					<div className='space-y-2'>
