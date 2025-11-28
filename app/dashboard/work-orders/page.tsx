@@ -119,7 +119,8 @@ export default async function WorkOrdersPage(props: PageProps) {
 	const { data: customers, error: customersError } = await supabase
 		.from('customers')
 		.select('id, type, company_name, first_name, last_name')
-		.eq('organization_id', membership.org_id)
+		.eq('org_id', membership.org_id)
+		.eq('is_archived', false)
 		.order('company_name, first_name, last_name')
 		.limit(1000);
 
