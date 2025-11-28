@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -69,7 +69,9 @@ export function WorkOrderFilters({
 		if (startDate) params.set('start_date', startDate);
 		if (endDate) params.set('end_date', endDate);
 
-		router.push(`/dashboard/work-orders?${params.toString()}`);
+		const queryString = params.toString();
+		router.push(`/dashboard/work-orders${queryString ? `?${queryString}` : ''}`);
+		router.refresh();
 		onClose();
 	};
 
@@ -81,15 +83,24 @@ export function WorkOrderFilters({
 		setStartDate('');
 		setEndDate('');
 		router.push('/dashboard/work-orders');
+		router.refresh();
 		onClose();
 	};
 
 	const getCustomerName = (customer: Customer) => {
 		if (customer.type === 'COMPANY') {
-			return customer.company_name || '-';
+			return customer.company_name || 'Namnlös kund';
 		}
-		return `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || '-';
+		const name = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+		return name || 'Namnlös kund';
 	};
+
+	// Debug: Log customers to console
+	useEffect(() => {
+		if (customers) {
+			console.log('[WorkOrderFilters] Customers:', customers.length, customers);
+		}
+	}, [customers]);
 
 	return (
 		<Card className='mb-4'>
@@ -154,11 +165,17 @@ export function WorkOrderFilters({
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value={ALL_VALUE}>Alla kunder</SelectItem>
-								{customers.map((customer) => (
-									<SelectItem key={customer.id} value={customer.id}>
-										{getCustomerName(customer)}
+								{customers && customers.length > 0 ? (
+									customers.map((customer) => (
+										<SelectItem key={customer.id} value={customer.id}>
+											{getCustomerName(customer)}
+										</SelectItem>
+									))
+								) : (
+									<SelectItem value='' disabled>
+										Inga kunder tillgängliga
 									</SelectItem>
-								))}
+								)}
 							</SelectContent>
 						</Select>
 					</div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Calendar, Filter, ClipboardList, CheckCircle2, ArrowRight, Lightbulb, Users, MapPin, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -61,6 +61,11 @@ export function WorkOrdersClient({
 	const [workOrders, setWorkOrders] = useState(initialWorkOrders);
 	const [showCreateModal, setShowCreateModal] = useState(false);
 	const [showFilters, setShowFilters] = useState(false);
+
+	// Sync workOrders state when initialWorkOrders prop changes (e.g., when filters are applied)
+	useEffect(() => {
+		setWorkOrders(initialWorkOrders);
+	}, [initialWorkOrders]);
 
 	const getStatusBadge = (status: string) => {
 		const variants: Record<string, string> = {

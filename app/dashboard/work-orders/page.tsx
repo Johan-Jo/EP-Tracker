@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
+import { isDemoRoute } from '@/lib/demo/is-demo-route';
 import { WorkOrdersClient } from './work-orders-client';
 import { PageTourTrigger } from '@/components/onboarding/page-tour-trigger';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,9 +17,13 @@ interface PageProps {
 export default async function WorkOrdersPage(props: PageProps) {
 	const searchParams = await props.searchParams;
 	
+	// Check if we're in demo mode
+	const inDemoMode = await isDemoRoute();
+	
 	const { user, membership } = await getSession();
 
-	if (!user) {
+	// Skip auth redirect if in demo mode
+	if (!inDemoMode && !user) {
 		redirect('/sign-in');
 	}
 
@@ -111,12 +116,16 @@ export default async function WorkOrdersPage(props: PageProps) {
 		.order('name')
 		.limit(1000);
 
-	const { data: customers } = await supabase
+	const { data: customers, error: customersError } = await supabase
 		.from('customers')
 		.select('id, type, company_name, first_name, last_name')
 		.eq('organization_id', membership.org_id)
 		.order('company_name, first_name, last_name')
 		.limit(1000);
+
+	if (customersError) {
+		console.error('Error fetching customers:', customersError);
+	}
 
 	// Get all active members for assignment filtering
 	const { data: memberships } = await supabase
