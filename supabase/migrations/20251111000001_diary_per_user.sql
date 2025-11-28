@@ -23,7 +23,7 @@ ALTER TABLE IF EXISTS diary_entries
 COMMENT ON CONSTRAINT diary_entries_project_user_date_key ON diary_entries IS
   'Ensure each user can have at most one diary entry per project and date';
 
--- 2. Refresh insert_diary_entry RPC with updated duplicate handling
+-- 2. Refresh insert_diary_entry RPC with updated duplicate handling and work_order_id support
 CREATE OR REPLACE FUNCTION insert_diary_entry(
   p_org_id uuid,
   p_project_id uuid,
@@ -38,7 +38,8 @@ CREATE OR REPLACE FUNCTION insert_diary_entry(
   p_deliveries text DEFAULT NULL,
   p_visitors text DEFAULT NULL,
   p_signature_name text DEFAULT NULL,
-  p_signature_timestamp timestamptz DEFAULT NULL
+  p_signature_timestamp timestamptz DEFAULT NULL,
+  p_work_order_id uuid DEFAULT NULL
 )
 RETURNS diary_entries
 LANGUAGE plpgsql
@@ -61,7 +62,8 @@ BEGIN
     deliveries,
     visitors,
     signature_name,
-    signature_timestamp
+    signature_timestamp,
+    work_order_id
   ) VALUES (
     p_org_id,
     p_project_id,
@@ -76,7 +78,8 @@ BEGIN
     p_deliveries,
     p_visitors,
     p_signature_name,
-    p_signature_timestamp
+    p_signature_timestamp,
+    p_work_order_id
   )
   RETURNING * INTO v_entry;
 
@@ -88,10 +91,10 @@ EXCEPTION
 END;
 $$;
 
-REVOKE ALL ON FUNCTION insert_diary_entry(uuid, uuid, uuid, date, text, integer, integer, text, text, text, text, text, text, timestamptz) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION insert_diary_entry(uuid, uuid, uuid, date, text, integer, integer, text, text, text, text, text, text, timestamptz) TO authenticated;
+REVOKE ALL ON FUNCTION insert_diary_entry(uuid, uuid, uuid, date, text, integer, integer, text, text, text, text, text, text, timestamptz, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION insert_diary_entry(uuid, uuid, uuid, date, text, integer, integer, text, text, text, text, text, text, timestamptz, uuid) TO authenticated;
 
 COMMENT ON FUNCTION insert_diary_entry IS
-  'Insert diary entry with DATE parameter and per-user uniqueness enforcement';
+  'Insert diary entry with DATE parameter, per-user uniqueness enforcement, and optional work_order_id';
 
 

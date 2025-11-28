@@ -181,28 +181,41 @@ export function DiaryFormNew({ orgId, userId, projectId, workOrderId, defaultDat
 			const dateString = date.trim();
 			
 			console.log('[Diary Form] Submitting date:', dateString);
+			console.log('[Diary Form] workOrderId prop:', workOrderId);
+			console.log('[Diary Form] selectedWorkOrderId state:', selectedWorkOrderId);
 			
-			// Ensure work_order_id is set if provided via prop
-			const finalWorkOrderId = workOrderId || selectedWorkOrderId || null;
+			// Ensure work_order_id is set if provided via prop or state
+			// Prefer prop over state, but use state if prop is not available
+			const finalWorkOrderId = (workOrderId && workOrderId.trim() !== '') 
+				? workOrderId 
+				: (selectedWorkOrderId && selectedWorkOrderId.trim() !== '') 
+					? selectedWorkOrderId 
+					: null;
+			
+			console.log('[Diary Form] finalWorkOrderId:', finalWorkOrderId);
+
+			const payload = {
+				project_id: project,
+				work_order_id: finalWorkOrderId,
+				date: dateString, // Pure YYYY-MM-DD string, PostgreSQL will treat as DATE
+				crew_count: staffCount ? parseInt(staffCount) : null,
+				weather: weather || null,
+				temperature_c: temperature ? parseFloat(temperature) : null,
+				work_performed: workPerformed || null,
+				obstacles: obstacles || null,
+				safety_notes: safety || null,
+				deliveries: deliveries || null,
+				visitors: visitors || null,
+				signature_name: signature,
+				signature_timestamp: new Date().toISOString(),
+			};
+			
+			console.log('[Diary Form] Submitting payload:', payload);
 
 			const response = await fetch('/api/diary', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					project_id: project,
-					work_order_id: finalWorkOrderId,
-					date: dateString, // Pure YYYY-MM-DD string, PostgreSQL will treat as DATE
-					crew_count: staffCount ? parseInt(staffCount) : null,
-					weather: weather || null,
-					temperature_c: temperature ? parseFloat(temperature) : null,
-					work_performed: workPerformed || null,
-					obstacles: obstacles || null,
-					safety_notes: safety || null,
-					deliveries: deliveries || null,
-					visitors: visitors || null,
-					signature_name: signature,
-					signature_timestamp: new Date().toISOString(),
-				}),
+				body: JSON.stringify(payload),
 			});
 
 			if (!response.ok) {
