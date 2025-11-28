@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ export function DiaryFormNew({ orgId, userId, projectId, workOrderId, defaultDat
 	const queryClient = useQueryClient();
 	
 	const [project, setProject] = useState(projectId || '');
+	const [selectedWorkOrderId, setSelectedWorkOrderId] = useState(workOrderId || '');
 	// Use local date to avoid timezone issues
 	const getLocalDateString = () => {
 		const now = new Date();
@@ -70,6 +71,32 @@ export function DiaryFormNew({ orgId, userId, projectId, workOrderId, defaultDat
 		},
 	});
 
+	// Fetch work order details if workOrderId is provided but projectId is not
+	const { data: workOrderDetails } = useQuery({
+		queryKey: ['work-order-details', workOrderId],
+		queryFn: async () => {
+			if (!workOrderId) return null;
+			const { data, error } = await supabase
+				.from('work_orders')
+				.select('id, project_id, work_order_number, title')
+				.eq('id', workOrderId)
+				.eq('organization_id', orgId)
+				.single();
+
+			if (error) throw error;
+			return data;
+		},
+		enabled: !!workOrderId && !projectId,
+		staleTime: 60 * 1000,
+	});
+
+	// Set project from work order if not provided
+	useEffect(() => {
+		if (workOrderDetails?.project_id && !project) {
+			setProject(workOrderDetails.project_id);
+		}
+	}, [workOrderDetails, project]);
+
 	// Fetch work orders for selected project
 	const { data: workOrders = [], isLoading: workOrdersLoading } = useQuery({
 		queryKey: ['work-orders-by-project', orgId, project],
@@ -89,11 +116,21 @@ export function DiaryFormNew({ orgId, userId, projectId, workOrderId, defaultDat
 		staleTime: 60 * 1000,
 	});
 
-	// Reset work order when project changes
+	// Reset work order when project changes (unless workOrderId prop is set)
 	const handleProjectChange = (newProjectId: string) => {
 		setProject(newProjectId);
-		setSelectedWorkOrderId('');
+		// Only reset if workOrderId wasn't provided as prop
+		if (!workOrderId) {
+			setSelectedWorkOrderId('');
+		}
 	};
+
+	// Update selectedWorkOrderId when workOrderId prop changes
+	useEffect(() => {
+		if (workOrderId) {
+			setSelectedWorkOrderId(workOrderId);
+		}
+	}, [workOrderId]);
 
 	const weatherOptions = [
 		{ value: 'sunny', label: '☀️ Soligt', icon: Sun },
@@ -145,12 +182,15 @@ export function DiaryFormNew({ orgId, userId, projectId, workOrderId, defaultDat
 			
 			console.log('[Diary Form] Submitting date:', dateString);
 			
+			// Ensure work_order_id is set if provided via prop
+			const finalWorkOrderId = workOrderId || selectedWorkOrderId || null;
+
 			const response = await fetch('/api/diary', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					project_id: project,
-					work_order_id: selectedWorkOrderId || null,
+					work_order_id: finalWorkOrderId,
 					date: dateString, // Pure YYYY-MM-DD string, PostgreSQL will treat as DATE
 					crew_count: staffCount ? parseInt(staffCount) : null,
 					weather: weather || null,
@@ -305,7 +345,11 @@ export function DiaryFormNew({ orgId, userId, projectId, workOrderId, defaultDat
 									Inga arbetsorder kopplade till detta projekt ännu.
 								</p>
 							) : (
-								<Select value={selectedWorkOrderId || 'none'} onValueChange={(value) => setSelectedWorkOrderId(value === 'none' ? '' : value)}>
+								<Select 
+									value={selectedWorkOrderId || 'none'} 
+									onValueChange={(value) => setSelectedWorkOrderId(value === 'none' ? '' : value)}
+									disabled={!!workOrderId} // Disable if workOrderId comes from prop
+								>
 									<SelectTrigger id='workOrder' className='h-11'>
 										<SelectValue placeholder='Välj arbetsorder (eller lämna tomt)' />
 									</SelectTrigger>
@@ -319,6 +363,11 @@ export function DiaryFormNew({ orgId, userId, projectId, workOrderId, defaultDat
 										))}
 									</SelectContent>
 								</Select>
+							)}
+							{workOrderId && (
+								<p className='text-xs text-muted-foreground'>
+									Arbetsordern är kopplad till denna dagbokspost och kan inte ändras
+								</p>
 							)}
 						</div>
 					)}
