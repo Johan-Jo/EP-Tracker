@@ -295,12 +295,25 @@ export function DiaryFormNew({ orgId, userId, projectId, workOrderId, defaultDat
 		setShowVoiceDialog(open);
 	};
 
-	const handleSign = () => {
-		if (!signature.trim()) {
-			toast.error('Vänligen skriv ditt fullständiga namn');
-			return;
+	const handleSign = (e?: React.MouseEvent) => {
+		e?.preventDefault();
+		e?.stopPropagation();
+		
+		try {
+			console.log('[Diary Form] handleSign called, signature:', signature);
+			
+			if (!signature || !signature.trim()) {
+				console.log('[Diary Form] Signature is empty');
+				toast.error('Vänligen skriv ditt fullständiga namn');
+				return;
+			}
+			
+			console.log('[Diary Form] Showing success toast');
+			toast.success(`Signatur bekräftad: ${signature}`);
+		} catch (error) {
+			console.error('[Diary Form] Error in handleSign:', error);
+			toast.error('Ett fel uppstod vid signering');
 		}
-		toast.success(`Signatur bekräftad: ${signature}`);
 	};
 
 	return (
@@ -584,7 +597,11 @@ export function DiaryFormNew({ orgId, userId, projectId, workOrderId, defaultDat
 							<Button
 								type='button'
 								variant='outline'
-								onClick={handleSign}
+								onClick={(e) => {
+									e.preventDefault();
+									e.stopPropagation();
+									handleSign(e);
+								}}
 								className='shrink-0'
 							>
 								Signera
