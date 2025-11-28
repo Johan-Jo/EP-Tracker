@@ -248,7 +248,7 @@ export function AddTimeEntryModal({
 			billing_type: normalizedBillingType as BillingType,
 			fixed_block_id: data.fixed_block_id ?? null,
 			ata_id: null, // ÄTA should not be used with work orders
-			work_order_id: workOrderId || data.work_order_id ?? null, // Always use prop if available
+			work_order_id: workOrderId ?? data.work_order_id ?? null, // Always use prop if available
 		};
 
 		try {
