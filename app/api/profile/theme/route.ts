@@ -11,6 +11,11 @@ export async function GET() {
 			return NextResponse.json({ error: 'Inte autentiserad' }, { status: 401 });
 		}
 
+		// In demo mode, return default theme (no database query needed)
+		if (user.id === 'demo-user-id') {
+			return NextResponse.json({ theme: null });
+		}
+
 		const supabase = await createClient();
 		const { data, error } = await supabase
 			.from('profiles')
@@ -38,6 +43,17 @@ export async function POST(request: NextRequest) {
 
 		if (!user) {
 			return NextResponse.json({ error: 'Inte autentiserad' }, { status: 401 });
+		}
+
+		// In demo mode, return success but don't save (read-only)
+		if (user.id === 'demo-user-id') {
+			const body = await request.json().catch(() => ({}));
+			const theme = body?.theme;
+			if (theme !== 'light' && theme !== 'dark') {
+				return NextResponse.json({ error: 'Ogiltigt tema. Måste vara \"light\" eller \"dark\".' }, { status: 400 });
+			}
+			// Return success but don't persist in demo mode
+			return NextResponse.json({ success: true, theme });
 		}
 
 		const body = await request.json().catch(() => ({}));

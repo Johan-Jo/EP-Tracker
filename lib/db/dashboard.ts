@@ -134,6 +134,17 @@ function logError(context: string, error: unknown) {
  * - Additional indexes for faster lookups
  */
 export async function getDashboardStats(userId: string, orgId: string, startDate?: Date) {
+	// Handle demo mode: return default stats if userId is invalid
+	if (!userId || userId === 'demo-user-placeholder' || !userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+		// For demo mode, return default stats
+		return {
+			active_projects: 0,
+			total_hours_week: 0,
+			total_materials_week: 0,
+			total_time_entries_week: 0,
+		};
+	}
+
 	try {
 		const supabase = await createClient();
 
@@ -189,6 +200,16 @@ export async function getDashboardStats(userId: string, orgId: string, startDate
  * Fallback: Non-cached stats (used if cache fails)
  */
 async function getDashboardStatsUncached(userId: string, orgId: string, startDate?: Date) {
+	// Handle demo mode: return default stats if userId is invalid
+	if (!userId || userId === 'demo-user-placeholder' || !userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+		return {
+			active_projects: 0,
+			total_hours_week: 0,
+			total_materials_week: 0,
+			total_time_entries_week: 0,
+		};
+	}
+
 	try {
 		const supabase = await createClient();
 
@@ -391,6 +412,11 @@ async function attachDiarySummaries(
 }
 
 export async function getRecentActivities(orgId: string, limit: number = 15): Promise<DashboardActivity[]> {
+	// Validate orgId
+	if (!orgId || !orgId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+		return [];
+	}
+
 	const supabase = await createClient();
 
 	// EPIC 26.9: Try fast activity log query first (Phase B)
@@ -400,7 +426,13 @@ export async function getRecentActivities(orgId: string, limit: number = 15): Pr
 	});
 
 	if (error) {
-		logError('Error fetching fast activities', error);
+		// Only log non-RLS errors (RLS errors are expected for demo mode)
+		if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+			const errorCode = 'code' in error ? (error as { code?: string }).code : null;
+			if (errorCode !== 'PGRST301' && errorCode !== '42501') {
+				logError('Error fetching fast activities', error);
+			}
+		}
 		// Fallback to old UNION query if activity log fails
 		return await getRecentActivitiesLegacy(orgId, limit);
 	}
@@ -427,6 +459,11 @@ export async function getRecentActivities(orgId: string, limit: number = 15): Pr
  * Fallback: Legacy UNION ALL query (used if activity_log fails)
  */
 async function getRecentActivitiesLegacy(orgId: string, limit: number = 15): Promise<DashboardActivity[]> {
+	// Validate orgId
+	if (!orgId || !orgId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+		return [];
+	}
+
 	const supabase = await createClient();
 
 	const { data, error } = await supabase.rpc('get_recent_activities', {
@@ -435,7 +472,13 @@ async function getRecentActivitiesLegacy(orgId: string, limit: number = 15): Pro
 	});
 
 	if (error) {
-		logError('Error fetching legacy activities', error);
+		// Only log non-RLS errors
+		if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+			const errorCode = 'code' in error ? (error as { code?: string }).code : null;
+			if (errorCode !== 'PGRST301' && errorCode !== '42501') {
+				logError('Error fetching legacy activities', error);
+			}
+		}
 		return [];
 	}
 
@@ -462,6 +505,11 @@ async function getRecentActivitiesLegacy(orgId: string, limit: number = 15): Pro
  * (Kept separate as it's a simple, user-specific query)
  */
 export async function getActiveTimeEntry(userId: string) {
+	// Skip query for demo mode placeholder user or invalid UUIDs
+	if (!userId || userId === '' || userId === 'demo-user-placeholder' || !userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+		return null;
+	}
+
 	const supabase = await createClient();
 
 	try {
@@ -481,18 +529,30 @@ export async function getActiveTimeEntry(userId: string) {
 			.maybeSingle();
 
 		if (error) {
-			console.error('[DASHBOARD] Error fetching active time entry:', {
-				code: error.code,
-				message: error.message,
-				details: error.details,
-				hint: error.hint,
-			});
+			// Only log meaningful errors (skip empty objects and expected RLS/auth errors)
+			if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+				// Skip RLS and auth errors for invalid user IDs (expected in demo mode)
+				if (error.code !== 'PGRST301' && error.code !== '42501' && error.code !== 'PGRST116') {
+					console.error('[DASHBOARD] Error fetching active time entry:', {
+						code: error.code,
+						message: error.message,
+						details: error.details,
+						hint: error.hint,
+					});
+				}
+			}
 			return null;
 		}
 
 		return data;
 	} catch (err) {
-		console.error('[DASHBOARD] Exception fetching active time entry:', err);
+		// Only log unexpected errors (skip empty objects)
+		if (err && typeof err === 'object' && Object.keys(err).length > 0) {
+			const errMessage = err instanceof Error ? err.message : String(err);
+			if (!errMessage.includes('PGRST301') && !errMessage.includes('42501')) {
+				console.error('[DASHBOARD] Exception fetching active time entry:', err);
+			}
+		}
 		return null;
 	}
 }
@@ -505,6 +565,11 @@ export async function getActiveTimeEntry(userId: string) {
  * (Kept separate as it's needed for the UI)
  */
 export async function getActiveProjects(orgId: string) {
+	// Validate orgId
+	if (!orgId || !orgId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+		return [];
+	}
+
 	const supabase = await createClient();
 
 	const { data, error } = await supabase
@@ -516,7 +581,13 @@ export async function getActiveProjects(orgId: string) {
 		.limit(200); // ✅ PERFORMANCE: Limit to prevent loading too many projects
 
 	if (error) {
-		logError('Error fetching active projects', error);
+		// Only log non-RLS errors
+		if (error && typeof error === 'object' && Object.keys(error).length > 0) {
+			const errorCode = 'code' in error ? (error as { code?: string }).code : null;
+			if (errorCode !== 'PGRST301' && errorCode !== '42501') {
+				logError('Error fetching active projects', error);
+			}
+		}
 		return [];
 	}
 

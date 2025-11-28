@@ -31,6 +31,10 @@ const config: Config = {
 			tsconfig: '<rootDir>/tsconfig.json',
 		},
 	},
+	// Support jsdom environment for component tests
+	testEnvironmentOptions: {
+		customExportConditions: [''],
+	},
 };
 
 export default config;

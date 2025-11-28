@@ -46,6 +46,7 @@ export async function middleware(request: NextRequest) {
 	const protectedRoutes = ['/dashboard', '/projects', '/time', '/approvals', '/settings'];
 	const authRoutes = ['/sign-in', '/sign-up', '/verify-email', '/invite-callback', '/set-password'];
 	const superAdminRoutes = ['/super-admin'];
+	const publicRoutes = ['/demo']; // Demo routes are public (no auth required)
 
 	const isProtectedRoute = protectedRoutes.some((route) =>
 		request.nextUrl.pathname.startsWith(route)
@@ -54,6 +55,9 @@ export async function middleware(request: NextRequest) {
 		request.nextUrl.pathname.startsWith(route)
 	);
 	const isSuperAdminRoute = superAdminRoutes.some((route) =>
+		request.nextUrl.pathname.startsWith(route)
+	);
+	const isPublicRoute = publicRoutes.some((route) =>
 		request.nextUrl.pathname.startsWith(route)
 	);
 
@@ -77,11 +81,80 @@ export async function middleware(request: NextRequest) {
 		}
 	}
 
+	// Check if this is a demo route
+	const isDemoRoute = request.nextUrl.pathname.startsWith('/demo');
+	
+	// Handle /demo root route - redirect to /dashboard with cookie set
+	if (request.nextUrl.pathname === '/demo') {
+		const url = request.nextUrl.clone();
+		url.pathname = '/dashboard';
+		const redirectResponse = NextResponse.redirect(url);
+		redirectResponse.cookies.set('isDemoRoute', 'true', {
+			path: '/',
+			maxAge: 60 * 60 * 24, // 24 hours
+			httpOnly: true,
+			sameSite: 'lax',
+			secure: process.env.NODE_ENV === 'production',
+		});
+		return redirectResponse;
+	}
+	
+	// Handle /demo/* routes - redirect to /dashboard/* with cookie set
+	if (isDemoRoute && request.nextUrl.pathname !== '/demo') {
+		const demoPath = request.nextUrl.pathname.replace('/demo', '').replace(/^\//, '');
+		if (demoPath) {
+			const url = request.nextUrl.clone();
+			url.pathname = `/dashboard/${demoPath}`;
+			const redirectResponse = NextResponse.redirect(url);
+			redirectResponse.cookies.set('isDemoRoute', 'true', {
+				path: '/',
+				maxAge: 60 * 60 * 24, // 24 hours
+				httpOnly: true,
+				sameSite: 'lax',
+				secure: process.env.NODE_ENV === 'production',
+			});
+			return redirectResponse;
+		}
+	}
+
+	// Check if demo cookie exists (even if pathname is /dashboard)
+	const hasDemoCookie = request.cookies.get('isDemoRoute')?.value === 'true';
+	
 	// Redirect to sign-in if accessing protected route without auth
-	if (isProtectedRoute && !user) {
+	// (but allow public routes like /demo, all /demo/* routes, and /dashboard with demo cookie)
+	if (isProtectedRoute && !isPublicRoute && !isDemoRoute && !hasDemoCookie && !user) {
 		const url = request.nextUrl.clone();
 		url.pathname = '/sign-in';
 		return NextResponse.redirect(url);
+	}
+
+	// Set demo route cookie for server-side detection
+	// Keep cookie even when redirecting to /dashboard routes (for demo mode)
+	if (isDemoRoute) {
+		supabaseResponse.cookies.set('isDemoRoute', 'true', {
+			path: '/',
+			maxAge: 60 * 60 * 24, // 24 hours
+			httpOnly: true,
+			sameSite: 'lax',
+			secure: process.env.NODE_ENV === 'production',
+		});
+	} else if (isProtectedRoute) {
+		// If we're on a protected route and cookie already exists, keep it
+		// This handles the case when redirecting from /demo/* to /dashboard/*
+		const existingCookie = request.cookies.get('isDemoRoute');
+		if (existingCookie?.value === 'true') {
+			supabaseResponse.cookies.set('isDemoRoute', 'true', {
+				path: '/',
+				maxAge: 60 * 60 * 24, // 24 hours
+				httpOnly: true,
+				sameSite: 'lax',
+				secure: process.env.NODE_ENV === 'production',
+			});
+		}
+	}
+	// Only clear cookie if explicitly leaving demo mode (e.g., going to /sign-in or landing page)
+	if (!isDemoRoute && !isProtectedRoute && (request.nextUrl.pathname.startsWith('/sign-in') || request.nextUrl.pathname === '/')) {
+		supabaseResponse.cookies.delete('isDemoRoute');
 	}
 
 	// Super Admin route protection

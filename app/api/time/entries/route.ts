@@ -5,6 +5,7 @@ import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached sess
 import { sendTeamCheckInNotification } from '@/lib/notifications'; // EPIC 25: Push notifications
 import { calculateWorkMinutes } from '@/lib/utils/break-deduction';
 import { sendWorkOrderTimeApprovalEmail } from '@/lib/work-orders/send-time-approval-email';
+import { checkDemoMode } from '@/lib/demo/check-demo-mode';
 
 // GET /api/time/entries - List time entries with filters
 export async function GET(request: NextRequest) {
@@ -12,30 +13,26 @@ export async function GET(request: NextRequest) {
 	console.warn('🔍 [TIME ENTRIES API] GET request received');
 	
 	try {
-		const supabase = await createClient();
-		const { data: { user }, error: authError } = await supabase.auth.getUser();
+		// Use getSession() to support demo mode
+		const { user, membership } = await getSession();
 
-		if (authError || !user) {
-			console.error('❌ [TIME ENTRIES API] Auth error:', authError);
+		if (!user || !membership) {
+			console.error('❌ [TIME ENTRIES API] Auth error: no user or membership');
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
 		console.warn('🔍 [TIME ENTRIES API] User authenticated:', user.id);
 
-		// Get user's organization
-		const { data: membership } = await supabase
-			.from('memberships')
-			.select('org_id, role')
-			.eq('user_id', user.id)
-			.eq('is_active', true)
-			.single();
-
-		if (!membership) {
-			console.error('❌ [TIME ENTRIES API] No membership found for user:', user.id);
-			return NextResponse.json({ error: 'No active organization membership' }, { status: 403 });
+		// Check if in demo mode
+		const demoCheck = await checkDemoMode(membership.org_id);
+		if (demoCheck.isDemoMode && demoCheck.demoOrgId) {
+			// Use demo org ID for queries
+			membership.org_id = demoCheck.demoOrgId;
 		}
 
 		console.warn('🔍 [TIME ENTRIES API] Membership found:', { org_id: membership.org_id, role: membership.role });
+
+		const supabase = await createClient();
 
 	// Parse query parameters
 	const searchParams = request.nextUrl.searchParams;
@@ -117,7 +114,8 @@ export async function GET(request: NextRequest) {
 	}
 
 	// Workers only see their own entries; admin/foreman/finance see all
-	if (membership.role === 'worker') {
+	// In demo mode, show all entries regardless of role
+	if (membership.role === 'worker' && !demoCheck.isDemoMode) {
 		query = query.eq('user_id', user.id);
 	}
 
@@ -239,7 +237,8 @@ export async function GET(request: NextRequest) {
 		// This is much faster than calculating on client-side from all entries
 		let stats = null;
 		if (include_stats) {
-			const effectiveUserId = membership.role === 'worker' ? user.id : (user_id || null);
+			// In demo mode, don't filter by user_id for stats
+			const effectiveUserId = (demoCheck.isDemoMode || membership.role !== 'worker') ? (user_id || null) : user.id;
 			
 			// Build stats query with same filters, but only fetch minimal columns needed
 			let statsQuery = supabase
@@ -317,6 +316,17 @@ export async function POST(request: NextRequest) {
 	try {
 		// EPIC 26: Use cached session (saves 2 queries)
 		const { user, membership } = await getSession();
+
+		// Block writes in demo mode
+		if (membership) {
+			const demoCheck = await checkDemoMode(membership.org_id);
+			if (demoCheck.isDemoMode) {
+				return NextResponse.json(
+					{ error: 'Den här åtgärden är avstängd i demo. Skapa ett riktigt konto för att använda funktionen.' },
+					{ status: 403 }
+				);
+			}
+		}
 
 		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

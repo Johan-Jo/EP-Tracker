@@ -37,6 +37,8 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+ENABLE_DEMO=false  # Server-side: Set to 'true' to enable demo mode (public /demo route)
+NEXT_PUBLIC_ENABLE_DEMO=false  # Client-side: Set to 'true' to show demo links on landing page
 ```
 
 4. Run Supabase migrations (see supabase/migrations/)
@@ -48,6 +50,38 @@ npm run dev
 ```
 
 6. Open [http://localhost:3000](http://localhost:3000)
+
+## Demo Mode
+
+EP-Tracker includes a demo mode feature that allows unregistered users to explore the application with example data.
+
+### Enabling Demo Mode
+
+1. Set `ENABLE_DEMO=true` in your `.env.local` file
+2. Run the demo data seed script:
+   ```bash
+   npx tsx scripts/seed-demo-data.ts
+   ```
+3. Access the demo at `/demo` (no authentication required)
+
+### Seeding Demo Data
+
+The demo organization includes comprehensive sample data:
+- 4-5 customers (BRF, municipality, private, company)
+- 6-8 users with different roles
+- 8+ projects with varying statuses
+- 30+ diary entries
+- 3 weeks of time entries
+- Materials, expenses, ÄTA entries, work orders, and more
+
+To reset demo data:
+```bash
+npx tsx scripts/seed-demo-data.ts --reset
+```
+
+### Example Mode for Logged-In Users
+
+Logged-in users can toggle "Visa exempelbolag" (View example organization) from their user menu to view the demo organization's data instead of their own. This is useful for training and demonstrations.
 
 ## Project Structure
 

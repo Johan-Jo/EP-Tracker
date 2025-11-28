@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
+import { isDemoRoute } from '@/lib/demo/is-demo-route';
 import { getFortnoxConnectionForOrg } from '@/lib/integrations/fortnox/client';
 import EmployeesClient from './employees-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,10 +17,14 @@ interface PageProps {
 export default async function EmployeesPage(props: PageProps) {
 	const searchParams = await props.searchParams;
 	
+	// Check if we're in demo mode
+	const inDemoMode = await isDemoRoute();
+	
 	// Use cached session
 	const { user, membership } = await getSession();
 
-	if (!user) {
+	// Skip auth redirect if in demo mode
+	if (!inDemoMode && !user) {
 		redirect('/sign-in');
 	}
 

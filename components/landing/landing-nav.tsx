@@ -4,6 +4,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 
+// Check if demo mode is enabled (client-side check)
+const isDemoEnabled = process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true';
+
 export function LandingNav() {
     return (
         <nav className="sticky top-0 z-50 w-full border-b border-gray-800 bg-black/95 backdrop-blur-xl">
@@ -23,6 +26,16 @@ export function LandingNav() {
                     </div>
 
                     <div className="flex items-center gap-4">
+                        {isDemoEnabled && (
+                            <Link href="/demo">
+                                <Button
+                                    variant="ghost"
+                                    className="font-semibold text-blue-400 hover:text-blue-300"
+                                >
+                                    Prova demo
+                                </Button>
+                            </Link>
+                        )}
                         <Link href="/sign-in">
                             <Button
                                 variant="ghost"

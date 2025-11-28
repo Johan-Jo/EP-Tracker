@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
+import { isDemoRoute } from '@/lib/demo/is-demo-route';
 import { TimePageNew } from '@/components/time/time-page-new';
 
 interface PageProps {
@@ -30,7 +31,11 @@ export default async function TimePage(props: PageProps) {
 
 		const { user, membership } = session || { user: null, membership: null };
 
-		if (!user) {
+		// Check if we're in demo mode
+		const inDemoMode = await isDemoRoute();
+
+		// Skip auth redirect if in demo mode
+		if (!inDemoMode && !user) {
 			redirect('/sign-in');
 		}
 
