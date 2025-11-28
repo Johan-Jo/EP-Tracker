@@ -180,16 +180,19 @@ export function DiaryFormNew({ orgId, userId, projectId, workOrderId, defaultDat
 			// PostgreSQL DATE type should be sent as pure date string (no time component)
 			const dateString = date.trim();
 			
+			// Safely get selectedWorkOrderId - ensure it's always defined
+			const currentSelectedWorkOrderId = selectedWorkOrderId || '';
+			
 			console.log('[Diary Form] Submitting date:', dateString);
 			console.log('[Diary Form] workOrderId prop:', workOrderId);
-			console.log('[Diary Form] selectedWorkOrderId state:', selectedWorkOrderId);
+			console.log('[Diary Form] selectedWorkOrderId state:', currentSelectedWorkOrderId);
 			
 			// Ensure work_order_id is set if provided via prop or state
 			// Prefer prop over state, but use state if prop is not available
 			const finalWorkOrderId = (workOrderId && workOrderId.trim() !== '') 
 				? workOrderId 
-				: (selectedWorkOrderId && selectedWorkOrderId.trim() !== '') 
-					? selectedWorkOrderId 
+				: (currentSelectedWorkOrderId && currentSelectedWorkOrderId.trim() !== '') 
+					? currentSelectedWorkOrderId 
 					: null;
 			
 			console.log('[Diary Form] finalWorkOrderId:', finalWorkOrderId);
@@ -359,7 +362,7 @@ export function DiaryFormNew({ orgId, userId, projectId, workOrderId, defaultDat
 								</p>
 							) : (
 								<Select 
-									value={selectedWorkOrderId || 'none'} 
+									value={(selectedWorkOrderId ?? '') || 'none'} 
 									onValueChange={(value) => setSelectedWorkOrderId(value === 'none' ? '' : value)}
 									disabled={!!workOrderId} // Disable if workOrderId comes from prop
 								>
