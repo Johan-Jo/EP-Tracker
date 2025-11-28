@@ -16,7 +16,8 @@ import { SyncStatus } from '@/components/core/sync-status';
 import DarkModeToggle from './dark-mode-toggle';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useDemoMode } from '@/lib/demo/demo-context';
 
 interface TopNavProps {
 	userEmail?: string;
@@ -26,6 +27,8 @@ interface TopNavProps {
 export function TopNav({ userEmail, userName }: TopNavProps) {
 	const router = useRouter();
 	const [isLoggingOut, setIsLoggingOut] = useState(false);
+	const { mode, setMode } = useDemoMode();
+	const [isToggling, setIsToggling] = useState(false);
 
 	const initials = userName
 		? userName
@@ -55,6 +58,33 @@ export function TopNav({ userEmail, userName }: TopNavProps) {
 		} catch (error) {
 			console.error('Sign out error:', error);
 			setIsLoggingOut(false);
+		}
+	};
+
+	const handleToggleExampleMode = async () => {
+		if (isToggling) return;
+		
+		setIsToggling(true);
+		try {
+			const newMode = mode === 'exampleOrg' ? 'none' : 'exampleOrg';
+			const res = await fetch('/api/demo/toggle-example-mode', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ enabled: newMode === 'exampleOrg' }),
+			});
+
+			if (res.ok) {
+				setMode(newMode);
+				router.refresh();
+			} else {
+				console.error('Failed to toggle example mode');
+			}
+		} catch (error) {
+			console.error('Error toggling example mode:', error);
+		} finally {
+			setIsToggling(false);
 		}
 	};
 
@@ -108,7 +138,15 @@ export function TopNav({ userEmail, userName }: TopNavProps) {
 							<DropdownMenuItem asChild>
 								<Link href='/dashboard/settings/profile'>Profil</Link>
 							</DropdownMenuItem>
-						<DropdownMenuSeparator />
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								onClick={handleToggleExampleMode}
+								disabled={isToggling}
+								className='cursor-pointer'
+							>
+								{mode === 'exampleOrg' ? 'Tillbaka till mitt konto' : 'Visa exempelbolag'}
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
 						<DropdownMenuItem
 							onClick={handleSignOut}
 							disabled={isLoggingOut}

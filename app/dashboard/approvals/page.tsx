@@ -1,11 +1,16 @@
 import { getSession } from '@/lib/auth/get-session';
 import { redirect } from 'next/navigation';
+import { isDemoRoute } from '@/lib/demo/is-demo-route';
 import ApprovalsPageNew from '@/components/approvals/approvals-page-new';
 
 export default async function ApprovalsPage() {
+	// Check if we're in demo mode
+	const inDemoMode = await isDemoRoute();
+	
 	const { user, membership } = await getSession();
 
-	if (!user) {
+	// Skip auth redirect if in demo mode
+	if (!inDemoMode && !user) {
 		redirect('/sign-in');
 	}
 

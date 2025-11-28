@@ -27,6 +27,7 @@ import { ProjectAlertSettings } from './project-alert-settings';
 import { QRDialog } from '@/components/worksites/qr-dialog';
 import { CustomerSelect } from '@/components/customers/customer-select';
 import { useCustomer } from '@/lib/hooks/use-customers';
+import { getProjectMapUrl } from '@/lib/projects/map';
 
 interface ProjectFormProps {
 	project?: ProjectFormData & { id?: string };
@@ -117,6 +118,8 @@ const [error, setError] = useState<string | null>(null);
 const budgetMode = watch('budget_mode');
 const status = watch('status');
 const siteAddress = watch('site_address');
+const siteLat = watch('site_lat');
+const siteLon = watch('site_lon');
 const customerId = watch('customer_id');
 const addr1 = watch('address_line1');
 const postal = watch('postal_code');
@@ -454,6 +457,34 @@ const showLopandeFields = billingMode === 'LOPANDE_ONLY' || billingMode === 'BOT
 						{errors.site_address && (
 							<p className='text-sm text-destructive'>{errors.site_address.message}</p>
 						)}
+						{(() => {
+							const mapUrl = getProjectMapUrl({
+								site_address: siteAddress,
+								site_lat: siteLat,
+								site_lon: siteLon,
+							});
+							return mapUrl ? (
+								<div className='mt-2 rounded-lg overflow-hidden border border-border/50'>
+									<img
+										src={mapUrl}
+										alt='Karta över projektplatsen'
+										className='w-full h-auto'
+										loading='lazy'
+										onError={(e) => {
+											console.error('[ProjectMap] Failed to load map image:', mapUrl);
+											// Hide image if it fails to load
+											const img = e.target as HTMLImageElement;
+											img.style.display = 'none';
+											// Optionally show error message
+											const container = img.parentElement;
+											if (container) {
+												container.innerHTML = '<p class="text-sm text-muted-foreground p-4 text-center">Kartan kunde inte laddas</p>';
+											}
+										}}
+									/>
+								</div>
+							) : null;
+						})()}
 					</div>
 
 				<div className='grid gap-4 md:grid-cols-2'>

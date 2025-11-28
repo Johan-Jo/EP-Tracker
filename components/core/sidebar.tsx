@@ -24,6 +24,7 @@ import {
 	ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDemoMode } from '@/lib/demo/demo-context';
 
 type UserRole = 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 
@@ -184,6 +185,31 @@ interface SidebarProps {
 
 export function Sidebar({ userRole }: SidebarProps) {
 	const pathname = usePathname();
+	const { isDemoMode } = useDemoMode();
+
+	// Helper function to make hrefs demo-aware
+	const getDemoAwareHref = (href: string): string => {
+		// Only convert to /demo/* if we're currently on a /demo route
+		// If we're already on /dashboard/* (with demo cookie), keep /dashboard/* links
+		const isCurrentlyOnDemoRoute = pathname.startsWith('/demo');
+		
+		if (isDemoMode && isCurrentlyOnDemoRoute && href.startsWith('/dashboard')) {
+			// Replace /dashboard with /demo
+			return href.replace('/dashboard', '/demo');
+		}
+		return href;
+	};
+
+	// Helper function to check if path is active (handles both /dashboard and /demo paths)
+	const isPathActive = (href: string, currentPath: string): boolean => {
+		if (href === '/dashboard') {
+			// Exact match for dashboard root
+			return currentPath === '/dashboard' || currentPath === '/demo';
+		}
+		// For other paths, check if current path starts with href or demo version
+		const demoHref = href.replace('/dashboard', '/demo');
+		return currentPath.startsWith(href) || currentPath.startsWith(demoHref);
+	};
 
 	const visibleNavItems = navItems.filter((item) => item.roles.includes(userRole));
 	const visibleSettingsItems = settingsItems.filter((item) => item.roles.includes(userRole));
@@ -193,7 +219,7 @@ export function Sidebar({ userRole }: SidebarProps) {
 		<aside className='hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col border-r border-[var(--color-sidebar-border)] bg-[var(--color-sidebar)] text-[var(--color-sidebar-foreground)]'>
 			<div className='flex flex-col flex-1 min-h-0'>
 				<div className='flex items-center justify-start border-b border-[var(--color-sidebar-border)] bg-[var(--color-sidebar)] px-3 py-[6.5px]'>
-					<Link href='/dashboard' className='flex items-center justify-start'>
+					<Link href={getDemoAwareHref('/dashboard')} className='flex items-center justify-start'>
 						<img
 							src='/images/EP-Flat.png'
 							alt='EP Tracker'
@@ -204,11 +230,10 @@ export function Sidebar({ userRole }: SidebarProps) {
 
 				<nav className='flex-1 space-y-1 overflow-y-auto px-4 pb-4 pt-[16px] sm:pt-6'>
 					{visibleNavItems.map((item) => {
-						// For dashboard, exact match. For others, check if pathname starts with href
-						const isActive = item.href === '/dashboard' 
-							? pathname === item.href 
-							: pathname.startsWith(item.href);
+						// Use demo-aware active check
+						const isActive = isPathActive(item.href, pathname);
 						const Icon = item.icon;
+						const demoAwareHref = getDemoAwareHref(item.href);
 						
 						// Filter sub-items based on user role
 						const visibleSubItems = item.subItems?.filter(subItem => 
@@ -218,7 +243,7 @@ export function Sidebar({ userRole }: SidebarProps) {
 						return (
 							<div key={item.href}>
 								<Link
-									href={item.href}
+									href={demoAwareHref}
 									className={cn(
 										'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
 										isActive
@@ -239,13 +264,14 @@ export function Sidebar({ userRole }: SidebarProps) {
 								{isActive && visibleSubItems.length > 0 && (
 									<div className='ml-8 mt-1 space-y-1'>
 										{visibleSubItems.map((subItem) => {
-											const isSubItemActive = pathname === subItem.href;
+											const isSubItemActive = isPathActive(subItem.href, pathname);
 											const SubIcon = subItem.icon;
+											const demoAwareSubHref = getDemoAwareHref(subItem.href);
 											
 											return (
 												<Link
 													key={subItem.href}
-													href={subItem.href}
+													href={demoAwareSubHref}
 													className={cn(
 														'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
 														isSubItemActive
@@ -273,13 +299,14 @@ export function Sidebar({ userRole }: SidebarProps) {
 								ADMINISTRATION
 							</p>
 							{visibleSettingsItems.map((item) => {
-								const isActive = pathname === item.href;
+								const isActive = isPathActive(item.href, pathname);
 								const Icon = item.icon;
+								const demoAwareHref = getDemoAwareHref(item.href);
 
 								return (
 									<Link
 										key={item.href}
-										href={item.href}
+										href={demoAwareHref}
 										className={cn(
 											'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
 											isActive

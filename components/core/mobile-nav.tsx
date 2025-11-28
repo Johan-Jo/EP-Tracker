@@ -24,6 +24,7 @@ import {
 	ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDemoMode } from '@/lib/demo/demo-context';
 
 type UserRole = 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 
@@ -156,15 +157,40 @@ interface MobileNavProps {
 
 export function MobileNav({ userRole }: MobileNavProps) {
 	const pathname = usePathname();
+	const { isDemoMode } = useDemoMode();
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [pressedItem, setPressedItem] = useState<string | null>(null);
+
+	// Helper function to make hrefs demo-aware
+	const getDemoAwareHref = (href: string): string => {
+		// Only convert to /demo/* if we're currently on a /demo route
+		// If we're already on /dashboard/* (with demo cookie), keep /dashboard/* links
+		const isCurrentlyOnDemoRoute = pathname.startsWith('/demo');
+		
+		if (isDemoMode && isCurrentlyOnDemoRoute && href.startsWith('/dashboard')) {
+			// Replace /dashboard with /demo
+			return href.replace('/dashboard', '/demo');
+		}
+		return href;
+	};
+
+	// Helper function to check if path is active (handles both /dashboard and /demo paths)
+	const isPathActive = (href: string, currentPath: string): boolean => {
+		if (href === '/dashboard') {
+			// Exact match for dashboard root
+			return currentPath === '/dashboard' || currentPath === '/demo';
+		}
+		// For other paths, check if current path starts with href or demo version
+		const demoHref = href.replace('/dashboard', '/demo');
+		return currentPath.startsWith(href) || currentPath.startsWith(demoHref);
+	};
 
 	// Filter items based on user role
 	const visibleMainItems = mainNavItems.filter((item) => item.roles.includes(userRole));
 	const visibleMenuItems = menuItems.filter((item) => item.roles.includes(userRole));
 
-	// Check if current path is in menu items
-	const isMenuActive = visibleMenuItems.some((item) => pathname.startsWith(item.href));
+	// Check if current path is in menu items (demo-aware)
+	const isMenuActive = visibleMenuItems.some((item) => isPathActive(item.href, pathname));
 
 	return (
 		<>
@@ -185,13 +211,14 @@ export function MobileNav({ userRole }: MobileNavProps) {
 						</div>
 						<div className='grid gap-2'>
 							{visibleMenuItems.map((item) => {
-								const isActive = pathname === item.href;
+								const isActive = isPathActive(item.href, pathname);
 								const Icon = item.icon;
+								const demoAwareHref = getDemoAwareHref(item.href);
 
 								return (
 									<Link
 										key={item.href}
-										href={item.href}
+										href={demoAwareHref}
 										onClick={() => setIsMenuOpen(false)}
 										className={cn(
 											'flex items-center gap-3 rounded-xl px-4 py-3 transition-colors',
@@ -213,16 +240,15 @@ export function MobileNav({ userRole }: MobileNavProps) {
 			<nav className='fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-[var(--color-card)] text-[var(--color-card-foreground)] shadow-[0_-4px_20px_rgba(0,0,0,0.08)] md:hidden dark:border-gray-800 dark:bg-[var(--color-gray-950)]'>
 				<div className='flex h-16 items-stretch'>
 					{visibleMainItems.map((item) => {
-						// Dashboard should be exact match, others can match sub-paths
-						const isActive = item.href === '/dashboard'
-							? pathname === item.href
-							: pathname.startsWith(item.href);
+						// Use demo-aware active check
+						const isActive = isPathActive(item.href, pathname);
 						const Icon = item.icon;
+						const demoAwareHref = getDemoAwareHref(item.href);
 
 						return (
 						<Link
 							key={item.href}
-							href={item.href}
+							href={demoAwareHref}
 							onPointerDown={() => setPressedItem(item.href)}
 							onPointerUp={() => setPressedItem(null)}
 							onPointerLeave={() => setPressedItem(null)}

@@ -83,6 +83,18 @@ const priorityConfig = {
 	AKUT: { label: 'Akut', color: 'bg-red-100 text-red-700' },
 };
 
+interface User {
+	id: string;
+	full_name: string | null;
+	email: string;
+}
+
+interface AssignmentFormData {
+	user_id: string;
+	is_responsible: boolean;
+	assignment_status: 'TILLDELAD' | 'ACCEPTERAD' | 'PÅBÖRJAD' | 'KLAR';
+}
+
 export function WorkOrderDetailClient({
 	workOrderId,
 	canEdit,
@@ -91,6 +103,8 @@ export function WorkOrderDetailClient({
 	const queryClient = useQueryClient();
 	const [isEditing, setIsEditing] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
+	const [users, setUsers] = useState<User[]>([]);
+	const [assignments, setAssignments] = useState<AssignmentFormData[]>([]);
 
 	const { data: workOrder, isLoading } = useQuery({
 		queryKey: ['work-order', workOrderId],
@@ -157,25 +171,128 @@ export function WorkOrderDetailClient({
 
 	const [formData, setFormData] = useState<Partial<WorkOrderWithRelations>>({});
 
-	// Initialize form data when work order loads
+	// Fetch users when editing
+	const { data: usersData } = useQuery({
+		queryKey: ['organization-members'],
+		queryFn: async () => {
+			const response = await fetch('/api/organizations/members');
+			if (!response.ok) {
+				throw new Error('Kunde inte hämta användare');
+			}
+			const data = await response.json();
+			return data.members as Array<{
+				user_id: string;
+				profiles: {
+					id: string;
+					full_name: string | null;
+					email: string;
+				};
+			}>;
+		},
+		enabled: isEditing && canEdit,
+	});
+
+	// Transform users data
+	useEffect(() => {
+		if (usersData) {
+			const transformedUsers = usersData
+				.filter((member) => member.profiles)
+				.map((member) => ({
+					id: member.user_id,
+					full_name: member.profiles.full_name,
+					email: member.profiles.email,
+				}));
+			setUsers(transformedUsers);
+		}
+	}, [usersData]);
+
+	// Initialize form data and assignments when work order loads
 	useEffect(() => {
 		if (workOrder) {
 			setFormData(workOrder);
+			// Initialize assignments from work order
+			if (workOrder.assignments) {
+				const initialAssignments: AssignmentFormData[] = workOrder.assignments.map((a) => ({
+					user_id: a.user_id,
+					is_responsible: a.is_responsible || false,
+					assignment_status: a.assignment_status || 'TILLDELAD',
+				}));
+				setAssignments(initialAssignments);
+			} else {
+				setAssignments([]);
+			}
 		}
 	}, [workOrder]);
 
 	const handleEdit = () => {
 		setFormData(workOrder || {});
+		// Initialize assignments from work order
+		if (workOrder?.assignments) {
+			const initialAssignments: AssignmentFormData[] = workOrder.assignments.map((a) => ({
+				user_id: a.user_id,
+				is_responsible: a.is_responsible || false,
+				assignment_status: a.assignment_status || 'TILLDELAD',
+			}));
+			setAssignments(initialAssignments);
+		} else {
+			setAssignments([]);
+		}
 		setIsEditing(true);
 	};
 
 	const handleCancel = () => {
 		setFormData(workOrder || {});
+		// Reset assignments to original
+		if (workOrder?.assignments) {
+			const initialAssignments: AssignmentFormData[] = workOrder.assignments.map((a) => ({
+				user_id: a.user_id,
+				is_responsible: a.is_responsible || false,
+				assignment_status: a.assignment_status || 'TILLDELAD',
+			}));
+			setAssignments(initialAssignments);
+		} else {
+			setAssignments([]);
+		}
 		setIsEditing(false);
 	};
 
 	const handleSave = () => {
-		updateMutation.mutate(formData);
+		// Include assignments in the update
+		const updateData = {
+			...formData,
+			assignments: assignments.map((a) => ({
+				user_id: a.user_id,
+				is_responsible: a.is_responsible,
+				assignment_status: a.assignment_status,
+			})),
+		};
+		updateMutation.mutate(updateData);
+	};
+
+	const handleToggleAssignment = (userId: string) => {
+		const existingIndex = assignments.findIndex((a) => a.user_id === userId);
+		if (existingIndex >= 0) {
+			// Remove assignment
+			setAssignments(assignments.filter((a) => a.user_id !== userId));
+		} else {
+			// Add assignment
+			setAssignments([
+				...assignments,
+				{
+					user_id: userId,
+					is_responsible: false,
+					assignment_status: 'TILLDELAD',
+				},
+			]);
+		}
+	};
+
+	const handleToggleResponsible = (userId: string) => {
+		setAssignments(
+			assignments.map((a) =>
+				a.user_id === userId ? { ...a, is_responsible: !a.is_responsible } : a
+			)
+		);
 	};
 
 	const handleDelete = () => {
@@ -637,7 +754,57 @@ export function WorkOrderDetailClient({
 								<CardTitle>Tilldelningar</CardTitle>
 							</CardHeader>
 							<CardContent>
-								{workOrder.assignments && workOrder.assignments.length > 0 ? (
+								{isEditing && canEdit ? (
+									<div className='space-y-4'>
+										{users.length === 0 ? (
+											<p className='text-sm text-muted-foreground'>Laddar användare...</p>
+										) : (
+											<>
+												<div className='space-y-2 max-h-[300px] overflow-y-auto'>
+													{users.map((user) => {
+														const isAssigned = assignments.some((a) => a.user_id === user.id);
+														const assignment = assignments.find((a) => a.user_id === user.id);
+														return (
+															<div
+																key={user.id}
+																className='flex items-center justify-between p-2 rounded-lg border border-border/50'
+															>
+																<div className='flex items-center gap-3 flex-1'>
+																	<Checkbox
+																		checked={isAssigned}
+																		onCheckedChange={() => handleToggleAssignment(user.id)}
+																	/>
+																	<User className='w-4 h-4 text-muted-foreground' />
+																	<span className='flex-1'>
+																		{user.full_name || user.email}
+																	</span>
+																</div>
+																{isAssigned && (
+																	<div className='flex items-center gap-2'>
+																		<label className='flex items-center gap-2 cursor-pointer'>
+																			<Checkbox
+																				checked={assignment?.is_responsible || false}
+																				onCheckedChange={() => handleToggleResponsible(user.id)}
+																			/>
+																			<span className='text-sm text-muted-foreground'>Ansvarig</span>
+																		</label>
+																	</div>
+																)}
+															</div>
+														);
+													})}
+												</div>
+												{assignments.length > 0 && (
+													<div className='pt-2 border-t border-border/50'>
+														<p className='text-sm text-muted-foreground'>
+															{assignments.length} {assignments.length === 1 ? 'person tilldelad' : 'personer tilldelade'}
+														</p>
+													</div>
+												)}
+											</>
+										)}
+									</div>
+								) : workOrder.assignments && workOrder.assignments.length > 0 ? (
 									<div className='space-y-2'>
 										{workOrder.assignments.map((assignment) => (
 											<div key={assignment.id} className='flex items-center justify-between'>

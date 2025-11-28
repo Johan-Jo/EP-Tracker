@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
+import { isDemoRoute } from '@/lib/demo/is-demo-route';
 import { MaterialsPageNew } from '@/components/materials/materials-page-new';
 
 interface PageProps {
@@ -18,10 +19,14 @@ export default async function MaterialsPage(props: PageProps) {
 	const returnTo = searchParams.return_to;
 	const ataTitle = searchParams.ata_title;
 
+	// Check if we're in demo mode
+	const inDemoMode = await isDemoRoute();
+	
 	// Server-side: Only fetch session
 	const { user, membership } = await getSession();
 
-	if (!user) {
+	// Skip auth redirect if in demo mode
+	if (!inDemoMode && !user) {
 		redirect('/sign-in');
 	}
 

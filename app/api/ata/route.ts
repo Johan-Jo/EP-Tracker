@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
 import { ataInputSchema } from '@/lib/schemas/ata';
+import { checkDemoMode } from '@/lib/demo/check-demo-mode';
 
 export async function GET(request: NextRequest) {
 	const { user, membership } = await getSession();
@@ -9,6 +10,10 @@ export async function GET(request: NextRequest) {
 	if (!user || !membership) {
 		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 	}
+
+	// Check if in demo mode
+	const demoCheck = await checkDemoMode(membership.org_id);
+	const effectiveOrgId = demoCheck.isDemoMode && demoCheck.demoOrgId ? demoCheck.demoOrgId : membership.org_id;
 
 	const supabase = await createClient();
 	const searchParams = request.nextUrl.searchParams;
@@ -48,7 +53,7 @@ export async function GET(request: NextRequest) {
 			created_by_profile:profiles!ata_created_by_fkey(full_name),
 			approved_by_profile:profiles!ata_approved_by_fkey(full_name)
 		`)
-		.eq('org_id', membership.org_id)
+		.eq('org_id', effectiveOrgId)
 		.order('created_at', { ascending: false });
 
 	if (projectId) {

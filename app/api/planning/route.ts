@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
+import { checkDemoMode } from '@/lib/demo/check-demo-mode';
 import { startOfWeek, endOfWeek, parseISO } from 'date-fns';
 
 // GET /api/planning - Fetch week planning data
@@ -13,6 +14,10 @@ export async function GET(request: NextRequest) {
 		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
+
+		// Check if in demo mode
+		const demoCheck = await checkDemoMode(membership.org_id);
+		const effectiveOrgId = demoCheck.isDemoMode && demoCheck.demoOrgId ? demoCheck.demoOrgId : membership.org_id;
 
 		const supabase = await createClient();
 
@@ -59,7 +64,7 @@ export async function GET(request: NextRequest) {
 	// This consolidates 4 queries into 1 optimized database-side query
 	const { data: planningData, error: planningError } = await supabase
 		.rpc('get_planning_data', {
-			p_org_id: membership.org_id,
+			p_org_id: effectiveOrgId,
 			p_week_start: weekStart.toISOString(),
 			p_week_end: weekEnd.toISOString(),
 			p_project_id: project_id || null,

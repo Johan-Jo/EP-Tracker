@@ -5,6 +5,9 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Check } from 'lucide-react';
 
+// Check if demo mode is enabled (client-side check)
+const isDemoEnabled = process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true';
+
 export function LandingHero() {
     return (
         <section className="relative overflow-hidden bg-gradient-to-br from-orange-50 via-white to-blue-50 pb-20 pt-24 sm:pb-32 sm:pt-40">
@@ -83,6 +86,20 @@ export function LandingHero() {
                                 </span>
                             </Button>
                         </Link>
+                        {isDemoEnabled && (
+                            <Link href="/demo" className="w-full sm:w-auto">
+                                <Button 
+                                    size="lg"
+                                    variant="outline"
+                                    className="h-16 w-full rounded-full border-2 border-blue-500 bg-transparent px-14 text-xl font-bold text-blue-600 transition-all duration-300 hover:scale-105 hover:bg-blue-50 hover:shadow-lg sm:w-auto"
+                                >
+                                    <span className="relative flex items-center gap-3">
+                                        Prova demo
+                                        <ArrowRight className="h-6 w-6 transition-transform duration-300 group-hover:translate-x-1" />
+                                    </span>
+                                </Button>
+                            </Link>
+                        )}
                     </div>
                     
                     {/* Trust microcopy */}

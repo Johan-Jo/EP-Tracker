@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createMaterialSchema } from '@/lib/schemas/material';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
+import { checkDemoMode } from '@/lib/demo/check-demo-mode';
 
 // GET /api/materials - List materials with filters
 // EPIC 26: Optimized from 2 queries to 1 cached query
@@ -102,6 +103,15 @@ export async function POST(request: NextRequest) {
 
 		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		// Block writes in demo mode
+		const demoCheck = await checkDemoMode(membership.org_id);
+		if (demoCheck.isDemoMode) {
+			return NextResponse.json(
+				{ error: 'Den här åtgärden är avstängd i demo. Skapa ett riktigt konto för att använda funktionen.' },
+				{ status: 403 }
+			);
 		}
 
 		// Parse and validate request body

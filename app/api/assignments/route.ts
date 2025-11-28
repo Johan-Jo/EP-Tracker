@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAssignmentSchema, type Conflict } from '@/lib/schemas/planning';
 import { getSession } from '@/lib/auth/get-session'; // EPIC 26: Use cached session
+import { checkDemoMode } from '@/lib/demo/check-demo-mode';
 
 // GET /api/assignments - List assignments with filters
 // EPIC 26: Optimized from 2 queries to 1 cached query
@@ -13,6 +14,10 @@ export async function GET(request: NextRequest) {
 		if (!user || !membership) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
+
+		// Check if in demo mode
+		const demoCheck = await checkDemoMode(membership.org_id);
+		const effectiveOrgId = demoCheck.isDemoMode && demoCheck.demoOrgId ? demoCheck.demoOrgId : membership.org_id;
 
 		const supabase = await createClient();
 
@@ -33,7 +38,7 @@ export async function GET(request: NextRequest) {
 				user:profiles!assignments_user_id_fkey(id, full_name, email),
 				mobile_notes(*)
 			`)
-			.eq('org_id', membership.org_id)
+			.eq('org_id', effectiveOrgId)
 			.order('start_ts', { ascending: false });
 
 		// Apply filters

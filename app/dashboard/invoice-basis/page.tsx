@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
+import { isDemoRoute } from '@/lib/demo/is-demo-route';
 import { InvoiceBasisPageClient } from '@/components/invoice-basis/invoice-basis-page-client';
 import { getFortnoxConnectionForOrg } from '@/lib/integrations/fortnox/client';
 
@@ -8,9 +9,13 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function InvoiceBasisDashboardPage() {
+	// Check if we're in demo mode
+	const inDemoMode = await isDemoRoute();
+	
 	const { user, membership } = await getSession();
 
-	if (!user) {
+	// Skip auth redirect if in demo mode
+	if (!inDemoMode && !user) {
 		redirect('/sign-in');
 	}
 

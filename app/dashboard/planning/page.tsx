@@ -1,13 +1,18 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
+import { isDemoRoute } from '@/lib/demo/is-demo-route';
 import { Suspense } from 'react';
 import { PlanningPageWrapper } from './planning-page-wrapper';
 
 export default async function PlanningPage() {
+	// Check if we're in demo mode
+	const inDemoMode = await isDemoRoute();
+	
 	// Use cached session
 	const { user, membership } = await getSession();
 
-	if (!user) {
+	// Skip auth redirect if in demo mode
+	if (!inDemoMode && !user) {
 		redirect('/sign-in');
 	}
 

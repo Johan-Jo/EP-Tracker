@@ -1,13 +1,18 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
+import { isDemoRoute } from '@/lib/demo/is-demo-route';
 import { WorksitesClient } from './worksites-client';
 
 export default async function WorksitesPage() {
+	// Check if we're in demo mode
+	const inDemoMode = await isDemoRoute();
+	
 	// ✅ PERFORMANCE: Use cached session instead of separate queries
 	const { user, membership } = await getSession();
 
-	if (!user) {
+	// Skip auth redirect if in demo mode
+	if (!inDemoMode && !user) {
 		redirect('/sign-in');
 	}
 

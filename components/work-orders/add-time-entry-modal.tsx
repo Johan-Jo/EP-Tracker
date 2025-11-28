@@ -179,19 +179,22 @@ export function AddTimeEntryModal({
 		}
 	}, [currentDate, endTime, setValue]);
 
-	// Set project when modal opens
+	// Set project when modal opens and projects are loaded
 	useEffect(() => {
-		if (open && projectId) {
-			setValue('project_id', projectId, { shouldDirty: true });
-			setValue('work_order_id', workOrderId, { shouldDirty: true });
-			// Set billing type based on project
-			const project = projects?.find((p) => String(p.id) === String(projectId));
+		if (open && projectId && projects && projects.length > 0) {
+			// Ensure project exists in the list
+			const project = projects.find((p) => String(p.id) === String(projectId));
 			if (project) {
+				setValue('project_id', projectId, { shouldDirty: true });
+				setValue('work_order_id', workOrderId, { shouldDirty: true });
+				// Set billing type based on project
 				if (project.billing_mode === 'FAST_ONLY') {
 					setValue('billing_type', 'FAST', { shouldDirty: true });
 				} else if (project.billing_mode === 'LOPANDE_ONLY') {
 					setValue('billing_type', 'LOPANDE', { shouldDirty: true });
 				}
+			} else {
+				console.warn('[AddTimeEntryModal] Project not found in projects list:', projectId);
 			}
 		}
 	}, [open, projectId, workOrderId, projects, setValue]);
@@ -227,16 +230,25 @@ export function AddTimeEntryModal({
 		isSubmittingRef.current = true;
 		setIsSubmitting(true);
 
+		// Ensure project_id is set - use prop if form value is missing
+		const finalProjectId = data.project_id || projectId;
+		if (!finalProjectId) {
+			toast.error('Projekt måste väljas');
+			isSubmittingRef.current = false;
+			setIsSubmitting(false);
+			return;
+		}
+
 		const normalizedBillingType =
 			data.billing_type === '' ? selectedProjectDetails?.default_time_billing_type ?? 'LOPANDE' : data.billing_type;
 
 		const payload: CreateTimeEntryInput = {
 			...data,
-			project_id: String(data.project_id),
+			project_id: String(finalProjectId), // Always use the final project ID
 			billing_type: normalizedBillingType as BillingType,
 			fixed_block_id: data.fixed_block_id ?? null,
 			ata_id: null, // ÄTA should not be used with work orders
-			work_order_id: data.work_order_id ?? null,
+			work_order_id: workOrderId ?? data.work_order_id ?? null, // Always use prop if available
 		};
 
 		try {
@@ -277,7 +289,7 @@ export function AddTimeEntryModal({
 				</DialogHeader>
 
 				<form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-					{/* Project */}
+					{/* Project - Read-only when coming from work order */}
 					<div>
 						<label className="block text-sm font-medium mb-2">
 							Projekt <span className="text-destructive">*</span>
@@ -301,6 +313,7 @@ export function AddTimeEntryModal({
 										setValue('billing_type', '', { shouldDirty: true });
 									}
 								}}
+								disabled={!!projectId} // Disable when project comes from work order
 							>
 								<SelectTrigger className="h-11 justify-between text-left">
 									<SelectValue placeholder="Välj projekt" />
@@ -313,6 +326,11 @@ export function AddTimeEntryModal({
 									))}
 								</SelectContent>
 							</Select>
+						)}
+						{projectId && (
+							<p className="text-xs text-muted-foreground mt-1">
+								Projektet är kopplat till arbetsordern och kan inte ändras
+							</p>
 						)}
 						{errors.project_id && (
 							<p className="text-sm text-destructive mt-1">{errors.project_id.message}</p>

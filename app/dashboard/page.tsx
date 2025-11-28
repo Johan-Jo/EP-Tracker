@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
+import { isDemoRoute } from '@/lib/demo/is-demo-route';
 import DashboardClient from './dashboard-client';
 // EPIC 26.4: Use optimized database functions
 import {
@@ -21,7 +22,11 @@ export default async function DashboardPage() {
 
 	const { user, profile, membership } = session;
 
-	if (!user) {
+	// Check if we're in demo mode
+	const inDemoMode = await isDemoRoute();
+
+	// Skip auth redirect if in demo mode
+	if (!inDemoMode && !user) {
 		redirect('/sign-in');
 	}
 
