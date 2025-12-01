@@ -577,6 +577,7 @@ export async function getActiveProjects(orgId: string) {
 		.select('id, name, billing_mode, default_time_billing_type, created_at')
 		.eq('org_id', orgId)
 		.eq('status', 'active')
+		.eq('is_archived', false) // Exclude archived projects
 		.order('created_at', { ascending: false }) // ✅ Most recent first (for recent project)
 		.limit(200); // ✅ PERFORMANCE: Limit to prevent loading too many projects
 
@@ -613,6 +614,7 @@ export async function getRecentProject(orgId: string) {
 		.select('id, name')
 		.eq('org_id', orgId)
 		.eq('status', 'active')
+		.eq('is_archived', false) // Exclude archived projects
 		.order('created_at', { ascending: false })
 		.limit(1)
 		.maybeSingle();

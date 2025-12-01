@@ -53,6 +53,7 @@ export function ExpensesList({ orgId, projectId, onEdit }: ExpensesListProps) {
 				.from('projects')
 				.select('id, name')
 				.eq('org_id', orgId)
+				.eq('status', 'active')
 				.order('name');
 
 			if (error) throw error;

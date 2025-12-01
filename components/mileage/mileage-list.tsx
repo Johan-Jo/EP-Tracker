@@ -41,6 +41,7 @@ export function MileageList({ orgId, projectId }: MileageListProps) {
 				.from('projects')
 				.select('id, name')
 				.eq('org_id', orgId)
+				.eq('status', 'active')
 				.order('name');
 
 			if (error) throw error;
