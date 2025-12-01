@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, DollarSign, FolderKanban, Users, Edit2, Loader2 } from 'lucide-react';
+import { Clock, DollarSign, FolderKanban, Users, Edit2, Loader2, Archive, ArchiveRestore } from 'lucide-react';
 import { ProjectDateFilter } from '@/components/projects/project-date-filter';
 import { ProjectTimeEntriesTable } from '@/components/projects/project-time-entries-table';
 import { ProjectCostsSummary } from '@/components/projects/project-costs-summary';
@@ -21,9 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CustomerSelect } from '@/components/customers/customer-select';
 import { useCustomer } from '@/lib/hooks/use-customers';
 import type { Customer } from '@/lib/schemas/customer';
+import type { Phase } from '@/lib/schemas/project';
 import { toast } from 'sonner';
-import { Archive, ArchiveRestore, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 interface ProjectDetailClientProps {
 	projectId: string;
@@ -40,13 +39,7 @@ interface ProjectDetailClientProps {
 	budgetHours: number | null;
 	budgetAmount: number | null;
 	projectStartDate: string; // ISO date string
-	phases: Array<{
-		id: string;
-		name: string;
-		sort_order: number;
-		budget_hours: number | null;
-		budget_amount: number | null;
-	}>;
+	phases: Phase[];
 	initialSummary: any;
 }
 
@@ -448,7 +441,7 @@ export function ProjectDetailClient({
 					canEdit={canEdit}
 					onSaveSuccess={(savedSettings) => {
 						// Update summary state with saved alert settings
-						setSummary((prev) => ({
+						setSummary((prev: any) => ({
 							...prev,
 							project: {
 								...prev.project,
