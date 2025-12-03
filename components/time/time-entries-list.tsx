@@ -57,6 +57,7 @@ export function TimeEntriesList({ orgId, userId, projectId, onEdit }: TimeEntrie
 				.from('projects')
 				.select('id, name')
 				.eq('org_id', orgId)
+				.eq('status', 'active')
 				.order('name');
 
 			if (error) throw error;

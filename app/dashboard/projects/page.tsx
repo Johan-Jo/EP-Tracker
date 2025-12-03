@@ -62,6 +62,7 @@ export default async function ProjectsPage(props: PageProps) {
 			budget_hours,
 			budget_amount,
 			created_at,
+			is_archived,
 			phases(count)
 		`)
 		.eq('org_id', membership.org_id)
@@ -69,6 +70,12 @@ export default async function ProjectsPage(props: PageProps) {
 		.limit(500); // ✅ PERFORMANCE: Limit to prevent loading too many projects
 
 	// Apply filters
+	// By default, exclude archived projects unless explicitly requested
+	const includeArchived = typeof searchParams.includeArchived === 'string' && searchParams.includeArchived === 'true';
+	if (!includeArchived) {
+		query = query.eq('is_archived', false);
+	}
+
 	if (status && status !== 'all') {
 		query = query.eq('status', status);
 	}

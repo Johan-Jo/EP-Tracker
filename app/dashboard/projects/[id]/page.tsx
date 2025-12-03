@@ -38,6 +38,9 @@ export default async function ProjectDetailPage(props: PageProps) {
 			budget_amount,
 			created_at,
 			updated_at,
+			is_archived,
+			archived_at,
+			archived_by,
 			customer:customers!projects_customer_id_fkey(id, type, company_name, first_name, last_name),
 			phases(id, name, sort_order, budget_hours, budget_amount)
 		`
@@ -91,6 +94,8 @@ export default async function ProjectDetailPage(props: PageProps) {
 	}
 
 	const canEdit = ['admin', 'foreman'].includes(membership.role);
+	const isAdmin = membership.role === 'admin';
+	const isArchived = project.is_archived || false;
 	// Handle customer as array or object (Supabase can return either)
 	const customer = Array.isArray(project.customer) ? project.customer[0] : project.customer;
 	const customerDisplayName = customer
@@ -343,6 +348,8 @@ export default async function ProjectDetailPage(props: PageProps) {
 				<ProjectDetailClient
 					projectId={project.id}
 					canEdit={canEdit}
+					isAdmin={isAdmin}
+					isArchived={isArchived}
 					projectName={project.name}
 					projectNumber={project.project_number}
 					clientName={customerDisplayName}

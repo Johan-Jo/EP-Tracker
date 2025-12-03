@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, DollarSign, FolderKanban, Users, Edit2, Loader2 } from 'lucide-react';
+import { Clock, DollarSign, FolderKanban, Users, Edit2, Loader2, Archive, ArchiveRestore } from 'lucide-react';
 import { ProjectDateFilter } from '@/components/projects/project-date-filter';
 import { ProjectTimeEntriesTable } from '@/components/projects/project-time-entries-table';
 import { ProjectCostsSummary } from '@/components/projects/project-costs-summary';
@@ -21,11 +21,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CustomerSelect } from '@/components/customers/customer-select';
 import { useCustomer } from '@/lib/hooks/use-customers';
 import type { Customer } from '@/lib/schemas/customer';
+import type { Phase } from '@/lib/schemas/project';
 import { toast } from 'sonner';
 
 interface ProjectDetailClientProps {
 	projectId: string;
 	canEdit: boolean;
+	isAdmin: boolean; // Only admins can archive/unarchive
+	isArchived: boolean;
 	projectName: string;
 	projectNumber: string | null;
 	clientName: string | null;
@@ -36,19 +39,15 @@ interface ProjectDetailClientProps {
 	budgetHours: number | null;
 	budgetAmount: number | null;
 	projectStartDate: string; // ISO date string
-	phases: Array<{
-		id: string;
-		name: string;
-		sort_order: number;
-		budget_hours: number | null;
-		budget_amount: number | null;
-	}>;
+	phases: Phase[];
 	initialSummary: any;
 }
 
 export function ProjectDetailClient({
 	projectId,
 	canEdit,
+	isAdmin,
+	isArchived,
 	projectName,
 	projectNumber,
 	clientName,
@@ -80,6 +79,9 @@ export function ProjectDetailClient({
 	const [editCustomerId, setEditCustomerId] = useState<string | null>(null);
 	const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
 	const [isUpdatingProject, setIsUpdatingProject] = useState(false);
+	const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+	const [showUnarchiveDialog, setShowUnarchiveDialog] = useState(false);
+	const [isArchiving, setIsArchiving] = useState(false);
 
 	const { data: currentCustomer } = useCustomer(editCustomerId);
 
@@ -172,6 +174,53 @@ export function ProjectDetailClient({
 		}
 	};
 
+	const handleArchive = async () => {
+		setIsArchiving(true);
+		try {
+			const response = await fetch(`/api/projects/${projectId}/archive`, {
+				method: 'POST',
+			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Failed to archive project');
+			}
+
+			toast.success('Projektet har arkiverats');
+			setShowArchiveDialog(false);
+			router.refresh();
+			router.push('/dashboard/projects');
+		} catch (error) {
+			console.error('Error archiving project:', error);
+			toast.error('Kunde inte arkivera projekt');
+		} finally {
+			setIsArchiving(false);
+		}
+	};
+
+	const handleUnarchive = async () => {
+		setIsArchiving(true);
+		try {
+			const response = await fetch(`/api/projects/${projectId}/archive`, {
+				method: 'DELETE',
+			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Failed to unarchive project');
+			}
+
+			toast.success('Projektet har återaktiverats');
+			setShowUnarchiveDialog(false);
+			router.refresh();
+		} catch (error) {
+			console.error('Error unarchiving project:', error);
+			toast.error('Kunde inte återaktivera projekt');
+		} finally {
+			setIsArchiving(false);
+		}
+	};
+
 	if (!summary) {
 		return (
 			<div className="flex items-center justify-center min-h-[400px]">
@@ -214,22 +263,56 @@ export function ProjectDetailClient({
 								{status === 'completed' && 'Klar'}
 								{status === 'archived' && 'Arkiverad'}
 							</Badge>
+							{isArchived && (
+								<Badge variant="outline" className="border-gray-400 text-gray-600 bg-gray-50">
+									Arkiverad
+								</Badge>
+							)}
 						</div>
+						{isArchived && (
+							<div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+								<p className="text-sm text-yellow-800">
+									<strong>Detta projekt är arkiverat.</strong> Detta projekt kan inte ta emot nya registreringar (tid, dagbok, material, etc.) men finns kvar för historik och rapporter.
+								</p>
+							</div>
+						)}
 						{projectNumber && (
 							<p className="text-sm text-gray-600 font-medium bg-white/60 inline-block px-3 py-1 rounded-lg">
 								Projektnummer: {projectNumber}
 							</p>
 						)}
 					</div>
-					{canEdit && (
-						<Button
-							className="bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30"
-							onClick={handleOpenEditDialog}
-						>
-							<Edit2 className="w-4 h-4 mr-2" />
-							Redigera projekt
-						</Button>
-					)}
+					<div className="flex items-center gap-2">
+						{canEdit && (
+							<Button
+								className="bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/30"
+								onClick={handleOpenEditDialog}
+							>
+								<Edit2 className="w-4 h-4 mr-2" />
+								Redigera projekt
+							</Button>
+						)}
+						{isAdmin && !isArchived && (
+							<Button
+								variant="outline"
+								className="border-gray-300 text-gray-700 hover:bg-gray-50"
+								onClick={() => setShowArchiveDialog(true)}
+							>
+								<Archive className="w-4 h-4 mr-2" />
+								Arkivera
+							</Button>
+						)}
+						{isAdmin && isArchived && (
+							<Button
+								variant="outline"
+								className="border-green-300 text-green-700 hover:bg-green-50"
+								onClick={() => setShowUnarchiveDialog(true)}
+							>
+								<ArchiveRestore className="w-4 h-4 mr-2" />
+								Återaktivera
+							</Button>
+						)}
+					</div>
 				</div>
 				<ProjectDateFilter projectStartDate={projectStartDate} onFilterChange={handleFilterChange} />
 			</div>
@@ -358,7 +441,7 @@ export function ProjectDetailClient({
 					canEdit={canEdit}
 					onSaveSuccess={(savedSettings) => {
 						// Update summary state with saved alert settings
-						setSummary((prev) => ({
+						setSummary((prev: any) => ({
 							...prev,
 							project: {
 								...prev.project,
@@ -495,6 +578,59 @@ export function ProjectDetailClient({
 						<Button onClick={handleUpdateProject} disabled={isUpdatingProject || !editProjectName.trim()}>
 							{isUpdatingProject && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
 							Spara ändringar
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Archive Dialog */}
+			<Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Arkivera projekt</DialogTitle>
+						<DialogDescription>
+							Är du säker på att du vill arkivera detta projekt? Projektet kommer att:
+							<ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+								<li>Gömmas från standardlistor och filter</li>
+								<li>Inte kunna ta emot nya registreringar (tid, dagbok, material, etc.)</li>
+								<li>Fortfarande finnas kvar i databasen för historik och rapporter</li>
+							</ul>
+							Du kan alltid återaktivera projektet senare.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setShowArchiveDialog(false)} disabled={isArchiving}>
+							Avbryt
+						</Button>
+						<Button variant="destructive" onClick={handleArchive} disabled={isArchiving}>
+							{isArchiving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+							Arkivera projekt
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Unarchive Dialog */}
+			<Dialog open={showUnarchiveDialog} onOpenChange={setShowUnarchiveDialog}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Återaktivera projekt</DialogTitle>
+						<DialogDescription>
+							Är du säker på att du vill återaktivera detta projekt? Projektet kommer att:
+							<ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+								<li>Synas igen i standardlistor och filter</li>
+								<li>Kunna ta emot nya registreringar (tid, dagbok, material, etc.)</li>
+								<li>Bli tillgängligt för planering och bokning</li>
+							</ul>
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setShowUnarchiveDialog(false)} disabled={isArchiving}>
+							Avbryt
+						</Button>
+						<Button onClick={handleUnarchive} disabled={isArchiving}>
+							{isArchiving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+							Återaktivera projekt
 						</Button>
 					</DialogFooter>
 				</DialogContent>
