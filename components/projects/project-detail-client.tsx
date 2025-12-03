@@ -258,15 +258,15 @@ export function ProjectDetailClient({
 							<h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">
 								{projectName}
 							</h1>
-							<Badge className={getStatusColor(status)}>
-								{status === 'active' && 'Aktiv'}
-								{status === 'paused' && 'Pausad'}
-								{status === 'completed' && 'Klar'}
-								{status === 'archived' && 'Arkiverad'}
-							</Badge>
-							{isArchived && (
+							{isArchived ? (
 								<Badge variant="outline" className="border-gray-400 text-gray-600 bg-gray-50">
 									Arkiverad
+								</Badge>
+							) : (
+								<Badge className={getStatusColor(status)}>
+									{status === 'active' && 'Aktiv'}
+									{status === 'paused' && 'Pausad'}
+									{status === 'completed' && 'Klar'}
 								</Badge>
 							)}
 						</div>
