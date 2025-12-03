@@ -25,9 +25,15 @@ interface ProjectsClientProps {
   canCreateProjects: boolean;
   search: string;
   status: string;
+  projectCounts?: {
+    all: number;
+    active: number;
+    completed: number;
+    archived: number;
+  };
 }
 
-export default function ProjectsClient({ projects, canCreateProjects, search, status }: ProjectsClientProps) {
+export default function ProjectsClient({ projects, canCreateProjects, search, status, projectCounts }: ProjectsClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -106,11 +112,11 @@ export default function ProjectsClient({ projects, canCreateProjects, search, st
     }
   };
 
-  // Count projects by status
-  const totalProjects = projects.length;
-  const activeProjects = projects.filter((p) => p.status === 'active').length;
-  const completedProjects = projects.filter((p) => p.status === 'completed').length;
-  const archivedProjects = projects.filter((p) => p.status === 'archived').length;
+  // Use provided counts if available, otherwise calculate from filtered projects
+  const totalProjects = projectCounts?.all ?? projects.length;
+  const activeProjects = projectCounts?.active ?? projects.filter((p) => p.status === 'active' && !(p as any).is_archived).length;
+  const completedProjects = projectCounts?.completed ?? projects.filter((p) => p.status === 'completed' && !(p as any).is_archived).length;
+  const archivedProjects = projectCounts?.archived ?? projects.filter((p) => (p as any).is_archived).length;
 
   const statusOptions = [
     { key: 'all', label: 'Alla', count: totalProjects },

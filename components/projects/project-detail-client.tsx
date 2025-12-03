@@ -177,22 +177,24 @@ export function ProjectDetailClient({
 	const handleArchive = async () => {
 		setIsArchiving(true);
 		try {
-			const response = await fetch(`/api/projects/${projectId}/archive`, {
-				method: 'POST',
-			});
+			const { archiveProject } = await import('@/app/actions/archive-project');
+			const result = await archiveProject(projectId);
 
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to archive project');
+			if (!result.success) {
+				throw new Error('Failed to archive project');
 			}
 
 			toast.success('Projektet har arkiverats');
 			setShowArchiveDialog(false);
-			router.refresh();
+			// Navigate to projects page - server action already revalidated cache
 			router.push('/dashboard/projects');
+			// Force refresh to ensure UI updates
+			setTimeout(() => {
+				router.refresh();
+			}, 200);
 		} catch (error) {
 			console.error('Error archiving project:', error);
-			toast.error('Kunde inte arkivera projekt');
+			toast.error(error instanceof Error ? error.message : 'Kunde inte arkivera projekt');
 		} finally {
 			setIsArchiving(false);
 		}
@@ -201,21 +203,20 @@ export function ProjectDetailClient({
 	const handleUnarchive = async () => {
 		setIsArchiving(true);
 		try {
-			const response = await fetch(`/api/projects/${projectId}/archive`, {
-				method: 'DELETE',
-			});
+			const { unarchiveProject } = await import('@/app/actions/archive-project');
+			const result = await unarchiveProject(projectId);
 
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.error || 'Failed to unarchive project');
+			if (!result.success) {
+				throw new Error('Failed to unarchive project');
 			}
 
 			toast.success('Projektet har återaktiverats');
 			setShowUnarchiveDialog(false);
+			// Server action already revalidated cache
 			router.refresh();
 		} catch (error) {
 			console.error('Error unarchiving project:', error);
-			toast.error('Kunde inte återaktivera projekt');
+			toast.error(error instanceof Error ? error.message : 'Kunde inte återaktivera projekt');
 		} finally {
 			setIsArchiving(false);
 		}

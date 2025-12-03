@@ -48,6 +48,21 @@ export default async function ProjectsPage(props: PageProps) {
 	const search = typeof searchParams.search === 'string' ? searchParams.search : '';
 	const status = typeof searchParams.status === 'string' ? searchParams.status : 'active';
 
+	// ✅ PERFORMANCE: First fetch all projects for counting (limited fields only)
+	// This allows accurate counts for status cards regardless of current filter
+	const { data: allProjectsForCount } = await supabase
+		.from('projects')
+		.select('id, status, is_archived')
+		.eq('org_id', membership.org_id);
+
+	// Calculate counts from all projects (for status cards)
+	const projectCounts = {
+		all: allProjectsForCount?.length || 0,
+		active: allProjectsForCount?.filter(p => p.status === 'active' && !p.is_archived).length || 0,
+		completed: allProjectsForCount?.filter(p => p.status === 'completed' && !p.is_archived).length || 0,
+		archived: allProjectsForCount?.filter(p => p.is_archived).length || 0,
+	};
+
 	// ✅ PERFORMANCE: Select only needed columns instead of *
 	// Reduces payload size by ~30-40%
 	let query = supabase
@@ -70,14 +85,21 @@ export default async function ProjectsPage(props: PageProps) {
 		.limit(500); // ✅ PERFORMANCE: Limit to prevent loading too many projects
 
 	// Apply filters
-	// By default, exclude archived projects unless explicitly requested
-	const includeArchived = typeof searchParams.includeArchived === 'string' && searchParams.includeArchived === 'true';
-	if (!includeArchived) {
-		query = query.eq('is_archived', false);
-	}
-
-	if (status && status !== 'all') {
-		query = query.eq('status', status);
+	// Handle archived status separately - it's based on is_archived flag, not status field
+	if (status === 'archived') {
+		// Show only archived projects
+		query = query.eq('is_archived', true);
+	} else {
+		// By default, exclude archived projects unless explicitly requested
+		const includeArchived = typeof searchParams.includeArchived === 'string' && searchParams.includeArchived === 'true';
+		if (!includeArchived) {
+			query = query.eq('is_archived', false);
+		}
+		
+		// Apply status filter (but not for archived, as that's handled by is_archived)
+		if (status && status !== 'all') {
+			query = query.eq('status', status);
+		}
 	}
 
 	if (search) {
@@ -100,6 +122,7 @@ export default async function ProjectsPage(props: PageProps) {
 				canCreateProjects={canCreateProjects}
 				search={search}
 				status={status}
+				projectCounts={projectCounts}
 			/>
 		);
 	}
@@ -196,6 +219,7 @@ export default async function ProjectsPage(props: PageProps) {
 			canCreateProjects={canCreateProjects}
 			search={search}
 			status={status}
+			projectCounts={projectCounts}
 		/>
 	);
 }
