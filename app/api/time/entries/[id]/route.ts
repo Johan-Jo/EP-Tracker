@@ -215,10 +215,10 @@ export async function PATCH(
 				.eq('id', entry.user_id)
 				.single();
 
-			// Calculate hours worked
-			const startTime = new Date(entry.start_at).getTime();
-			const stopTime = new Date(entry.stop_at).getTime();
-			const hoursWorked = (stopTime - startTime) / (1000 * 60 * 60); // Convert ms to hours
+			// Calculate hours worked (after break deduction)
+			// Use duration_min which is the work time after break deduction
+			const workMinutes = entry.duration_min ?? 0;
+			const hoursWorked = workMinutes / 60; // Convert minutes to hours
 
 			try {
 				await notifyOnCheckOut({

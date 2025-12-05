@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { mobileCheckinSchema } from '@/lib/schemas/planning';
 import { notifyOnCheckIn, notifyOnCheckOut } from '@/lib/notifications/project-alerts';
+import { calculateWorkMinutes } from '@/lib/utils/break-deduction';
 
 // POST /api/mobile/checkins - Record check-in or check-out event
 export async function POST(request: NextRequest) {
@@ -137,6 +138,7 @@ export async function POST(request: NextRequest) {
 			});
 		} else if (data.event === 'check_out' && assignment.project_id) {
 			// Calculate hours worked from actual check-in time (from audit log)
+			// Account for break deductions
 			let hoursWorked = 0;
 			
 			// Find the first check-in event for this assignment
@@ -151,15 +153,40 @@ export async function POST(request: NextRequest) {
 				.limit(1)
 				.single();
 
+			let startTime: Date | null = null;
 			if (checkInLog?.created_at) {
-				const startTime = new Date(checkInLog.created_at);
-				const endTime = checkinTime;
-				hoursWorked = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+				startTime = new Date(checkInLog.created_at);
 			} else if (assignment.start_ts) {
 				// Fallback to assignment start_ts if no check-in log found
-				const startTime = new Date(assignment.start_ts);
+				startTime = new Date(assignment.start_ts);
+			}
+
+			if (startTime) {
 				const endTime = checkinTime;
-				hoursWorked = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+				// Calculate total minutes
+				const totalMinutes = Math.round((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+				
+				// Get organization break settings
+				const { data: orgSettings } = await supabase
+					.from('organizations')
+					.select('standard_break_minutes_per_day, standard_breaks')
+					.eq('id', membership.org_id)
+					.single();
+
+				const orgBreakSettings = orgSettings ? {
+					standard_break_minutes_per_day: orgSettings.standard_break_minutes_per_day ?? 0,
+					standard_breaks: (orgSettings.standard_breaks as any) ?? [],
+				} : null;
+
+				// Calculate work time (after break deduction)
+				const workMinutes = calculateWorkMinutes(
+					startTime.toISOString(),
+					endTime.toISOString(),
+					totalMinutes,
+					orgBreakSettings
+				);
+				
+				hoursWorked = workMinutes / 60; // Convert minutes to hours
 			}
 
 			// Send check-out notification
