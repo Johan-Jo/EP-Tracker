@@ -64,7 +64,19 @@ export const getSession = cache(async () => {
 		error: authError,
 	} = await supabase.auth.getUser();
 
-	if (authError || !user) {
+	if (authError) {
+		// Log auth errors for debugging
+		console.error('[getSession] Auth error:', {
+			message: authError.message,
+			status: authError.status,
+			name: authError.name,
+		});
+		return { user: null, membership: null, profile: null };
+	}
+
+	if (!user) {
+		// No user session - this is normal for unauthenticated requests
+		// Only log if we're not on a public route
 		return { user: null, membership: null, profile: null };
 	}
 
@@ -82,6 +94,30 @@ export const getSession = cache(async () => {
 			.eq('is_active', true)
 			.single(),
 	]);
+
+	// Log errors for debugging (but don't fail the session)
+	// PGRST116 = no rows returned, which is expected for new users
+	if (profileResult.error && profileResult.error.code !== 'PGRST116') {
+		console.error('[getSession] Profile query error:', {
+			code: profileResult.error.code,
+			message: profileResult.error.message,
+			details: profileResult.error.details,
+			hint: profileResult.error.hint,
+			userId: user.id,
+			email: user.email,
+		});
+	}
+	
+	if (membershipResult.error && membershipResult.error.code !== 'PGRST116') {
+		console.error('[getSession] Membership query error:', {
+			code: membershipResult.error.code,
+			message: membershipResult.error.message,
+			details: membershipResult.error.details,
+			hint: membershipResult.error.hint,
+			userId: user.id,
+			email: user.email,
+		});
+	}
 
 	let membership = membershipResult.data;
 
