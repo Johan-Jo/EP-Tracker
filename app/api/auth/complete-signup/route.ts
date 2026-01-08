@@ -145,18 +145,65 @@ export async function POST(request: Request) {
 			);
 		}
 
-		// 3. Create membership (user as admin) - using admin client to bypass RLS
-		const { error: membershipError } = await supabaseAdmin.from('memberships').insert({
-			user_id: authData.user.id,
-			org_id: org.id,
-			role: 'admin',
-			is_active: true,
-		});
+		// 3. Ensure profile exists before creating membership
+		// The trigger might not have created it yet, so we create it explicitly
+		const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
+			.from('profiles')
+			.select('id')
+			.eq('id', authData.user.id)
+			.maybeSingle();
+
+		// If profile doesn't exist, create it
+		if (!existingProfile) {
+			const { error: profileCreateError } = await supabaseAdmin
+				.from('profiles')
+				.upsert({
+					id: authData.user.id,
+					email: authData.user.email!,
+					full_name: fullName,
+				}, {
+					onConflict: 'id',
+				});
+
+			if (profileCreateError) {
+				console.error('Profile creation error:', profileCreateError);
+				// Try to continue anyway - profile might exist from trigger
+			}
+		}
+
+		// Wait a bit for any async triggers to complete, then retry if needed
+		let membershipError;
+		let retries = 3;
+		
+		while (retries > 0) {
+			const result = await supabaseAdmin.from('memberships').insert({
+				user_id: authData.user.id,
+				org_id: org.id,
+				role: 'admin',
+				is_active: true,
+			});
+			
+			membershipError = result.error;
+			
+			if (!membershipError) {
+				break; // Success!
+			}
+			
+			// If it's a foreign key error, profile might not exist yet
+			if (membershipError.code === '23503' && retries > 1) {
+				// Wait a bit and try again
+				await new Promise(resolve => setTimeout(resolve, 500));
+				retries--;
+				continue;
+			}
+			
+			break;
+		}
 
 		if (membershipError) {
 			console.error('Membership creation error:', membershipError);
 			return NextResponse.json(
-				{ error: 'Kunde inte skapa medlemskap' },
+				{ error: 'Kunde inte skapa medlemskap', details: process.env.NODE_ENV === 'development' ? membershipError.message : undefined },
 				{ status: 500 }
 			);
 		}
