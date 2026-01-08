@@ -31,93 +31,142 @@ export async function POST(request: Request) {
 			);
 		}
 
-	// First, use regular signUp to create user and send verification email automatically
-	const supabaseClient = createClient(
-		process.env.NEXT_PUBLIC_SUPABASE_URL!,
-		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-	);
-
-	// 1. Sign up the user - this automatically sends verification email
-	const { data: authData, error: authError } = await supabaseClient.auth.signUp({
-		email,
-		password,
-		options: {
-			data: {
-				full_name: fullName,
-			},
-			emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
-		},
-	});
-
-	if (authError) {
-		console.error('Auth error:', authError);
-		return NextResponse.json({ error: authError.message }, { status: 400 });
-	}
-
-	if (!authData.user) {
-		return NextResponse.json(
-			{ error: 'Kunde inte skapa användare' },
-			{ status: 500 }
+		// First, use regular signUp to create user and send verification email automatically
+		const supabaseClient = createClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL!,
+			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 		);
-	}
 
-	// Now use service role client for creating org and membership (bypass RLS)
-	const supabaseAdmin = createClient(
-		process.env.NEXT_PUBLIC_SUPABASE_URL!,
-		process.env.SUPABASE_SERVICE_ROLE_KEY!,
-		{
-			auth: {
-				autoRefreshToken: false,
-				persistSession: false,
+		// 1. Sign up the user - this automatically sends verification email
+		const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+			email,
+			password,
+			options: {
+				data: {
+					full_name: fullName,
+				},
+				emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
 			},
+		});
+
+		if (authError) {
+			console.error('Auth error:', authError);
+			return NextResponse.json({ error: authError.message }, { status: 400 });
 		}
-	);
 
-	// 2. Create organization (using admin client to bypass RLS)
-	const { data: org, error: orgError } = await supabaseAdmin
-		.from('organizations')
-		.insert({
-			name: companyName,
-			org_number: orgNumber,
-			phone,
-			address,
-			postal_code: postalCode,
-			city,
-			campaign_code: campaignCode || null,
-		})
-		.select()
-		.single();
+		if (!authData.user) {
+			return NextResponse.json(
+				{ error: 'Kunde inte skapa användare' },
+				{ status: 500 }
+			);
+		}
 
-	if (orgError) {
-		console.error('Organization creation error:', orgError);
-		return NextResponse.json(
-			{ error: 'Kunde inte skapa organisation' },
-			{ status: 500 }
+		// Now use service role client for creating org and membership (bypass RLS)
+		const supabaseAdmin = createClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL!,
+			process.env.SUPABASE_SERVICE_ROLE_KEY!,
+			{
+				auth: {
+					autoRefreshToken: false,
+					persistSession: false,
+				},
+			}
 		);
-	}
 
-	// 3. Create membership (user as admin) - using admin client to bypass RLS
-	const { error: membershipError } = await supabaseAdmin.from('memberships').insert({
-		user_id: authData.user.id,
-		org_id: org.id,
-		role: 'admin',
-		is_active: true,
-	});
+		// Generate slug from company name (required field)
+		// Convert to lowercase, remove special chars, replace spaces with hyphens
+		const generateSlug = (name: string): string => {
+			return name
+				.toLowerCase()
+				.replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+				.replace(/\s+/g, '-') // Replace spaces with hyphens
+				.replace(/-+/g, '-') // Replace multiple hyphens with single
+				.trim()
+				.replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+		};
 
-	if (membershipError) {
-		console.error('Membership creation error:', membershipError);
-		return NextResponse.json(
-			{ error: 'Kunde inte skapa medlemskap' },
-			{ status: 500 }
-		);
-	}
+		let slug = generateSlug(companyName);
+		
+		// Ensure slug is not empty
+		if (!slug) {
+			slug = `org-${Date.now()}`;
+		} else {
+			// Check if slug exists and make it unique if needed
+			let uniqueSlug = slug;
+			let counter = 1;
+			const maxAttempts = 100; // Safety limit
+			
+			for (let i = 0; i < maxAttempts; i++) {
+				const { data: existing } = await supabaseAdmin
+					.from('organizations')
+					.select('id')
+					.eq('slug', uniqueSlug)
+					.maybeSingle();
+				
+				if (!existing) {
+					slug = uniqueSlug;
+					break;
+				}
+				uniqueSlug = `${slug}-${counter}`;
+				counter++;
+			}
+			
+			// Fallback if all attempts failed (shouldn't happen)
+			if (counter >= maxAttempts) {
+				slug = `${slug}-${Date.now()}`;
+			}
+		}
 
-	// Don't auto sign-in, user needs to verify email first
-	return NextResponse.json({
-		message: 'Registrering slutförd! Kontrollera din e-post för att verifiera ditt konto.',
-		user: authData.user,
-		organization: org,
-	});
+		// 2. Create organization (using admin client to bypass RLS)
+		const { data: org, error: orgError } = await supabaseAdmin
+			.from('organizations')
+			.insert({
+				name: companyName,
+				slug: slug,
+				org_number: orgNumber,
+				phone,
+				address,
+				postal_code: postalCode,
+				city,
+				campaign_code: campaignCode || null,
+			})
+			.select()
+			.single();
+
+		if (orgError) {
+			console.error('Organization creation error:', orgError);
+			// Include more details in development for debugging
+			const errorMessage = process.env.NODE_ENV === 'development' 
+				? `Kunde inte skapa organisation: ${orgError.message}`
+				: 'Kunde inte skapa organisation';
+			return NextResponse.json(
+				{ error: errorMessage, details: process.env.NODE_ENV === 'development' ? orgError : undefined },
+				{ status: 500 }
+			);
+		}
+
+		// 3. Create membership (user as admin) - using admin client to bypass RLS
+		const { error: membershipError } = await supabaseAdmin.from('memberships').insert({
+			user_id: authData.user.id,
+			org_id: org.id,
+			role: 'admin',
+			is_active: true,
+		});
+
+		if (membershipError) {
+			console.error('Membership creation error:', membershipError);
+			return NextResponse.json(
+				{ error: 'Kunde inte skapa medlemskap' },
+				{ status: 500 }
+			);
+		}
+
+		// Don't auto sign-in, user needs to verify email first
+		return NextResponse.json({
+			message: 'Registrering slutförd! Kontrollera din e-post för att verifiera ditt konto.',
+			user: authData.user,
+			organization: org,
+		});
 	} catch (error) {
 		console.error('Complete signup error:', error);
 		return NextResponse.json({ error: 'Ett oväntat fel uppstod' }, { status: 500 });

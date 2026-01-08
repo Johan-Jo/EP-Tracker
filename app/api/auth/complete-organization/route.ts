@@ -24,11 +24,55 @@ export async function POST(request: Request) {
 			return NextResponse.json({ error: 'Inte autentiserad' }, { status: 401 });
 		}
 
+		// Generate slug from company name (required field)
+		const generateSlug = (name: string): string => {
+			return name
+				.toLowerCase()
+				.replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+				.replace(/\s+/g, '-') // Replace spaces with hyphens
+				.replace(/-+/g, '-') // Replace multiple hyphens with single
+				.trim()
+				.replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+		};
+
+		let slug = generateSlug(companyName);
+		
+		// Ensure slug is not empty
+		if (!slug) {
+			slug = `org-${Date.now()}`;
+		} else {
+			// Check if slug exists and make it unique if needed
+			let uniqueSlug = slug;
+			let counter = 1;
+			const maxAttempts = 100; // Safety limit
+			
+			for (let i = 0; i < maxAttempts; i++) {
+				const { data: existing } = await supabase
+					.from('organizations')
+					.select('id')
+					.eq('slug', uniqueSlug)
+					.maybeSingle();
+				
+				if (!existing) {
+					slug = uniqueSlug;
+					break;
+				}
+				uniqueSlug = `${slug}-${counter}`;
+				counter++;
+			}
+			
+			// Fallback if all attempts failed (shouldn't happen)
+			if (counter >= maxAttempts) {
+				slug = `${slug}-${Date.now()}`;
+			}
+		}
+
 		// Create organization
 		const { data: org, error: orgError } = await supabase
 			.from('organizations')
 			.insert({
 				name: companyName,
+				slug: slug,
 				org_number: orgNumber,
 				phone,
 				address,
