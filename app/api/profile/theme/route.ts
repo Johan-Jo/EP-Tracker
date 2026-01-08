@@ -7,8 +7,10 @@ export async function GET() {
 	try {
 		const { user } = await getSession();
 
+		// Return null theme if user is not authenticated (e.g., during signup)
+		// This prevents 401 errors in the console during registration
 		if (!user) {
-			return NextResponse.json({ error: 'Inte autentiserad' }, { status: 401 });
+			return NextResponse.json({ theme: null });
 		}
 
 		// In demo mode, return default theme (no database query needed)
@@ -41,8 +43,10 @@ export async function POST(request: NextRequest) {
 	try {
 		const { user } = await getSession();
 
+		// Silently ignore theme updates if user is not authenticated
+		// This prevents 401 errors during registration flow
 		if (!user) {
-			return NextResponse.json({ error: 'Inte autentiserad' }, { status: 401 });
+			return NextResponse.json({ success: true, theme: null });
 		}
 
 		// In demo mode, return success but don't save (read-only)
