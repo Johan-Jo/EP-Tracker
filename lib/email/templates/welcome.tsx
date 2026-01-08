@@ -28,9 +28,9 @@ export const WelcomeEmail = ({
       <Head />
       <Preview>Välkommen till EP Tracker!</Preview>
       <Body style={main}>
-        <Container style={container}>
+        <Container style={container} width="600">
           <Heading style={h1}>EP Tracker</Heading>
-          <Heading style={h2}>🎉 Välkommen!</Heading>
+          <Heading style={h2}>Välkommen! 🎉</Heading>
           
           <Text style={greeting}>Hej {userName}!</Text>
           
@@ -60,7 +60,10 @@ export const WelcomeEmail = ({
           </Section>
           
           <Text style={text}>
-            Behöver du hjälp? Tveka inte att kontakta oss på support@eptracker.se
+            Behöver du hjälp? Tveka inte att kontakta oss på{' '}
+            <a href="mailto:support@eptracker.se" style={{ color: '#ea580c', textDecoration: 'underline' }}>
+              support@eptracker.se
+            </a>
           </Text>
           
           <Text style={footer}>
@@ -82,21 +85,20 @@ export default WelcomeEmail;
 
 const main = {
   backgroundColor: '#f6f9fc',
-  fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  fontFamily: 'Arial, Helvetica, "Helvetica Neue", "Segoe UI", Roboto, sans-serif',
 };
 
 const container = {
   backgroundColor: '#ffffff',
   margin: '0 auto',
-  padding: '20px 0 48px',
-  marginBottom: '64px',
+  padding: '20px 20px 48px 20px',
 };
 
 const h1 = {
   color: '#ea580c',
   fontSize: '32px',
   fontWeight: 'bold',
-  margin: '40px 0',
+  margin: '40px 0 20px 0',
   padding: '0',
   textAlign: 'center' as const,
 };
@@ -105,8 +107,8 @@ const h2 = {
   color: '#333',
   fontSize: '28px',
   fontWeight: 'bold',
-  margin: '30px 0 20px',
-  padding: '0 20px',
+  margin: '20px 0',
+  padding: '0',
   textAlign: 'center' as const,
 };
 
@@ -114,15 +116,15 @@ const greeting = {
   color: '#333',
   fontSize: '16px',
   lineHeight: '24px',
-  padding: '0 20px',
-  margin: '24px 0 12px',
+  padding: '0',
+  margin: '24px 0 12px 0',
 };
 
 const text = {
   color: '#333',
   fontSize: '16px',
   lineHeight: '26px',
-  padding: '0 20px',
+  padding: '0',
   margin: '12px 0',
 };
 
@@ -131,7 +133,7 @@ const featuresBox = {
   border: '2px solid #86efac',
   borderRadius: '8px',
   padding: '20px',
-  margin: '24px 20px',
+  margin: '24px 0',
 };
 
 const featuresHeading = {
@@ -156,30 +158,32 @@ const buttonContainer = {
 const button = {
   backgroundColor: '#ea580c',
   borderRadius: '5px',
-  color: '#fff',
+  color: '#ffffff',
   fontSize: '16px',
   fontWeight: 'bold',
   textDecoration: 'none',
   textAlign: 'center' as const,
-  display: 'block',
+  display: 'inline-block',
   width: '200px',
   padding: '14px 20px',
   margin: '0 auto',
+  WebkitBorderRadius: '5px',
+  MozBorderRadius: '5px',
 };
 
 const footer = {
   color: '#666',
   fontSize: '14px',
   lineHeight: '24px',
-  padding: '0 20px',
-  margin: '32px 0 12px',
+  padding: '0',
+  margin: '32px 0 12px 0',
 };
 
 const footerSmall = {
   color: '#8898aa',
   fontSize: '12px',
   lineHeight: '16px',
-  padding: '0 20px',
+  padding: '0',
   margin: '12px 0',
   textAlign: 'center' as const,
 };
