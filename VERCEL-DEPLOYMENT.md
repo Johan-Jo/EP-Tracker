@@ -47,12 +47,15 @@ You'll need these for Vercel:
 # Required - Public (Safe to expose)
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
 
 # Required - Secret (Never commit)
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
-# Required - Your Vercel domain
-NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
+# Required for welcome emails (via Resend)
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+FROM_EMAIL=EP Tracker <noreply@eptracker.app>
+REPLY_TO_EMAIL=support@eptracker.app
 ```
 
 ---
@@ -83,7 +86,7 @@ NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
      - Key: `NEXT_PUBLIC_SUPABASE_URL`
      - Value: `https://your-project.supabase.co`
      - Environment: Production, Preview, Development (all)
-   - Repeat for all 3 required variables
+   - Repeat for all required variables (including RESEND_API_KEY for welcome emails)
 
 5. **Deploy:**
    - Click "Deploy"

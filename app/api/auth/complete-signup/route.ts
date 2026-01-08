@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { sendEmail } from '@/lib/email/send';
 
 export async function POST(request: Request) {
 	try {
@@ -253,6 +254,33 @@ export async function POST(request: Request) {
 				{ status: 500 }
 			);
 		}
+
+		// Send welcome email (in background, don't wait for it)
+		sendEmail({
+			to: email,
+			toName: fullName,
+			subject: 'Välkommen till EP Tracker!',
+			template: 'welcome',
+			templateData: {
+				userName: fullName,
+				organizationName: companyName,
+				dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+			},
+			organizationId: org.id,
+			emailType: 'transactional',
+			sentBy: 'system',
+		})
+			.then((result) => {
+				if (result.success) {
+					console.log('✅ Welcome email sent successfully to:', email);
+				} else {
+					console.error('❌ Failed to send welcome email to:', email, result.error);
+				}
+			})
+			.catch((error) => {
+				// Log error but don't fail the signup if email fails
+				console.error('❌ Error sending welcome email to:', email, error);
+			});
 
 		// Don't auto sign-in, user needs to verify email first
 		return NextResponse.json({
