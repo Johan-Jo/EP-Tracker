@@ -48,19 +48,63 @@ export function TimerWidget({ userId, orgId, inline = false }: TimerWidgetProps)
 
 	const supabase = createClient();
 
-	// Fetch active projects
+	// Fetch active projects sorted by last time entry
 	const { data: projects } = useQuery<ProjectOption[]>({
 		queryKey: ['active-projects', orgId],
 		queryFn: async () => {
-			const { data, error } = await supabase
+			// First, fetch all active projects
+			const { data: allProjects, error: projectsError } = await supabase
 				.from('projects')
 				.select('id, name, project_number, billing_mode, default_time_billing_type')
 				.eq('org_id', orgId)
 				.eq('status', 'active')
-				.order('name');
+				.eq('is_archived', false);
 
-			if (error) throw error;
-			return data || [];
+			if (projectsError) throw projectsError;
+			if (!allProjects || allProjects.length === 0) return [];
+
+			// Get project IDs
+			const projectIds = allProjects.map(p => p.id);
+
+			// Fetch latest time entry per project by getting all entries and finding the latest per project
+			// Using created_at as the timestamp for when time was registered
+			const { data: latestEntries, error: entriesError } = await supabase
+				.from('time_entries')
+				.select('project_id, created_at')
+				.in('project_id', projectIds)
+				.eq('org_id', orgId)
+				.order('created_at', { ascending: false });
+
+			if (entriesError) throw entriesError;
+
+			// Create a map of project_id -> latest entry date
+			const latestEntryMap = new Map<string, Date>();
+			if (latestEntries) {
+				// Since entries are already sorted by created_at DESC, we can just take the first entry for each project
+				for (const entry of latestEntries) {
+					if (!latestEntryMap.has(entry.project_id)) {
+						latestEntryMap.set(entry.project_id, new Date(entry.created_at));
+					}
+				}
+			}
+
+			// Sort projects: those with recent entries first, then by name
+			const sortedProjects = [...allProjects].sort((a, b) => {
+				const aDate = latestEntryMap.get(a.id);
+				const bDate = latestEntryMap.get(b.id);
+
+				// Projects with entries come first
+				if (aDate && !bDate) return -1;
+				if (!aDate && bDate) return 1;
+				if (aDate && bDate) {
+					// Sort by date descending (most recent first)
+					return bDate.getTime() - aDate.getTime();
+				}
+				// If neither has entries, sort alphabetically
+				return a.name.localeCompare(b.name, 'sv');
+			});
+
+			return sortedProjects;
 		},
 	});
 

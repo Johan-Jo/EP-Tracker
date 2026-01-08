@@ -67,6 +67,20 @@ export async function POST(request: Request) {
 			}
 		}
 
+		// Check if organization number already exists
+		const { data: existingOrg } = await supabase
+			.from('organizations')
+			.select('id, name, org_number')
+			.eq('org_number', orgNumber)
+			.maybeSingle();
+
+		if (existingOrg) {
+			return NextResponse.json(
+				{ error: `Organisationsnummer ${orgNumber} finns redan (organisation: ${existingOrg.name}). Var vänlig kontrollera organisationsnumret eller kontakta support om du tror att detta är ett fel.` },
+				{ status: 400 }
+			);
+		}
+
 		// Create organization
 		const { data: org, error: orgError } = await supabase
 			.from('organizations')
@@ -84,6 +98,13 @@ export async function POST(request: Request) {
 
 		if (orgError) {
 			console.error('Organization creation error:', orgError);
+			// Check if it's a unique constraint violation
+			if (orgError.code === '23505' && orgError.message.includes('org_number')) {
+				return NextResponse.json(
+					{ error: `Organisationsnummer ${orgNumber} finns redan. Var vänlig kontrollera organisationsnumret eller kontakta support.` },
+					{ status: 400 }
+				);
+			}
 			return NextResponse.json({ error: orgError.message }, { status: 500 });
 		}
 

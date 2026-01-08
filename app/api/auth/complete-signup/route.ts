@@ -31,6 +31,32 @@ export async function POST(request: Request) {
 			);
 		}
 
+		// Now use service role client for checking email and creating org/membership (bypass RLS)
+		const supabaseAdmin = createClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL!,
+			process.env.SUPABASE_SERVICE_ROLE_KEY!,
+			{
+				auth: {
+					autoRefreshToken: false,
+					persistSession: false,
+				},
+			}
+		);
+
+		// Check if email already exists in profiles table (quicker than checking auth.users)
+		const { data: existingEmailProfile } = await supabaseAdmin
+			.from('profiles')
+			.select('id, email')
+			.eq('email', email)
+			.maybeSingle();
+
+		if (existingEmailProfile) {
+			return NextResponse.json(
+				{ error: 'E-postadressen finns redan. Använd en annan e-postadress eller logga in.' },
+				{ status: 400 }
+			);
+		}
+
 		// First, use regular signUp to create user and send verification email automatically
 		const supabaseClient = createClient(
 			process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -51,6 +77,13 @@ export async function POST(request: Request) {
 
 		if (authError) {
 			console.error('Auth error:', authError);
+			// Check if it's an email already exists error
+			if (authError.message.toLowerCase().includes('already') || authError.message.toLowerCase().includes('email')) {
+				return NextResponse.json(
+					{ error: 'E-postadressen finns redan. Använd en annan e-postadress eller logga in.' },
+					{ status: 400 }
+				);
+			}
 			return NextResponse.json({ error: authError.message }, { status: 400 });
 		}
 
@@ -60,18 +93,6 @@ export async function POST(request: Request) {
 				{ status: 500 }
 			);
 		}
-
-		// Now use service role client for creating org and membership (bypass RLS)
-		const supabaseAdmin = createClient(
-			process.env.NEXT_PUBLIC_SUPABASE_URL!,
-			process.env.SUPABASE_SERVICE_ROLE_KEY!,
-			{
-				auth: {
-					autoRefreshToken: false,
-					persistSession: false,
-				},
-			}
-		);
 
 		// Generate slug from company name (required field)
 		// Convert to lowercase, remove special chars, replace spaces with hyphens
@@ -117,6 +138,20 @@ export async function POST(request: Request) {
 			}
 		}
 
+		// Check if organization number already exists
+		const { data: existingOrg } = await supabaseAdmin
+			.from('organizations')
+			.select('id, name, org_number')
+			.eq('org_number', orgNumber)
+			.maybeSingle();
+
+		if (existingOrg) {
+			return NextResponse.json(
+				{ error: `Organisationsnummer ${orgNumber} finns redan (organisation: ${existingOrg.name}). Var vänlig kontrollera organisationsnumret eller kontakta support om du tror att detta är ett fel.` },
+				{ status: 400 }
+			);
+		}
+
 		// 2. Create organization (using admin client to bypass RLS)
 		const { data: org, error: orgError } = await supabaseAdmin
 			.from('organizations')
@@ -146,7 +181,7 @@ export async function POST(request: Request) {
 		}
 
 		// 3. Ensure profile exists before creating membership
-		// The trigger might not have created it yet, so we create it explicitly
+		// The trigger might have created it, but we ensure it exists
 		const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
 			.from('profiles')
 			.select('id')
@@ -157,17 +192,28 @@ export async function POST(request: Request) {
 		if (!existingProfile) {
 			const { error: profileCreateError } = await supabaseAdmin
 				.from('profiles')
-				.upsert({
+				.insert({
 					id: authData.user.id,
 					email: authData.user.email!,
 					full_name: fullName,
-				}, {
-					onConflict: 'id',
 				});
 
 			if (profileCreateError) {
 				console.error('Profile creation error:', profileCreateError);
-				// Try to continue anyway - profile might exist from trigger
+				
+				// If it's a duplicate email error, return appropriate error
+				if (profileCreateError.code === '23505') {
+					return NextResponse.json(
+						{ error: 'E-postadressen finns redan. Använd en annan e-postadress eller logga in.' },
+						{ status: 400 }
+					);
+				}
+				
+				// For other errors, return generic error
+				return NextResponse.json(
+					{ error: 'Kunde inte skapa profil', details: process.env.NODE_ENV === 'development' ? profileCreateError.message : undefined },
+					{ status: 500 }
+				);
 			}
 		}
 
