@@ -224,6 +224,13 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 					type: 'ÄTA',
 					description: a.title,
 					amount: resolveAtaAmount(a),
+					user: a.created_by_profile ? {
+						full_name: a.created_by_profile?.full_name || a.created_by_profile?.email || `Användare ${a.created_by?.substring(0, 8) || 'Okänd'}`,
+						email: a.created_by_profile?.email || null,
+					} : {
+						full_name: `Användare ${a.created_by?.substring(0, 8) || 'Okänd'}`,
+						email: null,
+					},
 				}));
 
 			return [...materials, ...expenses, ...ata];
@@ -292,6 +299,13 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 					type: 'ÄTA',
 					description: a.title,
 					amount: resolveAtaAmount(a),
+					user: a.created_by_profile ? {
+						full_name: a.created_by_profile?.full_name || a.created_by_profile?.email || `Användare ${a.created_by?.substring(0, 8) || 'Okänd'}`,
+						email: a.created_by_profile?.email || null,
+					} : {
+						full_name: `Användare ${a.created_by?.substring(0, 8) || 'Okänd'}`,
+						email: null,
+					},
 				}));
 
 			return [...materials, ...expenses, ...ata];
@@ -1072,7 +1086,9 @@ const handleDownloadCurrentView = () => {
 															onCheckedChange={() => handleToggleTimeEntry(entry.id)}
 														/>
 													</td>
-													<td className='p-3 text-sm'>{entry.user?.full_name || 'Okänd'}</td>
+													<td className='p-3 text-sm'>
+														{entry.user?.full_name || entry.user?.email || `Användare ${entry.user_id?.substring(0, 8) || 'Okänd'}`}
+													</td>
 													<td className='p-3 text-sm'>{entry.project?.name || 'Inget projekt'}</td>
 													<td className='p-3 text-sm'>{entry.phase?.name || '-'}</td>
 													<td className='p-3 text-sm'>
@@ -1197,7 +1213,9 @@ const handleDownloadCurrentView = () => {
 															onCheckedChange={() => handleToggleCostEntry(entry.id)}
 														/>
 													</td>
-													<td className='p-3 text-sm'>{entry.user?.full_name || 'Okänd'}</td>
+													<td className='p-3 text-sm'>
+														{entry.user?.full_name || entry.user?.email || `Användare ${entry.user_id?.substring(0, 8) || 'Okänd'}`}
+													</td>
 													<td className='p-3 text-sm'>{entry.project?.name || 'Inget projekt'}</td>
 													<td className='p-3 text-sm'>{entry.type}</td>
 													<td className='p-3 text-sm'>{entry.description}</td>

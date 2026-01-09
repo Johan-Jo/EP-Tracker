@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 			receipt_url,
 			created_at,
 			updated_at,
-			user:profiles!expenses_user_id_fkey(full_name),
+			user:profiles!expenses_user_id_fkey(id, full_name, email),
 			project:projects(name, project_number)
 		`)
 		.eq('org_id', membership.org_id)
@@ -63,6 +63,21 @@ export async function GET(request: NextRequest) {
 		return NextResponse.json({ error: error.message }, { status: 500 });
 	}
 
-	return NextResponse.json({ expenses: data });
+	// Ensure user data is always present with fallback to email
+	const expensesWithUserData = (data || []).map((expense: any) => {
+		if (!expense.user || !expense.user.full_name) {
+			return {
+				...expense,
+				user: {
+					...expense.user,
+					full_name: expense.user?.email || `Användare ${expense.user_id?.substring(0, 8) || 'Okänd'}`,
+					email: expense.user?.email || null,
+				},
+			};
+		}
+		return expense;
+	});
+
+	return NextResponse.json({ expenses: expensesWithUserData });
 }
 

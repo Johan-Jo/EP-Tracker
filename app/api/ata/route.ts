@@ -50,8 +50,8 @@ export async function GET(request: NextRequest) {
 			materials_amount_sek,
 			materials_sek,
 			project:projects(name, project_number),
-			created_by_profile:profiles!ata_created_by_fkey(full_name),
-			approved_by_profile:profiles!ata_approved_by_fkey(full_name)
+			created_by_profile:profiles!ata_created_by_fkey(id, full_name, email),
+			approved_by_profile:profiles!ata_approved_by_fkey(id, full_name, email)
 		`)
 		.eq('org_id', effectiveOrgId)
 		.order('created_at', { ascending: false });
@@ -73,7 +73,22 @@ export async function GET(request: NextRequest) {
 		return NextResponse.json({ error: error.message }, { status: 500 });
 	}
 
-	return NextResponse.json({ ata: data });
+	// Ensure created_by_profile data is always present with fallback
+	const ataWithUserData = (data || []).map((ata: any) => {
+		if (!ata.created_by_profile || !ata.created_by_profile.full_name) {
+			return {
+				...ata,
+				created_by_profile: {
+					...ata.created_by_profile,
+					full_name: ata.created_by_profile?.email || `Användare ${ata.created_by?.substring(0, 8) || 'Okänd'}`,
+					email: ata.created_by_profile?.email || null,
+				},
+			};
+		}
+		return ata;
+	});
+
+	return NextResponse.json({ ata: ataWithUserData });
 }
 
 export async function POST(request: NextRequest) {

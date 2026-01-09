@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
 			approved_at,
 			created_at,
 			updated_at,
-			user:profiles!time_entries_user_id_fkey(full_name, email),
+			user:profiles!time_entries_user_id_fkey(id, full_name, email),
 			project:projects(name, project_number),
 			phase:phases(name)
 		`)
@@ -89,6 +89,22 @@ export async function GET(request: NextRequest) {
 		return NextResponse.json({ error: error.message }, { status: 500 });
 	}
 
-	return NextResponse.json({ entries: data });
+	// Ensure user data is always present with fallback to email
+	const entriesWithUserData = (data || []).map((entry: any) => {
+		if (!entry.user || !entry.user.full_name) {
+			// If user profile doesn't exist or has no name, try to get email from auth or use fallback
+			return {
+				...entry,
+				user: {
+					...entry.user,
+					full_name: entry.user?.email || `Användare ${entry.user_id?.substring(0, 8) || 'Okänd'}`,
+					email: entry.user?.email || null,
+				},
+			};
+		}
+		return entry;
+	});
+
+	return NextResponse.json({ entries: entriesWithUserData });
 }
 

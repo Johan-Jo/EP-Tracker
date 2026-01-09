@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 			notes,
 			created_at,
 			updated_at,
-			user:profiles!materials_user_id_fkey(full_name),
+			user:profiles!materials_user_id_fkey(id, full_name, email),
 			project:projects(name, project_number)
 		`)
 		.eq('org_id', membership.org_id)
@@ -64,6 +64,21 @@ export async function GET(request: NextRequest) {
 		return NextResponse.json({ error: error.message }, { status: 500 });
 	}
 
-	return NextResponse.json({ materials: data });
+	// Ensure user data is always present with fallback to email
+	const materialsWithUserData = (data || []).map((material: any) => {
+		if (!material.user || !material.user.full_name) {
+			return {
+				...material,
+				user: {
+					...material.user,
+					full_name: material.user?.email || `Användare ${material.user_id?.substring(0, 8) || 'Okänd'}`,
+					email: material.user?.email || null,
+				},
+			};
+		}
+		return material;
+	});
+
+	return NextResponse.json({ materials: materialsWithUserData });
 }
 
