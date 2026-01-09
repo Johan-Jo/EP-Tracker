@@ -260,9 +260,9 @@ export async function POST(request: Request) {
 
 		// Wait a bit for any async triggers to complete, then retry if needed
 		let membershipError;
-		let retries = 3;
+		let membershipRetries = 3;
 		
-		while (retries > 0) {
+		while (membershipRetries > 0) {
 			const result = await supabaseAdmin.from('memberships').insert({
 				user_id: authData.user.id,
 				org_id: org.id,
@@ -277,10 +277,10 @@ export async function POST(request: Request) {
 			}
 			
 			// If it's a foreign key error, profile might not exist yet
-			if (membershipError.code === '23503' && retries > 1) {
+			if (membershipError.code === '23503' && membershipRetries > 1) {
 				// Wait a bit and try again
 				await new Promise(resolve => setTimeout(resolve, 500));
-				retries--;
+				membershipRetries--;
 				continue;
 			}
 			
