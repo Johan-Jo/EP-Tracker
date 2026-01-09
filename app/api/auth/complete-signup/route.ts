@@ -182,40 +182,80 @@ export async function POST(request: Request) {
 		}
 
 		// 3. Ensure profile exists before creating membership
-		// The trigger might have created it, but we ensure it exists
-		const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
-			.from('profiles')
-			.select('id')
-			.eq('id', authData.user.id)
-			.maybeSingle();
+		// Wait a bit for trigger to complete, then check and create if needed
+		await new Promise(resolve => setTimeout(resolve, 500));
 
-		// If profile doesn't exist, create it
-		if (!existingProfile) {
+		let profileExists = false;
+		let profileError = null;
+		let retries = 3;
+
+		// Retry logic for profile creation (trigger might take time)
+		while (retries > 0 && !profileExists) {
+			// First check if profile exists
+			const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
+				.from('profiles')
+				.select('id')
+				.eq('id', authData.user.id)
+				.maybeSingle();
+
+			if (existingProfile) {
+				profileExists = true;
+				break;
+			}
+
+			// If profile doesn't exist, try to create it with upsert
 			const { error: profileCreateError } = await supabaseAdmin
 				.from('profiles')
-				.insert({
+				.upsert({
 					id: authData.user.id,
 					email: authData.user.email!,
 					full_name: fullName,
+				}, {
+					onConflict: 'id',
 				});
 
 			if (profileCreateError) {
-				console.error('Profile creation error:', profileCreateError);
+				profileError = profileCreateError;
+				console.error(`Profile creation attempt failed (${retries} retries left):`, profileCreateError);
 				
-				// If it's a duplicate email error, return appropriate error
+				// If it's a duplicate email error, return immediately
 				if (profileCreateError.code === '23505') {
 					return NextResponse.json(
 						{ error: 'E-postadressen finns redan. Använd en annan e-postadress eller logga in.' },
 						{ status: 400 }
 					);
 				}
-				
-				// For other errors, return generic error
-				return NextResponse.json(
-					{ error: 'Kunde inte skapa profil', details: process.env.NODE_ENV === 'development' ? profileCreateError.message : undefined },
-					{ status: 500 }
-				);
+
+				// If it's a foreign key error, wait a bit and retry (user might not be fully committed yet)
+				if (profileCreateError.code === '23503' && retries > 1) {
+					await new Promise(resolve => setTimeout(resolve, 1000));
+					retries--;
+					continue;
+				}
+
+				// For other errors or final retry, return error
+				if (retries === 1) {
+					return NextResponse.json(
+						{ error: 'Kunde inte skapa profil', details: process.env.NODE_ENV === 'development' ? profileCreateError.message : undefined },
+						{ status: 500 }
+					);
+				}
+			} else {
+				profileExists = true;
+				break;
 			}
+
+			retries--;
+			if (retries > 0) {
+				await new Promise(resolve => setTimeout(resolve, 1000));
+			}
+		}
+
+		if (!profileExists && profileError) {
+			return NextResponse.json(
+				{ error: 'Kunde inte skapa profil efter flera försök', details: process.env.NODE_ENV === 'development' ? profileError.message : undefined },
+				{ status: 500 }
+			);
 		}
 
 		// Wait a bit for any async triggers to complete, then retry if needed
