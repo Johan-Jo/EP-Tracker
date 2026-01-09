@@ -5,10 +5,13 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useDemoMode } from '@/lib/demo/demo-context';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export function DemoBanner() {
 	const { mode, setMode } = useDemoMode();
 	const [dismissed, setDismissed] = useState(false);
+	const [isToggling, setIsToggling] = useState(false);
+	const router = useRouter();
 
 	// Don't show if not in demo mode or dismissed
 	if (mode === 'none' || dismissed) {
@@ -16,6 +19,32 @@ export function DemoBanner() {
 	}
 
 	const isExampleMode = mode === 'exampleOrg';
+
+	const handleBackToAccount = async () => {
+		if (isToggling) return;
+		
+		setIsToggling(true);
+		try {
+			const res = await fetch('/api/demo/toggle-example-mode', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ enabled: false }),
+			});
+
+			if (res.ok) {
+				setMode('none');
+				router.refresh();
+			} else {
+				console.error('Failed to toggle example mode');
+			}
+		} catch (error) {
+			console.error('Error toggling example mode:', error);
+		} finally {
+			setIsToggling(false);
+		}
+	};
 
 	return (
 		<div className="fixed top-0 left-0 right-0 z-[9998] bg-blue-600 text-white py-2 px-4 shadow-md">
@@ -31,12 +60,13 @@ export function DemoBanner() {
 				<div className="flex items-center gap-2">
 					{isExampleMode ? (
 						<Button
-							onClick={() => setMode('none')}
+							onClick={handleBackToAccount}
+							disabled={isToggling}
 							variant="outline"
 							size="sm"
 							className="bg-white text-blue-600 hover:bg-gray-100"
 						>
-							Tillbaka till mitt konto
+							{isToggling ? 'Växlar...' : 'Tillbaka till mitt konto'}
 						</Button>
 					) : (
 						<Button
