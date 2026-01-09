@@ -97,11 +97,45 @@ async function main() {
 			console.log('✅ Found existing demo organization');
 		}
 
-		const demoOrgId = demoOrg.id;
-		console.log(`   Org ID: ${demoOrgId}\n`);
+	const demoOrgId = demoOrg.id;
+	console.log(`   Org ID: ${demoOrgId}\n`);
 
-		// 2. Reset demo data if --reset flag
-		if (reset) {
+	// 1.5. Create anchor date (start of current week) for date-shifting
+	// This will be saved as demo_reference_date, and all data will be created relative to this date
+	console.log('📅 Setting up demo reference date (anchor date)...');
+	const anchorDate = new Date();
+	anchorDate.setDate(anchorDate.getDate() - anchorDate.getDay()); // Start of week (Sunday = 0)
+	anchorDate.setHours(0, 0, 0, 0);
+
+	// Save demo_reference_date to organization
+	const { error: updateRefDateError } = await supabase
+		.from('organizations')
+		.update({ demo_reference_date: anchorDate.toISOString() })
+		.eq('id', demoOrgId);
+
+	if (updateRefDateError) {
+		console.warn(`   ⚠️  Warning: Could not set demo_reference_date:`, updateRefDateError.message);
+	} else {
+		console.log(`   ✅ Demo reference date set to: ${anchorDate.toISOString()}\n`);
+	}
+
+	// Helper function to get date relative to anchor date
+	// Instead of using new Date(), we'll use anchorDate + offset
+	const getRelativeDate = (daysOffset: number = 0, hours: number = 0, minutes: number = 0): Date => {
+		const date = new Date(anchorDate);
+		date.setDate(date.getDate() + daysOffset);
+		date.setHours(hours, minutes, 0, 0);
+		return date;
+	};
+
+	// Helper function to get "today" relative to anchor date (0 days offset)
+	const getToday = (): Date => getRelativeDate(0);
+	
+	// Helper function to get "n weeks ago" relative to anchor date
+	const getWeeksAgo = (weeks: number): Date => getRelativeDate(-weeks * 7);
+
+	// 2. Reset demo data if --reset flag
+	if (reset) {
 			console.log('🗑️  Step 2: Clearing existing demo data...');
 			
 			// Delete in reverse dependency order
@@ -456,10 +490,8 @@ async function main() {
 			const statuses = ['PLANERAD', 'PÅGÅENDE', 'KLAR']; // Valid: PLANERAD, PÅGÅENDE, KLAR, FAKTURERAD, AVBOKAD
 			const priorities = ['LOW', 'NORMAL', 'HIGH', 'AKUT']; // Valid: LOW, NORMAL, HIGH, AKUT
 			
-			const startDate = new Date();
-			startDate.setDate(startDate.getDate() + i);
-			const endDate = new Date(startDate);
-			endDate.setDate(endDate.getDate() + 1);
+			const startDate = getRelativeDate(i);
+			const endDate = getRelativeDate(i + 1);
 
 			workOrders.push({
 				organization_id: demoOrgId,
@@ -502,9 +534,8 @@ async function main() {
 
 		if (profileIds.length > 0) {
 			const weatherOptions = ['Soligt', 'Molnigt', 'Regn', 'Snö', 'Oklart'];
-			const today = new Date();
-			const threeWeeksAgo = new Date(today);
-			threeWeeksAgo.setDate(today.getDate() - 21);
+			const today = getToday();
+			const threeWeeksAgo = getWeeksAgo(3);
 
 			for (let i = 0; i < 35; i++) {
 				const date = randomDate(threeWeeksAgo, today);
@@ -564,14 +595,12 @@ async function main() {
 		if (profileIds.length > 0) {
 			const mainProjects = activeProjects.slice(0, 2);
 			const workers = profileIds.slice(2, 7);
-			const threeWeeksAgo = new Date();
-			threeWeeksAgo.setDate(threeWeeksAgo.getDate() - 21);
+			const threeWeeksAgo = getWeeksAgo(3);
 
 			for (let week = 0; week < 3; week++) {
 				for (let day = 0; day < 5; day++) {
 					// Monday to Friday
-					const date = new Date(threeWeeksAgo);
-					date.setDate(threeWeeksAgo.getDate() + week * 7 + day);
+					const date = getRelativeDate(-21 + week * 7 + day);
 
 					for (const worker of workers.slice(0, 3)) {
 						// 3 workers per day
@@ -582,11 +611,8 @@ async function main() {
 						const durationHours = randomInt(6, 8);
 						const durationMinutes = randomInt(0, 30);
 
-						const startAt = new Date(date);
-						startAt.setHours(startHour, startMinute, 0, 0);
-
-						const stopAt = new Date(startAt);
-						stopAt.setHours(startAt.getHours() + durationHours, startAt.getMinutes() + durationMinutes, 0, 0);
+					const startAt = getRelativeDate(-21 + week * 7 + day, startHour, startMinute);
+					const stopAt = getRelativeDate(-21 + week * 7 + day, startHour + durationHours, startMinute + durationMinutes);
 
 						// Calculate duration in minutes
 						const durationMin = Math.round((stopAt.getTime() - startAt.getTime()) / (1000 * 60));
@@ -838,7 +864,7 @@ async function main() {
 				const isCompleted = Math.random() > 0.3; // 70% completed
 
 				const completedAt = isCompleted
-					? new Date(Date.now() - randomInt(0, 14) * 24 * 60 * 60 * 1000).toISOString()
+					? getRelativeDate(-randomInt(0, 14)).toISOString()
 					: null;
 
 				const signatureName = isCompleted ? (creator === foreman ? 'Lars Johansson' : 'Erik Andersson') : null;
@@ -885,15 +911,13 @@ async function main() {
 			const profileMap = new Map(existingProfiles?.map((p) => [p.id, p]) || []);
 			const workers = profileIds.filter(id => profileMap.get(id)?.email.startsWith('arbetare'));
 			const foreman = profileIds[1]; // Foreman
-			const today = new Date();
-			today.setHours(0, 0, 0, 0);
+			const today = getToday();
 
-			// Create assignments for next 2 weeks
+			// Create assignments for next 2 weeks (relative to anchor date)
 			for (let week = 0; week < 2; week++) {
 				for (let day = 0; day < 5; day++) {
-					// Monday to Friday
-					const date = new Date(today);
-					date.setDate(today.getDate() + week * 7 + day);
+					// Monday to Friday (week * 7 + day offset from anchor date)
+					const date = getRelativeDate(week * 7 + day);
 
 					// Assign 2-3 workers per day to different projects
 					const workersForDay = workers.slice(0, randomInt(2, 3));
@@ -902,10 +926,8 @@ async function main() {
 						const startHour = randomInt(7, 8);
 						const endHour = randomInt(15, 17);
 
-						const startTs = new Date(date);
-						startTs.setHours(startHour, 0, 0, 0);
-						const endTs = new Date(date);
-						endTs.setHours(endHour, 0, 0, 0);
+						const startTs = getRelativeDate(week * 7 + day, startHour, 0);
+						const endTs = getRelativeDate(week * 7 + day, endHour, 0);
 
 						assignmentEntries.push({
 							org_id: demoOrgId,
@@ -949,17 +971,16 @@ async function main() {
 			const profileMap = new Map(existingProfiles?.map((p) => [p.id, p]) || []);
 			const workers = profileIds.filter(id => profileMap.get(id)?.email.startsWith('arbetare'));
 			const foreman = profileIds[1]; // Foreman
-			const today = new Date();
-			today.setHours(0, 0, 0, 0);
+			const today = getToday();
 
-			// Create absences for next 4 weeks
+			// Create absences for next 4 weeks (relative to anchor date)
 			for (let i = 0; i < 4; i++) {
 				const worker = randomElement(workers);
 				const absenceType = randomElement(['vacation', 'sick', 'training']);
-				const startDate = new Date(today);
-				startDate.setDate(today.getDate() + randomInt(7, 28));
-				const endDate = new Date(startDate);
-				endDate.setDate(startDate.getDate() + (absenceType === 'vacation' ? randomInt(3, 7) : 1));
+				const startDaysOffset = randomInt(7, 28);
+				const duration = absenceType === 'vacation' ? randomInt(3, 7) : 1;
+				const startDate = getRelativeDate(startDaysOffset);
+				const endDate = getRelativeDate(startDaysOffset + duration);
 
 				absenceEntries.push({
 					org_id: demoOrgId,
@@ -1012,7 +1033,7 @@ async function main() {
 				phone_mobile: `070-${randomInt(1000000, 9999999)}`,
 				employment_type: randomElement(['FULL_TIME', 'PART_TIME']),
 				hourly_rate_sek: randomInt(300, 400),
-				employment_start_date: new Date(Date.now() - randomInt(30, 365) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+				employment_start_date: formatDate(getRelativeDate(-randomInt(30, 365))),
 			});
 		}
 
@@ -1097,14 +1118,11 @@ async function main() {
 
 		if (profileIds.length > 0) {
 			const foreman = profileIds[1]; // Foreman
-			const today = new Date();
-			today.setHours(0, 0, 0, 0);
+			const today = getToday();
 
 			for (let i = 0; i < 2; i++) {
-				const periodStart = new Date(today);
-				periodStart.setDate(today.getDate() - (i + 1) * 7 - 7);
-				const periodEnd = new Date(periodStart);
-				periodEnd.setDate(periodStart.getDate() + 6); // Week period
+				const periodStart = getRelativeDate(-(i + 1) * 7 - 7);
+				const periodEnd = getRelativeDate(-(i + 1) * 7 - 7 + 6); // Week period
 
 				const project = i === 0 ? randomElement(activeProjects) : null; // First approval for specific project, second for all
 
@@ -1141,9 +1159,7 @@ async function main() {
 			locked: boolean;
 		}> = [];
 
-		const today = new Date();
-		const threeWeeksAgo = new Date(today);
-		threeWeeksAgo.setDate(today.getDate() - 21);
+		const threeWeeksAgo = getWeeksAgo(3);
 
 		for (let i = 0; i < 2; i++) {
 			const project = randomElement(activeProjects);
@@ -1151,15 +1167,11 @@ async function main() {
 
 			if (!customer) continue;
 
-			const periodStart = new Date(threeWeeksAgo);
-			periodStart.setDate(threeWeeksAgo.getDate() + i * 7);
-			const periodEnd = new Date(periodStart);
-			periodEnd.setDate(periodStart.getDate() + 7);
+			const periodStart = getRelativeDate(-21 + i * 7);
+			const periodEnd = getRelativeDate(-21 + i * 7 + 7);
 
-			const invoiceDate = new Date(periodEnd);
-			invoiceDate.setDate(periodEnd.getDate() + 1);
-			const dueDate = new Date(invoiceDate);
-			dueDate.setDate(invoiceDate.getDate() + 30);
+			const invoiceDate = getRelativeDate(-21 + i * 7 + 7 + 1);
+			const dueDate = getRelativeDate(-21 + i * 7 + 7 + 1 + 30);
 
 			invoiceBasisEntries.push({
 				org_id: demoOrgId,

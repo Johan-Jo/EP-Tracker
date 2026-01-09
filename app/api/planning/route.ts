@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
 import { checkDemoMode } from '@/lib/demo/check-demo-mode';
 import { startOfWeek, endOfWeek, parseISO } from 'date-fns';
+import { getEffectiveDateForDemo } from '@/lib/demo/date-shift';
 
 // GET /api/planning - Fetch week planning data
 // EPIC 26.6: Optimized with parallel queries and session caching
@@ -60,13 +61,17 @@ export async function GET(request: NextRequest) {
 	weekStart.setHours(0, 0, 0, 0);
 	weekEnd.setHours(23, 59, 59, 999);
 
+	// Date-shifting for demo organization
+	const effectiveWeekStart = await getEffectiveDateForDemo(effectiveOrgId, weekStart);
+	const effectiveWeekEnd = await getEffectiveDateForDemo(effectiveOrgId, weekEnd);
+
 	// EPIC 26.6 Part 2: Use database function for maximum speed! ⚡
 	// This consolidates 4 queries into 1 optimized database-side query
 	const { data: planningData, error: planningError } = await supabase
 		.rpc('get_planning_data', {
 			p_org_id: effectiveOrgId,
-			p_week_start: weekStart.toISOString(),
-			p_week_end: weekEnd.toISOString(),
+			p_week_start: effectiveWeekStart.toISOString(),
+			p_week_end: effectiveWeekEnd.toISOString(),
 			p_project_id: project_id || null,
 			p_user_id_filter: user_id_filter || null,
 		});
@@ -83,8 +88,8 @@ export async function GET(request: NextRequest) {
 		absences: planningData?.absences || [],
 		work_orders: planningData?.work_orders || [],
 		week: {
-			start: weekStart.toISOString(),
-			end: weekEnd.toISOString(),
+			start: effectiveWeekStart.toISOString(),
+			end: effectiveWeekEnd.toISOString(),
 		},
 	}, { status: 200 });
 	} catch (error) {

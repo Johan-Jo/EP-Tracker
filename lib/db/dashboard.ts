@@ -2,6 +2,7 @@
 // This module provides optimized dashboard queries using PostgreSQL functions
 
 import { createClient } from '@/lib/supabase/server';
+import { getEffectiveStartDateForDemo } from '@/lib/demo/date-shift';
 
 /**
  * Safely log error with all available information
@@ -148,11 +149,16 @@ export async function getDashboardStats(userId: string, orgId: string, startDate
 	try {
 		const supabase = await createClient();
 
+		// Date-shifting for demo organization
+		const effectiveStartDate = startDate 
+			? await getEffectiveStartDateForDemo(orgId, startDate)
+			: startDate;
+
 		// EPIC 26.9: Try cached stats first (Phase C)
 		const { data, error } = await supabase.rpc('get_dashboard_stats_cached', {
 			p_user_id: userId,
 			p_org_id: orgId,
-			p_start_date: startDate?.toISOString() || null,
+			p_start_date: effectiveStartDate?.toISOString() || null,
 		});
 
 		// Handle errors - check for timeout specifically
@@ -172,14 +178,14 @@ export async function getDashboardStats(userId: string, orgId: string, startDate
 			}
 			
 			logError('Error fetching cached stats', error);
-			// Fallback to non-cached version
-			return await getDashboardStatsUncached(userId, orgId, startDate);
+			// Fallback to non-cached version (with date-shifting already applied)
+			return await getDashboardStatsUncached(userId, orgId, effectiveStartDate);
 		}
 
 		// Handle case where data might be null or have different structure
 		if (!data || typeof data !== 'object') {
 			console.warn('[DASHBOARD] Invalid cached stats data, using fallback');
-			return await getDashboardStatsUncached(userId, orgId, startDate);
+			return await getDashboardStatsUncached(userId, orgId, effectiveStartDate);
 		}
 
 		// Ensure all required fields exist with defaults
@@ -192,7 +198,11 @@ export async function getDashboardStats(userId: string, orgId: string, startDate
 	} catch (err) {
 		logError('Exception in getDashboardStats', err);
 		// Fallback to non-cached version
-		return await getDashboardStatsUncached(userId, orgId, startDate);
+		// Date-shifting will be applied in getDashboardStatsUncached if needed
+		const effectiveStartDate = startDate 
+			? await getEffectiveStartDateForDemo(orgId, startDate)
+			: startDate;
+		return await getDashboardStatsUncached(userId, orgId, effectiveStartDate);
 	}
 }
 
