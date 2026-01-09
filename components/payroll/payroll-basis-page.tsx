@@ -641,7 +641,7 @@ export function PayrollBasisPage({
 	const errorMessage = error instanceof Error ? error.message : error ? 'Kunde inte ladda löneunderlag' : '';
 
 	return (
-		<div className='flex-1 min-h-full w-full overflow-auto bg-black pb-24 transition-colors dark:bg-black'>
+		<div className='flex-1 min-h-full w-full overflow-auto bg-gray-50 pb-24 transition-colors dark:bg-gray-900'>
 			<main className='mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8'>
 				<section className='mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between'>
 					<div>
@@ -813,7 +813,7 @@ export function PayrollBasisPage({
 											return (
 											<article
 												key={row.id}
-												className='rounded-2xl border border-white/10 bg-white/5 p-3 shadow-sm dark:border-white/5 dark:bg-white/5'
+												className='rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-950'
 											>
 												<div className='flex items-start justify-between gap-3'>
 													<div className='min-w-0'>
@@ -827,7 +827,7 @@ export function PayrollBasisPage({
 															/>
 													<h3 className='truncate text-base font-semibold'>{row.person.full_name}</h3>
 												</div>
-												<div className='mt-0.5 text-[11px] text-slate-400 tabular'>
+												<div className='mt-0.5 text-[11px] text-gray-600 dark:text-slate-400 tabular'>
 													{formatDateRange(row.period_start, row.period_end)}
 												</div>
 												{(() => {
@@ -835,7 +835,7 @@ export function PayrollBasisPage({
 													if (exportStatus) {
 														if (exportStatus.status === 'exported') {
 															return (
-																<div className='mt-1 text-[11px] text-emerald-400'>
+																<div className='mt-1 text-[11px] text-emerald-600 dark:text-emerald-400'>
 																	✓ Exporterad till Fortnox{' '}
 																	{exportStatus.exported_at
 																		? formatDate(exportStatus.exported_at)
@@ -844,10 +844,10 @@ export function PayrollBasisPage({
 															);
 														} else if (exportStatus.status === 'failed') {
 															return (
-																<div className='mt-1 text-[11px] text-red-400'>
+																<div className='mt-1 text-[11px] text-red-600 dark:text-red-400'>
 																	✗ Export misslyckades
 																	{exportStatus.error_message && (
-																		<span className='block text-[10px] text-red-300'>
+																		<span className='block text-[10px] text-red-500 dark:text-red-300'>
 																			{exportStatus.error_message.substring(0, 50)}
 																			{exportStatus.error_message.length > 50 ? '...' : ''}
 																		</span>
@@ -861,13 +861,13 @@ export function PayrollBasisPage({
 
 														<div className='mt-1 flex flex-wrap gap-1 text-[11px] tabular'>
 															{!isZeroHours(row.hours_overtime) && (
-																<span className='rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-300'>ÖT {fmtH(row.hours_overtime)}</span>
+																<span className='rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-700 dark:text-amber-300'>ÖT {fmtH(row.hours_overtime)}</span>
 															)}
 															{!isZeroHours(obHours) && (
-																<span className='rounded-full bg-sky-500/15 px-2 py-0.5 text-sky-300'>OB {fmtH(obHours)}</span>
+																<span className='rounded-full bg-sky-500/15 px-2 py-0.5 text-sky-700 dark:text-sky-300'>OB {fmtH(obHours)}</span>
 															)}
 															{!isZeroHours(row.hours_norm) && (
-																<span className='rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-300'>
+																<span className='rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-700 dark:text-emerald-300'>
 																	Norm {fmtH(row.hours_norm)}
 																</span>
 															)}
@@ -886,10 +886,10 @@ export function PayrollBasisPage({
 												</div>
 
 												<div className='mt-3 grid grid-cols-2 gap-x-3 gap-y-1 tabular'>
-													<div className='text-[12px] text-slate-400'>Totalt</div>
+													<div className='text-[12px] text-gray-600 dark:text-slate-400'>Totalt</div>
 													<div className='text-right text-[15px] font-semibold'>{fmtH(row.total_hours)}</div>
 
-													<div className='text-[12px] text-slate-400'>Bruttolön</div>
+													<div className='text-[12px] text-gray-600 dark:text-slate-400'>Bruttolön</div>
 													<div className='text-right text-[15px] font-semibold'>{fmtMoneySEK(row.gross_salary_sek)}</div>
 												</div>
 
@@ -897,19 +897,19 @@ export function PayrollBasisPage({
 													<div className='mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 tabular text-[13px]'>
 														{!isZeroHours(row.hours_norm) && (
 															<>
-																<div className='text-slate-400'>Norm</div>
+																<div className='text-gray-600 dark:text-slate-400'>Norm</div>
 																<div className='text-right'>{fmtH(row.hours_norm)}</div>
 															</>
 														)}
 														{!isZeroHours(row.hours_overtime) && (
 															<>
-																<div className='text-slate-400'>Övertid</div>
+																<div className='text-gray-600 dark:text-slate-400'>Övertid</div>
 																<div className='text-right'>{fmtH(row.hours_overtime)}</div>
 															</>
 														)}
 														{!isZeroHours(obHours) && (
 															<>
-																<div className='text-slate-400'>OB</div>
+																<div className='text-gray-600 dark:text-slate-400'>OB</div>
 																<div className='text-right'>{fmtH(obHours)}</div>
 															</>
 														)}
@@ -958,7 +958,7 @@ export function PayrollBasisPage({
 														Lås upp
 													</Button>
 												</div>
-												<p className='mt-1 text-[11px] text-slate-500 dark:text-slate-400'>
+												<p className='mt-1 text-[11px] text-gray-600 dark:text-slate-400'>
 													PDF exporterar endast <b>låsta</b> poster
 												</p>
 											</div>
@@ -1169,18 +1169,18 @@ function Table({
 							<td className='whitespace-nowrap py-2 pr-4 font-medium' title={row.person.full_name}>
 								{row.person.full_name}
 							</td>
-							<td className='whitespace-nowrap py-2 pr-4 text-slate-500'>
+							<td className='whitespace-nowrap py-2 pr-4 text-gray-600 dark:text-slate-500'>
 								{isZeroHours(row.hours_norm) ? '–' : fmtH(row.hours_norm)}
 							</td>
-							<td className='whitespace-nowrap py-2 pr-4 text-slate-500'>
+							<td className='whitespace-nowrap py-2 pr-4 text-gray-600 dark:text-slate-500'>
 								{isZeroHours(row.hours_overtime) ? '–' : fmtH(row.hours_overtime)}
 							</td>
-							<td className='whitespace-nowrap py-2 pr-4 text-slate-500'>
+							<td className='whitespace-nowrap py-2 pr-4 text-gray-600 dark:text-slate-500'>
 								{isZeroHours((row.ob_hours_actual ?? row.ob_hours) ?? 0)
 									? '–'
 									: fmtH((row.ob_hours_actual ?? row.ob_hours) ?? 0)}
 							</td>
-							<td className='whitespace-nowrap py-2 pr-4 text-slate-500'>
+							<td className='whitespace-nowrap py-2 pr-4 text-gray-600 dark:text-slate-500'>
 								{isZeroHours(row.break_hours) ? '–' : fmtH(row.break_hours)}
 							</td>
 							<td className='whitespace-nowrap py-2 pr-4 font-semibold'>{fmtH(row.total_hours)}</td>

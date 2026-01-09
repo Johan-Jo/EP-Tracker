@@ -100,7 +100,7 @@ export default async function ApproveTimePage(props: PageProps) {
 	}
 
 	return (
-		<div className='p-4 md:p-8 flex justify-center bg-black min-h-screen'>
+		<div className='p-4 md:p-8 flex justify-center bg-gray-50 dark:bg-gray-900 min-h-screen'>
 			<Card className='max-w-lg w-full'>
 				<CardHeader>
 					<CardTitle>Bekräfta registrerad tid</CardTitle>

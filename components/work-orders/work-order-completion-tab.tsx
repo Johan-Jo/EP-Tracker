@@ -202,7 +202,7 @@ export function WorkOrderCompletionTab({ workOrder, canEdit }: WorkOrderCompleti
 
 			{/* Completion Instructions */}
 			{!isCompleted && canComplete && (
-				<Card className="border-border bg-black">
+				<Card className="border-border bg-white dark:bg-gray-950">
 					<CardContent className="pt-6">
 						<div className="space-y-2">
 							<p className="font-medium">För att markera arbetsordern som klar:</p>

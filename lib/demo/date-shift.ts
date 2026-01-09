@@ -75,6 +75,9 @@ export function shiftDateString(dateStr: string, daysOffset: number): string {
  * @param orgId - Organization ID
  * @param inputDate - Date to potentially shift
  * @returns Shifted date if demo org, otherwise original date
+ * 
+ * IMPORTANT: For date-shifting, we shift by the difference between the week start dates.
+ * If anchor date's week start is different from current week start, we shift to match.
  */
 export async function getEffectiveDateForDemo(
 	orgId: string,
@@ -87,8 +90,25 @@ export async function getEffectiveDateForDemo(
 		return inputDate;
 	}
 	
-	const daysOffset = calculateDateShift(referenceDate);
-	return shiftDate(inputDate, daysOffset);
+	// Calculate week starts (ISO weeks - Monday as first day)
+	const getWeekStart = (date: Date): Date => {
+		const d = new Date(date);
+		const day = d.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+		const daysToMonday = day === 0 ? -6 : 1 - day; // Convert to Monday-based
+		d.setDate(d.getDate() + daysToMonday);
+		d.setHours(0, 0, 0, 0);
+		return d;
+	};
+	
+	const anchorWeekStart = getWeekStart(referenceDate);
+	const inputWeekStart = getWeekStart(inputDate);
+	
+	// Calculate difference in days between week starts
+	const diffMs = inputWeekStart.getTime() - anchorWeekStart.getTime();
+	const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+	
+	// Shift input date BACK by the difference to match anchor date's week
+	return shiftDate(inputDate, -diffDays);
 }
 
 /**

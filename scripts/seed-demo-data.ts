@@ -102,9 +102,13 @@ async function main() {
 
 	// 1.5. Create anchor date (start of current week) for date-shifting
 	// This will be saved as demo_reference_date, and all data will be created relative to this date
+	// IMPORTANT: Use ISO week (Monday as first day) to match PostgreSQL date_trunc('week', ...)
 	console.log('📅 Setting up demo reference date (anchor date)...');
 	const anchorDate = new Date();
-	anchorDate.setDate(anchorDate.getDate() - anchorDate.getDay()); // Start of week (Sunday = 0)
+	// Get Monday of current week (ISO week - Monday is day 1)
+	const dayOfWeek = anchorDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+	const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Convert to Monday-based
+	anchorDate.setDate(anchorDate.getDate() + daysToMonday);
 	anchorDate.setHours(0, 0, 0, 0);
 
 	// Save demo_reference_date to organization
@@ -331,6 +335,64 @@ async function main() {
 			console.log(`✅ Found ${profileIds.length} demo user profiles\n`);
 		}
 
+		// 4.5. Create memberships for demo users if they don't exist
+		console.log('🔗 Step 4.5: Creating memberships for demo users...');
+		if (profileIds.length > 0) {
+			// Check which users already have memberships
+			const { data: existingMemberships, error: membershipsCheckError } = await supabase
+				.from('memberships')
+				.select('user_id')
+				.eq('org_id', demoOrgId)
+				.in('user_id', profileIds);
+
+			if (membershipsCheckError) {
+				console.warn(`   Warning: Could not check existing memberships:`, membershipsCheckError.message);
+			}
+
+			const existingMembershipUserIds = new Set(existingMemberships?.map((m) => m.user_id) || []);
+			const usersNeedingMembership = profileIds.filter((id) => !existingMembershipUserIds.has(id));
+
+			if (usersNeedingMembership.length > 0) {
+				// Create memberships with appropriate roles
+				const membershipEntries = usersNeedingMembership.map((userId) => {
+					const email = existingProfiles?.find((p) => p.id === userId)?.email || '';
+					let role: 'admin' | 'foreman' | 'worker' | 'finance' | 'ue' = 'worker';
+					
+					if (email.includes('admin@')) {
+						role = 'admin';
+					} else if (email.includes('forman@')) {
+						role = 'foreman';
+					} else if (email.includes('ekonomi@')) {
+						role = 'finance';
+					} else if (email.includes('arbetare')) {
+						role = 'worker';
+					}
+
+					return {
+						org_id: demoOrgId,
+						user_id: userId,
+						role: role,
+						is_active: true,
+						hourly_rate_sek: role === 'worker' ? randomInt(200, 300) : role === 'foreman' ? randomInt(350, 450) : null,
+					};
+				});
+
+				const { error: membershipsError } = await supabase
+					.from('memberships')
+					.insert(membershipEntries);
+
+				if (membershipsError) {
+					console.warn(`   Warning: Could not create memberships:`, membershipsError.message);
+				} else {
+					console.log(`✅ Created ${membershipEntries.length} memberships\n`);
+				}
+			} else {
+				console.log(`✅ All demo users already have memberships\n`);
+			}
+		} else {
+			console.log('   ⚠️  Skipping memberships (no users found)\n');
+		}
+
 		// 5. Create projects (8+)
 		console.log('🏗️  Step 5: Creating projects...');
 		const projects = [
@@ -445,6 +507,93 @@ async function main() {
 
 		if (projectsError) throw projectsError;
 		console.log(`✅ Created ${createdProjects?.length || 0} projects\n`);
+
+		// 5.5. Enable worksites (personalliggare) for 3-4 active projects
+		console.log('🏗️  Step 5.5: Enabling worksites for selected projects...');
+		if (createdProjects && createdProjects.length > 0) {
+			// Select 3-4 active projects to enable as worksites
+			const activeProjectsForWorksite = createdProjects
+				.filter((p) => p.project_number.startsWith('PRJ-2025'))
+				.slice(0, 4);
+
+			// Helper function to parse address from site_address
+			const parseAddress = (siteAddress: string) => {
+				// Format: "Street Name, Postal Code City" or "Street Name, Postal Code City, Country"
+				// Example: "Solgatan 12, 123 45 Stockholm"
+				const parts = siteAddress.split(',').map((s) => s.trim());
+				
+				if (parts.length >= 2) {
+					const addressLine1 = parts[0];
+					const cityPart = parts[parts.length - 1];
+					
+					// Extract postal code and city (format: "123 45 Stockholm")
+					const postalCityMatch = cityPart.match(/^(\d{3}\s?\d{2})\s+(.+)$/);
+					if (postalCityMatch) {
+						return {
+							address_line1: addressLine1,
+							address_line2: parts.length > 2 ? parts.slice(1, -1).join(', ') : null,
+							postal_code: postalCityMatch[1].replace(/\s/, ''),
+							city: postalCityMatch[2],
+							country: 'Sverige',
+						};
+					} else {
+						// Fallback: assume city is the last part
+						return {
+							address_line1: addressLine1,
+							address_line2: parts.length > 2 ? parts.slice(1, -1).join(', ') : null,
+							postal_code: null,
+							city: cityPart,
+							country: 'Sverige',
+						};
+					}
+				}
+				
+				// Fallback: use entire address as line1
+				return {
+					address_line1: siteAddress,
+					address_line2: null,
+					postal_code: null,
+					city: null,
+					country: 'Sverige',
+				};
+			};
+
+			// Update projects with worksite data
+			const worksiteUpdates = activeProjectsForWorksite.map((project, index) => {
+				const originalProject = projects.find((p) => p.project_number === project.project_number);
+				if (!originalProject) return null;
+
+				const addressData = parseAddress(originalProject.site_address);
+				const worksiteCode = `WS-${project.project_number.split('-').slice(-1)[0]}`;
+
+				return {
+					id: project.id,
+					worksite_enabled: true,
+					worksite_code: worksiteCode,
+					...addressData,
+					timezone: 'Europe/Stockholm',
+					retention_years: 2,
+				};
+			}).filter((update) => update !== null);
+
+			// Update projects in batches
+			for (const update of worksiteUpdates) {
+				if (!update) continue;
+				const { id, ...updateData } = update;
+				const { error: updateError } = await supabase
+					.from('projects')
+					.update(updateData)
+					.eq('id', id);
+
+				if (updateError) {
+					console.warn(`   Warning: Could not update worksite for project ${id}:`, updateError.message);
+				}
+			}
+
+			console.log(`✅ Enabled worksites for ${worksiteUpdates.length} projects\n`);
+		} else {
+			console.log('   ⚠️  Skipping worksites (no projects created)\n');
+		}
 
 		// 6. Create phases for some projects
 		console.log('📋 Step 6: Creating phases...');
@@ -597,10 +746,18 @@ async function main() {
 			const workers = profileIds.slice(2, 7);
 			const threeWeeksAgo = getWeeksAgo(3);
 
-			for (let week = 0; week < 3; week++) {
+			// Create time entries for 3 weeks ago to current week (4 weeks total)
+			// This ensures data exists for "current week" in dashboard stats
+			// Week 0-2: Past weeks (3 weeks ago to last week)
+			// Week 3: Current week (from anchor date = start of week)
+			for (let week = 0; week < 4; week++) {
 				for (let day = 0; day < 5; day++) {
-					// Monday to Friday
-					const date = getRelativeDate(-21 + week * 7 + day);
+					// Monday to Friday (day 1-5, where anchor date is Sunday = day 0)
+					// For current week (week 3), start from day 1 (Monday)
+					const dayOffset = week < 3 
+						? -21 + week * 7 + day  // Past weeks: -21 to -1 days
+						: day; // Current week: 0 to 4 days (Mon-Fri of current week)
+					const date = getRelativeDate(dayOffset);
 
 					for (const worker of workers.slice(0, 3)) {
 						// 3 workers per day
@@ -611,8 +768,11 @@ async function main() {
 						const durationHours = randomInt(6, 8);
 						const durationMinutes = randomInt(0, 30);
 
-					const startAt = getRelativeDate(-21 + week * 7 + day, startHour, startMinute);
-					const stopAt = getRelativeDate(-21 + week * 7 + day, startHour + durationHours, startMinute + durationMinutes);
+					const dayOffset = week < 3 
+						? -21 + week * 7 + day  // Past weeks
+						: day; // Current week (Mon-Fri)
+					const startAt = getRelativeDate(dayOffset, startHour, startMinute);
+					const stopAt = getRelativeDate(dayOffset, startHour + durationHours, startMinute + durationMinutes);
 
 						// Calculate duration in minutes
 						const durationMin = Math.round((stopAt.getTime() - startAt.getTime()) / (1000 * 60));
@@ -655,6 +815,7 @@ async function main() {
 			unit: string;
 			unit_price_sek: number;
 			status: string;
+			created_at?: string;
 		}> = [];
 
 		if (profileIds.length > 0) {
@@ -668,10 +829,18 @@ async function main() {
 
 			const workers = profileIds.slice(2, 7);
 
+			// Create materials distributed across last 3 weeks + current week
 			for (let i = 0; i < 15; i++) {
 				const material = randomElement(materials);
 				const project = randomElement(activeProjects);
 				const worker = randomElement(workers);
+				
+				// Distribute across 4 weeks (3 past + current week)
+				// Most recent materials should be in current week for dashboard stats
+				const dayOffset = i < 5 
+					? randomInt(0, 4) // Current week (Mon-Fri)
+					: randomInt(-21, -1); // Past 3 weeks
+				const createdDate = getRelativeDate(dayOffset);
 
 				materialEntries.push({
 					org_id: demoOrgId,
@@ -681,7 +850,9 @@ async function main() {
 					qty: material.qty * (0.5 + Math.random()),
 					unit: material.unit,
 					unit_price_sek: material.unit_price_sek,
-					status: Math.random() > 0.3 ? 'approved' : 'submitted',
+					// Create more submitted entries for approvals demo (60% submitted, 40% approved)
+					status: Math.random() > 0.4 ? 'submitted' : 'approved',
+					created_at: createdDate.toISOString(),
 				});
 			}
 
@@ -707,6 +878,7 @@ async function main() {
 			amount_sek: number;
 			vat: boolean;
 			status: string;
+			created_at?: string;
 		}> = [];
 
 		if (profileIds.length > 0) {
@@ -720,9 +892,17 @@ async function main() {
 			];
 			const workers = profileIds.slice(2, 7);
 
+			// Create expenses distributed across last 3 weeks + current week
 			for (let i = 0; i < 12; i++) {
 				const project = randomElement(activeProjects);
 				const worker = randomElement(workers);
+				
+				// Distribute across 4 weeks (3 past + current week)
+				// Most recent expenses should be in current week for dashboard stats
+				const dayOffset = i < 4 
+					? randomInt(0, 4) // Current week (Mon-Fri)
+					: randomInt(-21, -1); // Past 3 weeks
+				const createdDate = getRelativeDate(dayOffset);
 
 				expenseEntries.push({
 					org_id: demoOrgId,
@@ -732,7 +912,9 @@ async function main() {
 					description: randomElement(expenseDescriptions),
 					amount_sek: randomInt(50, 500),
 					vat: Math.random() > 0.3,
-					status: Math.random() > 0.4 ? 'approved' : 'submitted',
+					// Create more submitted entries for approvals demo (60% submitted, 40% approved)
+					status: Math.random() > 0.4 ? 'submitted' : 'approved',
+					created_at: createdDate.toISOString(),
 				});
 			}
 
@@ -1190,6 +1372,10 @@ async function main() {
 			.insert(
 				invoiceBasisEntries.map((entry) => ({
 					...entry,
+					currency: 'SEK',
+					fx_rate: 1.0,
+					reverse_charge_building: false,
+					rot_rut_flag: false,
 					lines_json: { lines: [], diary: [] },
 					totals: {},
 				}))
@@ -1197,6 +1383,75 @@ async function main() {
 
 		if (invoiceBasisError) throw invoiceBasisError;
 		console.log(`✅ Created ${invoiceBasisEntries.length} invoice underlay entries\n`);
+
+		// 20. Create payroll basis from approved time entries
+		console.log('💰 Step 20: Creating payroll basis from time entries...');
+		if (timeEntries.length > 0) {
+			// Group time entries by user and week
+			const payrollBasisMap = new Map<string, { user_id: string; week_start: Date; total_hours: number }>();
+			
+			for (const entry of timeEntries) {
+				if (entry.status !== 'approved') continue;
+				
+				const entryDate = new Date(entry.start_at);
+				// Get start of ISO week (Monday)
+				const weekStart = new Date(entryDate);
+				const day = weekStart.getDay();
+				const daysToMonday = day === 0 ? -6 : 1 - day;
+				weekStart.setDate(weekStart.getDate() + daysToMonday);
+				weekStart.setHours(0, 0, 0, 0);
+				
+				const weekKey = `${entry.user_id}-${weekStart.toISOString().split('T')[0]}`;
+				const hours = entry.duration_min / 60.0;
+				
+				if (payrollBasisMap.has(weekKey)) {
+					const existing = payrollBasisMap.get(weekKey)!;
+					existing.total_hours += hours;
+				} else {
+					payrollBasisMap.set(weekKey, {
+						user_id: entry.user_id,
+						week_start: weekStart,
+						total_hours: hours,
+					});
+				}
+			}
+
+			// Create payroll_basis entries
+			const payrollBasisEntries = Array.from(payrollBasisMap.values()).map((entry) => {
+				const weekEnd = new Date(entry.week_start);
+				weekEnd.setDate(weekEnd.getDate() + 6);
+				
+				return {
+					org_id: demoOrgId,
+					person_id: entry.user_id,
+					period_start: formatDate(entry.week_start),
+					period_end: formatDate(weekEnd),
+					hours_norm: entry.total_hours <= 40 ? entry.total_hours : 40,
+					hours_overtime: entry.total_hours > 40 ? entry.total_hours - 40 : 0,
+					ob_hours: 0,
+					break_hours: 0,
+					total_hours: entry.total_hours,
+					corrections_json: {},
+					locked: false,
+				};
+			});
+
+			if (payrollBasisEntries.length > 0) {
+				const { error: payrollBasisError } = await supabase
+					.from('payroll_basis')
+					.insert(payrollBasisEntries);
+
+				if (payrollBasisError) {
+					console.warn(`   Warning: Could not create payroll basis:`, payrollBasisError.message);
+				} else {
+					console.log(`✅ Created ${payrollBasisEntries.length} payroll basis entries\n`);
+				}
+			} else {
+				console.log('   ⚠️  No approved time entries found for payroll basis\n');
+			}
+		} else {
+			console.log('   ⚠️  Skipping payroll basis (no time entries created)\n');
+		}
 
 		console.log('✅ Demo data seeding completed successfully!\n');
 		console.log('📊 Summary:');

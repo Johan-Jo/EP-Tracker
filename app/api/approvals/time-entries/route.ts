@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/get-session';
+import { checkDemoMode } from '@/lib/demo/check-demo-mode';
+import { getEffectiveDateForDemo } from '@/lib/demo/date-shift';
 
 export async function GET(request: NextRequest) {
 	const { user, membership } = await getSession();
@@ -19,16 +21,27 @@ export async function GET(request: NextRequest) {
 
 	const supabase = await createClient();
 	const searchParams = request.nextUrl.searchParams;
-	const periodStart = searchParams.get('period_start');
-	const periodEnd = searchParams.get('period_end');
+	const periodStartParam = searchParams.get('period_start');
+	const periodEndParam = searchParams.get('period_end');
 	const status = searchParams.get('status') || 'submitted';
 
-	if (!periodStart || !periodEnd) {
+	if (!periodStartParam || !periodEndParam) {
 		return NextResponse.json(
 			{ error: 'period_start och period_end krävs' },
 			{ status: 400 }
 		);
 	}
+
+	// Check if in demo mode and apply date-shifting
+	const demoCheck = await checkDemoMode(membership.org_id);
+	const effectiveOrgId = demoCheck.isDemoMode && demoCheck.demoOrgId ? demoCheck.demoOrgId : membership.org_id;
+	
+	const periodStartDate = new Date(periodStartParam);
+	const periodEndDate = new Date(periodEndParam);
+	
+	// Apply date-shifting for demo organization
+	const effectivePeriodStart = await getEffectiveDateForDemo(effectiveOrgId, periodStartDate);
+	const effectivePeriodEnd = await getEffectiveDateForDemo(effectiveOrgId, periodEndDate);
 
 	// ✅ PERFORMANCE: Select specific columns instead of *
 	// ✅ SOFT DELETE: Exclude soft-deleted entries (deleted_at IS NULL)
@@ -58,11 +71,11 @@ export async function GET(request: NextRequest) {
 			project:projects(name, project_number),
 			phase:phases(name)
 		`)
-		.eq('org_id', membership.org_id);
+		.eq('org_id', effectiveOrgId);
 		// TODO: Uncomment after applying soft delete migration
 		// .is('deleted_at', null) // Exclude soft-deleted entries
-	query = query.gte('start_at', periodStart)
-		.lte('start_at', periodEnd)
+	query = query.gte('start_at', effectivePeriodStart.toISOString())
+		.lte('start_at', effectivePeriodEnd.toISOString())
 		.order('start_at', { ascending: false });
 
 	if (status !== 'all') {

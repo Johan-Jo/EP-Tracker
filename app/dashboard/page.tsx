@@ -39,9 +39,12 @@ export default async function DashboardPage() {
 	// BEFORE: 12 queries (~1020ms)
 	// AFTER: 4 queries (~420ms) - 60% faster!
 	
-	// Calculate start of week for stats
+	// Calculate start of week for stats (ISO week - Monday as first day)
+	// This matches PostgreSQL's date_trunc('week', ...) behavior
 	const startOfWeek = new Date();
-	startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+	const day = startOfWeek.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+	const daysToMonday = day === 0 ? -6 : 1 - day; // Convert to ISO week (Monday = 1)
+	startOfWeek.setDate(startOfWeek.getDate() + daysToMonday);
 	startOfWeek.setHours(0, 0, 0, 0);
 
 	// ✅ PERFORMANCE: Fetch all data in parallel using optimized functions

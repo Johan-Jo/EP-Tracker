@@ -29,7 +29,7 @@ export default async function WorkOrderDetailPage({
 	const canDelete = membership.role === 'admin' || membership.role === 'foreman';
 
 	return (
-		<div className='flex-1 overflow-auto pb-20 md:pb-0 bg-black'>
+		<div className='flex-1 overflow-auto pb-20 md:pb-0 bg-gray-50 dark:bg-gray-900'>
 			{/* Header */}
 			<header className='sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border'>
 				<div className='px-4 md:px-8 py-4 md:py-6'>
@@ -55,7 +55,7 @@ export default async function WorkOrderDetailPage({
 			</header>
 
 			{/* Main Content */}
-			<main className='px-4 md:px-8 py-6 bg-black'>
+			<main className='px-4 md:px-8 py-6 bg-gray-50 dark:bg-gray-900'>
 				<WorkOrderDetailClient
 					workOrderId={id}
 					canEdit={canEdit}

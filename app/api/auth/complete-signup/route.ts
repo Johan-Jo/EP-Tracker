@@ -72,7 +72,7 @@ export async function POST(request: Request) {
 				data: {
 					full_name: fullName,
 				},
-				emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
+				emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/callback`,
 			},
 		});
 
@@ -296,6 +296,7 @@ export async function POST(request: Request) {
 		}
 
 		// Send welcome email (in background, don't wait for it)
+		const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 		sendEmail({
 			to: email,
 			toName: fullName,
@@ -304,7 +305,7 @@ export async function POST(request: Request) {
 			templateData: {
 				userName: fullName,
 				organizationName: companyName,
-				dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+				dashboardUrl: `${baseUrl}/dashboard`,
 			},
 			organizationId: org.id,
 			emailType: 'transactional',

@@ -33,9 +33,26 @@ interface ApprovalsPageNewProps {
 	userRole: 'admin' | 'foreman' | 'worker' | 'finance' | 'ue';
 }
 
+// Helper function to get current ISO week and year
+function getCurrentISOWeek(): { week: number; year: number } {
+	const now = new Date();
+	// ISO week calculation: Week 1 is the week containing Jan 4
+	const jan4 = new Date(now.getFullYear(), 0, 4);
+	const firstMonday = new Date(jan4);
+	firstMonday.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7));
+	
+	const weekStart = new Date(firstMonday);
+	const daysSinceFirstMonday = Math.floor((now.getTime() - firstMonday.getTime()) / (1000 * 60 * 60 * 24));
+	const week = Math.floor(daysSinceFirstMonday / 7) + 1;
+	const year = now.getFullYear();
+	
+	return { week, year };
+}
+
 export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
-	const [selectedWeek, setSelectedWeek] = useState(43);
-	const [selectedYear] = useState(2025);
+	const currentWeek = getCurrentISOWeek();
+	const [selectedWeek, setSelectedWeek] = useState(currentWeek.week);
+	const [selectedYear, setSelectedYear] = useState(currentWeek.year);
 	const [userSearchQuery, setUserSearchQuery] = useState('');
 	const [projectSearchQuery, setProjectSearchQuery] = useState('');
 	const [statusFilter, setStatusFilter] = useState('all');
@@ -365,12 +382,20 @@ export default function ApprovalsPageNew({ orgId }: ApprovalsPageNewProps) {
 	const handlePreviousWeek = () => {
 		if (selectedWeek > 1) {
 			setSelectedWeek(selectedWeek - 1);
+		} else {
+			// Go to last week of previous year
+			setSelectedWeek(52);
+			setSelectedYear(selectedYear - 1);
 		}
 	};
 
 	const handleNextWeek = () => {
 		if (selectedWeek < 52) {
 			setSelectedWeek(selectedWeek + 1);
+		} else {
+			// Go to first week of next year
+			setSelectedWeek(1);
+			setSelectedYear(selectedYear + 1);
 		}
 	};
 

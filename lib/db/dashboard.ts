@@ -2,7 +2,7 @@
 // This module provides optimized dashboard queries using PostgreSQL functions
 
 import { createClient } from '@/lib/supabase/server';
-import { getEffectiveStartDateForDemo } from '@/lib/demo/date-shift';
+import { getEffectiveStartDateForDemo, isDemoWithDateShifting } from '@/lib/demo/date-shift';
 
 /**
  * Safely log error with all available information
@@ -135,30 +135,69 @@ function logError(context: string, error: unknown) {
  * - Additional indexes for faster lookups
  */
 export async function getDashboardStats(userId: string, orgId: string, startDate?: Date) {
-	// Handle demo mode: return default stats if userId is invalid
-	if (!userId || userId === 'demo-user-placeholder' || !userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-		// For demo mode, return default stats
-		return {
-			active_projects: 0,
-			total_hours_week: 0,
-			total_materials_week: 0,
-			total_time_entries_week: 0,
-		};
-	}
-
 	try {
 		const supabase = await createClient();
+
+		// Check if this is a demo organization
+		const isDemoOrg = await isDemoWithDateShifting(orgId);
+		
+		// For demo org, if userId is invalid (demo-user-id), get a real demo user_id
+		let effectiveUserId = userId;
+		if (isDemoOrg && (!userId || userId === 'demo-user-id' || userId === 'demo-user-placeholder' || !userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i))) {
+			// Get a real demo user_id from the database
+			const { data: demoUser } = await supabase
+				.from('time_entries')
+				.select('user_id')
+				.eq('org_id', orgId)
+				.limit(1)
+				.single();
+			
+			if (demoUser?.user_id) {
+				effectiveUserId = demoUser.user_id;
+			} else {
+				// If no demo user found, return default stats
+				return {
+					active_projects: 0,
+					total_hours_week: 0,
+					total_materials_week: 0,
+					total_time_entries_week: 0,
+				};
+			}
+		} else if (!userId || userId === 'demo-user-placeholder' || !userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+			// For non-demo orgs, return default stats if userId is invalid
+			return {
+				active_projects: 0,
+				total_hours_week: 0,
+				total_materials_week: 0,
+				total_time_entries_week: 0,
+			};
+		}
 
 		// Date-shifting for demo organization
 		const effectiveStartDate = startDate 
 			? await getEffectiveStartDateForDemo(orgId, startDate)
 			: startDate;
 
-		// EPIC 26.9: Try cached stats first (Phase C)
+		// EPIC 26.9: For demo orgs, use non-cached version because:
+		// 1. get_dashboard_stats_cached ignores p_start_date and uses CURRENT_DATE - 7 days
+		// 2. We need to use the actual week start date for correct date-shifting
+		// 3. Non-cached version (get_dashboard_stats) properly uses p_start_date
+		if (isDemoOrg && effectiveStartDate) {
+			// Use non-cached version for demo orgs to ensure correct week filtering
+			return await getDashboardStatsUncached(effectiveUserId, orgId, effectiveStartDate);
+		}
+
+		// EPIC 26.9: Try cached stats first (Phase C) for non-demo orgs
+		// Note: get_dashboard_stats_cached expects a DATE parameter, not timestamptz
+		// Convert to date string (YYYY-MM-DD) if date is provided
+		const startDateParam = effectiveStartDate 
+			? effectiveStartDate.toISOString().split('T')[0]  // Extract date part only
+			: null;
+		
 		const { data, error } = await supabase.rpc('get_dashboard_stats_cached', {
-			p_user_id: userId,
+			p_user_id: effectiveUserId,
 			p_org_id: orgId,
-			p_start_date: effectiveStartDate?.toISOString() || null,
+			p_start_date: startDateParam,
 		});
 
 		// Handle errors - check for timeout specifically
@@ -179,13 +218,13 @@ export async function getDashboardStats(userId: string, orgId: string, startDate
 			
 			logError('Error fetching cached stats', error);
 			// Fallback to non-cached version (with date-shifting already applied)
-			return await getDashboardStatsUncached(userId, orgId, effectiveStartDate);
+			return await getDashboardStatsUncached(effectiveUserId, orgId, effectiveStartDate);
 		}
 
 		// Handle case where data might be null or have different structure
 		if (!data || typeof data !== 'object') {
 			console.warn('[DASHBOARD] Invalid cached stats data, using fallback');
-			return await getDashboardStatsUncached(userId, orgId, effectiveStartDate);
+			return await getDashboardStatsUncached(effectiveUserId, orgId, effectiveStartDate);
 		}
 
 		// Ensure all required fields exist with defaults
@@ -199,10 +238,26 @@ export async function getDashboardStats(userId: string, orgId: string, startDate
 		logError('Exception in getDashboardStats', err);
 		// Fallback to non-cached version
 		// Date-shifting will be applied in getDashboardStatsUncached if needed
+		const supabase = await createClient();
+		const isDemoOrg = await isDemoWithDateShifting(orgId);
+		
+		let effectiveUserId = userId;
+		if (isDemoOrg && (!userId || userId === 'demo-user-id' || userId === 'demo-user-placeholder' || !userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i))) {
+			const { data: demoUser } = await supabase
+				.from('time_entries')
+				.select('user_id')
+				.eq('org_id', orgId)
+				.limit(1)
+				.single();
+			if (demoUser?.user_id) {
+				effectiveUserId = demoUser.user_id;
+			}
+		}
+		
 		const effectiveStartDate = startDate 
 			? await getEffectiveStartDateForDemo(orgId, startDate)
 			: startDate;
-		return await getDashboardStatsUncached(userId, orgId, effectiveStartDate);
+		return await getDashboardStatsUncached(effectiveUserId, orgId, effectiveStartDate);
 	}
 }
 
@@ -210,23 +265,53 @@ export async function getDashboardStats(userId: string, orgId: string, startDate
  * Fallback: Non-cached stats (used if cache fails)
  */
 async function getDashboardStatsUncached(userId: string, orgId: string, startDate?: Date) {
-	// Handle demo mode: return default stats if userId is invalid
-	if (!userId || userId === 'demo-user-placeholder' || !userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-		return {
-			active_projects: 0,
-			total_hours_week: 0,
-			total_materials_week: 0,
-			total_time_entries_week: 0,
-		};
-	}
-
 	try {
 		const supabase = await createClient();
 
+		// Check if this is a demo organization
+		const isDemoOrg = await isDemoWithDateShifting(orgId);
+		
+		// For demo org, if userId is invalid (demo-user-id), get a real demo user_id
+		let effectiveUserId = userId;
+		if (isDemoOrg && (!userId || userId === 'demo-user-id' || userId === 'demo-user-placeholder' || !userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i))) {
+			// Get a real demo user_id from the database
+			const { data: demoUser } = await supabase
+				.from('time_entries')
+				.select('user_id')
+				.eq('org_id', orgId)
+				.limit(1)
+				.single();
+			
+			if (demoUser?.user_id) {
+				effectiveUserId = demoUser.user_id;
+			} else {
+				// If no demo user found, return default stats
+				return {
+					active_projects: 0,
+					total_hours_week: 0,
+					total_materials_week: 0,
+					total_time_entries_week: 0,
+				};
+			}
+		} else if (!userId || userId === 'demo-user-placeholder' || !userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+			// For non-demo orgs, return default stats if userId is invalid
+			return {
+				active_projects: 0,
+				total_hours_week: 0,
+				total_materials_week: 0,
+				total_time_entries_week: 0,
+			};
+		}
+
+		// Date-shifting for demo organization
+		const effectiveStartDate = startDate 
+			? await getEffectiveStartDateForDemo(orgId, startDate)
+			: startDate;
+
 		const { data, error } = await supabase.rpc('get_dashboard_stats', {
-			p_user_id: userId,
+			p_user_id: effectiveUserId,
 			p_org_id: orgId,
-			p_start_date: startDate?.toISOString() || null,
+			p_start_date: effectiveStartDate?.toISOString() || null,
 		});
 
 		if (error) {
